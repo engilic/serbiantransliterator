@@ -1,0 +1,14 @@
+{
+    "compilerOptions": {
+        "target": "es2018",
+        "lib": [ "es2018", "dom" ],
+        "allowJs": true,
+        "baseUrl": ".",
+        "esModuleInterop": true,
+        "noEmitOnError": true,
+        "outDir": "dist",
+        "sourceMap": true,
+        "moduleResolution": "node"
+    },
+    "exclude": [ "node_modules", "dist" ]
+}

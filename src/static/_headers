@@ -1,0 +1,9 @@
+/*
+  Access-Control-Allow-Origin: *
+  X-Frame-Options: ALLOWALL
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  Content-Security-Policy: frame-ancestors https://*.office.com https://*.officeapps.live.com https://*.office.net https://*.microsoft.com https://*.sharepoint.com https://*.sharepoint-df.com;
+
+/assets/*
+  Cache-Control: public, max-age=3600

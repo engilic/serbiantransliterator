@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="sr">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Serbian Transliterator</title>
+    <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+
+    <style>
+      :root {
+        --bg: #ffffff;
+        --fg: #111827;
+        --muted: #6b7280;
+        --border: #e5e7eb;
+        --accent: #2563eb;
+        --danger: #b91c1c;
+        --overlay: rgba(17, 24, 39, 0.55);
+      }
+
+      body {
+        margin: 0;
+        padding: 16px;
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+        background: var(--bg);
+        color: var(--fg);
+      }
+
+      h1 {
+        margin: 0 0 8px 0;
+        font-size: 18px;
+        font-weight: 700;
+      }
+
+      .sub {
+        margin: 0 0 16px 0;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.35;
+      }
+
+      .box {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 12px;
+        margin-bottom: 12px;
+      }
+
+      .row {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+
+      label {
+        display: block;
+        font-size: 12px;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+
+      select,
+      textarea,
+      button {
+        width: 100%;
+        box-sizing: border-box;
+        font-size: 14px;
+      }
+
+      select {
+        padding: 8px 10px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: #fff;
+      }
+
+      textarea {
+        min-height: 140px;
+        resize: vertical;
+        padding: 10px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        font-size: 13px;
+        line-height: 1.35;
+      }
+
+      .radios,
+      .checks {
+        display: grid;
+        gap: 8px;
+      }
+
+      .inline {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .inline input[type="checkbox"],
+      .inline input[type="radio"] {
+        margin: 0;
+        width: 16px;
+        height: 16px;
+      }
+
+      .actions {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .actions-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      button {
+        border: 1px solid transparent;
+        border-radius: 10px;
+        padding: 10px 12px;
+        cursor: pointer;
+      }
+
+      #runBtn {
+        background: var(--accent);
+        color: white;
+        font-weight: 700;
+      }
+
+      #previewBtn {
+        background: #fff;
+        border: 1px solid var(--border);
+        color: var(--fg);
+        font-weight: 700;
+      }
+
+      #exportBtn,
+      #importBtn {
+        background: #fff;
+        border: 1px solid var(--border);
+        color: var(--fg);
+        font-weight: 600;
+      }
+
+      #resetBtn {
+        background: #fff;
+        border: 1px solid var(--border);
+        color: var(--danger);
+        font-weight: 600;
+      }
+
+      button:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+      }
+
+      #msg {
+        margin-top: 10px;
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        color: var(--fg);
+        background: #f9fafb;
+        font-size: 13px;
+        line-height: 1.35;
+        white-space: pre-wrap;
+      }
+
+      /* Stats box (posebno polje na dnu) */
+      #statsBox {
+        display: none;
+        margin-top: 10px;
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: #ffffff;
+      }
+
+      #statsTitle {
+        font-size: 12px;
+        font-weight: 800;
+        color: var(--muted);
+        margin: 0 0 6px 0;
+      }
+
+      #statsText {
+        font-size: 12px;
+        line-height: 1.35;
+        white-space: pre-wrap;
+        margin: 0;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      }
+
+      .hint {
+        margin-top: 6px;
+        font-size: 12px;
+        color: var(--muted);
+        line-height: 1.35;
+      }
+
+      code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        font-size: 12px;
+      }
+
+      /* Modal */
+      #modalOverlay {
+        position: fixed;
+        inset: 0;
+        background: var(--overlay);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        z-index: 9999;
+      }
+
+      #modal {
+        width: min(520px, 100%);
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 14px;
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25);
+      }
+
+      #modalTitle {
+        font-size: 14px;
+        font-weight: 800;
+        margin: 0 0 8px 0;
+      }
+
+      #modalText {
+        margin: 0 0 10px 0;
+        font-size: 13px;
+        line-height: 1.35;
+        color: var(--fg);
+        white-space: pre-wrap;
+      }
+
+      #modalInput {
+        display: none;
+        width: 100%;
+        min-height: 150px;
+        resize: vertical;
+        padding: 10px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        font-size: 12px;
+        line-height: 1.35;
+        margin-bottom: 10px;
+      }
+
+      .modalActions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      #modalCancel {
+        background: #fff;
+        border: 1px solid var(--border);
+        font-weight: 700;
+      }
+
+      #modalOk {
+        background: var(--accent);
+        color: #fff;
+        font-weight: 800;
+      }
+    </style>
+  </head>
+
+  <body>
+    <h1>Serbian Transliterator</h1>
+    <p class="sub">
+      Preslovljavanje srpskog teksta: latinica ↔ ćirilica.<br />
+      Radi na selekciji; ako nema selekcije, može raditi na celom dokumentu (uz potvrdu).
+    </p>
+
+    <div class="box">
+      <div class="row">
+        <div>
+          <label for="profilePreset">Profil (preset)</label>
+          <select id="profilePreset">
+            <option value="custom">Custom</option>
+            <option value="it">IT / Tech</option>
+            <option value="legal">Pravni</option>
+            <option value="journalism">Novinarski</option>
+          </select>
+        </div>
+
+        <div>
+          <label>Smer</label>
+          <div class="radios">
+            <label class="inline" for="dirAuto">
+              <input type="radio" id="dirAuto" name="direction" value="auto" checked />
+              Auto
+            </label>
+            <label class="inline" for="dirLatToCyr">
+              <input type="radio" id="dirLatToCyr" name="direction" value="lat-to-cyr" />
+              Latinica → Ćirilica
+            </label>
+            <label class="inline" for="dirCyrToLat">
+              <input type="radio" id="dirCyrToLat" name="direction" value="cyr-to-lat" />
+              Ćirilica → Latinica
+            </label>
+          </div>
+        </div>
+
+        <div>
+          <label>Opcije</label>
+          <div class="checks">
+            <label class="inline" for="optProtectBrands">
+              <input type="checkbox" id="optProtectBrands" checked />
+              Štiti brendove/tehničke termine (ALWAYS_LATIN)
+            </label>
+            <label class="inline" for="optSerbianQuotes">
+              <input type="checkbox" id="optSerbianQuotes" checked />
+              Srpski navodnici u ćirilici („ … ”)
+            </label>
+            <label class="inline" for="optPreserveCodeBlocks">
+              <input type="checkbox" id="optPreserveCodeBlocks" checked />
+              Štiti code blocks: <code>`inline`</code> i <code>```block```</code>
+            </label>
+            <label class="inline" for="optConfirmWholeDoc">
+              <input type="checkbox" id="optConfirmWholeDoc" checked />
+              Potvrdi konverziju celog dokumenta kada nema selekcije
+            </label>
+            <label class="inline" for="optShowStats">
+              <input type="checkbox" id="optShowStats" />
+              Prikaži statistiku u donjem polju
+            </label>
+          </div>
+        </div>
+
+        <div>
+          <label for="userWords">User protected (po jedna reč/fraza u redu)</label>
+          <textarea
+            id="userWords"
+            placeholder="Primer (po jedna stavka u redu):
+MojaFirma
+Moja Firma
+Save As
+Windows Server
+VS Code
+ЉУБЉАНА"
+          ></textarea>
+          <div class="hint">
+            Savet: za firme, nazive proizvoda i fraze koje želiš da ostanu tačno ovakve.
+          </div>
+        </div>
+
+        <div class="actions">
+          <div class="actions-2">
+            <button id="previewBtn" type="button">Preview</button>
+            <button id="runBtn" type="button">Preslovi</button>
+          </div>
+
+          <div class="actions-2">
+            <button id="exportBtn" type="button">Export settings</button>
+            <button id="importBtn" type="button">Import settings</button>
+          </div>
+
+          <button id="resetBtn" type="button">Reset settings</button>
+        </div>
+
+        <div id="msg">Spreman.</div>
+
+        <div id="statsBox">
+          <div id="statsTitle">Statistika poslednje akcije</div>
+          <pre id="statsText">(Nema statistike još)</pre>
+        </div>
+      </div>
+    </div>
+
+    <div id="modalOverlay" role="dialog" aria-modal="true">
+      <div id="modal">
+        <div id="modalTitle">Potvrda</div>
+        <div id="modalText"></div>
+        <textarea id="modalInput" spellcheck="false"></textarea>
+        <div class="modalActions">
+          <button id="modalCancel" type="button">Cancel</button>
+          <button id="modalOk" type="button">OK</button>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
