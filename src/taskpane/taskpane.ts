@@ -132,9 +132,7 @@ function initUi() {
         });
     }
 
-    // POKREĆEMO TAGOVE OVDE
     initTagsInput();
-
     refreshStatsVisibilityAndContent();
 }
 
@@ -146,6 +144,7 @@ function initTagsInput() {
     const list = document.getElementById("tagsList");
     const input = document.getElementById("tagInput") as HTMLInputElement;
     const hiddenTextarea = document.getElementById("userWords") as HTMLTextAreaElement;
+    const clearBtn = document.getElementById("clearTagsBtn") as HTMLButtonElement;
 
     if (!container || !list || !input || !hiddenTextarea) return;
 
@@ -156,6 +155,12 @@ function initTagsInput() {
     function renderTags() {
         list!.innerHTML = "";
         const words = hiddenTextarea.value.split("\n").filter(w => w.trim() !== "");
+
+        // Enable/Disable clear button
+        if (clearBtn) {
+            clearBtn.disabled = words.length === 0;
+        }
+
         words.forEach(word => {
             const tag = document.createElement("div");
             tag.className = "tag";
@@ -168,6 +173,18 @@ function initTagsInput() {
         hiddenTextarea.value = words.join("\n");
         const event = new Event("input", { bubbles: true });
         hiddenTextarea.dispatchEvent(event);
+    }
+
+    // Clear all button
+    if (clearBtn) {
+        clearBtn.addEventListener("click", () => {
+            confirmInPanel("Da li sigurno želiš da obrišeš sve zaštićene reči?").then((ok) => {
+                if (ok) {
+                    updateTextarea([]);
+                    renderTags();
+                }
+            });
+        });
     }
 
     input.addEventListener("keydown", (e) => {
@@ -206,7 +223,6 @@ function initTagsInput() {
     });
 
     renderTags();
-    // Kada preset promeni textarea, ovo osvežava tagove
     hiddenTextarea.addEventListener("input", renderTags);
 }
 
@@ -248,7 +264,6 @@ function applyPresetSmart(profile: Exclude<ProfilePreset, "custom">) {
 
     setPresetSelectValue(profile);
     setTextareaValue("userWords", mergedText);
-    // Trigger event da tagovi primete promenu
     document.getElementById("userWords")?.dispatchEvent(new Event("input"));
 
     setCheckboxValue("optProtectBrands", preset.protectBrands);
@@ -310,7 +325,7 @@ function showModal(opts: {
 
     const overlay = document.getElementById("modalOverlay") as HTMLDivElement | null;
     const titleEl = document.getElementById("modalTitle") as HTMLDivElement | null;
-    const textEl = document.getElementById("modalText") as HTMLDivElement | null;
+    const textEl = document.getElementById("modalText") as HTMLDivElement | null; // Note: using innerHTML in showDiffModal
     const inputEl = document.getElementById("modalInput") as HTMLTextAreaElement | null;
     const okBtn = document.getElementById("modalOk") as HTMLButtonElement | null;
     const cancelBtn = document.getElementById("modalCancel") as HTMLButtonElement | null;
@@ -321,7 +336,17 @@ function showModal(opts: {
     }
 
     titleEl.textContent = opts.title;
-    textEl.textContent = opts.message;
+
+    // Clean start
+    textEl.innerHTML = "";
+    textEl.textContent = "";
+
+    if (opts.message.startsWith("<div")) {
+        textEl.innerHTML = opts.message;
+    } else {
+        textEl.textContent = opts.message;
+    }
+
     okBtn.textContent = opts.okText ?? "OK";
     cancelBtn.textContent = opts.cancelText ?? "Cancel";
 
@@ -333,6 +358,12 @@ function showModal(opts: {
         inputEl.style.display = "none";
         inputEl.value = "";
         inputEl.readOnly = false;
+    }
+
+    if (opts.cancelText === "NONE") {
+        cancelBtn.style.display = "none";
+    } else {
+        cancelBtn.style.display = "inline-flex";
     }
 
     overlay.style.display = "flex";
@@ -376,6 +407,16 @@ async function showTextDialog(title: string, message: string, value: string, rea
     });
     if (!res.ok && !readOnly) return null;
     return res.value ?? "";
+}
+
+function showDiffModal(title: string, htmlContent: string) {
+    showModal({
+        title,
+        message: htmlContent,
+        mode: "confirm",
+        okText: "U redu",
+        cancelText: "NONE"
+    });
 }
 
 /* ─────────────────────────────
@@ -436,7 +477,7 @@ async function runSmart() {
 }
 
 async function runPreview() {
-    setStatus("Pravim preview...");
+    setStatus("Generišem uporedni prikaz...");
     try {
         await Word.run(async (context) => {
             let range = context.document.getSelection();
@@ -449,7 +490,7 @@ async function runPreview() {
             const confirmWholeDoc = getCheckboxValue("optConfirmWholeDoc", true);
             if (!hasSelection) {
                 if (confirmWholeDoc) {
-                    const ok = await confirmInPanel("Nema selekcije. Preview za CEO dokument?");
+                    const ok = await confirmInPanel("Nema selekcije. Da li želiš Preview za CEO dokument?\n(Ovo može potrajati za velike fajlove).");
                     if (!ok) {
                         setStatus("Otkazano preview.");
                         return;
@@ -458,21 +499,23 @@ async function runPreview() {
                 range = context.document.body.getRange("Whole");
             }
 
+            range.load("text");
             const ooxml = range.getOoxml();
             await context.sync();
+
+            const originalText = range.text;
 
             const opts = readOptionsFromUi();
             const result = convertOoxml(ooxml.value, opts as any) as any as { xml: string; type: string; stats?: ConvertStatsLike };
 
-            const previewText = extractTextFromOoxml(result.xml);
-            const snippet = previewText.length > 700 ? previewText.slice(0, 700) + "…" : previewText;
+            const newText = extractTextFromOoxml(result.xml);
 
-            setStatus(`Preview: ${result.type}\n\n${snippet}`);
+            // DIFF
+            const diffHtml = generateDiffHtml(originalText, newText);
 
-            const scope = hasSelection ? "Selekcija" : "Ceo dokument";
-            lastStatsTitle = `Statistika (preview): ${result.type}`;
-            lastStatsText = formatStatsFriendly(result.stats, scope);
-            refreshStatsVisibilityAndContent();
+            showDiffModal("Preview Izmena", diffHtml);
+
+            setStatus(`Preview završen. (${result.type})`);
         });
     } catch (error) {
         console.error(error);
@@ -481,12 +524,43 @@ async function runPreview() {
 }
 
 /* ─────────────────────────────
-   Helpers
+   Helpers & Diff
    ───────────────────────────── */
+
+function generateDiffHtml(oldText: string, newText: string): string {
+    if (oldText === newText) return "<div class='diff-container'>Nema izmena.</div>";
+
+    let html = "";
+    // Regex: split by non-word chars but keep delimiters (preserving spaces/punctuation)
+    const splitRegex = /([^\s\w\u0400-\u04FF\u0100-\u017F]+|\s+)/;
+
+    const oldParts = oldText.split(splitRegex).filter(Boolean);
+    const newParts = newText.split(splitRegex).filter(Boolean);
+
+    const maxLen = Math.max(oldParts.length, newParts.length);
+
+    for (let k = 0; k < maxLen; k++) {
+        const o = oldParts[k] || "";
+        const n = newParts[k] || "";
+
+        if (o === n) {
+            html += escapeHtml(n);
+        } else {
+            // Difference found
+            html += `<span class="diff-del">${escapeHtml(o)}</span><span class="diff-ins">${escapeHtml(n)}</span>`;
+        }
+    }
+
+    return `<div class="diff-container">${html}</div>`;
+}
+
+function escapeHtml(text: string): string {
+    if (!text) return "";
+    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
 
 function formatStatsFriendly(stats: ConvertStatsLike | undefined, scope: string): string {
     if (!stats) return `Opseg: ${scope}\nStatistika nije dostupna.`;
-    // Short summary
     const time = typeof stats.timingMs === "number" ? `${stats.timingMs.toFixed(1)} ms` : "n/a";
     const charsBefore = stats.charsBefore ?? 0;
     const charsAfter = stats.charsAfter ?? 0;
@@ -522,7 +596,6 @@ async function importSettings() {
     if (pasted == null) return;
     try {
         const parsed = JSON.parse(pasted) as Partial<UiSettings>;
-        // Minimal normalization
         const normalized: UiSettings = {
             schemaVersion: 1,
             profile: parsed.profile || "custom",
@@ -546,9 +619,7 @@ function resetSettings() {
     try { localStorage.removeItem(SETTINGS_KEY); } catch { }
     setPresetSelectValue("custom");
     setTextareaValue("userWords", "");
-    // Trigger update for tags
     document.getElementById("userWords")?.dispatchEvent(new Event("input"));
-
     setCheckboxValue("optProtectBrands", true);
     setCheckboxValue("optSerbianQuotes", true);
     setCheckboxValue("optPreserveCodeBlocks", true);
@@ -647,7 +718,6 @@ function loadSettings(): UiSettings | null {
 function applySettingsToUi(settings: UiSettings) {
     setPresetSelectValue(settings.profile || "custom");
     setTextareaValue("userWords", settings.userWords || "");
-    // Trigger update for tags
     document.getElementById("userWords")?.dispatchEvent(new Event("input"));
 
     setCheckboxValue("optProtectBrands", settings.protectBrands);
