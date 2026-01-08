@@ -6,8 +6,8 @@
            xsi:type="TaskPaneApp">
 
 	<Id>594bceac-369d-4a06-acee-5d5bc5dff445</Id>
-	<!-- Nova verzija 1.0.0.14 -->
-	<Version>1.0.0.14</Version>
+	<!-- VRAĆENO NA 1.0.0.0 -->
+	<Version>1.0.0.0</Version>
 
 	<ProviderName>Jugoslav Ilić</ProviderName>
 	<DefaultLocale>sr-Latn-RS</DefaultLocale>
@@ -15,27 +15,19 @@
 	<DisplayName DefaultValue="Serbian Transliterator"/>
 	<Description DefaultValue="Preslovljavanje srpskog teksta (latinica ↔ ćirilica) u Word dokumentu."/>
 
-	<!-- IKONICE (Samo putanja do slike) -->
+	<!-- OSTALO JE ISTO KAO PRE... -->
 	<IconUrl DefaultValue="https://serbiantransliterator.pages.dev/assets/icon-32.png"/>
 	<HighResolutionIconUrl DefaultValue="https://serbiantransliterator.pages.dev/assets/icon-64.png"/>
-
-	<!-- PODRŠKA (Mora biti HTML fajl) -->
 	<SupportUrl DefaultValue="https://serbiantransliterator.pages.dev/support.html"/>
-
-	<!-- DOMENI (Ovde ide SAMO GOLA ADRESA, bez /taskpane.html) -->
 	<AppDomains>
 		<AppDomain>https://serbiantransliterator.pages.dev</AppDomain>
 	</AppDomains>
-
 	<Hosts>
 		<Host Name="Document"/>
 	</Hosts>
-
-	<!-- GLAVNI PANEL (Ovde MORA /taskpane.html) -->
 	<DefaultSettings>
 		<SourceLocation DefaultValue="https://serbiantransliterator.pages.dev/taskpane.html"/>
 	</DefaultSettings>
-
 	<Permissions>ReadWriteDocument</Permissions>
 
 	<VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides"
@@ -43,30 +35,21 @@
 		<Hosts>
 			<Host xsi:type="Document">
 				<DesktopFormFactor>
-
 					<GetStarted>
 						<Title resid="GetStarted.Title"/>
 						<Description resid="GetStarted.Description"/>
 						<LearnMoreUrl resid="GetStarted.LearnMoreUrl"/>
 					</GetStarted>
-
-					<!-- NEVIDLJIVA FUNKCIJA (Ovde mora /commands.html) -->
 					<FunctionFile resid="Commands.Url"/>
-
 					<ExtensionPoint xsi:type="PrimaryCommandSurface">
-
-						<!-- TAB HOME (POLAZNO) -->
 						<OfficeTab id="TabHome">
-
 							<Group id="SerbianTransliterator.Group">
-
 								<Label resid="CommandsGroup.Label"/>
 								<Icon>
 									<bt:Image size="16" resid="Icon.16x16"/>
 									<bt:Image size="32" resid="Icon.32x32"/>
 									<bt:Image size="80" resid="Icon.80x80"/>
 								</Icon>
-
 								<Control xsi:type="Button" id="SerbianTransliterator.ShowTaskpane">
 									<Label resid="TaskpaneButton.Label"/>
 									<Supertip>
@@ -80,45 +63,35 @@
 									</Icon>
 									<Action xsi:type="ShowTaskpane">
 										<TaskpaneId>SerbianTransliterator.Taskpane</TaskpaneId>
-										<!-- Poziva URL definisan dole -->
 										<SourceLocation resid="Taskpane.Url"/>
 									</Action>
 								</Control>
-
 							</Group>
 						</OfficeTab>
-
 					</ExtensionPoint>
-
 				</DesktopFormFactor>
 			</Host>
 		</Hosts>
-
 		<Resources>
-			<!-- DEFINICIJE URL-OVA (Ovde idu puni linkovi sa .html) -->
 			<bt:Images>
 				<bt:Image id="Icon.16x16" DefaultValue="https://serbiantransliterator.pages.dev/assets/icon-16.png"/>
 				<bt:Image id="Icon.32x32" DefaultValue="https://serbiantransliterator.pages.dev/assets/icon-32.png"/>
 				<bt:Image id="Icon.80x80" DefaultValue="https://serbiantransliterator.pages.dev/assets/icon-80.png"/>
 			</bt:Images>
-
 			<bt:Urls>
 				<bt:Url id="GetStarted.LearnMoreUrl" DefaultValue="https://serbiantransliterator.pages.dev/support.html"/>
 				<bt:Url id="Commands.Url" DefaultValue="https://serbiantransliterator.pages.dev/commands.html"/>
 				<bt:Url id="Taskpane.Url" DefaultValue="https://serbiantransliterator.pages.dev/taskpane.html"/>
 			</bt:Urls>
-
 			<bt:ShortStrings>
 				<bt:String id="GetStarted.Title" DefaultValue="Serbian Transliterator"/>
 				<bt:String id="CommandsGroup.Label" DefaultValue="Preslovljavanje"/>
 				<bt:String id="TaskpaneButton.Label" DefaultValue="Serbian Transliterator"/>
 			</bt:ShortStrings>
-
 			<bt:LongStrings>
 				<bt:String id="GetStarted.Description" DefaultValue="Otvori panel i preslovi selekciju ili ceo dokument."/>
 				<bt:String id="TaskpaneButton.Tooltip" DefaultValue="Otvori panel za preslovljavanje srpskog teksta."/>
 			</bt:LongStrings>
 		</Resources>
-
 	</VersionOverrides>
 </OfficeApp>

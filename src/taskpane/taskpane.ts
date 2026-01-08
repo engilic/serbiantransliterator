@@ -1,7 +1,8 @@
 ﻿/* global Office, Word, navigator, DOMParser, Blob, URL, FileReader */
 import { convertOoxml } from "../shared/transliterator";
 
-type DirectionUi = "auto" | "lat-to-cyr" | "cyr-to-lat";
+// DODATO: to-ascii
+type DirectionUi = "auto" | "lat-to-cyr" | "cyr-to-lat" | "to-ascii";
 type ProfilePreset = "custom" | "it" | "legal" | "journalism";
 type ConvertStatsLike = any;
 
@@ -129,7 +130,8 @@ function initUi() {
         });
     }
 
-    const inputs = ["userWords", "optProtectBrands", "optSerbianQuotes", "optPreserveCodeBlocks", "optSetProofingLanguage", "optConfirmWholeDoc", "dirAuto", "dirLatToCyr", "dirCyrToLat"];
+    // DODAT: dirToAscii
+    const inputs = ["userWords", "optProtectBrands", "optSerbianQuotes", "optPreserveCodeBlocks", "optSetProofingLanguage", "optConfirmWholeDoc", "dirAuto", "dirLatToCyr", "dirCyrToLat", "dirToAscii"];
     inputs.forEach(id => {
         document.getElementById(id)?.addEventListener(id === "userWords" ? "input" : "change", () => {
             saveSettings();
@@ -513,12 +515,15 @@ async function runSmart() {
                 return;
             }
 
+            // 1. Ubacujemo novi tekst
             const newRange = range.insertOoxml(result.xml, Word.InsertLocation.replace);
 
-            if (getCheckboxValue("optSetProofingLanguage", true)) {
+            // 2. Menjamo jezik
+            // Za ASCII opciju ne diramo jezik (ostavljamo šta je bilo)
+            if (getCheckboxValue("optSetProofingLanguage", true) && result.stats.direction !== "to-ascii" as any) {
                 if (result.stats.direction === "lat-to-cyr") {
                     (newRange.font as any).localeId = "sr-Cyrl-RS";
-                } else {
+                } else if (result.stats.direction === "cyr-to-lat") {
                     (newRange.font as any).localeId = "sr-Latn-RS";
                 }
             }
@@ -574,7 +579,7 @@ async function runPreview() {
 
             const diffHtml = generateHighlightHtml(originalText, newText);
 
-            showDiffModal("Preview", diffHtml);
+            showDiffModal("Preview Rezultata", diffHtml);
 
             setStatus(`Preview završen. (${result.type})`);
         });
@@ -650,7 +655,7 @@ async function exportSettingsAsDownload() {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        setStatus("Podešavanja su izvezena.");
+        setStatus("Fajl sa podešavanjima je preuzet.");
     } catch (e) {
         await showTextDialog("Izvezi podešavanja", "Kopiraj ručno:", json, true);
     }
@@ -764,18 +769,23 @@ function setDirectionUi(dir: DirectionUi) {
     const dirAuto = document.getElementById("dirAuto") as HTMLInputElement | null;
     const dirLatToCyr = document.getElementById("dirLatToCyr") as HTMLInputElement | null;
     const dirCyrToLat = document.getElementById("dirCyrToLat") as HTMLInputElement | null;
+    // DODATO:
+    const dirToAscii = document.getElementById("dirToAscii") as HTMLInputElement | null;
 
     if (dir === "lat-to-cyr") dirLatToCyr && (dirLatToCyr.checked = true);
     else if (dir === "cyr-to-lat") dirCyrToLat && (dirCyrToLat.checked = true);
+    else if (dir === "to-ascii") dirToAscii && (dirToAscii.checked = true);
     else dirAuto && (dirAuto.checked = true);
 }
 
 function getDirectionFromUi(): DirectionUi {
     const latToCyr = document.getElementById("dirLatToCyr") as HTMLInputElement | null;
     const cyrToLat = document.getElementById("dirCyrToLat") as HTMLInputElement | null;
+    const toAscii = document.getElementById("dirToAscii") as HTMLInputElement | null;
 
     if (latToCyr?.checked) return "lat-to-cyr";
     if (cyrToLat?.checked) return "cyr-to-lat";
+    if (toAscii?.checked) return "to-ascii";
     return "auto";
 }
 

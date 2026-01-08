@@ -5,18 +5,18 @@
            xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides"
            xsi:type="TaskPaneApp">
 
-	<!-- ID je isti kao u produkciji -->
+	<!-- ID mora biti isti kao u produkciji -->
 	<Id>594bceac-369d-4a06-acee-5d5bc5dff445</Id>
+	<!-- Verzija 1.0.0.0 -->
 	<Version>1.0.0.0</Version>
 
 	<ProviderName>Jugoslav Ilić</ProviderName>
 	<DefaultLocale>sr-Latn-RS</DefaultLocale>
 
-	<!-- Dodao sam (DEV) u ime da znaš da radiš lokalno -->
 	<DisplayName DefaultValue="Serbian Transliterator (DEV)"/>
 	<Description DefaultValue="Razvojna verzija (Localhost)."/>
 
-	<!-- SVI LINKOVI SU LOCALHOST -->
+	<!-- LOCALHOST LINKOVI -->
 	<IconUrl DefaultValue="https://localhost:3000/assets/icon-32.png"/>
 	<HighResolutionIconUrl DefaultValue="https://localhost:3000/assets/icon-64.png"/>
 
@@ -52,7 +52,7 @@
 
 					<ExtensionPoint xsi:type="PrimaryCommandSurface">
 
-						<!-- ISTO KAO PROD: HOME TAB -->
+						<!-- TAB HOME -->
 						<OfficeTab id="TabHome">
 
 							<Group id="SerbianTransliterator.Group">

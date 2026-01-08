@@ -5,7 +5,6 @@
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Serbian Transliterator</title>
-    <!-- Office.js -->
     <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
 
     <style>
@@ -214,7 +213,6 @@
             margin-top: -5px;
         }
 
-        /* TAGS INPUT CSS */
         .tags-container {
             border: 1px solid var(--input-border);
             background-color: var(--input-bg);
@@ -268,19 +266,6 @@
             padding: 4px 0;
             font-family: inherit;
         }
-
-        .input-group {
-            display: flex;
-            gap: 5px;
-            align-items: center;
-            width: 100%;
-        }
-
-            .input-group button {
-                padding: 4px 10px;
-                font-size: 12px;
-                height: 30px;
-            }
 
         .button-group {
             display: grid;
@@ -399,7 +384,6 @@
             margin-left: 8px;
         }
 
-        /* Modal */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -472,7 +456,6 @@
             font-size: 11px;
         }
 
-        /* PREVIEW STYLES */
         .preview-single-pane {
             font-family: 'Consolas', monospace;
             font-size: 13px;
@@ -513,41 +496,45 @@
             <h1>Serbian Transliterator</h1>
             <div class="subtitle">Pametno preslovljavanje</div>
         </div>
-        <div class="version">v1.0.14</div>
+        <!-- VERZIJA 1.0.0 -->
+        <div class="version">v1.0.0</div>
     </header>
     <main>
         <div class="section">
             <div class="section-title">Podešavanja</div>
             <select id="profilePreset">
-                <option value="custom">Ručno (Custom)</option>
+                <option value="custom">Ručno</option>
                 <option value="it">IT / Tehnologija</option>
                 <option value="legal">Pravo / Administracija</option>
                 <option value="journalism">Novinarstvo / Mediji</option>
             </select>
         </div>
+
+        <!-- SMER (Novi raspored) -->
         <div class="section">
             <div class="section-title">Smer</div>
-            <div style="display: flex; gap: 15px;">
+            <div style="display: flex; gap: 15px; flex-wrap: wrap;">
                 <label><input type="radio" id="dirAuto" name="direction" value="auto" checked /> Auto</label>
-                <label><input type="radio" id="dirLatToCyr" name="direction" value="lat-to-cyr" /> Lat → Ćir</label>
-                <label><input type="radio" id="dirCyrToLat" name="direction" value="cyr-to-lat" /> Ćir → Lat</label>
+                <label><input type="radio" id="dirToAscii" name="direction" value="to-ascii" /> Ošišana</label>
+                <label><input type="radio" id="dirLatToCyr" name="direction" value="lat-to-cyr" /> L → Ć</label>
+                <label><input type="radio" id="dirCyrToLat" name="direction" value="cyr-to-lat" /> Ć → L</label>
             </div>
         </div>
+
         <div class="section">
             <div class="section-title">Opcije</div>
             <label><input type="checkbox" id="optProtectBrands" checked /> Zaštiti brendove (Windows, ...)</label>
             <label><input type="checkbox" id="optSerbianQuotes" checked /> Pametni navodnici ( „ … ” )</label>
-            <label><input type="checkbox" id="optPreserveCodeBlocks" checked /> Zaštiti kod (<code>`inline`</code> i <code>```blok```</code>)</label>
+            <!-- SKRAĆEN TEKST -->
+            <label><input type="checkbox" id="optPreserveCodeBlocks" checked /> Zaštiti kod (inline / blok)</label>
             <label><input type="checkbox" id="optSetProofingLanguage" checked /> Postavi jezik provere (sr-Cyrl / sr-Latn)</label>
             <label><input type="checkbox" id="optConfirmWholeDoc" checked /> Traži potvrdu za ceo dokument</label>
             <label><input type="checkbox" id="optShowStats" /> Prikaži detaljnu statistiku</label>
         </div>
 
-        <!-- TAGS INPUT -->
         <div class="section">
             <div class="section-header">
                 <div class="section-title">Moje zaštićene reči</div>
-                <!-- HEADER DUGMAD -->
                 <div class="header-actions">
                     <button id="addTagBtn" class="small-blue-btn" disabled title="Dodaj reč">+</button>
                     <button id="clearTagsBtn" class="small-blue-btn" disabled>Obriši sve</button>
