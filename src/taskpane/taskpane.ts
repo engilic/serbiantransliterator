@@ -87,6 +87,7 @@ function initUi() {
     if (settings) {
         applySettingsToUi(settings);
     } else {
+        // Default settings
         setPresetSelectValue("custom");
         setTextareaValue("userWords", "");
         setCheckboxValue("optProtectBrands", true);
@@ -135,9 +136,6 @@ function initUi() {
     refreshStatsVisibilityAndContent();
 }
 
-/* ─────────────────────────────
-   TAGS INPUT LOGIC
-   ───────────────────────────── */
 function initTagsInput() {
     const container = document.getElementById("tagsContainer");
     const list = document.getElementById("tagsList");
@@ -308,7 +306,7 @@ function mergeWordLists(existingText: string, incomingText: string): { mergedTex
    Modal & Dialogs
    ───────────────────────────── */
 
-function showModal(opts: {
+interface ModalOpts {
     title: string;
     message: string;
     mode: ModalMode;
@@ -316,29 +314,34 @@ function showModal(opts: {
     cancelText?: string;
     value?: string;
     readOnly?: boolean;
-}): Promise<{ ok: boolean; value?: string }> {
+    isHtml?: boolean; // NEW: Supports HTML injection
+    className?: string; // NEW: Custom class for wider modal
+}
+
+function showModal(opts: ModalOpts): Promise<{ ok: boolean; value?: string }> {
     if (modalOpen) return Promise.resolve({ ok: false });
     modalOpen = true;
 
     const overlay = document.getElementById("modalOverlay") as HTMLDivElement | null;
+    const modalBox = document.getElementById("modal") as HTMLDivElement | null;
     const titleEl = document.getElementById("modalTitle") as HTMLDivElement | null;
     const textEl = document.getElementById("modalText") as HTMLDivElement | null;
     const inputEl = document.getElementById("modalInput") as HTMLTextAreaElement | null;
     const okBtn = document.getElementById("modalOk") as HTMLButtonElement | null;
     const cancelBtn = document.getElementById("modalCancel") as HTMLButtonElement | null;
 
-    if (!overlay || !titleEl || !textEl || !inputEl || !okBtn || !cancelBtn) {
+    if (!overlay || !modalBox || !titleEl || !textEl || !inputEl || !okBtn || !cancelBtn) {
         modalOpen = false;
         return Promise.resolve({ ok: false });
     }
 
+    // Reset classes
+    modalBox.className = "modal";
+    if (opts.className) modalBox.classList.add(opts.className);
+
     titleEl.textContent = opts.title;
 
-    textEl.innerHTML = "";
-    textEl.textContent = "";
-
-    if (opts.message.startsWith("<div")) {
-        // Inject HTML for diff
+    if (opts.isHtml) {
         textEl.innerHTML = opts.message;
     } else {
         textEl.textContent = opts.message;
@@ -357,6 +360,7 @@ function showModal(opts: {
         inputEl.readOnly = false;
     }
 
+    // Hide Cancel button if requested (e.g. for read-only backup view or diff)
     if (opts.cancelText === "NONE") {
         cancelBtn.style.display = "none";
     } else {
@@ -393,15 +397,20 @@ async function confirmInPanel(message: string): Promise<boolean> {
 }
 
 async function showTextDialog(title: string, message: string, value: string, readOnly: boolean): Promise<string | null> {
+    // Fix: If readOnly, hide Cancel button by passing "NONE"
+    const cancelTxt = readOnly ? "NONE" : "Otkaži";
+    const okTxt = readOnly ? "U redu" : "OK";
+
     const res = await showModal({
         title,
         message,
         mode: "text",
-        okText: readOnly ? "Zatvori" : "OK",
-        cancelText: readOnly ? "Zatvori" : "Cancel",
+        okText: okTxt,
+        cancelText: cancelTxt,
         value,
         readOnly,
     });
+
     if (!res.ok && !readOnly) return null;
     return res.value ?? "";
 }
@@ -411,8 +420,10 @@ function showDiffModal(title: string, htmlContent: string) {
         title,
         message: htmlContent,
         mode: "confirm",
-        okText: "U redu",
-        cancelText: "NONE"
+        okText: "Zatvori",
+        cancelText: "NONE",
+        isHtml: true, // Inject HTML
+        className: "wide" // Wide modal
     });
 }
 
@@ -512,7 +523,7 @@ async function runPreview() {
 
             showDiffModal("Preview Izmena (Uporedni prikaz)", diffHtml);
 
-            // Sync scroll with delay
+            // Sync scroll with delay to ensure DOM is ready
             setTimeout(() => syncScroll(), 300);
 
             setStatus(`Preview završen. (${result.type})`);
@@ -559,24 +570,31 @@ function generateSideBySideHtml(oldText: string, newText: string): string {
 
     return `
     <div class="diff-wrapper">
-        <div class="diff-pane" id="diffLeft"><h4>Original</h4>${leftHtml}</div>
-        <div class="diff-pane" id="diffRight"><h4>Rezultat</h4>${rightHtml}</div>
+        <div class="diff-pane" id="diffLeft">
+            <div class="diff-header">ORIGINAL</div>
+            <div class="diff-content">${leftHtml}</div>
+        </div>
+        <div class="diff-pane" id="diffRight">
+            <div class="diff-header">REZULTAT</div>
+            <div class="diff-content">${rightHtml}</div>
+        </div>
     </div>
     `;
 }
 
 function syncScroll() {
-    const left = document.getElementById("diffLeft");
-    const right = document.getElementById("diffRight");
+    // We scroll the content divs, not the wrapper
+    const left = document.querySelector("#diffLeft .diff-content") as HTMLElement;
+    const right = document.querySelector("#diffRight .diff-content") as HTMLElement;
+
     if (!left || !right) return;
 
     const onScroll = (e: Event) => {
         const target = e.target as HTMLElement;
         const other = target === left ? right : left;
-        // remove listener temporarily to avoid loop
+
         other.removeEventListener("scroll", onScroll);
         other.scrollTop = target.scrollTop;
-        // re-attach
         setTimeout(() => other.addEventListener("scroll", onScroll), 10);
     };
 
@@ -617,12 +635,12 @@ async function exportSettings() {
         try { await navigator.clipboard.writeText(json); copied = true; } catch { copied = false; }
     }
     const msg = copied ? "Kopirano u clipboard." : "Kopiraj ručno:";
-    await showTextDialog("Export", msg, json, true);
+    await showTextDialog("Izvezi (Export)", msg, json, true);
     setStatus("Export gotov.");
 }
 
 async function importSettings() {
-    const pasted = await showTextDialog("Import", "Nalepi JSON:", "", false);
+    const pasted = await showTextDialog("Uvezi (Import)", "Nalepi JSON:", "", false);
     if (pasted == null) return;
     try {
         const parsed = JSON.parse(pasted) as Partial<UiSettings>;

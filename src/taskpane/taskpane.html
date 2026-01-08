@@ -5,7 +5,6 @@
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Serbian Transliterator</title>
-    <!-- Office.js -->
     <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
 
     <style>
@@ -312,29 +311,42 @@
             justify-content: center;
             z-index: 999;
         }
-        /* Povećana širina modala za Split View */
+
         .modal {
             background: var(--bg-color);
             padding: 20px;
             border-radius: 8px;
-            width: 95%;
-            max-width: 800px;
+            width: 90%;
+            max-width: 450px; /* Standardna širina */
             box-shadow: 0 4px 20px rgba(0,0,0,0.2);
             border: 1px solid var(--border-color);
             max-height: 90vh;
             display: flex;
             flex-direction: column;
+            transition: max-width 0.2s ease;
         }
+
+            /* ŠIROKI MODAL (Za Preview) */
+            .modal.wide {
+                max-width: 900px; /* Mnogo širi za Split View */
+                width: 95%;
+                height: 80vh;
+            }
 
             .modal h3 {
                 margin-top: 0;
                 color: var(--text-color);
+                font-size: 16px;
+                border-bottom: 1px solid var(--border-color);
+                padding-bottom: 10px;
+                margin-bottom: 10px;
             }
 
         .modal-content {
             overflow-y: auto;
             margin-bottom: 20px;
             width: 100%;
+            flex: 1;
         }
 
         .modal p {
@@ -347,6 +359,8 @@
             justify-content: flex-end;
             gap: 10px;
             margin-top: auto;
+            padding-top: 10px;
+            border-top: 1px solid var(--border-color);
         }
 
         #modalInput {
@@ -366,15 +380,32 @@
         /* SPLIT VIEW DIFF STYLES */
         .diff-wrapper {
             display: flex;
-            gap: 10px;
-            height: 350px;
-            border: 1px solid var(--border-color);
-            background-color: var(--neutral-lighter);
-            border-radius: 4px;
-            overflow: hidden;
+            gap: 15px;
+            height: 100%; /* Puni visinu modala */
+            min-height: 300px;
         }
 
         .diff-pane {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background-color: var(--bg-color);
+        }
+
+        .diff-header {
+            background-color: var(--neutral-lighter);
+            padding: 8px;
+            font-weight: 700;
+            font-size: 12px;
+            text-transform: uppercase;
+            color: var(--text-color);
+            border-bottom: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        .diff-content {
             flex: 1;
             padding: 10px;
             overflow-y: auto;
@@ -382,35 +413,21 @@
             font-size: 13px;
             line-height: 1.6;
             white-space: pre-wrap;
-            background-color: var(--bg-color);
             word-break: break-word;
         }
-
-            .diff-pane h4 {
-                margin: 0 0 10px 0;
-                font-size: 11px;
-                text-transform: uppercase;
-                color: var(--text-color);
-                opacity: 0.6;
-                position: sticky;
-                top: 0;
-                background: var(--bg-color);
-                border-bottom: 1px solid var(--border-color);
-                padding-bottom: 5px;
-                z-index: 10;
-            }
 
         .diff-changed {
             background-color: #cceeff;
             color: #005a9e;
             font-weight: 600;
-            border-radius: 2px;
+            border-bottom: 2px solid #005a9e;
         }
 
         @media (prefers-color-scheme: dark) {
             .diff-changed {
                 background-color: #004578;
                 color: #ffffff;
+                border-bottom: 2px solid #4ba0ff;
             }
         }
     </style>
@@ -465,7 +482,7 @@
             <button id="runBtn" class="full-width"><span>PRESLOVI</span></button>
             <div class="button-group">
                 <button id="previewBtn">Preview (Uporedi)</button>
-                <button id="exportBtn">Backup</button>
+                <button id="exportBtn">Izvezi podešavanja</button>
             </div>
             <button id="importBtn" style="display:none;">Import</button>
             <button id="resetBtn">Vrati na fabrička podešavanja</button>
@@ -477,7 +494,7 @@
         <div id="modal" class="modal">
             <h3 id="modalTitle">Potvrda</h3>
             <div class="modal-content">
-                <p id="modalText">Tekst poruke...</p>
+                <div id="modalText">Tekst poruke...</div>
                 <textarea id="modalInput" rows="5"></textarea>
             </div>
             <div class="modal-actions">
