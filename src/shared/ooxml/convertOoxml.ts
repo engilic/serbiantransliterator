@@ -20,7 +20,7 @@ import {
 
 export interface OoxmlOptions extends CoreOptions {
     direction?: Direction | "auto";
-    setProofingLanguage?: boolean; // NOVO
+    setProofingLanguage?: boolean;
 }
 
 export type ConvertStats = {
@@ -54,17 +54,17 @@ function countMatches(text: string, re: RegExp): number {
     return c;
 }
 
-// Helper za postavljanje jezika u XML-u
-function setRunLanguage(textNode: Element, langId: string) {
-    // textNode je <w:t>, njegov roditelj je <w:r> (Run)
+// SIGURNA FUNKCIJA ZA PROMENU JEZIKA
+function ensureRunLanguage(textNode: Element, langId: string) {
+    // textNode je <w:t>
     const runNode = textNode.parentElement;
-    if (!runNode) return;
+    if (!runNode || runNode.localName !== "r") return; // Mora biti <w:r>
 
-    // Tražimo <w:rPr> (Run Properties)
+    // 1. Nađi ili napravi <w:rPr>
     let rPr = runNode.getElementsByTagNameNS(XML_NS, "rPr")[0];
     if (!rPr) {
-        // Ako nema propertija, pravimo ih i stavljamo na početak Runa
         rPr = textNode.ownerDocument.createElementNS(XML_NS, "w:rPr");
+        // rPr mora biti PRVI element u run-u
         if (runNode.firstChild) {
             runNode.insertBefore(rPr, runNode.firstChild);
         } else {
@@ -72,15 +72,14 @@ function setRunLanguage(textNode: Element, langId: string) {
         }
     }
 
-    // Tražimo <w:lang>
+    // 2. Nađi ili napravi <w:lang>
     let langNode = rPr.getElementsByTagNameNS(XML_NS, "lang")[0];
     if (!langNode) {
         langNode = textNode.ownerDocument.createElementNS(XML_NS, "w:lang");
         rPr.appendChild(langNode);
     }
 
-    // Postavljamo atribute (val = Latin, bidi = Complex Script)
-    // Word koristi 'val' za latinicu/ćirilicu u srpskom kontekstu
+    // 3. Postavi atribute (forsiraj jezik)
     langNode.setAttributeNS(XML_NS, "w:val", langId);
     langNode.setAttributeNS(XML_NS, "w:eastAsia", langId);
     langNode.setAttributeNS(XML_NS, "w:bidi", langId);
@@ -96,7 +95,6 @@ export function convertOoxml(ooxml: string, options?: OoxmlOptions): { xml: stri
     const fullText = getFullText(textNodes);
 
     if (!fullText.trim()) {
-        const t1 = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
         return {
             xml: ooxml,
             type: "Nema teksta",
@@ -108,7 +106,7 @@ export function convertOoxml(ooxml: string, options?: OoxmlOptions): { xml: stri
                 detected: { urls: 0, emails: 0 },
                 code: { fenceMarkersSeen: 0, inlineTicksSeen: 0, endedInFence: false, endedInInline: false },
                 bridges: { links: 0, brandPhrases: 0, brandTokens: 0, digraphs: 0, userPhrases: 0, userTokens: 0, allCapsHints: 0 },
-                timingMs: Math.max(0, t1 - t0),
+                timingMs: 0,
             },
         };
     }
@@ -125,10 +123,10 @@ export function convertOoxml(ooxml: string, options?: OoxmlOptions): { xml: stri
 
     const label = direction === "lat-to-cyr" ? "Lat → Ćir" : "Ćir → Lat";
     const preserveCodeBlocks = options?.preserveCodeBlocks !== false;
-    const shouldSetLang = options?.setProofingLanguage !== false; // Default true
 
-    // Target locale ID
-    const targetLocale = direction === "lat-to-cyr" ? "sr-Cyrl-RS" : "sr-Latn-RS";
+    // Da li menjamo jezik?
+    const shouldSetLang = options?.setProofingLanguage !== false;
+    const targetLang = direction === "lat-to-cyr" ? "sr-Cyrl-RS" : "sr-Latn-RS";
 
     const urlRe = /\b(?:https?:\/\/|ftp:\/\/|file:\/\/|www\.)[^\s<>"')]+/giu;
     const emailRe = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/giu;
@@ -211,16 +209,17 @@ export function convertOoxml(ooxml: string, options?: OoxmlOptions): { xml: stri
             }
         }
 
-        // -- PAMETNA PROMENA JEZIKA --
+        // -- LOGIKA ZA JEZIK --
         if (shouldSetLang) {
-            // Ako se tekst promenio (makar jedno slovo), znači da je transliterovan.
-            // Tada postavljamo srpski jezik.
-            // Ako je tekst identičan (npr. "Microsoft"), ne diramo jezik (ostaje en-US ili šta je bio).
+            // Ako se tekst razlikuje od originala, znači da je preslovljen.
+            // Tada OBAVEZNO menjamo jezik u ciljni jezik.
             if (finalText !== original) {
-                setRunLanguage(node, targetLocale);
+                ensureRunLanguage(node, targetLang);
             }
+            // Ako je tekst isti (npr. "Microsoft"), NE DIRAMO ništa.
+            // Ostaće jezik koji je bio (npr. en-US).
         }
-        // ----------------------------
+        // ---------------------
 
         if (needsXmlSpacePreserve(finalText)) {
             node.setAttributeNS(XML_NS, "xml:space", "preserve");
