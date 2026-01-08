@@ -1,4 +1,4 @@
-﻿/* global Office, Word, navigator, DOMParser */
+﻿/* global Office, Word, navigator, DOMParser, Blob, URL */
 import { convertOoxml } from "../shared/transliterator";
 
 type DirectionUi = "auto" | "lat-to-cyr" | "cyr-to-lat";
@@ -18,6 +18,19 @@ interface UiSettings {
 }
 
 const SETTINGS_KEY = "serbiantransliterator.settings.v2";
+
+// DEFINICIJA FABRIČKIH PODEŠAVANJA (Za poređenje)
+const DEFAULT_SETTINGS: UiSettings = {
+    schemaVersion: 1,
+    profile: "custom",
+    userWords: "",
+    protectBrands: true,
+    applySerbianQuotes: true,
+    preserveCodeBlocks: true,
+    confirmWholeDoc: true,
+    showStats: false,
+    direction: "auto"
+};
 
 const PRESETS: Record<Exclude<ProfilePreset, "custom">, Omit<UiSettings, "profile" | "schemaVersion">> = {
     it: {
@@ -79,7 +92,7 @@ function initUi() {
 
     if (runBtn) runBtn.onclick = () => runWithUiLock(runSmart);
     if (previewBtn) previewBtn.onclick = () => runWithUiLock(runPreview);
-    if (exportBtn) exportBtn.onclick = () => runWithUiLock(exportSettings);
+    if (exportBtn) exportBtn.onclick = () => runWithUiLock(exportSettingsAsDownload); // <--- Promenjeno na Download
     if (importBtn) importBtn.onclick = () => runWithUiLock(importSettings);
     if (resetBtn) resetBtn.onclick = () => resetSettings();
 
@@ -87,18 +100,11 @@ function initUi() {
     if (settings) {
         applySettingsToUi(settings);
     } else {
-        // Default settings
-        setPresetSelectValue("custom");
-        setTextareaValue("userWords", "");
-        setCheckboxValue("optProtectBrands", true);
-        setCheckboxValue("optSerbianQuotes", true);
-        setCheckboxValue("optPreserveCodeBlocks", true);
-        setCheckboxValue("optConfirmWholeDoc", true);
-        setCheckboxValue("optShowStats", false);
-        setDirectionUi("auto");
+        applySettingsToUi(DEFAULT_SETTINGS);
         saveSettings();
     }
 
+    // Event Listeners - sada svi pozivaju i checkIfDirty()
     const presetEl = document.getElementById("profilePreset") as HTMLSelectElement | null;
     if (presetEl) {
         presetEl.addEventListener("change", () => {
@@ -110,32 +116,59 @@ function initUi() {
                 setStatus("Profil: custom");
             }
             saveSettings();
+            checkIfDirty();
         });
     }
 
-    // Auto-save listeners
-    (document.getElementById("userWords") as HTMLTextAreaElement | null)?.addEventListener("input", saveSettings);
-    (document.getElementById("optProtectBrands") as HTMLInputElement | null)?.addEventListener("change", saveSettings);
-    (document.getElementById("optSerbianQuotes") as HTMLInputElement | null)?.addEventListener("change", saveSettings);
-    (document.getElementById("optPreserveCodeBlocks") as HTMLInputElement | null)?.addEventListener("change", saveSettings);
-    (document.getElementById("optConfirmWholeDoc") as HTMLInputElement | null)?.addEventListener("change", saveSettings);
-
-    (document.getElementById("dirAuto") as HTMLInputElement | null)?.addEventListener("change", saveSettings);
-    (document.getElementById("dirLatToCyr") as HTMLInputElement | null)?.addEventListener("change", saveSettings);
-    (document.getElementById("dirCyrToLat") as HTMLInputElement | null)?.addEventListener("change", saveSettings);
+    const inputs = ["userWords", "optProtectBrands", "optSerbianQuotes", "optPreserveCodeBlocks", "optConfirmWholeDoc", "dirAuto", "dirLatToCyr", "dirCyrToLat"];
+    inputs.forEach(id => {
+        document.getElementById(id)?.addEventListener(id === "userWords" ? "input" : "change", () => {
+            saveSettings();
+            checkIfDirty();
+        });
+    });
 
     const showStatsEl = document.getElementById("optShowStats") as HTMLInputElement | null;
     if (showStatsEl) {
         showStatsEl.addEventListener("change", () => {
             saveSettings();
             refreshStatsVisibilityAndContent();
+            checkIfDirty();
         });
     }
 
     initTagsInput();
     refreshStatsVisibilityAndContent();
+    checkIfDirty(); // Inicijalna provera
 }
 
+/* ─────────────────────────────
+   State Checking (Dirty Check)
+   ───────────────────────────── */
+function checkIfDirty() {
+    const current = readSettingsFromUi();
+    const resetBtn = document.getElementById("resetBtn") as HTMLButtonElement;
+    if (!resetBtn) return;
+
+    // Poredimo trenutna podešavanja sa DEFAULT_SETTINGS
+    // (Ignorišemo schemaVersion)
+    const isClean =
+        current.profile === DEFAULT_SETTINGS.profile &&
+        current.userWords === DEFAULT_SETTINGS.userWords &&
+        current.protectBrands === DEFAULT_SETTINGS.protectBrands &&
+        current.applySerbianQuotes === DEFAULT_SETTINGS.applySerbianQuotes &&
+        current.preserveCodeBlocks === DEFAULT_SETTINGS.preserveCodeBlocks &&
+        current.confirmWholeDoc === DEFAULT_SETTINGS.confirmWholeDoc &&
+        current.showStats === DEFAULT_SETTINGS.showStats &&
+        current.direction === DEFAULT_SETTINGS.direction;
+
+    // Ako je clean (isto kao default), dugme je disabled (grayed out)
+    resetBtn.disabled = isClean;
+}
+
+/* ─────────────────────────────
+   TAGS INPUT LOGIC
+   ───────────────────────────── */
 function initTagsInput() {
     const container = document.getElementById("tagsContainer");
     const list = document.getElementById("tagsList");
@@ -314,8 +347,8 @@ interface ModalOpts {
     cancelText?: string;
     value?: string;
     readOnly?: boolean;
-    isHtml?: boolean; // NEW: Supports HTML injection
-    className?: string; // NEW: Custom class for wider modal
+    isHtml?: boolean;
+    className?: string;
 }
 
 function showModal(opts: ModalOpts): Promise<{ ok: boolean; value?: string }> {
@@ -335,7 +368,6 @@ function showModal(opts: ModalOpts): Promise<{ ok: boolean; value?: string }> {
         return Promise.resolve({ ok: false });
     }
 
-    // Reset classes
     modalBox.className = "modal";
     if (opts.className) modalBox.classList.add(opts.className);
 
@@ -360,7 +392,6 @@ function showModal(opts: ModalOpts): Promise<{ ok: boolean; value?: string }> {
         inputEl.readOnly = false;
     }
 
-    // Hide Cancel button if requested (e.g. for read-only backup view or diff)
     if (opts.cancelText === "NONE") {
         cancelBtn.style.display = "none";
     } else {
@@ -397,7 +428,6 @@ async function confirmInPanel(message: string): Promise<boolean> {
 }
 
 async function showTextDialog(title: string, message: string, value: string, readOnly: boolean): Promise<string | null> {
-    // Fix: If readOnly, hide Cancel button by passing "NONE"
     const cancelTxt = readOnly ? "NONE" : "Otkaži";
     const okTxt = readOnly ? "U redu" : "OK";
 
@@ -422,8 +452,8 @@ function showDiffModal(title: string, htmlContent: string) {
         mode: "confirm",
         okText: "Zatvori",
         cancelText: "NONE",
-        isHtml: true, // Inject HTML
-        className: "wide" // Wide modal
+        isHtml: true,
+        className: "wide"
     });
 }
 
@@ -485,7 +515,7 @@ async function runSmart() {
 }
 
 async function runPreview() {
-    setStatus("Generišem uporedni prikaz...");
+    setStatus("Generišem preview...");
     try {
         await Word.run(async (context) => {
             let range = context.document.getSelection();
@@ -518,13 +548,10 @@ async function runPreview() {
 
             const newText = extractTextFromOoxml(result.xml);
 
-            // DIFF SIDE-BY-SIDE
-            const diffHtml = generateSideBySideHtml(originalText, newText);
+            // DIFF: Single pane
+            const diffHtml = generateHighlightHtml(originalText, newText);
 
-            showDiffModal("Preview Izmena (Uporedni prikaz)", diffHtml);
-
-            // Sync scroll with delay to ensure DOM is ready
-            setTimeout(() => syncScroll(), 300);
+            showDiffModal("Preview Rezultata", diffHtml);
 
             setStatus(`Preview završen. (${result.type})`);
         });
@@ -538,18 +565,16 @@ async function runPreview() {
    Helpers & Diff
    ───────────────────────────── */
 
-function generateSideBySideHtml(oldText: string, newText: string): string {
+function generateHighlightHtml(oldText: string, newText: string): string {
     if (oldText === newText) {
-        return `<div style="padding:10px; text-align:center;">Nema izmena u tekstu.</div>`;
+        return `<div class="preview-single-pane" style="text-align:center;">Nema izmena u tekstu.</div>`;
     }
 
-    // Split regex keeps delimiters
     const splitRegex = /([^\s\w\u0400-\u04FF\u0100-\u017F]+|\s+)/;
     const oldParts = oldText.split(splitRegex).filter(Boolean);
     const newParts = newText.split(splitRegex).filter(Boolean);
 
-    let leftHtml = "";
-    let rightHtml = "";
+    let html = "";
 
     const maxLen = Math.max(oldParts.length, newParts.length);
 
@@ -558,48 +583,14 @@ function generateSideBySideHtml(oldText: string, newText: string): string {
         const n = newParts[k] || "";
 
         if (o === n) {
-            const safe = escapeHtml(n);
-            leftHtml += safe;
-            rightHtml += safe;
+            html += escapeHtml(n);
         } else {
-            // Changed: highlight ONLY right side
-            leftHtml += `<span style="opacity:0.6">${escapeHtml(o)}</span>`;
-            rightHtml += `<span class="diff-changed">${escapeHtml(n)}</span>`;
+            // Changed word
+            html += `<span class="diff-changed">${escapeHtml(n)}</span>`;
         }
     }
 
-    return `
-    <div class="diff-wrapper">
-        <div class="diff-pane" id="diffLeft">
-            <div class="diff-header">ORIGINAL</div>
-            <div class="diff-content">${leftHtml}</div>
-        </div>
-        <div class="diff-pane" id="diffRight">
-            <div class="diff-header">REZULTAT</div>
-            <div class="diff-content">${rightHtml}</div>
-        </div>
-    </div>
-    `;
-}
-
-function syncScroll() {
-    // We scroll the content divs, not the wrapper
-    const left = document.querySelector("#diffLeft .diff-content") as HTMLElement;
-    const right = document.querySelector("#diffRight .diff-content") as HTMLElement;
-
-    if (!left || !right) return;
-
-    const onScroll = (e: Event) => {
-        const target = e.target as HTMLElement;
-        const other = target === left ? right : left;
-
-        other.removeEventListener("scroll", onScroll);
-        other.scrollTop = target.scrollTop;
-        setTimeout(() => other.addEventListener("scroll", onScroll), 10);
-    };
-
-    left.addEventListener("scroll", onScroll);
-    right.addEventListener("scroll", onScroll);
+    return `<div class="preview-single-pane">${html}</div>`;
 }
 
 function escapeHtml(text: string): string {
@@ -627,20 +618,30 @@ function extractTextFromOoxml(ooxml: string): string {
     } catch { return ""; }
 }
 
-async function exportSettings() {
+// NOVO: Export as File Download
+async function exportSettingsAsDownload() {
     const settings = readSettingsFromUi();
     const json = JSON.stringify(settings, null, 2);
-    let copied = false;
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        try { await navigator.clipboard.writeText(json); copied = true; } catch { copied = false; }
+
+    try {
+        const blob = new Blob([json], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "serbian-transliterator-settings.json";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        setStatus("Fajl sa podešavanjima je preuzet.");
+    } catch (e) {
+        // Fallback for older environments
+        await showTextDialog("Izvezi podešavanja", "Kopiraj ručno:", json, true);
     }
-    const msg = copied ? "Kopirano u clipboard." : "Kopiraj ručno:";
-    await showTextDialog("Izvezi (Export)", msg, json, true);
-    setStatus("Export gotov.");
 }
 
 async function importSettings() {
-    const pasted = await showTextDialog("Uvezi (Import)", "Nalepi JSON:", "", false);
+    const pasted = await showTextDialog("Uvezi podešavanja", "Nalepi JSON sadržaj ovde:", "", false);
     if (pasted == null) return;
     try {
         const parsed = JSON.parse(pasted) as Partial<UiSettings>;
@@ -657,6 +658,7 @@ async function importSettings() {
         };
         applySettingsToUi(normalized);
         saveSettings();
+        checkIfDirty(); // Reset button state
         setStatus("Import uspešan.");
     } catch {
         setStatus("Greška pri importu JSON-a.");
@@ -665,17 +667,10 @@ async function importSettings() {
 
 function resetSettings() {
     try { localStorage.removeItem(SETTINGS_KEY); } catch { }
-    setPresetSelectValue("custom");
-    setTextareaValue("userWords", "");
-    document.getElementById("userWords")?.dispatchEvent(new Event("input"));
-    setCheckboxValue("optProtectBrands", true);
-    setCheckboxValue("optSerbianQuotes", true);
-    setCheckboxValue("optPreserveCodeBlocks", true);
-    setCheckboxValue("optConfirmWholeDoc", true);
-    setCheckboxValue("optShowStats", false);
-    setDirectionUi("auto");
+    applySettingsToUi(DEFAULT_SETTINGS); // Use global const
     saveSettings();
     setStatus("Resetovano.");
+    checkIfDirty(); // Reset button state
 }
 
 /* ─────────────────────────────
@@ -776,6 +771,7 @@ function applySettingsToUi(settings: UiSettings) {
     setDirectionUi(settings.direction || "auto");
 
     refreshStatsVisibilityAndContent();
+    checkIfDirty();
 }
 
 function readSettingsFromUi(): UiSettings {

@@ -5,6 +5,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Serbian Transliterator</title>
+    <!-- Office.js -->
     <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
 
     <style>
@@ -21,6 +22,7 @@
             --input-border: #8a8886;
             --focus-border: #0f6cbd;
             --error-color: #a80000;
+            --disabled-text: #a19f9d;
         }
 
         @media (prefers-color-scheme: dark) {
@@ -111,8 +113,8 @@
         }
 
             .tiny-btn:disabled {
-                color: var(--text-color);
-                opacity: 0.4;
+                color: var(--disabled-text);
+                opacity: 0.6;
                 cursor: default;
                 text-decoration: none;
             }
@@ -260,6 +262,7 @@
                 background-color: var(--neutral-lighter);
             }
 
+        /* Reset button - special disabled style */
         #resetBtn {
             margin-top: 10px;
             color: var(--error-color);
@@ -269,6 +272,16 @@
             font-size: 12px;
             text-decoration: underline;
         }
+
+            #resetBtn:disabled {
+                color: var(--disabled-text);
+                text-decoration: none;
+                cursor: default;
+            }
+
+            #resetBtn:hover:not(:disabled) {
+                background-color: var(--neutral-lighter);
+            }
 
         #msg {
             padding: 10px;
@@ -317,20 +330,19 @@
             padding: 20px;
             border-radius: 8px;
             width: 90%;
-            max-width: 450px; /* Standardna širina */
+            max-width: 500px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.2);
             border: 1px solid var(--border-color);
             max-height: 90vh;
             display: flex;
             flex-direction: column;
-            transition: max-width 0.2s ease;
         }
 
-            /* ŠIROKI MODAL (Za Preview) */
+            /* WIDER MODAL FOR PREVIEW */
             .modal.wide {
-                max-width: 900px; /* Mnogo širi za Split View */
+                max-width: 700px;
                 width: 95%;
-                height: 80vh;
+                height: 75vh;
             }
 
             .modal h3 {
@@ -377,43 +389,19 @@
             font-family: monospace;
         }
 
-        /* SPLIT VIEW DIFF STYLES */
-        .diff-wrapper {
-            display: flex;
-            gap: 15px;
-            height: 100%; /* Puni visinu modala */
-            min-height: 300px;
-        }
-
-        .diff-pane {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            background-color: var(--bg-color);
-        }
-
-        .diff-header {
-            background-color: var(--neutral-lighter);
-            padding: 8px;
-            font-weight: 700;
-            font-size: 12px;
-            text-transform: uppercase;
-            color: var(--text-color);
-            border-bottom: 1px solid var(--border-color);
-            text-align: center;
-        }
-
-        .diff-content {
-            flex: 1;
-            padding: 10px;
-            overflow-y: auto;
+        /* PREVIEW STYLES (Clean Single Pane) */
+        .preview-single-pane {
             font-family: 'Consolas', monospace;
             font-size: 13px;
             line-height: 1.6;
             white-space: pre-wrap;
             word-break: break-word;
+            padding: 10px;
+            background-color: var(--neutral-lighter);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            height: 100%;
+            overflow-y: auto;
         }
 
         .diff-changed {
@@ -428,6 +416,10 @@
                 background-color: #004578;
                 color: #ffffff;
                 border-bottom: 2px solid #4ba0ff;
+            }
+
+            .preview-single-pane {
+                background-color: #333;
             }
         }
     </style>
@@ -481,11 +473,12 @@
         <div class="section">
             <button id="runBtn" class="full-width"><span>PRESLOVI</span></button>
             <div class="button-group">
-                <button id="previewBtn">Preview (Uporedi)</button>
+                <button id="previewBtn">Preview (Rezultat)</button>
                 <button id="exportBtn">Izvezi podešavanja</button>
             </div>
             <button id="importBtn" style="display:none;">Import</button>
-            <button id="resetBtn">Vrati na fabrička podešavanja</button>
+            <!-- RESET DUGME (Onemogućeno po defaultu dok se nešto ne promeni) -->
+            <button id="resetBtn" disabled>Vrati na fabrička podešavanja</button>
         </div>
         <div id="msg">Spreman za rad.</div>
         <div id="statsBox"><div id="statsTitle">Statistika</div><pre id="statsText"></pre></div>
