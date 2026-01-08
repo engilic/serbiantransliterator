@@ -22,7 +22,9 @@
             --input-border: #8a8886;
             --focus-border: #0f6cbd;
             --error-color: #a80000;
+            --disabled-bg: #f3f2f1;
             --disabled-text: #a19f9d;
+            --link-color: #005a9e;
         }
 
         @media (prefers-color-scheme: dark) {
@@ -38,6 +40,8 @@
                 --input-bg: #333333;
                 --input-border: #a19f9d;
                 --focus-border: #4ba0ff;
+                --disabled-bg: #3b3a39;
+                --link-color: #69afe5;
             }
         }
 
@@ -53,25 +57,42 @@
             background-color: var(--bg-color);
             color: var(--text-color);
             line-height: 1.5;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
         }
 
         header {
-            padding: 20px 20px 10px 20px;
+            padding: 15px 20px;
             background-color: var(--neutral-lighter);
             border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
         }
 
-        h1 {
+        .header-content h1 {
             margin: 0;
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 600;
             color: var(--primary-color);
         }
 
         .subtitle {
-            margin-top: 4px;
+            margin-top: 2px;
             font-size: 12px;
             opacity: 0.8;
+        }
+
+        .version {
+            font-size: 11px;
+            color: var(--text-color);
+            opacity: 0.6;
+            background: var(--border-color);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            margin-top: 4px;
         }
 
         main {
@@ -79,6 +100,7 @@
             display: flex;
             flex-direction: column;
             gap: 20px;
+            flex: 1;
         }
 
         .section {
@@ -101,6 +123,38 @@
             opacity: 0.7;
             margin: 0;
         }
+
+        .header-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .small-blue-btn {
+            background-color: var(--primary-color);
+            color: var(--primary-text);
+            border: 1px solid transparent;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 3px 10px;
+            border-radius: 4px;
+            text-decoration: none;
+            transition: background 0.2s;
+            line-height: 1.4;
+            min-width: 24px;
+            text-align: center;
+        }
+
+            .small-blue-btn:hover:not(:disabled) {
+                background-color: var(--primary-hover);
+            }
+
+            .small-blue-btn:disabled {
+                background-color: var(--disabled-bg);
+                color: var(--disabled-text);
+                border-color: var(--border-color);
+                cursor: default;
+            }
 
         .tiny-btn {
             background: none;
@@ -215,6 +269,19 @@
             font-family: inherit;
         }
 
+        .input-group {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+            width: 100%;
+        }
+
+            .input-group button {
+                padding: 4px 10px;
+                font-size: 12px;
+                height: 30px;
+            }
+
         .button-group {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -252,13 +319,13 @@
                 cursor: not-allowed;
             }
 
-        button:not(#runBtn, .tiny-btn) {
+        button:not(#runBtn, .small-blue-btn) {
             background-color: var(--bg-color);
             border: 1px solid var(--input-border);
             color: var(--text-color);
         }
 
-            button:not(#runBtn, .tiny-btn):hover {
+            button:not(#runBtn, .small-blue-btn):hover {
                 background-color: var(--neutral-lighter);
             }
 
@@ -269,12 +336,11 @@
             background: transparent;
             font-weight: normal;
             font-size: 12px;
-            text-decoration: underline;
+            text-decoration: none;
         }
 
             #resetBtn:disabled {
                 color: var(--disabled-text);
-                text-decoration: none;
                 cursor: default;
             }
 
@@ -310,6 +376,29 @@
             font-family: monospace;
         }
 
+        footer {
+            padding: 15px 20px;
+            border-top: 1px solid var(--border-color);
+            text-align: center;
+            font-size: 12px;
+            color: var(--text-color);
+            opacity: 0.8;
+        }
+
+            footer a {
+                color: var(--link-color);
+                text-decoration: none;
+                margin: 0 5px;
+            }
+
+                footer a:hover {
+                    text-decoration: underline;
+                }
+
+        .copyright {
+            margin-left: 8px;
+        }
+
         /* Modal */
         .modal-overlay {
             position: fixed;
@@ -337,7 +426,6 @@
             flex-direction: column;
         }
 
-            /* WIDER MODAL FOR PREVIEW */
             .modal.wide {
                 max-width: 700px;
                 width: 95%;
@@ -358,11 +446,6 @@
             margin-bottom: 20px;
             width: 100%;
             flex: 1;
-        }
-
-        .modal p {
-            font-size: 14px;
-            margin: 0;
         }
 
         .modal-actions {
@@ -386,9 +469,10 @@
             padding: 2px 4px;
             border-radius: 3px;
             font-family: monospace;
+            font-size: 11px;
         }
 
-        /* PREVIEW STYLES (Single Pane) */
+        /* PREVIEW STYLES */
         .preview-single-pane {
             font-family: 'Consolas', monospace;
             font-size: 13px;
@@ -425,14 +509,17 @@
 </head>
 <body>
     <header>
-        <h1>Serbian Transliterator</h1>
-        <div class="subtitle">Pametno preslovljavanje (Lat ↔ Ćir)</div>
+        <div class="header-content">
+            <h1>Serbian Transliterator</h1>
+            <div class="subtitle">Pametno preslovljavanje</div>
+        </div>
+        <div class="version">v1.0.14</div>
     </header>
     <main>
         <div class="section">
             <div class="section-title">Podešavanja</div>
             <select id="profilePreset">
-                <option value="custom">Custom (Ručno)</option>
+                <option value="custom">Ručno (Custom)</option>
                 <option value="it">IT / Tehnologija</option>
                 <option value="legal">Pravo / Administracija</option>
                 <option value="journalism">Novinarstvo / Mediji</option>
@@ -448,13 +535,10 @@
         </div>
         <div class="section">
             <div class="section-title">Opcije</div>
-            <label><input type="checkbox" id="optProtectBrands" checked /> Zaštiti brendove (Facebook, Windows...)</label>
-            <label><input type="checkbox" id="optSerbianQuotes" checked /> Pametni navodnici („ … ”)</label>
+            <label><input type="checkbox" id="optProtectBrands" checked /> Zaštiti brendove (Windows, ...)</label>
+            <label><input type="checkbox" id="optSerbianQuotes" checked /> Pametni navodnici ( „ … ” )</label>
             <label><input type="checkbox" id="optPreserveCodeBlocks" checked /> Zaštiti kod (<code>`inline`</code> i <code>```blok```</code>)</label>
-
-            <!-- NOVO: Checkbox za jezik -->
             <label><input type="checkbox" id="optSetProofingLanguage" checked /> Postavi jezik provere (sr-Cyrl / sr-Latn)</label>
-
             <label><input type="checkbox" id="optConfirmWholeDoc" checked /> Traži potvrdu za ceo dokument</label>
             <label><input type="checkbox" id="optShowStats" /> Prikaži detaljnu statistiku</label>
         </div>
@@ -463,28 +547,45 @@
         <div class="section">
             <div class="section-header">
                 <div class="section-title">Moje zaštićene reči</div>
-                <button id="clearTagsBtn" class="tiny-btn" disabled>Obriši sve</button>
+                <!-- HEADER DUGMAD -->
+                <div class="header-actions">
+                    <button id="addTagBtn" class="small-blue-btn" disabled title="Dodaj reč">+</button>
+                    <button id="clearTagsBtn" class="small-blue-btn" disabled>Obriši sve</button>
+                </div>
             </div>
             <div class="tags-container" id="tagsContainer">
                 <div class="tags-list" id="tagsList" style="display:contents;"></div>
-                <input type="text" id="tagInput" class="tag-input" placeholder="Upiši reč i pritisni Enter..." />
+                <input type="text" id="tagInput" class="tag-input" placeholder="Upiši reč..." />
             </div>
             <textarea id="userWords" style="display:none;"></textarea>
             <div class="hint">Reči ovde ostaju u originalnom pismu.</div>
         </div>
 
         <div class="section">
-            <button id="runBtn" class="full-width"><span>PRESLOVI</span></button>
             <div class="button-group">
-                <button id="previewBtn">Preview (Rezultat)</button>
-                <button id="exportBtn">Izvezi podešavanja</button>
+                <button id="runBtn">PRESLOVI</button>
+                <button id="previewBtn">Preview</button>
             </div>
-            <button id="importBtn" style="display:none;">Import</button>
+
+            <div class="button-group">
+                <button id="exportBtn">Izvezi podešavanja</button>
+                <button id="importBtn" style="background-color: var(--bg-color); border: 1px solid var(--input-border); color: var(--text-color);">Uvezi podešavanja</button>
+            </div>
+
+            <input type="file" id="fileInput" accept=".json" style="display:none" />
+
             <button id="resetBtn" disabled>Vrati na fabrička podešavanja</button>
         </div>
         <div id="msg">Spreman za rad.</div>
-        <div id="statsBox"><div id="statsTitle">Statistika</div><pre id="statsText"></pre></div>
+        <div id="statsBox"><div id="statsTitle">Statistika poslednje akcije:</div><pre id="statsText"></pre></div>
     </main>
+
+    <footer>
+        <a href="support.html" target="_blank">Pomoć</a> •
+        <a href="privacy.html" target="_blank">Privatnost</a> •
+        <span class="copyright">© 2026</span>
+    </footer>
+
     <div id="modalOverlay" class="modal-overlay" role="dialog" aria-modal="true">
         <div id="modal" class="modal">
             <h3 id="modalTitle">Potvrda</h3>

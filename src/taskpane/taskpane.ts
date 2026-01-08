@@ -1,4 +1,4 @@
-﻿/* global Office, Word, navigator, DOMParser, Blob, URL */
+﻿/* global Office, Word, navigator, DOMParser, Blob, URL, FileReader */
 import { convertOoxml } from "../shared/transliterator";
 
 type DirectionUi = "auto" | "lat-to-cyr" | "cyr-to-lat";
@@ -93,11 +93,17 @@ function initUi() {
     const exportBtn = document.getElementById("exportBtn") as HTMLButtonElement | null;
     const importBtn = document.getElementById("importBtn") as HTMLButtonElement | null;
     const resetBtn = document.getElementById("resetBtn") as HTMLButtonElement | null;
+    const fileInput = document.getElementById("fileInput") as HTMLInputElement | null;
 
     if (runBtn) runBtn.onclick = () => runWithUiLock(runSmart);
     if (previewBtn) previewBtn.onclick = () => runWithUiLock(runPreview);
     if (exportBtn) exportBtn.onclick = () => runWithUiLock(exportSettingsAsDownload);
-    if (importBtn) importBtn.onclick = () => runWithUiLock(importSettings);
+
+    if (importBtn && fileInput) {
+        importBtn.onclick = () => fileInput.click();
+        fileInput.onchange = (e) => handleFileImport(e);
+    }
+
     if (resetBtn) resetBtn.onclick = () => resetSettings();
 
     const settings = loadSettings();
@@ -170,11 +176,12 @@ function initTagsInput() {
     const input = document.getElementById("tagInput") as HTMLInputElement;
     const hiddenTextarea = document.getElementById("userWords") as HTMLTextAreaElement;
     const clearBtn = document.getElementById("clearTagsBtn") as HTMLButtonElement;
+    const addBtn = document.getElementById("addTagBtn") as HTMLButtonElement;
 
     if (!container || !list || !input || !hiddenTextarea) return;
 
     container.addEventListener("click", (e) => {
-        if (e.target !== input) input.focus();
+        if (e.target !== input && e.target !== addBtn) input.focus();
     });
 
     function renderTags() {
@@ -184,6 +191,8 @@ function initTagsInput() {
         if (clearBtn) {
             clearBtn.disabled = words.length === 0;
         }
+
+        validateAddButton();
 
         words.forEach(word => {
             const tag = document.createElement("div");
@@ -199,6 +208,14 @@ function initTagsInput() {
         hiddenTextarea.dispatchEvent(event);
     }
 
+    function validateAddButton() {
+        if (!addBtn) return;
+        const val = input.value.trim();
+        const currentWords = hiddenTextarea.value.split("\n").filter(w => w.trim() !== "");
+        const isInvalid = val.length === 0 || currentWords.includes(val);
+        addBtn.disabled = isInvalid;
+    }
+
     if (clearBtn) {
         clearBtn.addEventListener("click", () => {
             confirmInPanel("Da li sigurno želiš da obrišeš sve zaštićene reči?").then((ok) => {
@@ -210,9 +227,8 @@ function initTagsInput() {
         });
     }
 
-    input.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-            e.preventDefault();
+    if (addBtn) {
+        addBtn.onclick = () => {
             const val = input.value.trim();
             if (val) {
                 const current = hiddenTextarea.value.split("\n").filter(w => w.trim() !== "");
@@ -222,6 +238,19 @@ function initTagsInput() {
                     renderTags();
                 }
                 input.value = "";
+                validateAddButton();
+            }
+            input.focus();
+        };
+    }
+
+    input.addEventListener("input", validateAddButton);
+
+    input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            if (addBtn && !addBtn.disabled) {
+                addBtn.click();
             }
         }
         if (e.key === "Backspace" && input.value === "") {
@@ -484,8 +513,16 @@ async function runSmart() {
                 return;
             }
 
-            // Ovde više nema menjanja jezika kroz JS (to se rešava u convertOoxml.ts)
-            range.insertOoxml(result.xml, Word.InsertLocation.replace);
+            const newRange = range.insertOoxml(result.xml, Word.InsertLocation.replace);
+
+            if (getCheckboxValue("optSetProofingLanguage", true)) {
+                if (result.stats.direction === "lat-to-cyr") {
+                    (newRange.font as any).localeId = "sr-Cyrl-RS";
+                } else {
+                    (newRange.font as any).localeId = "sr-Latn-RS";
+                }
+            }
+
             await context.sync();
 
             setStatus(`Uspeh: ${result.type}\n(Undo sa Ctrl+Z)`);
@@ -537,7 +574,7 @@ async function runPreview() {
 
             const diffHtml = generateHighlightHtml(originalText, newText);
 
-            showDiffModal("Preview Rezultata", diffHtml);
+            showDiffModal("Preview", diffHtml);
 
             setStatus(`Preview završen. (${result.type})`);
         });
@@ -613,36 +650,58 @@ async function exportSettingsAsDownload() {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        setStatus("Fajl sa podešavanjima je preuzet.");
+        setStatus("Podešavanja su izvezena.");
     } catch (e) {
         await showTextDialog("Izvezi podešavanja", "Kopiraj ručno:", json, true);
     }
 }
 
+// NOVO: Handle File Import
+async function handleFileImport(e: Event) {
+    const input = e.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+
+    const file = input.files[0];
+    const reader = new FileReader();
+
+    reader.onload = (event) => {
+        try {
+            const json = event.target?.result as string;
+            const parsed = JSON.parse(json) as Partial<UiSettings>;
+
+            // Normalizacija i primena
+            const normalized: UiSettings = {
+                schemaVersion: 1,
+                profile: parsed.profile || "custom",
+                userWords: parsed.userWords || "",
+                protectBrands: parsed.protectBrands ?? true,
+                applySerbianQuotes: parsed.applySerbianQuotes ?? true,
+                preserveCodeBlocks: parsed.preserveCodeBlocks ?? true,
+                setProofingLanguage: parsed.setProofingLanguage ?? true,
+                confirmWholeDoc: parsed.confirmWholeDoc ?? true,
+                showStats: parsed.showStats ?? false,
+                direction: parsed.direction || "auto"
+            };
+
+            applySettingsToUi(normalized);
+            saveSettings();
+            checkIfDirty();
+            setStatus("Podešavanja su uspešno učitana.");
+        } catch (err) {
+            setStatus("Greška: Fajl nije validan JSON.");
+        }
+        // Reset input da bi mogao isti fajl opet
+        input.value = "";
+    };
+
+    reader.readAsText(file);
+}
+
+// Legacy import (ako neko pozove ručno, mada se više ne koristi)
 async function importSettings() {
-    const pasted = await showTextDialog("Uvezi podešavanja", "Nalepi JSON sadržaj ovde:", "", false);
-    if (pasted == null) return;
-    try {
-        const parsed = JSON.parse(pasted) as Partial<UiSettings>;
-        const normalized: UiSettings = {
-            schemaVersion: 1,
-            profile: parsed.profile || "custom",
-            userWords: parsed.userWords || "",
-            protectBrands: parsed.protectBrands ?? true,
-            applySerbianQuotes: parsed.applySerbianQuotes ?? true,
-            preserveCodeBlocks: parsed.preserveCodeBlocks ?? true,
-            setProofingLanguage: parsed.setProofingLanguage ?? true,
-            confirmWholeDoc: parsed.confirmWholeDoc ?? true,
-            showStats: parsed.showStats ?? false,
-            direction: parsed.direction || "auto"
-        };
-        applySettingsToUi(normalized);
-        saveSettings();
-        checkIfDirty();
-        setStatus("Import uspešan.");
-    } catch {
-        setStatus("Greška pri importu JSON-a.");
-    }
+    // Ova funkcija je sada redundantna jer imamo file input, 
+    // ali je ostavljam ako želiš da zadržiš fallback.
+    // U initUi je već vezana za fileInput.click()
 }
 
 function resetSettings() {
