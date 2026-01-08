@@ -19,12 +19,15 @@ import {
 } from "./code";
 
 export interface OoxmlOptions extends CoreOptions {
-    direction?: Direction | "auto";
+    direction?: Direction | "auto" | "to-ascii";
     setProofingLanguage?: boolean;
+    protectRomans?: boolean;
+    fixDoubleSpaces?: boolean;
+    formatDates?: boolean;
 }
 
 export type ConvertStats = {
-    direction: Direction;
+    direction: Direction | "to-ascii";
     textNodes: number;
     charsBefore: number;
     charsAfter: number;
@@ -54,17 +57,59 @@ function countMatches(text: string, re: RegExp): number {
     return c;
 }
 
-// SIGURNA FUNKCIJA ZA PROMENU JEZIKA
-function ensureRunLanguage(textNode: Element, langId: string) {
-    // textNode je <w:t>
-    const runNode = textNode.parentElement;
-    if (!runNode || runNode.localName !== "r") return; // Mora biti <w:r>
+// Funkcija za ASCII konverziju (čćšđž -> ccsdz)
+function toAscii(text: string): string {
+    const map: Record<string, string> = {
+        'č': 'c', 'ć': 'c', 'š': 's', 'đ': 'dj', 'ž': 'z',
+        'Č': 'C', 'Ć': 'C', 'Š': 'S', 'Đ': 'Dj', 'Ž': 'Z'
+    };
+    return text.replace(/[čćšđžČĆŠĐŽ]/g, match => map[match]);
+}
 
-    // 1. Nađi ili napravi <w:rPr>
+// --- RIMSKE BROJKE ---
+const ROMAN_REGEX_STRICT = /\b(?!I\b)(?=[MDCLXVI]+\b)M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})\b/g;
+
+const ROMAN_I_PREFIXES = [
+    "Petar", "Aleksandar", "Pavle", "Đorđe", "Djordje", "Milan", "Miloš", "Milos",
+    "Katarina", "Elizabeta", "Viktorija", "Marija", "Ana",
+    "Luj", "Šarl", "Sarl", "Anri", "Filip", "Felipe", "Huan", "Karlos",
+    "Viljem", "Fridrih", "Oskar", "Gustav", "Erik", "Jovan", "Jozef",
+    "Benedikt", "Pije", "Lav", "Grgur", "Klement", "Inoćentije", "Jovan",
+    "Nikola", "Napoleon", "Konstantin", "Stefan", "Uroš", "Uros", "Dušan", "Dusan",
+    "Član", "Clan", "Glava", "Deo", "Stav", "Tačka", "Tacka", "Odeljak", "Aneks",
+    "Klasa", "Grupa", "Tom", "Knjiga", "Sveska", "Partija", "Zona", "Sektor",
+    "Svetski rat", "Boj", "Put"
+];
+
+const ROMAN_I_REGEX = new RegExp(`\\b(${ROMAN_I_PREFIXES.join("|")})\\s+I\\b`, "g");
+
+// Helpers for Corrections
+function removeDoubleSpaces(text: string): string {
+    return text.replace(/ {2,}/g, " ");
+}
+
+function formatSerbianDates(text: string): string {
+    // 1. Pretvaramo američki (MM/DD/YYYY) u naš (DD.MM.YYYY.)
+    // Hvata: 10/21/2023 -> 21.10.2023.
+    let out = text.replace(/\b(\d{1,2})\/(\d{1,2})\/(\d{4})\b/g, "$2.$1.$3.");
+
+    // 2. Standardizacija na format BEZ razmaka (21.10.2023.)
+    // Hvata: 21. 10. 2023. ili 21.10.2023 ili 21/10/2023
+    out = out.replace(/\b(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})\.?/g, "$1.$2.$3.");
+
+    // 3. Isto i za kratke datume (21.10.) - ako iza nema broja
+    out = out.replace(/\b(\d{1,2})\.\s*(\d{1,2})\.(?!\d)/g, "$1.$2.");
+
+    return out;
+}
+
+function ensureRunLanguage(textNode: Element, langId: string) {
+    const runNode = textNode.parentElement;
+    if (!runNode || runNode.localName !== "r") return;
+
     let rPr = runNode.getElementsByTagNameNS(XML_NS, "rPr")[0];
     if (!rPr) {
         rPr = textNode.ownerDocument.createElementNS(XML_NS, "w:rPr");
-        // rPr mora biti PRVI element u run-u
         if (runNode.firstChild) {
             runNode.insertBefore(rPr, runNode.firstChild);
         } else {
@@ -72,14 +117,12 @@ function ensureRunLanguage(textNode: Element, langId: string) {
         }
     }
 
-    // 2. Nađi ili napravi <w:lang>
     let langNode = rPr.getElementsByTagNameNS(XML_NS, "lang")[0];
     if (!langNode) {
         langNode = textNode.ownerDocument.createElementNS(XML_NS, "w:lang");
         rPr.appendChild(langNode);
     }
 
-    // 3. Postavi atribute (forsiraj jezik)
     langNode.setAttributeNS(XML_NS, "w:val", langId);
     langNode.setAttributeNS(XML_NS, "w:eastAsia", langId);
     langNode.setAttributeNS(XML_NS, "w:bidi", langId);
@@ -112,7 +155,7 @@ export function convertOoxml(ooxml: string, options?: OoxmlOptions): { xml: stri
     }
 
     const dirSetting = options?.direction ?? "auto";
-    let direction: Direction;
+    let direction: Direction | "to-ascii";
 
     if (dirSetting === "auto") {
         const script = detectScript(fullText);
@@ -121,12 +164,17 @@ export function convertOoxml(ooxml: string, options?: OoxmlOptions): { xml: stri
         direction = dirSetting;
     }
 
-    const label = direction === "lat-to-cyr" ? "Lat → Ćir" : "Ćir → Lat";
-    const preserveCodeBlocks = options?.preserveCodeBlocks !== false;
+    let label = "Auto";
+    if (direction === "lat-to-cyr") label = "Lat → Ćir";
+    else if (direction === "cyr-to-lat") label = "Ćir → Lat";
+    else if (direction === "to-ascii") label = "Ošišana latinica";
 
-    // Da li menjamo jezik?
+    const preserveCodeBlocks = options?.preserveCodeBlocks !== false;
     const shouldSetLang = options?.setProofingLanguage !== false;
-    const targetLang = direction === "lat-to-cyr" ? "sr-Cyrl-RS" : "sr-Latn-RS";
+
+    const doFixSpaces = options?.fixDoubleSpaces === true;
+    const doFixDates = options?.formatDates === true;
+    const doProtectRomans = options?.protectRomans !== false;
 
     const urlRe = /\b(?:https?:\/\/|ftp:\/\/|file:\/\/|www\.)[^\s<>"')]+/giu;
     const emailRe = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/giu;
@@ -139,39 +187,41 @@ export function convertOoxml(ooxml: string, options?: OoxmlOptions): { xml: stri
     const userProtectedTokens = userProtected.filter((x) => !/\s/.test(x) && x.trim().length > 0);
     const userProtectedTokenSet = new Set(userProtectedTokens.map((x) => x.normalize("NFC")));
 
-    const bridges = {
-        links: 0,
-        brandPhrases: 0,
-        brandTokens: 0,
-        digraphs: 0,
-        userPhrases: 0,
-        userTokens: 0,
-        allCapsHints: 0,
-    };
+    const bridges = { links: 0, brandPhrases: 0, brandTokens: 0, digraphs: 0, userPhrases: 0, userTokens: 0, allCapsHints: 0 };
 
-    if (userProtectedPhrases.length) {
-        bridges.userPhrases = bridgePhrasesAcrossTextNodes(textNodes, buildPhraseInfos(userProtectedPhrases));
-    }
-    if (userProtectedTokens.length) {
-        bridges.userTokens = bridgeExactTokensAcrossTextNodes(textNodes, userProtectedTokens);
-    }
+    if (userProtectedPhrases.length) bridges.userPhrases = bridgePhrasesAcrossTextNodes(textNodes, buildPhraseInfos(userProtectedPhrases));
+    if (userProtectedTokens.length) bridges.userTokens = bridgeExactTokensAcrossTextNodes(textNodes, userProtectedTokens);
 
     if (direction === "lat-to-cyr") {
         bridges.links = bridgeLinksAcrossTextNodes(textNodes);
         bridges.brandPhrases = bridgePhrasesAcrossTextNodes(textNodes, buildPhraseInfos(ALWAYS_LATIN_PHRASES));
         bridges.brandTokens = bridgeAlwaysLatinTokensAcrossTextNodes(textNodes);
         bridges.digraphs = bridgeDigraphsAcrossTextNodes(textNodes);
+
+        if (doProtectRomans) {
+            const strictMatches = fullText.match(ROMAN_REGEX_STRICT) || [];
+            const uniqueStrict = [...new Set(strictMatches)];
+            if (uniqueStrict.length > 0) {
+                bridgeExactTokensAcrossTextNodes(textNodes, uniqueStrict);
+            }
+
+            const iMatches = fullText.match(ROMAN_I_REGEX) || [];
+            const uniqueIPhrases = [...new Set(iMatches)];
+            if (uniqueIPhrases.length > 0) {
+                const iInfos = buildPhraseInfos(uniqueIPhrases);
+                bridgePhrasesAcrossTextNodes(textNodes, iInfos);
+            }
+        }
     }
 
     let hintedNodes: WeakSet<Element> = new WeakSet<Element>();
-    if (direction === "cyr-to-lat") {
+    if (direction === "cyr-to-lat" || direction === "to-ascii") {
         const res = markCyrAllCapsDigraphHints(textNodes, userProtectedTokenSet);
         hintedNodes = res.hinted;
         bridges.allCapsHints = res.count;
     }
 
     const wantQuotes = direction === "lat-to-cyr" && options?.applySerbianQuotes !== false;
-
     const codeState = createInitialCodeState();
     const codeParseStats = createInitialCodeParseStats();
 
@@ -181,45 +231,51 @@ export function convertOoxml(ooxml: string, options?: OoxmlOptions): { xml: stri
 
         let finalText = "";
 
+        const transformFn = (input: string) => {
+            let temp = input;
+
+            if (doFixSpaces) temp = removeDoubleSpaces(temp);
+            if (doFixDates) temp = formatSerbianDates(temp);
+
+            if (direction === "to-ascii") {
+                const { text: tempLat } = convertPlainText(temp, "cyr-to-lat", {
+                    ...options,
+                    applySerbianQuotes: false
+                });
+                return toAscii(tempLat);
+            } else {
+                const { text } = convertPlainText(temp, direction as Direction, {
+                    ...options,
+                    applySerbianQuotes: wantQuotes ? false : options?.applySerbianQuotes,
+                });
+                return text;
+            }
+        };
+
         if (preserveCodeBlocks) {
             finalText = transformTextRespectingCode(
                 original,
                 codeState,
-                (nonCode) => {
-                    const { text } = convertPlainText(nonCode, direction, {
-                        ...options,
-                        applySerbianQuotes: wantQuotes ? false : options?.applySerbianQuotes,
-                    });
-                    return text;
-                },
+                (nonCode) => transformFn(nonCode),
                 (code) => code,
                 codeParseStats
             );
         } else {
-            const { text } = convertPlainText(original, direction, {
-                ...options,
-                applySerbianQuotes: wantQuotes ? false : options?.applySerbianQuotes,
-            });
-            finalText = text;
+            finalText = transformFn(original);
         }
 
-        if (direction === "cyr-to-lat" && hintedNodes.has(node)) {
+        if ((direction === "cyr-to-lat" || direction === "to-ascii") && hintedNodes.has(node)) {
             if (finalText.endsWith(LAT_ALLCAPS_HINT)) {
                 finalText = finalText.slice(0, -LAT_ALLCAPS_HINT.length);
             }
         }
 
-        // -- LOGIKA ZA JEZIK --
-        if (shouldSetLang) {
-            // Ako se tekst razlikuje od originala, znači da je preslovljen.
-            // Tada OBAVEZNO menjamo jezik u ciljni jezik.
+        if (shouldSetLang && direction !== "to-ascii") {
+            const targetLang = direction === "lat-to-cyr" ? "sr-Cyrl-RS" : "sr-Latn-RS";
             if (finalText !== original) {
                 ensureRunLanguage(node, targetLang);
             }
-            // Ako je tekst isti (npr. "Microsoft"), NE DIRAMO ništa.
-            // Ostaće jezik koji je bio (npr. en-US).
         }
-        // ---------------------
 
         if (needsXmlSpacePreserve(finalText)) {
             node.setAttributeNS(XML_NS, "xml:space", "preserve");

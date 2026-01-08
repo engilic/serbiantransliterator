@@ -1,19 +1,25 @@
 ﻿/* global Office, Word, navigator, DOMParser, Blob, URL, FileReader */
 import { convertOoxml } from "../shared/transliterator";
+// IMPORTUJEMO LISTU BRENDOVA
+import { ALWAYS_LATIN_PHRASES } from "../../core/rules";
 
-// DODATO: to-ascii
 type DirectionUi = "auto" | "lat-to-cyr" | "cyr-to-lat" | "to-ascii";
-type ProfilePreset = "custom" | "it" | "legal" | "journalism";
+type ProfilePreset = "custom" | "it" | "finance" | "medical" | "legal" | "journalism" | "marketing";
 type ConvertStatsLike = any;
 
 interface UiSettings {
-    schemaVersion: 1;
+    schemaVersion: 2;
     profile: ProfilePreset;
-    userWords: string;
+    userWordsCustom: string;
+    userWordsPreset: string;
+    userWords?: string;
     protectBrands: boolean;
     applySerbianQuotes: boolean;
     preserveCodeBlocks: boolean;
     setProofingLanguage: boolean;
+    protectRomans: boolean;
+    fixDoubleSpaces: boolean;
+    formatDates: boolean;
     confirmWholeDoc: boolean;
     showStats: boolean;
     direction: DirectionUi;
@@ -22,58 +28,47 @@ interface UiSettings {
 const SETTINGS_KEY = "serbiantransliterator.settings.v2";
 
 const DEFAULT_SETTINGS: UiSettings = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     profile: "custom",
+    userWordsCustom: "",
+    userWordsPreset: "",
     userWords: "",
     protectBrands: true,
     applySerbianQuotes: true,
     preserveCodeBlocks: true,
     setProofingLanguage: true,
+    protectRomans: true,
+    fixDoubleSpaces: true,
+    formatDates: true,
     confirmWholeDoc: true,
     showStats: false,
     direction: "auto"
 };
 
-const PRESETS: Record<Exclude<ProfilePreset, "custom">, Omit<UiSettings, "profile" | "schemaVersion">> = {
+const PRESETS: Record<string, any> = {
     it: {
-        direction: "auto",
-        protectBrands: true,
-        applySerbianQuotes: false,
-        preserveCodeBlocks: true,
-        setProofingLanguage: true,
-        confirmWholeDoc: true,
-        showStats: false,
-        userWords: [
-            "Git", "GitHub", "GitLab", "Azure", "AWS", "GCP", "DevOps", "Docker", "Kubernetes",
-            "CI/CD", "YAML", "REST", "GraphQL", "PowerShell", "VS Code", "Visual Studio",
-            "Windows Server", "Linux", "SerbianTransliterator"
-        ].join("\n"),
+        direction: "auto", protectBrands: true, applySerbianQuotes: false, preserveCodeBlocks: true, setProofingLanguage: true, protectRomans: true, fixDoubleSpaces: false, formatDates: true, confirmWholeDoc: true, showStats: false,
+        userWords: ["Git", "GitHub", "GitLab", "Azure", "AWS", "GCP", "DevOps", "Docker", "Kubernetes", "CI/CD", "YAML", "REST", "GraphQL", "PowerShell", "VS Code", "Visual Studio", "Windows Server", "Linux", "SerbianTransliterator", "Python", "JavaScript"].join("\n")
+    },
+    finance: {
+        direction: "auto", protectBrands: true, applySerbianQuotes: true, preserveCodeBlocks: true, setProofingLanguage: true, protectRomans: true, fixDoubleSpaces: true, formatDates: true, confirmWholeDoc: true, showStats: false,
+        userWords: ["SWIFT", "IBAN", "EUR", "USD", "RSD", "CHF", "GBP", "MasterCard", "Visa", "PayPal", "Intesa", "Raiffeisen", "OTP", "NLB", "AIK", "Erste", "UniCredit", "Western Union", "E-banking", "M-banking"].join("\n")
+    },
+    medical: {
+        direction: "auto", protectBrands: true, applySerbianQuotes: true, preserveCodeBlocks: true, setProofingLanguage: true, protectRomans: true, fixDoubleSpaces: false, formatDates: true, confirmWholeDoc: true, showStats: false,
+        userWords: ["mg", "ml", "kg", "Covid", "SARS", "Hemofarm", "Galenika", "Pfizer", "Actavis", "Alkaloid", "Bayer", "Roche", "Stada", "Anamnesis", "Diagnosis", "Therapia"].join("\n")
+    },
+    marketing: {
+        direction: "auto", protectBrands: true, applySerbianQuotes: true, preserveCodeBlocks: true, setProofingLanguage: true, protectRomans: true, fixDoubleSpaces: true, formatDates: false, confirmWholeDoc: true, showStats: false,
+        userWords: ["Facebook", "Instagram", "LinkedIn", "TikTok", "Twitter", "X", "YouTube", "Google", "SEO", "PR", "Copywriter", "Content", "Ads", "Influencer", "Giveaway", "Hashtag", "Story", "Reel", "Post", "Follow"].join("\n")
     },
     legal: {
-        direction: "auto",
-        protectBrands: true,
-        applySerbianQuotes: true,
-        preserveCodeBlocks: true,
-        setProofingLanguage: true,
-        confirmWholeDoc: true,
-        showStats: false,
-        userWords: [
-            "Ustav Republike Srbije", "Zakon o obligacionim odnosima", "Zakon o radu",
-            "Ministarstvo pravde", "Privredni sud", "Advokatska komora Srbije"
-        ].join("\n"),
+        direction: "auto", protectBrands: true, applySerbianQuotes: true, preserveCodeBlocks: true, setProofingLanguage: true, protectRomans: true, fixDoubleSpaces: true, formatDates: true, confirmWholeDoc: true, showStats: false,
+        userWords: ["Ustav Republike Srbije", "Zakon o obligacionim odnosima", "Zakon o radu", "Ministarstvo pravde", "Privredni sud", "Advokatska komora Srbije", "Službeni glasnik", "Bona fide", "De facto", "Ex officio"].join("\n")
     },
     journalism: {
-        direction: "auto",
-        protectBrands: true,
-        applySerbianQuotes: true,
-        preserveCodeBlocks: true,
-        setProofingLanguage: true,
-        confirmWholeDoc: true,
-        showStats: false,
-        userWords: [
-            "Reuters", "Associated Press", "BBC", "CNN", "Euronews", "N1", "RTS",
-            "Tanjug", "NBA", "UEFA", "FIFA"
-        ].join("\n"),
+        direction: "auto", protectBrands: true, applySerbianQuotes: true, preserveCodeBlocks: true, setProofingLanguage: true, protectRomans: true, fixDoubleSpaces: true, formatDates: true, confirmWholeDoc: true, showStats: false,
+        userWords: ["Reuters", "Associated Press", "BBC", "CNN", "Euronews", "N1", "RTS", "Tanjug", "NBA", "UEFA", "FIFA", "FIBA", "ATP", "WTA"].join("\n")
     },
 };
 
@@ -95,6 +90,7 @@ function initUi() {
     const importBtn = document.getElementById("importBtn") as HTMLButtonElement | null;
     const resetBtn = document.getElementById("resetBtn") as HTMLButtonElement | null;
     const fileInput = document.getElementById("fileInput") as HTMLInputElement | null;
+    const infoBrandsBtn = document.getElementById("infoBrandsBtn") as HTMLButtonElement | null; // NOVO
 
     if (runBtn) runBtn.onclick = () => runWithUiLock(runSmart);
     if (previewBtn) previewBtn.onclick = () => runWithUiLock(runPreview);
@@ -105,7 +101,29 @@ function initUi() {
         fileInput.onchange = (e) => handleFileImport(e);
     }
 
-    if (resetBtn) resetBtn.onclick = () => resetSettings();
+    if (resetBtn) {
+        resetBtn.onclick = () => {
+            confirmInPanel("Ovo će obrisati sve tvoje izmene i vratiti podrazumevana podešavanja. Da li želiš da nastaviš?").then((ok) => {
+                if (ok) {
+                    resetSettings();
+                }
+            });
+        };
+    }
+
+    // LOGIKA ZA INFO DUGME
+    if (infoBrandsBtn) {
+        infoBrandsBtn.onclick = () => {
+            // Formatiramo listu kao tagove za lep prikaz
+            // Sortiramo abecedno
+            const sorted = [...ALWAYS_LATIN_PHRASES].sort();
+            const html = sorted.map(word =>
+                `<span class="tag preset" style="display:inline-block; margin:2px;">${word}</span>`
+            ).join("");
+
+            showDiffModal("Zaštićeni brendovi (Ugrađeno)", `<div style="line-height:1.8;">${html}</div>`);
+        };
+    }
 
     const settings = loadSettings();
     if (settings) {
@@ -127,13 +145,18 @@ function initUi() {
             }
             saveSettings();
             checkIfDirty();
+            document.getElementById("userWordsCustom")?.dispatchEvent(new Event("input"));
         });
     }
 
-    // DODAT: dirToAscii
-    const inputs = ["userWords", "optProtectBrands", "optSerbianQuotes", "optPreserveCodeBlocks", "optSetProofingLanguage", "optConfirmWholeDoc", "dirAuto", "dirLatToCyr", "dirCyrToLat", "dirToAscii"];
+    const inputs = [
+        "userWordsCustom", "userWordsPreset",
+        "optProtectBrands", "optSerbianQuotes", "optPreserveCodeBlocks",
+        "optSetProofingLanguage", "optProtectRomans", "optFixDoubleSpaces", "optFormatDates",
+        "optConfirmWholeDoc", "dirAuto", "dirLatToCyr", "dirCyrToLat", "dirToAscii"
+    ];
     inputs.forEach(id => {
-        document.getElementById(id)?.addEventListener(id === "userWords" ? "input" : "change", () => {
+        document.getElementById(id)?.addEventListener(id.includes("userWords") ? "input" : "change", () => {
             saveSettings();
             checkIfDirty();
         });
@@ -160,11 +183,14 @@ function checkIfDirty() {
 
     const isClean =
         current.profile === DEFAULT_SETTINGS.profile &&
-        current.userWords === DEFAULT_SETTINGS.userWords &&
+        current.userWordsCustom === DEFAULT_SETTINGS.userWordsCustom &&
         current.protectBrands === DEFAULT_SETTINGS.protectBrands &&
         current.applySerbianQuotes === DEFAULT_SETTINGS.applySerbianQuotes &&
         current.preserveCodeBlocks === DEFAULT_SETTINGS.preserveCodeBlocks &&
         current.setProofingLanguage === DEFAULT_SETTINGS.setProofingLanguage &&
+        current.protectRomans === DEFAULT_SETTINGS.protectRomans &&
+        current.fixDoubleSpaces === DEFAULT_SETTINGS.fixDoubleSpaces &&
+        current.formatDates === DEFAULT_SETTINGS.formatDates &&
         current.confirmWholeDoc === DEFAULT_SETTINGS.confirmWholeDoc &&
         current.showStats === DEFAULT_SETTINGS.showStats &&
         current.direction === DEFAULT_SETTINGS.direction;
@@ -176,11 +202,14 @@ function initTagsInput() {
     const container = document.getElementById("tagsContainer");
     const list = document.getElementById("tagsList");
     const input = document.getElementById("tagInput") as HTMLInputElement;
-    const hiddenTextarea = document.getElementById("userWords") as HTMLTextAreaElement;
+
+    const customTextarea = document.getElementById("userWordsCustom") as HTMLTextAreaElement;
+    const presetTextarea = document.getElementById("userWordsPreset") as HTMLTextAreaElement;
+
     const clearBtn = document.getElementById("clearTagsBtn") as HTMLButtonElement;
     const addBtn = document.getElementById("addTagBtn") as HTMLButtonElement;
 
-    if (!container || !list || !input || !hiddenTextarea) return;
+    if (!container || !list || !input || !customTextarea || !presetTextarea) return;
 
     container.addEventListener("click", (e) => {
         if (e.target !== input && e.target !== addBtn) input.focus();
@@ -188,33 +217,56 @@ function initTagsInput() {
 
     function renderTags() {
         list!.innerHTML = "";
-        const words = hiddenTextarea.value.split("\n").filter(w => w.trim() !== "");
+
+        const customWords = customTextarea.value.split("\n").filter(w => w.trim() !== "");
+        const presetWords = presetTextarea.value.split("\n").filter(w => w.trim() !== "");
+
+        customWords.forEach(word => {
+            const tag = document.createElement("div");
+            tag.className = "tag custom";
+            tag.innerHTML = `<span>${word}</span><span class="tag-remove" data-type="custom" data-word="${word}">×</span>`;
+            list!.appendChild(tag);
+        });
+
+        presetWords.forEach(word => {
+            const tag = document.createElement("div");
+            tag.className = "tag preset";
+            tag.innerHTML = `<span>${word}</span><span class="tag-remove" data-type="preset" data-word="${word}">×</span>`;
+            list!.appendChild(tag);
+        });
 
         if (clearBtn) {
-            clearBtn.disabled = words.length === 0;
+            clearBtn.disabled = (customWords.length + presetWords.length) === 0;
         }
 
         validateAddButton();
-
-        words.forEach(word => {
-            const tag = document.createElement("div");
-            tag.className = "tag";
-            tag.innerHTML = `<span>${word}</span><span class="tag-remove" data-word="${word}">×</span>`;
-            list!.appendChild(tag);
-        });
     }
 
-    function updateTextarea(words: string[]) {
-        hiddenTextarea.value = words.join("\n");
-        const event = new Event("input", { bubbles: true });
-        hiddenTextarea.dispatchEvent(event);
+    function removeWord(word: string, type: "custom" | "preset") {
+        const targetArea = type === "custom" ? customTextarea : presetTextarea;
+        const words = targetArea.value.split("\n").filter(w => w.trim() !== "");
+        const newWords = words.filter(w => w !== word);
+        targetArea.value = newWords.join("\n");
+        targetArea.dispatchEvent(new Event("input"));
+    }
+
+    function addWord(word: string) {
+        const words = customTextarea.value.split("\n").filter(w => w.trim() !== "");
+        if (!words.includes(word)) {
+            words.push(word);
+            customTextarea.value = words.join("\n");
+            customTextarea.dispatchEvent(new Event("input"));
+        }
     }
 
     function validateAddButton() {
         if (!addBtn) return;
         const val = input.value.trim();
-        const currentWords = hiddenTextarea.value.split("\n").filter(w => w.trim() !== "");
-        const isInvalid = val.length === 0 || currentWords.includes(val);
+        const customWords = customTextarea.value.split("\n");
+        const presetWords = presetTextarea.value.split("\n");
+        const allWords = [...customWords, ...presetWords];
+
+        const isInvalid = val.length === 0 || allWords.includes(val);
         addBtn.disabled = isInvalid;
     }
 
@@ -222,8 +274,10 @@ function initTagsInput() {
         clearBtn.addEventListener("click", () => {
             confirmInPanel("Da li sigurno želiš da obrišeš sve zaštićene reči?").then((ok) => {
                 if (ok) {
-                    updateTextarea([]);
-                    renderTags();
+                    customTextarea.value = "";
+                    presetTextarea.value = "";
+                    customTextarea.dispatchEvent(new Event("input"));
+                    presetTextarea.dispatchEvent(new Event("input"));
                 }
             });
         });
@@ -233,12 +287,7 @@ function initTagsInput() {
         addBtn.onclick = () => {
             const val = input.value.trim();
             if (val) {
-                const current = hiddenTextarea.value.split("\n").filter(w => w.trim() !== "");
-                if (!current.includes(val)) {
-                    current.push(val);
-                    updateTextarea(current);
-                    renderTags();
-                }
+                addWord(val);
                 input.value = "";
                 validateAddButton();
             }
@@ -256,11 +305,11 @@ function initTagsInput() {
             }
         }
         if (e.key === "Backspace" && input.value === "") {
-            const current = hiddenTextarea.value.split("\n").filter(w => w.trim() !== "");
-            if (current.length > 0) {
-                current.pop();
-                updateTextarea(current);
-                renderTags();
+            const customWords = customTextarea.value.split("\n").filter(w => w.trim() !== "");
+            if (customWords.length > 0) {
+                customWords.pop();
+                customTextarea.value = customWords.join("\n");
+                customTextarea.dispatchEvent(new Event("input"));
             }
         }
     });
@@ -268,16 +317,21 @@ function initTagsInput() {
     list.addEventListener("click", (e) => {
         const target = e.target as HTMLElement;
         if (target.classList.contains("tag-remove")) {
-            const wordToRemove = target.getAttribute("data-word");
-            const current = hiddenTextarea.value.split("\n").filter(w => w.trim() !== "");
-            const newWords = current.filter(w => w !== wordToRemove);
-            updateTextarea(newWords);
-            renderTags();
+            const word = target.getAttribute("data-word") || "";
+            const type = target.getAttribute("data-type") as "custom" | "preset";
+            removeWord(word, type);
         }
     });
 
+    customTextarea.addEventListener("input", renderTags);
+    presetTextarea.addEventListener("input", renderTags);
     renderTags();
-    hiddenTextarea.addEventListener("input", renderTags);
+}
+
+function getAllUserWords(): string[] {
+    const c = getTextareaValue("userWordsCustom").split("\n");
+    const p = getTextareaValue("userWordsPreset").split("\n");
+    return [...c, ...p].map(w => w.trim()).filter(w => w.length > 0);
 }
 
 function refreshStatsVisibilityAndContent() {
@@ -309,53 +363,27 @@ async function runWithUiLock(fn: () => Promise<void>) {
 
 function applyPresetSmart(profile: Exclude<ProfilePreset, "custom">) {
     const preset = PRESETS[profile];
-    const current = getTextareaValue("userWords");
-    const { mergedText, addedCount } = mergeWordLists(current, preset.userWords);
 
     setPresetSelectValue(profile);
-    setTextareaValue("userWords", mergedText);
-    document.getElementById("userWords")?.dispatchEvent(new Event("input"));
+    setTextareaValue("userWordsPreset", preset.userWords);
+    document.getElementById("userWordsPreset")?.dispatchEvent(new Event("input"));
 
     setCheckboxValue("optProtectBrands", preset.protectBrands);
     setCheckboxValue("optSerbianQuotes", preset.applySerbianQuotes);
     setCheckboxValue("optPreserveCodeBlocks", preset.preserveCodeBlocks);
     setCheckboxValue("optSetProofingLanguage", preset.setProofingLanguage);
+    setCheckboxValue("optProtectRomans", preset.protectRomans);
+    setCheckboxValue("optFixDoubleSpaces", preset.fixDoubleSpaces);
+    setCheckboxValue("optFormatDates", preset.formatDates);
     setCheckboxValue("optConfirmWholeDoc", preset.confirmWholeDoc);
     setCheckboxValue("optShowStats", preset.showStats);
     setDirectionUi(preset.direction);
 
     lastStatsTitle = "Statistika poslednje akcije";
-    lastStatsText = `Profil: ${profile}\nDodato novih stavki: ${addedCount}`;
+    lastStatsText = `Profil: ${profile} primenjen.`;
     refreshStatsVisibilityAndContent();
 
-    setStatus(`Profil: ${profile}. Dodato novih stavki: ${addedCount}.`);
-}
-
-function mergeWordLists(existingText: string, incomingText: string): { mergedText: string; addedCount: number } {
-    const normLine = (s: string) => s.normalize("NFC").trim().replace(/\s+/g, " ");
-    const existingLines = [];
-    const set = new Set<string>();
-
-    for (const line of existingText.split(/\r?\n/)) {
-        const key = normLine(line);
-        if (!key) continue;
-        if (set.has(key)) continue;
-        set.add(key);
-        existingLines.push(key);
-    }
-
-    let added = 0;
-    const additions = [];
-    for (const line of incomingText.split(/\r?\n/)) {
-        const key = normLine(line);
-        if (!key) continue;
-        if (set.has(key)) continue;
-        set.add(key);
-        additions.push(key);
-        added++;
-    }
-
-    return { mergedText: existingLines.concat(additions).join("\n"), addedCount: added };
+    setStatus(`Profil: ${profile} primenjen.`);
 }
 
 function showModal(opts: {
@@ -515,12 +543,9 @@ async function runSmart() {
                 return;
             }
 
-            // 1. Ubacujemo novi tekst
             const newRange = range.insertOoxml(result.xml, Word.InsertLocation.replace);
 
-            // 2. Menjamo jezik
-            // Za ASCII opciju ne diramo jezik (ostavljamo šta je bilo)
-            if (getCheckboxValue("optSetProofingLanguage", true) && result.stats.direction !== "to-ascii" as any) {
+            if (getCheckboxValue("optSetProofingLanguage", true)) {
                 if (result.stats.direction === "lat-to-cyr") {
                     (newRange.font as any).localeId = "sr-Cyrl-RS";
                 } else if (result.stats.direction === "cyr-to-lat") {
@@ -579,7 +604,7 @@ async function runPreview() {
 
             const diffHtml = generateHighlightHtml(originalText, newText);
 
-            showDiffModal("Preview Rezultata", diffHtml);
+            showDiffModal("Pregled", diffHtml);
 
             setStatus(`Preview završen. (${result.type})`);
         });
@@ -676,13 +701,17 @@ async function handleFileImport(e: Event) {
 
             // Normalizacija i primena
             const normalized: UiSettings = {
-                schemaVersion: 1,
+                schemaVersion: 2,
                 profile: parsed.profile || "custom",
-                userWords: parsed.userWords || "",
+                userWordsCustom: parsed.userWordsCustom || parsed.userWords || "",
+                userWordsPreset: parsed.userWordsPreset || "",
                 protectBrands: parsed.protectBrands ?? true,
                 applySerbianQuotes: parsed.applySerbianQuotes ?? true,
                 preserveCodeBlocks: parsed.preserveCodeBlocks ?? true,
                 setProofingLanguage: parsed.setProofingLanguage ?? true,
+                protectRomans: parsed.protectRomans ?? true,
+                fixDoubleSpaces: parsed.fixDoubleSpaces ?? false,
+                formatDates: parsed.formatDates ?? false,
                 confirmWholeDoc: parsed.confirmWholeDoc ?? true,
                 showStats: parsed.showStats ?? false,
                 direction: parsed.direction || "auto"
@@ -719,11 +748,16 @@ function resetSettings() {
 
 function readOptionsFromUi() {
     return {
-        userProtected: getUserProtectedWords(),
+        userProtected: getAllUserWords(), // Koristi helper
         protectBrands: getCheckboxValue("optProtectBrands", true),
         applySerbianQuotes: getCheckboxValue("optSerbianQuotes", true),
         preserveCodeBlocks: getCheckboxValue("optPreserveCodeBlocks", true),
         setProofingLanguage: getCheckboxValue("optSetProofingLanguage", true),
+        protectRomans: true, // Always true
+        fixDoubleSpaces: getCheckboxValue("optFixDoubleSpaces", false),
+        formatDates: getCheckboxValue("optFormatDates", false),
+        confirmWholeDoc: getCheckboxValue("optConfirmWholeDoc", true),
+        showStats: getCheckboxValue("optShowStats", false),
         direction: getDirectionFromUi(),
     };
 }
@@ -769,7 +803,6 @@ function setDirectionUi(dir: DirectionUi) {
     const dirAuto = document.getElementById("dirAuto") as HTMLInputElement | null;
     const dirLatToCyr = document.getElementById("dirLatToCyr") as HTMLInputElement | null;
     const dirCyrToLat = document.getElementById("dirCyrToLat") as HTMLInputElement | null;
-    // DODATO:
     const dirToAscii = document.getElementById("dirToAscii") as HTMLInputElement | null;
 
     if (dir === "lat-to-cyr") dirLatToCyr && (dirLatToCyr.checked = true);
@@ -802,14 +835,19 @@ function loadSettings(): UiSettings | null {
 
 function applySettingsToUi(settings: UiSettings) {
     setPresetSelectValue(settings.profile || "custom");
-    setTextareaValue("userWords", settings.userWords || "");
-    document.getElementById("userWords")?.dispatchEvent(new Event("input"));
+    setTextareaValue("userWordsCustom", settings.userWordsCustom || settings.userWords || "");
+    setTextareaValue("userWordsPreset", settings.userWordsPreset || "");
+
+    document.getElementById("userWordsCustom")?.dispatchEvent(new Event("input"));
+    document.getElementById("userWordsPreset")?.dispatchEvent(new Event("input"));
 
     setCheckboxValue("optProtectBrands", settings.protectBrands);
     setCheckboxValue("optSerbianQuotes", settings.applySerbianQuotes);
     setCheckboxValue("optPreserveCodeBlocks", settings.preserveCodeBlocks);
     setCheckboxValue("optSetProofingLanguage", settings.setProofingLanguage ?? true);
-    setCheckboxValue("optConfirmWholeDoc", settings.confirmWholeDoc);
+    setCheckboxValue("optFixDoubleSpaces", settings.fixDoubleSpaces ?? false);
+    setCheckboxValue("optFormatDates", settings.formatDates ?? false);
+    // confirmWholeDoc se ne postavlja u UI jer nema checkboxa, ali se koristi u logici
     setCheckboxValue("optShowStats", settings.showStats);
     setDirectionUi(settings.direction || "auto");
 
@@ -820,14 +858,19 @@ function applySettingsToUi(settings: UiSettings) {
 function readSettingsFromUi(): UiSettings {
     const presetEl = document.getElementById("profilePreset") as HTMLSelectElement | null;
     return {
-        schemaVersion: 1,
+        schemaVersion: 2,
         profile: ((presetEl?.value as ProfilePreset) ?? "custom"),
-        userWords: getTextareaValue("userWords"),
+        userWords: "", // Deprecated field
+        userWordsCustom: getTextareaValue("userWordsCustom"),
+        userWordsPreset: getTextareaValue("userWordsPreset"),
         protectBrands: getCheckboxValue("optProtectBrands", true),
         applySerbianQuotes: getCheckboxValue("optSerbianQuotes", true),
         preserveCodeBlocks: getCheckboxValue("optPreserveCodeBlocks", true),
         setProofingLanguage: getCheckboxValue("optSetProofingLanguage", true),
-        confirmWholeDoc: getCheckboxValue("optConfirmWholeDoc", true),
+        protectRomans: true, // Hardcoded
+        fixDoubleSpaces: getCheckboxValue("optFixDoubleSpaces", false),
+        formatDates: getCheckboxValue("optFormatDates", false),
+        confirmWholeDoc: true, // Hardcoded
         showStats: getCheckboxValue("optShowStats", false),
         direction: getDirectionFromUi(),
     };
