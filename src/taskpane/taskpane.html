@@ -5,33 +5,25 @@
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Serbian Transliterator</title>
-    <!-- Office.js (Obavezno) -->
+    <!-- Office.js -->
     <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
 
     <style>
-        /*
-           FLUENT UI DIZAJN (Microsoft Style)
-           Sa podrškom za Dark Mode
-        */
         :root {
-            /* Light Mode Default */
             --bg-color: #ffffff;
             --text-color: #323130;
             --neutral-lighter: #f3f2f1;
             --neutral-light: #edebe9;
             --border-color: #e1dfdd;
-            --primary-color: #0f6cbd; /* Word Blue */
+            --primary-color: #0f6cbd;
             --primary-hover: #115ea3;
             --primary-text: #ffffff;
             --input-bg: #ffffff;
             --input-border: #8a8886;
             --focus-border: #0f6cbd;
             --error-color: #a80000;
-            --success-bg: #dff6dd;
-            --success-text: #107c10;
         }
 
-        /* Dark Mode (High Contrast Support) */
         @media (prefers-color-scheme: dark) {
             :root {
                 --bg-color: #262626;
@@ -39,14 +31,12 @@
                 --neutral-lighter: #333333;
                 --neutral-light: #3b3a39;
                 --border-color: #605e5c;
-                --primary-color: #4ba0ff; /* Lighter blue for dark mode */
+                --primary-color: #4ba0ff;
                 --primary-hover: #2886de;
                 --primary-text: #000000;
                 --input-bg: #333333;
                 --input-border: #a19f9d;
                 --focus-border: #4ba0ff;
-                --success-bg: #0b2d0b;
-                --success-text: #54b054;
             }
         }
 
@@ -57,14 +47,13 @@
         body {
             margin: 0;
             padding: 0;
-            font-family: "Segoe UI", "Segoe UI Web (West European)", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif;
+            font-family: "Segoe UI", sans-serif;
             font-size: 14px;
             background-color: var(--bg-color);
             color: var(--text-color);
             line-height: 1.5;
         }
 
-        /* Header */
         header {
             padding: 20px 20px 10px 20px;
             background-color: var(--neutral-lighter);
@@ -81,11 +70,9 @@
         .subtitle {
             margin-top: 4px;
             font-size: 12px;
-            color: var(--text-color);
             opacity: 0.8;
         }
 
-        /* Main Content */
         main {
             padding: 20px;
             display: flex;
@@ -93,7 +80,6 @@
             gap: 20px;
         }
 
-        /* Sections */
         .section {
             display: flex;
             flex-direction: column;
@@ -104,13 +90,10 @@
             font-weight: 600;
             font-size: 12px;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--text-color);
             opacity: 0.7;
             margin-bottom: 5px;
         }
 
-        /* Form Elements */
         label {
             display: flex;
             align-items: center;
@@ -126,31 +109,21 @@
             cursor: pointer;
         }
 
-        select, textarea {
+        select {
             width: 100%;
             padding: 8px 12px;
             border: 1px solid var(--input-border);
-            border-radius: 4px; /* Fluent UI rounded corners */
+            border-radius: 4px;
             background-color: var(--input-bg);
             color: var(--text-color);
-            font-family: inherit;
-            font-size: 14px;
-            transition: all 0.2s ease;
         }
 
-            select:focus, textarea:focus {
+            select:focus {
                 outline: none;
                 border-color: var(--focus-border);
-                border-bottom-width: 2px; /* Microsoft style focus */
-                padding-bottom: 7px; /* Adjust for thicker border */
+                border-bottom-width: 2px;
+                padding-bottom: 7px;
             }
-
-        textarea {
-            min-height: 100px;
-            resize: vertical;
-            font-family: "Consolas", "Monaco", monospace; /* Za kod i reči */
-            font-size: 13px;
-        }
 
         .hint {
             font-size: 11px;
@@ -158,7 +131,61 @@
             margin-top: -5px;
         }
 
-        /* Buttons */
+        /* TAGS INPUT CSS */
+        .tags-container {
+            border: 1px solid var(--input-border);
+            background-color: var(--input-bg);
+            border-radius: 4px;
+            padding: 6px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            min-height: 80px;
+            cursor: text;
+        }
+
+            .tags-container:focus-within {
+                border-color: var(--focus-border);
+                border-bottom-width: 2px;
+                padding-bottom: 5px;
+            }
+
+        .tag {
+            background-color: var(--neutral-lighter);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2px 8px 2px 10px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            user-select: none;
+        }
+
+        .tag-remove {
+            cursor: pointer;
+            font-weight: bold;
+            color: var(--error-color);
+            font-size: 14px;
+            opacity: 0.6;
+        }
+
+            .tag-remove:hover {
+                opacity: 1;
+            }
+
+        .tag-input {
+            border: none;
+            outline: none;
+            flex: 1;
+            min-width: 120px;
+            background: transparent;
+            color: var(--text-color);
+            font-size: 14px;
+            padding: 4px 0;
+            font-family: inherit;
+        }
+
         .button-group {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -182,7 +209,6 @@
             transition: background 0.2s;
         }
 
-        /* Primary Button (Blue) */
         #runBtn {
             background-color: var(--primary-color);
             color: var(--primary-text);
@@ -197,7 +223,6 @@
                 cursor: not-allowed;
             }
 
-        /* Secondary Button (Standard) */
         button:not(#runBtn) {
             background-color: var(--bg-color);
             border: 1px solid var(--input-border);
@@ -208,7 +233,6 @@
                 background-color: var(--neutral-lighter);
             }
 
-        /* Danger Button */
         #resetBtn {
             margin-top: 10px;
             color: var(--error-color);
@@ -219,11 +243,6 @@
             text-decoration: underline;
         }
 
-            #resetBtn:hover {
-                background-color: var(--neutral-lighter);
-            }
-
-        /* Status & Stats */
         #msg {
             padding: 10px;
             border-radius: 4px;
@@ -252,7 +271,7 @@
             font-family: monospace;
         }
 
-        /* Modal (Custom Alert) */
+        /* Modal */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -295,9 +314,10 @@
         #modalInput {
             margin-bottom: 15px;
             display: none;
+            width: 100%;
+            min-height: 100px;
         }
 
-        /* Code highlight */
         code {
             background: var(--neutral-lighter);
             padding: 2px 4px;
@@ -307,104 +327,60 @@
     </style>
 </head>
 <body>
-
-    <!-- Header -->
     <header>
         <h1>Serbian Transliterator</h1>
         <div class="subtitle">Pametno preslovljavanje (Lat ↔ Ćir)</div>
     </header>
-
     <main>
-        <!-- Preset Section -->
         <div class="section">
             <div class="section-title">Podešavanja</div>
             <select id="profilePreset">
                 <option value="custom">Custom (Ručno)</option>
-                <option value="it">IT / Tehnologija (Štiti kod i brendove)</option>
+                <option value="it">IT / Tehnologija</option>
                 <option value="legal">Pravo / Administracija</option>
                 <option value="journalism">Novinarstvo / Mediji</option>
             </select>
         </div>
-
-        <!-- Direction Section -->
         <div class="section">
             <div class="section-title">Smer</div>
             <div style="display: flex; gap: 15px;">
-                <label>
-                    <input type="radio" id="dirAuto" name="direction" value="auto" checked />
-                    Auto
-                </label>
-                <label>
-                    <input type="radio" id="dirLatToCyr" name="direction" value="lat-to-cyr" />
-                    Lat → Ćir
-                </label>
-                <label>
-                    <input type="radio" id="dirCyrToLat" name="direction" value="cyr-to-lat" />
-                    Ćir → Lat
-                </label>
+                <label><input type="radio" id="dirAuto" name="direction" value="auto" checked /> Auto</label>
+                <label><input type="radio" id="dirLatToCyr" name="direction" value="lat-to-cyr" /> Lat → Ćir</label>
+                <label><input type="radio" id="dirCyrToLat" name="direction" value="cyr-to-lat" /> Ćir → Lat</label>
             </div>
         </div>
-
-        <!-- Options Section -->
         <div class="section">
             <div class="section-title">Opcije</div>
-            <label>
-                <input type="checkbox" id="optProtectBrands" checked />
-                Zaštiti brendove (Facebook, Windows...)
-            </label>
-            <label>
-                <input type="checkbox" id="optSerbianQuotes" checked />
-                Pametni navodnici („ … ”)
-            </label>
-            <label>
-                <input type="checkbox" id="optPreserveCodeBlocks" checked />
-                Zaštiti kod (<code>`inline`</code> i <code>```blok```</code>)
-            </label>
-            <label>
-                <input type="checkbox" id="optConfirmWholeDoc" checked />
-                Traži potvrdu za ceo dokument
-            </label>
-            <label>
-                <input type="checkbox" id="optShowStats" />
-                Prikaži detaljnu statistiku
-            </label>
+            <label><input type="checkbox" id="optProtectBrands" checked /> Zaštiti brendove (Facebook, Windows...)</label>
+            <label><input type="checkbox" id="optSerbianQuotes" checked /> Pametni navodnici („ … ”)</label>
+            <label><input type="checkbox" id="optPreserveCodeBlocks" checked /> Zaštiti kod (<code>`inline`</code> i <code>```blok```</code>)</label>
+            <label><input type="checkbox" id="optConfirmWholeDoc" checked /> Traži potvrdu za ceo dokument</label>
+            <label><input type="checkbox" id="optShowStats" /> Prikaži detaljnu statistiku</label>
         </div>
 
-        <!-- User Words Section -->
+        <!-- TAGS INPUT -->
         <div class="section">
             <div class="section-title">Moje zaštićene reči</div>
-            <textarea id="userWords" placeholder="Upiši reči koje se NEĆE menjati (jedna po redu).&#10;Primer:&#10;MojaFirma&#10;Excel"></textarea>
+            <div class="tags-container" id="tagsContainer">
+                <div class="tags-list" id="tagsList" style="display:contents;"></div>
+                <input type="text" id="tagInput" class="tag-input" placeholder="Upiši reč i pritisni Enter..." />
+            </div>
+            <textarea id="userWords" style="display:none;"></textarea>
             <div class="hint">Reči ovde ostaju u originalnom pismu.</div>
         </div>
 
-        <!-- Actions -->
         <div class="section">
-            <button id="runBtn" class="full-width">
-                <span>PRESLOVI</span>
-            </button>
-
+            <button id="runBtn" class="full-width"><span>PRESLOVI</span></button>
             <div class="button-group">
                 <button id="previewBtn">Preview</button>
                 <button id="exportBtn">Backup</button>
             </div>
-
-            <!-- Hidden Import Btn (triggered visually differently if needed, keeping simple for now) -->
             <button id="importBtn" style="display:none;">Import</button>
-
             <button id="resetBtn">Vrati na fabrička podešavanja</button>
         </div>
-
-        <!-- Status Area -->
         <div id="msg">Spreman za rad.</div>
-
-        <!-- Stats Area -->
-        <div id="statsBox">
-            <div id="statsTitle">Statistika</div>
-            <pre id="statsText"></pre>
-        </div>
+        <div id="statsBox"><div id="statsTitle">Statistika</div><pre id="statsText"></pre></div>
     </main>
-
-    <!-- Modal (Hidden by default) -->
     <div id="modalOverlay" class="modal-overlay" role="dialog" aria-modal="true">
         <div id="modal" class="modal">
             <h3 id="modalTitle">Potvrda</h3>
@@ -416,6 +392,5 @@
             </div>
         </div>
     </div>
-
 </body>
 </html>
