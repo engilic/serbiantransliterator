@@ -12,6 +12,7 @@ interface UiSettings {
     protectBrands: boolean;
     applySerbianQuotes: boolean;
     preserveCodeBlocks: boolean;
+    setProofingLanguage: boolean;
     confirmWholeDoc: boolean;
     showStats: boolean;
     direction: DirectionUi;
@@ -19,7 +20,6 @@ interface UiSettings {
 
 const SETTINGS_KEY = "serbiantransliterator.settings.v2";
 
-// DEFINICIJA FABRIČKIH PODEŠAVANJA
 const DEFAULT_SETTINGS: UiSettings = {
     schemaVersion: 1,
     profile: "custom",
@@ -27,6 +27,7 @@ const DEFAULT_SETTINGS: UiSettings = {
     protectBrands: true,
     applySerbianQuotes: true,
     preserveCodeBlocks: true,
+    setProofingLanguage: true,
     confirmWholeDoc: true,
     showStats: false,
     direction: "auto"
@@ -38,6 +39,7 @@ const PRESETS: Record<Exclude<ProfilePreset, "custom">, Omit<UiSettings, "profil
         protectBrands: true,
         applySerbianQuotes: false,
         preserveCodeBlocks: true,
+        setProofingLanguage: true,
         confirmWholeDoc: true,
         showStats: false,
         userWords: [
@@ -51,6 +53,7 @@ const PRESETS: Record<Exclude<ProfilePreset, "custom">, Omit<UiSettings, "profil
         protectBrands: true,
         applySerbianQuotes: true,
         preserveCodeBlocks: true,
+        setProofingLanguage: true,
         confirmWholeDoc: true,
         showStats: false,
         userWords: [
@@ -63,6 +66,7 @@ const PRESETS: Record<Exclude<ProfilePreset, "custom">, Omit<UiSettings, "profil
         protectBrands: true,
         applySerbianQuotes: true,
         preserveCodeBlocks: true,
+        setProofingLanguage: true,
         confirmWholeDoc: true,
         showStats: false,
         userWords: [
@@ -104,7 +108,6 @@ function initUi() {
         saveSettings();
     }
 
-    // Event Listeners
     const presetEl = document.getElementById("profilePreset") as HTMLSelectElement | null;
     if (presetEl) {
         presetEl.addEventListener("change", () => {
@@ -120,7 +123,7 @@ function initUi() {
         });
     }
 
-    const inputs = ["userWords", "optProtectBrands", "optSerbianQuotes", "optPreserveCodeBlocks", "optConfirmWholeDoc", "dirAuto", "dirLatToCyr", "dirCyrToLat"];
+    const inputs = ["userWords", "optProtectBrands", "optSerbianQuotes", "optPreserveCodeBlocks", "optSetProofingLanguage", "optConfirmWholeDoc", "dirAuto", "dirLatToCyr", "dirCyrToLat"];
     inputs.forEach(id => {
         document.getElementById(id)?.addEventListener(id === "userWords" ? "input" : "change", () => {
             saveSettings();
@@ -142,21 +145,18 @@ function initUi() {
     checkIfDirty();
 }
 
-/* ─────────────────────────────
-   State Checking (Dirty Check)
-   ───────────────────────────── */
 function checkIfDirty() {
     const current = readSettingsFromUi();
     const resetBtn = document.getElementById("resetBtn") as HTMLButtonElement;
     if (!resetBtn) return;
 
-    // Provera da li su podešavanja ista kao default (osim schemaVersion)
     const isClean =
         current.profile === DEFAULT_SETTINGS.profile &&
         current.userWords === DEFAULT_SETTINGS.userWords &&
         current.protectBrands === DEFAULT_SETTINGS.protectBrands &&
         current.applySerbianQuotes === DEFAULT_SETTINGS.applySerbianQuotes &&
         current.preserveCodeBlocks === DEFAULT_SETTINGS.preserveCodeBlocks &&
+        current.setProofingLanguage === DEFAULT_SETTINGS.setProofingLanguage &&
         current.confirmWholeDoc === DEFAULT_SETTINGS.confirmWholeDoc &&
         current.showStats === DEFAULT_SETTINGS.showStats &&
         current.direction === DEFAULT_SETTINGS.direction;
@@ -164,9 +164,6 @@ function checkIfDirty() {
     resetBtn.disabled = isClean;
 }
 
-/* ─────────────────────────────
-   TAGS INPUT LOGIC
-   ───────────────────────────── */
 function initTagsInput() {
     const container = document.getElementById("tagsContainer");
     const list = document.getElementById("tagsList");
@@ -252,10 +249,6 @@ function initTagsInput() {
     hiddenTextarea.addEventListener("input", renderTags);
 }
 
-/* ─────────────────────────────
-   Logic Helper Functions
-   ───────────────────────────── */
-
 function refreshStatsVisibilityAndContent() {
     const show = getCheckboxValue("optShowStats", false);
     const box = document.getElementById("statsBox") as HTMLDivElement | null;
@@ -295,6 +288,7 @@ function applyPresetSmart(profile: Exclude<ProfilePreset, "custom">) {
     setCheckboxValue("optProtectBrands", preset.protectBrands);
     setCheckboxValue("optSerbianQuotes", preset.applySerbianQuotes);
     setCheckboxValue("optPreserveCodeBlocks", preset.preserveCodeBlocks);
+    setCheckboxValue("optSetProofingLanguage", preset.setProofingLanguage);
     setCheckboxValue("optConfirmWholeDoc", preset.confirmWholeDoc);
     setCheckboxValue("optShowStats", preset.showStats);
     setDirectionUi(preset.direction);
@@ -333,11 +327,7 @@ function mergeWordLists(existingText: string, incomingText: string): { mergedTex
     return { mergedText: existingLines.concat(additions).join("\n"), addedCount: added };
 }
 
-/* ─────────────────────────────
-   Modal & Dialogs
-   ───────────────────────────── */
-
-interface ModalOpts {
+function showModal(opts: {
     title: string;
     message: string;
     mode: ModalMode;
@@ -347,9 +337,7 @@ interface ModalOpts {
     readOnly?: boolean;
     isHtml?: boolean;
     className?: string;
-}
-
-function showModal(opts: ModalOpts): Promise<{ ok: boolean; value?: string }> {
+}): Promise<{ ok: boolean; value?: string }> {
     if (modalOpen) return Promise.resolve({ ok: false });
     modalOpen = true;
 
@@ -497,6 +485,9 @@ async function runSmart() {
             }
 
             range.insertOoxml(result.xml, Word.InsertLocation.replace);
+
+            // UKLONJENA JE LOGIKA ZA RANGE.FONT.LOCALEID JER TO SADA RADI convertOoxml
+
             await context.sync();
 
             setStatus(`Uspeh: ${result.type}\n(Undo sa Ctrl+Z)`);
@@ -546,7 +537,6 @@ async function runPreview() {
 
             const newText = extractTextFromOoxml(result.xml);
 
-            // DIFF: Single pane with Green highlights
             const diffHtml = generateHighlightHtml(originalText, newText);
 
             showDiffModal("Preview Rezultata", diffHtml);
@@ -559,10 +549,6 @@ async function runPreview() {
     }
 }
 
-/* ─────────────────────────────
-   Helpers & Diff
-   ───────────────────────────── */
-
 function generateHighlightHtml(oldText: string, newText: string): string {
     if (oldText === newText) {
         return `<div class="preview-single-pane" style="text-align:center;">Nema izmena u tekstu.</div>`;
@@ -573,6 +559,7 @@ function generateHighlightHtml(oldText: string, newText: string): string {
     const newParts = newText.split(splitRegex).filter(Boolean);
 
     let html = "";
+
     const maxLen = Math.max(oldParts.length, newParts.length);
 
     for (let k = 0; k < maxLen; k++) {
@@ -582,7 +569,6 @@ function generateHighlightHtml(oldText: string, newText: string): string {
         if (o === n) {
             html += escapeHtml(n);
         } else {
-            // Reč se promenila -> Markiraj zelenim
             html += `<span class="diff-changed">${escapeHtml(n)}</span>`;
         }
     }
@@ -615,7 +601,6 @@ function extractTextFromOoxml(ooxml: string): string {
     } catch { return ""; }
 }
 
-// NOVO: Export as Download
 async function exportSettingsAsDownload() {
     const settings = readSettingsFromUi();
     const json = JSON.stringify(settings, null, 2);
@@ -648,6 +633,7 @@ async function importSettings() {
             protectBrands: parsed.protectBrands ?? true,
             applySerbianQuotes: parsed.applySerbianQuotes ?? true,
             preserveCodeBlocks: parsed.preserveCodeBlocks ?? true,
+            setProofingLanguage: parsed.setProofingLanguage ?? true,
             confirmWholeDoc: parsed.confirmWholeDoc ?? true,
             showStats: parsed.showStats ?? false,
             direction: parsed.direction || "auto"
@@ -669,16 +655,13 @@ function resetSettings() {
     checkIfDirty();
 }
 
-/* ─────────────────────────────
-   UI read/write helpers
-   ───────────────────────────── */
-
 function readOptionsFromUi() {
     return {
         userProtected: getUserProtectedWords(),
         protectBrands: getCheckboxValue("optProtectBrands", true),
         applySerbianQuotes: getCheckboxValue("optSerbianQuotes", true),
         preserveCodeBlocks: getCheckboxValue("optPreserveCodeBlocks", true),
+        setProofingLanguage: getCheckboxValue("optSetProofingLanguage", true),
         direction: getDirectionFromUi(),
     };
 }
@@ -739,10 +722,6 @@ function getDirectionFromUi(): DirectionUi {
     return "auto";
 }
 
-/* ─────────────────────────────
-   Persistence
-   ───────────────────────────── */
-
 function loadSettings(): UiSettings | null {
     try {
         if (typeof localStorage === "undefined") return null;
@@ -762,6 +741,7 @@ function applySettingsToUi(settings: UiSettings) {
     setCheckboxValue("optProtectBrands", settings.protectBrands);
     setCheckboxValue("optSerbianQuotes", settings.applySerbianQuotes);
     setCheckboxValue("optPreserveCodeBlocks", settings.preserveCodeBlocks);
+    setCheckboxValue("optSetProofingLanguage", settings.setProofingLanguage ?? true);
     setCheckboxValue("optConfirmWholeDoc", settings.confirmWholeDoc);
     setCheckboxValue("optShowStats", settings.showStats);
     setDirectionUi(settings.direction || "auto");
@@ -779,6 +759,7 @@ function readSettingsFromUi(): UiSettings {
         protectBrands: getCheckboxValue("optProtectBrands", true),
         applySerbianQuotes: getCheckboxValue("optSerbianQuotes", true),
         preserveCodeBlocks: getCheckboxValue("optPreserveCodeBlocks", true),
+        setProofingLanguage: getCheckboxValue("optSetProofingLanguage", true),
         confirmWholeDoc: getCheckboxValue("optConfirmWholeDoc", true),
         showStats: getCheckboxValue("optShowStats", false),
         direction: getDirectionFromUi(),

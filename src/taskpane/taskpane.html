@@ -403,10 +403,9 @@
             overflow-y: auto;
         }
 
-        /* Zelena boja za reči koje su se promenile */
         .diff-changed {
-            background-color: #d1e7dd; /* Svetlo zelena */
-            color: #0f5132; /* Tamno zelena slova */
+            background-color: #d1e7dd;
+            color: #0f5132;
             font-weight: 600;
             border-radius: 3px;
             padding: 0 2px;
@@ -452,6 +451,10 @@
             <label><input type="checkbox" id="optProtectBrands" checked /> Zaštiti brendove (Facebook, Windows...)</label>
             <label><input type="checkbox" id="optSerbianQuotes" checked /> Pametni navodnici („ … ”)</label>
             <label><input type="checkbox" id="optPreserveCodeBlocks" checked /> Zaštiti kod (<code>`inline`</code> i <code>```blok```</code>)</label>
+
+            <!-- NOVO: Checkbox za jezik -->
+            <label><input type="checkbox" id="optSetProofingLanguage" checked /> Postavi jezik provere (sr-Cyrl / sr-Latn)</label>
+
             <label><input type="checkbox" id="optConfirmWholeDoc" checked /> Traži potvrdu za ceo dokument</label>
             <label><input type="checkbox" id="optShowStats" /> Prikaži detaljnu statistiku</label>
         </div>
@@ -477,7 +480,6 @@
                 <button id="exportBtn">Izvezi podešavanja</button>
             </div>
             <button id="importBtn" style="display:none;">Import</button>
-            <!-- RESET DUGME (Onemogućeno po defaultu) -->
             <button id="resetBtn" disabled>Vrati na fabrička podešavanja</button>
         </div>
         <div id="msg">Spreman za rad.</div>
