@@ -86,7 +86,6 @@
             gap: 10px;
         }
 
-        /* HEADER SEKCIJE SA DUGMETOM */
         .section-header {
             display: flex;
             justify-content: space-between;
@@ -313,16 +312,16 @@
             justify-content: center;
             z-index: 999;
         }
-
+        /* Povećana širina modala za Split View */
         .modal {
             background: var(--bg-color);
             padding: 20px;
             border-radius: 8px;
-            width: 90%;
-            max-width: 500px;
+            width: 95%;
+            max-width: 800px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.2);
             border: 1px solid var(--border-color);
-            max-height: 80vh;
+            max-height: 90vh;
             display: flex;
             flex-direction: column;
         }
@@ -335,6 +334,7 @@
         .modal-content {
             overflow-y: auto;
             margin-bottom: 20px;
+            width: 100%;
         }
 
         .modal p {
@@ -363,40 +363,54 @@
             font-family: monospace;
         }
 
-        /* DIFF STYLES */
-        .diff-container {
+        /* SPLIT VIEW DIFF STYLES */
+        .diff-wrapper {
+            display: flex;
+            gap: 10px;
+            height: 350px;
+            border: 1px solid var(--border-color);
+            background-color: var(--neutral-lighter);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .diff-pane {
+            flex: 1;
+            padding: 10px;
+            overflow-y: auto;
             font-family: 'Consolas', monospace;
             font-size: 13px;
             line-height: 1.6;
             white-space: pre-wrap;
-            background: var(--neutral-lighter);
-            padding: 10px;
-            border-radius: 4px;
-            border: 1px solid var(--border-color);
+            background-color: var(--bg-color);
+            word-break: break-word;
         }
 
-        .diff-del {
-            background-color: #ffcccc;
-            color: #cc0000;
-            text-decoration: line-through;
-            opacity: 0.8;
-        }
+            .diff-pane h4 {
+                margin: 0 0 10px 0;
+                font-size: 11px;
+                text-transform: uppercase;
+                color: var(--text-color);
+                opacity: 0.6;
+                position: sticky;
+                top: 0;
+                background: var(--bg-color);
+                border-bottom: 1px solid var(--border-color);
+                padding-bottom: 5px;
+                z-index: 10;
+            }
 
-        .diff-ins {
-            background-color: #ccffcc;
-            color: #006600;
-            font-weight: bold;
+        .diff-changed {
+            background-color: #cceeff;
+            color: #005a9e;
+            font-weight: 600;
+            border-radius: 2px;
         }
 
         @media (prefers-color-scheme: dark) {
-            .diff-del {
-                background-color: #5c0000;
-                color: #ff9999;
-            }
-
-            .diff-ins {
-                background-color: #004d00;
-                color: #99ff99;
+            .diff-changed {
+                background-color: #004578;
+                color: #ffffff;
             }
         }
     </style>

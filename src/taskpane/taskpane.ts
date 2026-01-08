@@ -87,7 +87,6 @@ function initUi() {
     if (settings) {
         applySettingsToUi(settings);
     } else {
-        // Default settings
         setPresetSelectValue("custom");
         setTextareaValue("userWords", "");
         setCheckboxValue("optProtectBrands", true);
@@ -156,7 +155,6 @@ function initTagsInput() {
         list!.innerHTML = "";
         const words = hiddenTextarea.value.split("\n").filter(w => w.trim() !== "");
 
-        // Enable/Disable clear button
         if (clearBtn) {
             clearBtn.disabled = words.length === 0;
         }
@@ -175,7 +173,6 @@ function initTagsInput() {
         hiddenTextarea.dispatchEvent(event);
     }
 
-    // Clear all button
     if (clearBtn) {
         clearBtn.addEventListener("click", () => {
             confirmInPanel("Da li sigurno želiš da obrišeš sve zaštićene reči?").then((ok) => {
@@ -325,7 +322,7 @@ function showModal(opts: {
 
     const overlay = document.getElementById("modalOverlay") as HTMLDivElement | null;
     const titleEl = document.getElementById("modalTitle") as HTMLDivElement | null;
-    const textEl = document.getElementById("modalText") as HTMLDivElement | null; // Note: using innerHTML in showDiffModal
+    const textEl = document.getElementById("modalText") as HTMLDivElement | null;
     const inputEl = document.getElementById("modalInput") as HTMLTextAreaElement | null;
     const okBtn = document.getElementById("modalOk") as HTMLButtonElement | null;
     const cancelBtn = document.getElementById("modalCancel") as HTMLButtonElement | null;
@@ -337,11 +334,11 @@ function showModal(opts: {
 
     titleEl.textContent = opts.title;
 
-    // Clean start
     textEl.innerHTML = "";
     textEl.textContent = "";
 
     if (opts.message.startsWith("<div")) {
+        // Inject HTML for diff
         textEl.innerHTML = opts.message;
     } else {
         textEl.textContent = opts.message;
@@ -510,10 +507,13 @@ async function runPreview() {
 
             const newText = extractTextFromOoxml(result.xml);
 
-            // DIFF
-            const diffHtml = generateDiffHtml(originalText, newText);
+            // DIFF SIDE-BY-SIDE
+            const diffHtml = generateSideBySideHtml(originalText, newText);
 
-            showDiffModal("Preview Izmena", diffHtml);
+            showDiffModal("Preview Izmena (Uporedni prikaz)", diffHtml);
+
+            // Sync scroll with delay
+            setTimeout(() => syncScroll(), 300);
 
             setStatus(`Preview završen. (${result.type})`);
         });
@@ -527,15 +527,18 @@ async function runPreview() {
    Helpers & Diff
    ───────────────────────────── */
 
-function generateDiffHtml(oldText: string, newText: string): string {
-    if (oldText === newText) return "<div class='diff-container'>Nema izmena.</div>";
+function generateSideBySideHtml(oldText: string, newText: string): string {
+    if (oldText === newText) {
+        return `<div style="padding:10px; text-align:center;">Nema izmena u tekstu.</div>`;
+    }
 
-    let html = "";
-    // Regex: split by non-word chars but keep delimiters (preserving spaces/punctuation)
+    // Split regex keeps delimiters
     const splitRegex = /([^\s\w\u0400-\u04FF\u0100-\u017F]+|\s+)/;
-
     const oldParts = oldText.split(splitRegex).filter(Boolean);
     const newParts = newText.split(splitRegex).filter(Boolean);
+
+    let leftHtml = "";
+    let rightHtml = "";
 
     const maxLen = Math.max(oldParts.length, newParts.length);
 
@@ -544,14 +547,41 @@ function generateDiffHtml(oldText: string, newText: string): string {
         const n = newParts[k] || "";
 
         if (o === n) {
-            html += escapeHtml(n);
+            const safe = escapeHtml(n);
+            leftHtml += safe;
+            rightHtml += safe;
         } else {
-            // Difference found
-            html += `<span class="diff-del">${escapeHtml(o)}</span><span class="diff-ins">${escapeHtml(n)}</span>`;
+            // Changed: highlight ONLY right side
+            leftHtml += `<span style="opacity:0.6">${escapeHtml(o)}</span>`;
+            rightHtml += `<span class="diff-changed">${escapeHtml(n)}</span>`;
         }
     }
 
-    return `<div class="diff-container">${html}</div>`;
+    return `
+    <div class="diff-wrapper">
+        <div class="diff-pane" id="diffLeft"><h4>Original</h4>${leftHtml}</div>
+        <div class="diff-pane" id="diffRight"><h4>Rezultat</h4>${rightHtml}</div>
+    </div>
+    `;
+}
+
+function syncScroll() {
+    const left = document.getElementById("diffLeft");
+    const right = document.getElementById("diffRight");
+    if (!left || !right) return;
+
+    const onScroll = (e: Event) => {
+        const target = e.target as HTMLElement;
+        const other = target === left ? right : left;
+        // remove listener temporarily to avoid loop
+        other.removeEventListener("scroll", onScroll);
+        other.scrollTop = target.scrollTop;
+        // re-attach
+        setTimeout(() => other.addEventListener("scroll", onScroll), 10);
+    };
+
+    left.addEventListener("scroll", onScroll);
+    right.addEventListener("scroll", onScroll);
 }
 
 function escapeHtml(text: string): string {
