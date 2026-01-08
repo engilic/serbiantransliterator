@@ -484,11 +484,30 @@ async function runSmart() {
                 return;
             }
 
+            // 1. Ubacujemo tekst
             range.insertOoxml(result.xml, Word.InsertLocation.replace);
-
-            // UKLONJENA JE LOGIKA ZA RANGE.FONT.LOCALEID JER TO SADA RADI convertOoxml
-
+            // 2. SINHRONIZUJEMO ODMAH (Da bi Word znao da je tekst promenjen)
             await context.sync();
+
+            // 3. Menjamo jezik (Samo ako je opcija uključena)
+            if (getCheckboxValue("optSetProofingLanguage", true)) {
+                try {
+                    // Ponovo selektujemo range jer se možda izgubio nakon replace-a
+                    // (Mada 'range' objekat u novijim Office API-jima prati promenu,
+                    // za svaki slučaj je bolje ovako ako puca).
+                    range.select();
+                    // Koristimo range direktno (ako je validan)
+
+                    if (result.stats.direction === "lat-to-cyr") {
+                        range.font.localeId = "sr-Cyrl-RS";
+                    } else {
+                        range.font.localeId = "sr-Latn-RS";
+                    }
+                    await context.sync();
+                } catch (e) {
+                    console.warn("Nije uspelo postavljanje jezika, ali tekst je preslovljen.", e);
+                }
+            }
 
             setStatus(`Uspeh: ${result.type}\n(Undo sa Ctrl+Z)`);
 
