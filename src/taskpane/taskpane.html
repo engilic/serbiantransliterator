@@ -262,7 +262,6 @@
                 background-color: var(--neutral-lighter);
             }
 
-        /* Reset button - special disabled style */
         #resetBtn {
             margin-top: 10px;
             color: var(--error-color);
@@ -389,14 +388,14 @@
             font-family: monospace;
         }
 
-        /* PREVIEW STYLES (Clean Single Pane) */
+        /* PREVIEW STYLES (Single Pane) */
         .preview-single-pane {
             font-family: 'Consolas', monospace;
             font-size: 13px;
             line-height: 1.6;
             white-space: pre-wrap;
             word-break: break-word;
-            padding: 10px;
+            padding: 15px;
             background-color: var(--neutral-lighter);
             border: 1px solid var(--border-color);
             border-radius: 4px;
@@ -404,18 +403,19 @@
             overflow-y: auto;
         }
 
+        /* Zelena boja za reči koje su se promenile */
         .diff-changed {
-            background-color: #cceeff;
-            color: #005a9e;
+            background-color: #d1e7dd; /* Svetlo zelena */
+            color: #0f5132; /* Tamno zelena slova */
             font-weight: 600;
-            border-bottom: 2px solid #005a9e;
+            border-radius: 3px;
+            padding: 0 2px;
         }
 
         @media (prefers-color-scheme: dark) {
             .diff-changed {
-                background-color: #004578;
-                color: #ffffff;
-                border-bottom: 2px solid #4ba0ff;
+                background-color: #054b28;
+                color: #84e1bc;
             }
 
             .preview-single-pane {
@@ -477,7 +477,7 @@
                 <button id="exportBtn">Izvezi podešavanja</button>
             </div>
             <button id="importBtn" style="display:none;">Import</button>
-            <!-- RESET DUGME (Onemogućeno po defaultu dok se nešto ne promeni) -->
+            <!-- RESET DUGME (Onemogućeno po defaultu) -->
             <button id="resetBtn" disabled>Vrati na fabrička podešavanja</button>
         </div>
         <div id="msg">Spreman za rad.</div>

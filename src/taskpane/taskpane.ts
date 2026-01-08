@@ -19,7 +19,7 @@ interface UiSettings {
 
 const SETTINGS_KEY = "serbiantransliterator.settings.v2";
 
-// DEFINICIJA FABRIČKIH PODEŠAVANJA (Za poređenje)
+// DEFINICIJA FABRIČKIH PODEŠAVANJA
 const DEFAULT_SETTINGS: UiSettings = {
     schemaVersion: 1,
     profile: "custom",
@@ -92,7 +92,7 @@ function initUi() {
 
     if (runBtn) runBtn.onclick = () => runWithUiLock(runSmart);
     if (previewBtn) previewBtn.onclick = () => runWithUiLock(runPreview);
-    if (exportBtn) exportBtn.onclick = () => runWithUiLock(exportSettingsAsDownload); // <--- Promenjeno na Download
+    if (exportBtn) exportBtn.onclick = () => runWithUiLock(exportSettingsAsDownload);
     if (importBtn) importBtn.onclick = () => runWithUiLock(importSettings);
     if (resetBtn) resetBtn.onclick = () => resetSettings();
 
@@ -104,7 +104,7 @@ function initUi() {
         saveSettings();
     }
 
-    // Event Listeners - sada svi pozivaju i checkIfDirty()
+    // Event Listeners
     const presetEl = document.getElementById("profilePreset") as HTMLSelectElement | null;
     if (presetEl) {
         presetEl.addEventListener("change", () => {
@@ -139,7 +139,7 @@ function initUi() {
 
     initTagsInput();
     refreshStatsVisibilityAndContent();
-    checkIfDirty(); // Inicijalna provera
+    checkIfDirty();
 }
 
 /* ─────────────────────────────
@@ -150,8 +150,7 @@ function checkIfDirty() {
     const resetBtn = document.getElementById("resetBtn") as HTMLButtonElement;
     if (!resetBtn) return;
 
-    // Poredimo trenutna podešavanja sa DEFAULT_SETTINGS
-    // (Ignorišemo schemaVersion)
+    // Provera da li su podešavanja ista kao default (osim schemaVersion)
     const isClean =
         current.profile === DEFAULT_SETTINGS.profile &&
         current.userWords === DEFAULT_SETTINGS.userWords &&
@@ -162,7 +161,6 @@ function checkIfDirty() {
         current.showStats === DEFAULT_SETTINGS.showStats &&
         current.direction === DEFAULT_SETTINGS.direction;
 
-    // Ako je clean (isto kao default), dugme je disabled (grayed out)
     resetBtn.disabled = isClean;
 }
 
@@ -548,7 +546,7 @@ async function runPreview() {
 
             const newText = extractTextFromOoxml(result.xml);
 
-            // DIFF: Single pane
+            // DIFF: Single pane with Green highlights
             const diffHtml = generateHighlightHtml(originalText, newText);
 
             showDiffModal("Preview Rezultata", diffHtml);
@@ -575,7 +573,6 @@ function generateHighlightHtml(oldText: string, newText: string): string {
     const newParts = newText.split(splitRegex).filter(Boolean);
 
     let html = "";
-
     const maxLen = Math.max(oldParts.length, newParts.length);
 
     for (let k = 0; k < maxLen; k++) {
@@ -585,7 +582,7 @@ function generateHighlightHtml(oldText: string, newText: string): string {
         if (o === n) {
             html += escapeHtml(n);
         } else {
-            // Changed word
+            // Reč se promenila -> Markiraj zelenim
             html += `<span class="diff-changed">${escapeHtml(n)}</span>`;
         }
     }
@@ -618,7 +615,7 @@ function extractTextFromOoxml(ooxml: string): string {
     } catch { return ""; }
 }
 
-// NOVO: Export as File Download
+// NOVO: Export as Download
 async function exportSettingsAsDownload() {
     const settings = readSettingsFromUi();
     const json = JSON.stringify(settings, null, 2);
@@ -635,7 +632,6 @@ async function exportSettingsAsDownload() {
         URL.revokeObjectURL(url);
         setStatus("Fajl sa podešavanjima je preuzet.");
     } catch (e) {
-        // Fallback for older environments
         await showTextDialog("Izvezi podešavanja", "Kopiraj ručno:", json, true);
     }
 }
@@ -658,7 +654,7 @@ async function importSettings() {
         };
         applySettingsToUi(normalized);
         saveSettings();
-        checkIfDirty(); // Reset button state
+        checkIfDirty();
         setStatus("Import uspešan.");
     } catch {
         setStatus("Greška pri importu JSON-a.");
@@ -667,10 +663,10 @@ async function importSettings() {
 
 function resetSettings() {
     try { localStorage.removeItem(SETTINGS_KEY); } catch { }
-    applySettingsToUi(DEFAULT_SETTINGS); // Use global const
+    applySettingsToUi(DEFAULT_SETTINGS);
     saveSettings();
     setStatus("Resetovano.");
-    checkIfDirty(); // Reset button state
+    checkIfDirty();
 }
 
 /* ─────────────────────────────
