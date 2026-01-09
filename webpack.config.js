@@ -2,6 +2,7 @@
 const devCerts = require("office-addin-dev-certs");
 const CopyWebpackPlugin = require("copy-webpack-plugin");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
+const TerserPlugin = require("terser-webpack-plugin");
 
 async function getHttpsOptions() {
     const httpsOptions = await devCerts.getHttpsServerOptions();
@@ -10,8 +11,9 @@ async function getHttpsOptions() {
 
 module.exports = async (env, options) => {
     const dev = options.mode === "development";
+    
     const config = {
-        devtool: "source-map",
+        devtool: dev ? "source-map" : false,
         entry: {
             polyfill: ["core-js/stable", "regenerator-runtime/runtime"],
             taskpane: ["./src/taskpane/taskpane.ts", "./src/taskpane/taskpane.html"],
@@ -20,8 +22,16 @@ module.exports = async (env, options) => {
         resolve: { extensions: [".ts", ".html", ".js"] },
         module: {
             rules: [
-                { test: /\.ts$/, use: "babel-loader", exclude: /node_modules/ },
-                { test: /\.html$/, use: "html-loader", exclude: /node_modules/ },
+                { 
+                    test: /\.ts$/, 
+                    use: "babel-loader", 
+                    exclude: /node_modules/ 
+                },
+                { 
+                    test: /\.html$/, 
+                    use: "html-loader", 
+                    exclude: /node_modules/ 
+                },
                 {
                     test: /\.(png|jpg|gif|ico)$/,
                     type: "asset/resource",
@@ -29,16 +39,55 @@ module.exports = async (env, options) => {
                 },
             ],
         },
+        optimization: {
+            minimize: !dev,
+            minimizer: [
+                new TerserPlugin({
+                    terserOptions: {
+                        compress: {
+                            drop_console: !dev, // Uklanja console.log u production
+                        },
+                        mangle: {
+                            toplevel: true, // Bolja minifikacija
+                        },
+                        output: {
+                            comments: false, // Uklanja komentare
+                        },
+                    },
+                    extractComments: false,
+                }),
+            ],
+            splitChunks: {
+                chunks: "all",
+                cacheGroups: {
+                    vendors: {
+                        test: /[\\/]node_modules[\\/]/,
+                        name: "vendors",
+                        priority: 10,
+                        enforce: true,
+                    },
+                },
+            },
+        },
         plugins: [
             new HtmlWebpackPlugin({
                 filename: "taskpane.html",
                 template: "./src/taskpane/taskpane.html",
                 chunks: ["polyfill", "taskpane"],
+                minify: !dev ? {
+                    collapseWhitespace: true,
+                    removeComments: true,
+                    removeRedundantAttributes: true,
+                } : false,
             }),
             new HtmlWebpackPlugin({
                 filename: "commands.html",
                 template: "./src/commands/commands.html",
                 chunks: ["polyfill", "commands"],
+                minify: !dev ? {
+                    collapseWhitespace: true,
+                    removeComments: true,
+                } : false,
             }),
             new CopyWebpackPlugin({
                 patterns: [
