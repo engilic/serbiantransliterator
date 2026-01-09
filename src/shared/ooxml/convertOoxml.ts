@@ -1,5 +1,3 @@
-// src/shared/ooxml/convertOoxml.ts
-
 import { convertPlainText, detectScript, Direction, CoreOptions } from "../../core/textCore";
 import { ALWAYS_LATIN_PHRASES } from "../../core/rules";
 
@@ -57,7 +55,6 @@ function countMatches(text: string, re: RegExp): number {
     return c;
 }
 
-// Funkcija za ASCII konverziju (čćšđž -> ccsdz)
 function toAscii(text: string): string {
     const map: Record<string, string> = {
         'č': 'c', 'ć': 'c', 'š': 's', 'đ': 'dj', 'ž': 'z',
@@ -66,7 +63,6 @@ function toAscii(text: string): string {
     return text.replace(/[čćšđžČĆŠĐŽ]/g, match => map[match]);
 }
 
-// --- RIMSKE BROJKE ---
 const ROMAN_REGEX_STRICT = /\b(?!I\b)(?=[MDCLXVI]+\b)M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})\b/g;
 
 const ROMAN_I_PREFIXES = [
@@ -83,50 +79,25 @@ const ROMAN_I_PREFIXES = [
 
 const ROMAN_I_REGEX = new RegExp(`\\b(${ROMAN_I_PREFIXES.join("|")})\\s+I\\b`, "g");
 
-// Helpers for Corrections
+// --- REŠENJE ZA RAZMAKE (REGEX /g) ---
 function removeDoubleSpaces(text: string): string {
-    return text.replace(/ {2,}/g, " ");
+    // 1. Zameni sve "čudne" razmake (tab, non-breaking, itd.) u običan razmak ' '
+    let out = text.replace(/[\t\u00A0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]/g, " ");
+
+    // 2. Zameni svako pojavljivanje 2 ili više razmaka ({2,}) jednim razmakom
+    // 'g' flag je obavezan da bi zamenio SVE pojave, a ne samo prvu.
+    return out.replace(/ {2,}/g, " ");
 }
 
 function formatSerbianDates(text: string): string {
-    // 1. Pretvaramo američki (MM/DD/YYYY) u naš (DD.MM.YYYY.)
-    // Hvata: 10/21/2023 -> 21.10.2023.
     let out = text.replace(/\b(\d{1,2})\/(\d{1,2})\/(\d{4})\b/g, "$2.$1.$3.");
-
-    // 2. Standardizacija na format BEZ razmaka (21.10.2023.)
-    // Hvata: 21. 10. 2023. ili 21.10.2023 ili 21/10/2023
     out = out.replace(/\b(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})\.?/g, "$1.$2.$3.");
-
-    // 3. Isto i za kratke datume (21.10.) - ako iza nema broja
     out = out.replace(/\b(\d{1,2})\.\s*(\d{1,2})\.(?!\d)/g, "$1.$2.");
-
     return out;
 }
 
-function ensureRunLanguage(textNode: Element, langId: string) {
-    const runNode = textNode.parentElement;
-    if (!runNode || runNode.localName !== "r") return;
-
-    let rPr = runNode.getElementsByTagNameNS(XML_NS, "rPr")[0];
-    if (!rPr) {
-        rPr = textNode.ownerDocument.createElementNS(XML_NS, "w:rPr");
-        if (runNode.firstChild) {
-            runNode.insertBefore(rPr, runNode.firstChild);
-        } else {
-            runNode.appendChild(rPr);
-        }
-    }
-
-    let langNode = rPr.getElementsByTagNameNS(XML_NS, "lang")[0];
-    if (!langNode) {
-        langNode = textNode.ownerDocument.createElementNS(XML_NS, "w:lang");
-        rPr.appendChild(langNode);
-    }
-
-    langNode.setAttributeNS(XML_NS, "w:val", langId);
-    langNode.setAttributeNS(XML_NS, "w:eastAsia", langId);
-    langNode.setAttributeNS(XML_NS, "w:bidi", langId);
-}
+// OVO SMO ISKLJUČILI ZA SADA
+// function ensureRunLanguage(textNode: Element, langId: string) { ... }
 
 export function convertOoxml(ooxml: string, options?: OoxmlOptions): { xml: string; type: string; stats: ConvertStats } {
     const t0 = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
@@ -270,12 +241,8 @@ export function convertOoxml(ooxml: string, options?: OoxmlOptions): { xml: stri
             }
         }
 
-        if (shouldSetLang && direction !== "to-ascii") {
-            const targetLang = direction === "lat-to-cyr" ? "sr-Cyrl-RS" : "sr-Latn-RS";
-            if (finalText !== original) {
-                ensureRunLanguage(node, targetLang);
-            }
-        }
+        // DEAKTIVIRANO: Jezik
+        // if (shouldSetLang && direction !== "to-ascii") { ... }
 
         if (needsXmlSpacePreserve(finalText)) {
             node.setAttributeNS(XML_NS, "xml:space", "preserve");
@@ -293,7 +260,10 @@ export function convertOoxml(ooxml: string, options?: OoxmlOptions): { xml: stri
         charsAfter += (node.textContent ?? "").length;
     }
 
-    const xml = new XMLSerializer().serializeToString(doc);
+    let xml = new XMLSerializer().serializeToString(doc);
+
+    // CLEANUP XMLNS (Standardno čišćenje)
+    xml = xml.replace(/ xmlns=""/g, "");
 
     const t1 = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
     const stats: ConvertStats = {

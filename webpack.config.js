@@ -9,9 +9,7 @@ async function getHttpsOptions() {
 }
 
 module.exports = async (env, options) => {
-    // Proveravamo da li je development mod (lokalno) ili production (Cloudflare)
     const dev = options.mode === "development";
-
     const config = {
         devtool: "source-map",
         entry: {
@@ -45,18 +43,10 @@ module.exports = async (env, options) => {
             new CopyWebpackPlugin({
                 patterns: [
                     { from: "assets/*", to: "assets/[name][ext]" },
-
                     { from: "manifest*.xml", to: "[name][ext]" },
-
                     { from: "src/static/support.html", to: "support.html", noErrorOnMissing: true },
                     { from: "src/static/privacy.html", to: "privacy.html", noErrorOnMissing: true },
-
-                    {
-                        from: "src/static/_headers",
-                        to: "_headers",
-                        toType: "file",
-                        noErrorOnMissing: true
-                    },
+                    { from: "src/static/_headers", to: "_headers", toType: "file", noErrorOnMissing: true },
                 ],
             }),
         ],
@@ -64,7 +54,6 @@ module.exports = async (env, options) => {
             headers: { "Access-Control-Allow-Origin": "*" },
             server: {
                 type: "https",
-                // KLJUČNO: Ako je 'dev', traži sertifikate. Ako nije (Cloudflare), ne traži ništa.
                 options: dev ? await getHttpsOptions() : {}
             },
             port: 3000,
@@ -73,6 +62,5 @@ module.exports = async (env, options) => {
             watchFiles: ["src/**/*"],
         },
     };
-
     return config;
 };

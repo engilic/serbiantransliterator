@@ -1,46 +1,40 @@
 {
-  "name": "serbian-transliterator",
+    "name": "serbian-transliterator",
     "version": "1.0.0",
-  "license": "MIT",
-  "scripts": {
-    "build": "webpack --mode production",
-    "dev": "concurrently \"npm:dev-server\" \"npm:sideload:word\"",
-    "dev-server": "webpack serve --mode development",
-    "sideload:word": "office-addin-dev-settings sideload manifest.xml --app word",
-    "start": "office-addin-debugging start manifest.xml",
-    "stop": "office-addin-debugging stop manifest.xml",
-    "validate": "office-addin-manifest validate manifest.xml",
-    "test": "vitest",
-    "test:watch": "vitest --watch",
-    "validate:prod": "npx office-addin-manifest validate manifest.prod.xml",
-    "sideload:word:prod": "npx office-addin-dev-settings sideload manifest.prod.xml --app word",
-    "release:prod": "npm test && npm run build && npm run validate:prod",
-    "release:prod:sideload": "npm run release:prod && npm run sideload:word:prod"
-  },
-  "dependencies": {
-    "core-js": "^3.36.0",
-    "regenerator-runtime": "^0.14.1"
-  },
-  "devDependencies": {
-    "@babel/core": "^7.24.0",
-    "@babel/preset-env": "^7.25.4",
-    "@babel/preset-typescript": "^7.23.3",
-    "@types/node": "^25.0.3",
-    "@types/office-js": "^1.0.377",
-    "babel-loader": "^9.1.3",
-    "concurrently": "^9.2.1",
-    "copy-webpack-plugin": "^12.0.2",
-    "html-loader": "^5.0.0",
-    "html-webpack-plugin": "^5.6.0",
-    "jsdom": "^27.4.0",
-    "office-addin-debugging": "^6.0.3",
-    "office-addin-dev-certs": "^2.0.3",
-    "office-addin-dev-settings": "^2.0.3",
-    "office-addin-manifest": "^2.0.3",
-    "typescript": "^5.9.3",
-    "vitest": "^4.0.16",
-    "webpack": "^5.95.0",
-    "webpack-cli": "^5.1.4",
-    "webpack-dev-server": "5.1.0"
-  }
+    "license": "MIT",
+    "scripts": {
+        "build": "webpack --mode production",
+        "dev": "concurrently \"npm:dev-server\" \"npm:sideload:word\"",
+        "dev-server": "webpack serve --mode development",
+        "sideload:word": "office-addin-dev-settings sideload manifest.xml --app word",
+        "start": "office-addin-debugging start manifest.xml",
+        "stop": "office-addin-debugging stop manifest.xml",
+        "validate": "office-addin-manifest validate manifest.xml",
+        "validate:prod": "npx office-addin-manifest validate manifest.prod.xml"
+    },
+    "dependencies": {
+        "core-js": "^3.36.0",
+        "regenerator-runtime": "^0.14.1"
+    },
+    "devDependencies": {
+        "@babel/core": "^7.24.0",
+        "@babel/preset-env": "^7.25.4",
+        "@babel/preset-typescript": "^7.23.3",
+        "@types/node": "^25.0.3",
+        "@types/office-js": "^1.0.377",
+        "babel-loader": "^9.1.3",
+        "concurrently": "^9.2.1",
+        "copy-webpack-plugin": "^12.0.2",
+        "html-loader": "^5.0.0",
+        "html-webpack-plugin": "^5.6.0",
+        "jsdom": "^27.4.0",
+        "office-addin-debugging": "^6.0.3",
+        "office-addin-dev-certs": "^2.0.3",
+        "office-addin-dev-settings": "^2.0.3",
+        "office-addin-manifest": "^2.0.3",
+        "typescript": "^5.9.3",
+        "webpack": "^5.95.0",
+        "webpack-cli": "^5.1.4",
+        "webpack-dev-server": "5.1.0"
+    }
 }

@@ -1,18 +1,17 @@
-﻿/* global Office, Word, navigator, DOMParser, Blob, URL, FileReader */
-import { convertOoxml } from "../shared/transliterator";
-// IMPORTUJEMO LISTU BRENDOVA
-import { ALWAYS_LATIN_PHRASES } from "../../core/rules";
+﻿/* global Word, Office, document, window, console, Blob, URL, FileReader, DOMParser */
+
+import { convertOoxml, OoxmlOptions } from "../shared/ooxml/convertOoxml";
+import { ALWAYS_LATIN_PHRASES } from "../core/rules";
+
+// --- TIPOVI ---
 
 type DirectionUi = "auto" | "lat-to-cyr" | "cyr-to-lat" | "to-ascii";
 type ProfilePreset = "custom" | "it" | "finance" | "medical" | "legal" | "journalism" | "marketing";
-type ConvertStatsLike = any;
 
 interface UiSettings {
     schemaVersion: 2;
     profile: ProfilePreset;
-    userWordsCustom: string;
-    userWordsPreset: string;
-    userWords?: string;
+    userWordsCustom: string[];
     protectBrands: boolean;
     applySerbianQuotes: boolean;
     preserveCodeBlocks: boolean;
@@ -25,14 +24,14 @@ interface UiSettings {
     direction: DirectionUi;
 }
 
+// --- KONSTANTE ---
+
 const SETTINGS_KEY = "serbiantransliterator.settings.v2";
 
 const DEFAULT_SETTINGS: UiSettings = {
     schemaVersion: 2,
     profile: "custom",
-    userWordsCustom: "",
-    userWordsPreset: "",
-    userWords: "",
+    userWordsCustom: [],
     protectBrands: true,
     applySerbianQuotes: true,
     preserveCodeBlocks: true,
@@ -45,578 +44,836 @@ const DEFAULT_SETTINGS: UiSettings = {
     direction: "auto"
 };
 
-const PRESETS: Record<string, any> = {
-    it: {
-        direction: "auto", protectBrands: true, applySerbianQuotes: false, preserveCodeBlocks: true, setProofingLanguage: true, protectRomans: true, fixDoubleSpaces: false, formatDates: true, confirmWholeDoc: true, showStats: false,
-        userWords: ["Git", "GitHub", "GitLab", "Azure", "AWS", "GCP", "DevOps", "Docker", "Kubernetes", "CI/CD", "YAML", "REST", "GraphQL", "PowerShell", "VS Code", "Visual Studio", "Windows Server", "Linux", "SerbianTransliterator", "Python", "JavaScript"].join("\n")
-    },
-    finance: {
-        direction: "auto", protectBrands: true, applySerbianQuotes: true, preserveCodeBlocks: true, setProofingLanguage: true, protectRomans: true, fixDoubleSpaces: true, formatDates: true, confirmWholeDoc: true, showStats: false,
-        userWords: ["SWIFT", "IBAN", "EUR", "USD", "RSD", "CHF", "GBP", "MasterCard", "Visa", "PayPal", "Intesa", "Raiffeisen", "OTP", "NLB", "AIK", "Erste", "UniCredit", "Western Union", "E-banking", "M-banking"].join("\n")
-    },
-    medical: {
-        direction: "auto", protectBrands: true, applySerbianQuotes: true, preserveCodeBlocks: true, setProofingLanguage: true, protectRomans: true, fixDoubleSpaces: false, formatDates: true, confirmWholeDoc: true, showStats: false,
-        userWords: ["mg", "ml", "kg", "Covid", "SARS", "Hemofarm", "Galenika", "Pfizer", "Actavis", "Alkaloid", "Bayer", "Roche", "Stada", "Anamnesis", "Diagnosis", "Therapia"].join("\n")
-    },
-    marketing: {
-        direction: "auto", protectBrands: true, applySerbianQuotes: true, preserveCodeBlocks: true, setProofingLanguage: true, protectRomans: true, fixDoubleSpaces: true, formatDates: false, confirmWholeDoc: true, showStats: false,
-        userWords: ["Facebook", "Instagram", "LinkedIn", "TikTok", "Twitter", "X", "YouTube", "Google", "SEO", "PR", "Copywriter", "Content", "Ads", "Influencer", "Giveaway", "Hashtag", "Story", "Reel", "Post", "Follow"].join("\n")
-    },
-    legal: {
-        direction: "auto", protectBrands: true, applySerbianQuotes: true, preserveCodeBlocks: true, setProofingLanguage: true, protectRomans: true, fixDoubleSpaces: true, formatDates: true, confirmWholeDoc: true, showStats: false,
-        userWords: ["Ustav Republike Srbije", "Zakon o obligacionim odnosima", "Zakon o radu", "Ministarstvo pravde", "Privredni sud", "Advokatska komora Srbije", "Službeni glasnik", "Bona fide", "De facto", "Ex officio"].join("\n")
-    },
-    journalism: {
-        direction: "auto", protectBrands: true, applySerbianQuotes: true, preserveCodeBlocks: true, setProofingLanguage: true, protectRomans: true, fixDoubleSpaces: true, formatDates: true, confirmWholeDoc: true, showStats: false,
-        userWords: ["Reuters", "Associated Press", "BBC", "CNN", "Euronews", "N1", "RTS", "Tanjug", "NBA", "UEFA", "FIFA", "FIBA", "ATP", "WTA"].join("\n")
-    },
+const PROFILE_NAMES: Record<string, string> = {
+    "custom": "Ručno",
+    "it": "IT / Tehnologija",
+    "finance": "Finansije / Bankarstvo",
+    "medical": "Medicina / Farmacija",
+    "legal": "Pravo / Administracija",
+    "marketing": "Marketing / Društvene mreže",
+    "journalism": "Novinarstvo / Mediji"
 };
 
-type ModalMode = "confirm" | "text";
-let modalOpen = false;
-let lastStatsText = "(Nema statistike još)";
+const PRESETS: Record<string, Partial<UiSettings> & { userWords: string[] }> = {
+    it: {
+        direction: "auto", protectBrands: true, applySerbianQuotes: false, preserveCodeBlocks: true, setProofingLanguage: true, protectRomans: true, fixDoubleSpaces: false, formatDates: true,
+        userWords: ["Git", "GitHub", "GitLab", "Azure", "AWS", "GCP", "DevOps", "Docker", "Kubernetes", "CI/CD", "YAML", "REST", "GraphQL", "PowerShell", "VS Code", "Visual Studio", "Windows Server", "Linux", "SerbianTransliterator", "Python", "JavaScript", "Typescript", "Node.js", "React", "Angular", "Vue", "Frontend", "Backend", "Fullstack", "Database", "Cache", "Cookie", "Token", "API", "Endpoint"]
+    },
+    finance: {
+        direction: "auto", protectBrands: true, applySerbianQuotes: true, preserveCodeBlocks: true, setProofingLanguage: true, protectRomans: true, fixDoubleSpaces: true, formatDates: true,
+        userWords: ["SWIFT", "IBAN", "EUR", "USD", "RSD", "CHF", "GBP", "MasterCard", "Visa", "PayPal", "Intesa", "Raiffeisen", "OTP", "NLB", "AIK", "Erste", "UniCredit", "Western Union", "E-banking", "M-banking", "Leasing", "Factoring", "Equity", "Forex"]
+    },
+    medical: {
+        direction: "auto", protectBrands: true, applySerbianQuotes: true, preserveCodeBlocks: true, setProofingLanguage: true, protectRomans: true, fixDoubleSpaces: false, formatDates: true,
+        userWords: ["mg", "ml", "kg", "Covid", "SARS", "Hemofarm", "Galenika", "Pfizer", "Actavis", "Alkaloid", "Bayer", "Roche", "Stada", "Anamnesis", "Diagnosis", "Therapia", "CT", "MRI", "EKG", "EEG", "In vitro", "In vivo"]
+    },
+    marketing: {
+        direction: "auto", protectBrands: true, applySerbianQuotes: true, preserveCodeBlocks: true, setProofingLanguage: true, protectRomans: true, fixDoubleSpaces: true, formatDates: false,
+        userWords: ["Facebook", "Instagram", "LinkedIn", "TikTok", "Twitter", "X", "YouTube", "Google", "SEO", "PR", "Copywriter", "Content", "Ads", "Influencer", "Giveaway", "Hashtag", "Story", "Reel", "Post", "Follow", "Like", "Share", "Subscribe", "Timeline", "Feed"]
+    },
+    legal: {
+        direction: "auto", protectBrands: true, applySerbianQuotes: true, preserveCodeBlocks: true, setProofingLanguage: true, protectRomans: true, fixDoubleSpaces: true, formatDates: true,
+        userWords: ["Ustav Republike Srbije", "Zakon o obligacionim odnosima", "Zakon o radu", "Ministarstvo pravde", "Privredni sud", "Advokatska komora Srbije", "Službeni glasnik", "Bona fide", "De facto", "Ex officio", "Copyright", "Trademark", "Disclaimer", "Policy", "Terms", "Conditions", "GDPR"]
+    },
+    journalism: {
+        direction: "auto", protectBrands: true, applySerbianQuotes: true, preserveCodeBlocks: true, setProofingLanguage: true, protectRomans: true, fixDoubleSpaces: true, formatDates: true,
+        userWords: ["Reuters", "Associated Press", "BBC", "CNN", "Euronews", "N1", "RTS", "Tanjug", "NBA", "UEFA", "FIFA", "FIBA", "ATP", "WTA", "Olimpijske igre"]
+    }
+};
+
+// --- GLOBALNO STANJE ---
+
+let customWordsSet: Set<string> = new Set();
+let presetWordsSet: Set<string> = new Set();
+let currentProfile: ProfilePreset = "custom";
 let lastStatsTitle = "Statistika poslednje akcije";
+let lastStatsText = "(Nema statistike još)";
+let selectionTimeout: any = null; // Za praćenje selekcije
+let isApplyingProfile = false; // Zastavica da znamo kad programski menjamo profil
+
+// --- INIT ---
 
 Office.onReady((info) => {
     if (info.host === Office.HostType.Word) {
         initUi();
+
+        // Dodajemo slušač događaja za promenu selekcije
+        Office.context.document.addHandlerAsync(
+            Office.EventType.DocumentSelectionChanged,
+            onSelectionChange
+        );
+        // Proveri odmah na startu
+        checkSelectionAndUpdateButtons();
     }
 });
 
 function initUi() {
-    const runBtn = document.getElementById("runBtn") as HTMLButtonElement | null;
-    const previewBtn = document.getElementById("previewBtn") as HTMLButtonElement | null;
-    const exportBtn = document.getElementById("exportBtn") as HTMLButtonElement | null;
-    const importBtn = document.getElementById("importBtn") as HTMLButtonElement | null;
-    const resetBtn = document.getElementById("resetBtn") as HTMLButtonElement | null;
-    const fileInput = document.getElementById("fileInput") as HTMLInputElement | null;
-    const infoBrandsBtn = document.getElementById("infoBrandsBtn") as HTMLButtonElement | null; // NOVO
+    const settings = loadSettings() || DEFAULT_SETTINGS;
 
-    if (runBtn) runBtn.onclick = () => runWithUiLock(runSmart);
-    if (previewBtn) previewBtn.onclick = () => runWithUiLock(runPreview);
-    if (exportBtn) exportBtn.onclick = () => runWithUiLock(exportSettingsAsDownload);
-
-    if (importBtn && fileInput) {
-        importBtn.onclick = () => fileInput.click();
-        fileInput.onchange = (e) => handleFileImport(e);
+    customWordsSet = new Set(settings.userWordsCustom);
+    if (settings.profile !== "custom" && PRESETS[settings.profile]) {
+        presetWordsSet = new Set(PRESETS[settings.profile]!.userWords);
     }
+    currentProfile = settings.profile;
 
-    if (resetBtn) {
-        resetBtn.onclick = () => {
-            confirmInPanel("Ovo će obrisati sve tvoje izmene i vratiti podrazumevana podešavanja. Da li želiš da nastaviš?").then((ok) => {
-                if (ok) {
-                    resetSettings();
-                }
-            });
-        };
-    }
+    isApplyingProfile = true;
+    applySettingsToUi(settings);
+    isApplyingProfile = false;
 
-    // LOGIKA ZA INFO DUGME
-    if (infoBrandsBtn) {
-        infoBrandsBtn.onclick = () => {
-            // Formatiramo listu kao tagove za lep prikaz
-            // Sortiramo abecedno
-            const sorted = [...ALWAYS_LATIN_PHRASES].sort();
-            const html = sorted.map(word =>
-                `<span class="tag preset" style="display:inline-block; margin:2px;">${word}</span>`
-            ).join("");
-
-            showDiffModal("Zaštićeni brendovi (Ugrađeno)", `<div style="line-height:1.8;">${html}</div>`);
-        };
-    }
-
-    const settings = loadSettings();
-    if (settings) {
-        applySettingsToUi(settings);
-    } else {
-        applySettingsToUi(DEFAULT_SETTINGS);
-        saveSettings();
-    }
-
-    const presetEl = document.getElementById("profilePreset") as HTMLSelectElement | null;
-    if (presetEl) {
-        presetEl.addEventListener("change", () => {
-            const profile = (presetEl.value as ProfilePreset) ?? "custom";
-            if (profile !== "custom") {
-                applyPresetSmart(profile);
-            } else {
-                setPresetSelectValue("custom");
-                setStatus("Profil: custom");
-            }
-            saveSettings();
-            checkIfDirty();
-            document.getElementById("userWordsCustom")?.dispatchEvent(new Event("input"));
-        });
-    }
-
-    const inputs = [
-        "userWordsCustom", "userWordsPreset",
-        "optProtectBrands", "optSerbianQuotes", "optPreserveCodeBlocks",
-        "optSetProofingLanguage", "optProtectRomans", "optFixDoubleSpaces", "optFormatDates",
-        "optConfirmWholeDoc", "dirAuto", "dirLatToCyr", "dirCyrToLat", "dirToAscii"
-    ];
-    inputs.forEach(id => {
-        document.getElementById(id)?.addEventListener(id.includes("userWords") ? "input" : "change", () => {
-            saveSettings();
-            checkIfDirty();
-        });
-    });
-
-    const showStatsEl = document.getElementById("optShowStats") as HTMLInputElement | null;
-    if (showStatsEl) {
-        showStatsEl.addEventListener("change", () => {
-            saveSettings();
-            refreshStatsVisibilityAndContent();
-            checkIfDirty();
-        });
-    }
-
-    initTagsInput();
-    refreshStatsVisibilityAndContent();
-    checkIfDirty();
-}
-
-function checkIfDirty() {
-    const current = readSettingsFromUi();
-    const resetBtn = document.getElementById("resetBtn") as HTMLButtonElement;
-    if (!resetBtn) return;
-
-    const isClean =
-        current.profile === DEFAULT_SETTINGS.profile &&
-        current.userWordsCustom === DEFAULT_SETTINGS.userWordsCustom &&
-        current.protectBrands === DEFAULT_SETTINGS.protectBrands &&
-        current.applySerbianQuotes === DEFAULT_SETTINGS.applySerbianQuotes &&
-        current.preserveCodeBlocks === DEFAULT_SETTINGS.preserveCodeBlocks &&
-        current.setProofingLanguage === DEFAULT_SETTINGS.setProofingLanguage &&
-        current.protectRomans === DEFAULT_SETTINGS.protectRomans &&
-        current.fixDoubleSpaces === DEFAULT_SETTINGS.fixDoubleSpaces &&
-        current.formatDates === DEFAULT_SETTINGS.formatDates &&
-        current.confirmWholeDoc === DEFAULT_SETTINGS.confirmWholeDoc &&
-        current.showStats === DEFAULT_SETTINGS.showStats &&
-        current.direction === DEFAULT_SETTINGS.direction;
-
-    resetBtn.disabled = isClean;
-}
-
-function initTagsInput() {
-    const container = document.getElementById("tagsContainer");
-    const list = document.getElementById("tagsList");
-    const input = document.getElementById("tagInput") as HTMLInputElement;
-
-    const customTextarea = document.getElementById("userWordsCustom") as HTMLTextAreaElement;
-    const presetTextarea = document.getElementById("userWordsPreset") as HTMLTextAreaElement;
-
-    const clearBtn = document.getElementById("clearTagsBtn") as HTMLButtonElement;
-    const addBtn = document.getElementById("addTagBtn") as HTMLButtonElement;
-
-    if (!container || !list || !input || !customTextarea || !presetTextarea) return;
-
-    container.addEventListener("click", (e) => {
-        if (e.target !== input && e.target !== addBtn) input.focus();
-    });
-
-    function renderTags() {
-        list!.innerHTML = "";
-
-        const customWords = customTextarea.value.split("\n").filter(w => w.trim() !== "");
-        const presetWords = presetTextarea.value.split("\n").filter(w => w.trim() !== "");
-
-        customWords.forEach(word => {
-            const tag = document.createElement("div");
-            tag.className = "tag custom";
-            tag.innerHTML = `<span>${word}</span><span class="tag-remove" data-type="custom" data-word="${word}">×</span>`;
-            list!.appendChild(tag);
-        });
-
-        presetWords.forEach(word => {
-            const tag = document.createElement("div");
-            tag.className = "tag preset";
-            tag.innerHTML = `<span>${word}</span><span class="tag-remove" data-type="preset" data-word="${word}">×</span>`;
-            list!.appendChild(tag);
-        });
-
-        if (clearBtn) {
-            clearBtn.disabled = (customWords.length + presetWords.length) === 0;
-        }
-
-        validateAddButton();
-    }
-
-    function removeWord(word: string, type: "custom" | "preset") {
-        const targetArea = type === "custom" ? customTextarea : presetTextarea;
-        const words = targetArea.value.split("\n").filter(w => w.trim() !== "");
-        const newWords = words.filter(w => w !== word);
-        targetArea.value = newWords.join("\n");
-        targetArea.dispatchEvent(new Event("input"));
-    }
-
-    function addWord(word: string) {
-        const words = customTextarea.value.split("\n").filter(w => w.trim() !== "");
-        if (!words.includes(word)) {
-            words.push(word);
-            customTextarea.value = words.join("\n");
-            customTextarea.dispatchEvent(new Event("input"));
-        }
-    }
-
-    function validateAddButton() {
-        if (!addBtn) return;
-        const val = input.value.trim();
-        const customWords = customTextarea.value.split("\n");
-        const presetWords = presetTextarea.value.split("\n");
-        const allWords = [...customWords, ...presetWords];
-
-        const isInvalid = val.length === 0 || allWords.includes(val);
-        addBtn.disabled = isInvalid;
-    }
-
-    if (clearBtn) {
-        clearBtn.addEventListener("click", () => {
-            confirmInPanel("Da li sigurno želiš da obrišeš sve zaštićene reči?").then((ok) => {
-                if (ok) {
-                    customTextarea.value = "";
-                    presetTextarea.value = "";
-                    customTextarea.dispatchEvent(new Event("input"));
-                    presetTextarea.dispatchEvent(new Event("input"));
-                }
-            });
-        });
-    }
-
-    if (addBtn) {
-        addBtn.onclick = () => {
-            const val = input.value.trim();
-            if (val) {
-                addWord(val);
-                input.value = "";
-                validateAddButton();
-            }
-            input.focus();
-        };
-    }
-
-    input.addEventListener("input", validateAddButton);
-
-    input.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-            e.preventDefault();
-            if (addBtn && !addBtn.disabled) {
-                addBtn.click();
-            }
-        }
-        if (e.key === "Backspace" && input.value === "") {
-            const customWords = customTextarea.value.split("\n").filter(w => w.trim() !== "");
-            if (customWords.length > 0) {
-                customWords.pop();
-                customTextarea.value = customWords.join("\n");
-                customTextarea.dispatchEvent(new Event("input"));
-            }
-        }
-    });
-
-    list.addEventListener("click", (e) => {
-        const target = e.target as HTMLElement;
-        if (target.classList.contains("tag-remove")) {
-            const word = target.getAttribute("data-word") || "";
-            const type = target.getAttribute("data-type") as "custom" | "preset";
-            removeWord(word, type);
-        }
-    });
-
-    customTextarea.addEventListener("input", renderTags);
-    presetTextarea.addEventListener("input", renderTags);
     renderTags();
+
+    updateResetButtonState();
+
+    document.getElementById("runBtn")!.onclick = () => runWithUiLock(runSmart);
+    document.getElementById("previewBtn")!.onclick = () => runWithUiLock(runPreview);
+    document.getElementById("exportBtn")!.onclick = exportSettingsAsDownload;
+    document.getElementById("importBtn")!.onclick = () => document.getElementById("fileInput")!.click();
+    document.getElementById("fileInput")!.onchange = handleFileImport;
+
+    document.getElementById("resetBtn")!.onclick = async () => {
+        const ok = await confirmInPanel("Ovo će vratiti sve opcije na podrazumevane vrednosti.<br><br>Vaše zaštićene reči <b>neće</b> biti obrisane.<br><br>Da li želite da nastavite?");
+        if (ok) resetSettings();
+    };
+
+    setupTagEvents();
+    setupInputListeners();
+
+    document.getElementById("profilePreset")!.addEventListener("change", (e) => {
+        const val = (e.target as HTMLSelectElement).value as ProfilePreset;
+        changeProfile(val);
+    });
+
+    document.getElementById("modalOk")!.onclick = handleModalOk;
+    document.getElementById("modalCancel")!.onclick = closeModal;
+
+    refreshStats();
 }
 
-function getAllUserWords(): string[] {
-    const c = getTextareaValue("userWordsCustom").split("\n");
-    const p = getTextareaValue("userWordsPreset").split("\n");
-    return [...c, ...p].map(w => w.trim()).filter(w => w.length > 0);
+// --- SELECTION HANDLING (PAMETNA DUGMAD) ---
+
+function onSelectionChange() {
+    if (selectionTimeout) clearTimeout(selectionTimeout);
+    selectionTimeout = setTimeout(() => {
+        checkSelectionAndUpdateButtons();
+    }, 50);
 }
 
-function refreshStatsVisibilityAndContent() {
-    const show = getCheckboxValue("optShowStats", false);
-    const box = document.getElementById("statsBox") as HTMLDivElement | null;
-    const title = document.getElementById("statsTitle") as HTMLDivElement | null;
-    const text = document.getElementById("statsText") as HTMLPreElement | null;
+async function checkSelectionAndUpdateButtons() {
+    await Word.run(async (context) => {
+        const range = context.document.getSelection();
+        range.load("text");
+        await context.sync();
 
-    if (!box || !title || !text) return;
+        const runBtn = document.getElementById("runBtn") as HTMLButtonElement;
+        const prevBtn = document.getElementById("previewBtn") as HTMLButtonElement;
 
-    box.style.display = show ? "block" : "none";
-    title.textContent = lastStatsTitle;
-    text.textContent = lastStatsText;
-}
+        if (!runBtn || !prevBtn) return;
 
-async function runWithUiLock(fn: () => Promise<void>) {
-    const runBtn = document.getElementById("runBtn") as HTMLButtonElement | null;
-    const previewBtn = document.getElementById("previewBtn") as HTMLButtonElement | null;
+        const rawText = range.text;
+        const hasContent = rawText.trim().length > 0;
+        const isJustWhitespace = rawText.length > 0 && !hasContent;
 
-    try {
-        if (runBtn) runBtn.disabled = true;
-        if (previewBtn) previewBtn.disabled = true;
-        await fn();
-    } finally {
-        if (runBtn) runBtn.disabled = false;
-        if (previewBtn) previewBtn.disabled = false;
-    }
-}
+        if (isJustWhitespace) {
+            // Slučaj 1: Prazan prostor
+            const htmlRun = `PRESLOVI<br><span class="btn-subtitle"><b>NEMA TEKSTA</b></span>`;
+            const htmlPrev = `PREGLED<br><span class="btn-subtitle"><b>NEMA TEKSTA</b></span>`;
 
-function applyPresetSmart(profile: Exclude<ProfilePreset, "custom">) {
-    const preset = PRESETS[profile];
+            runBtn.innerHTML = htmlRun;
+            runBtn.disabled = true;
 
-    setPresetSelectValue(profile);
-    setTextareaValue("userWordsPreset", preset.userWords);
-    document.getElementById("userWordsPreset")?.dispatchEvent(new Event("input"));
+            prevBtn.innerHTML = htmlPrev;
+            prevBtn.disabled = true;
+        } else if (hasContent) {
+            // Slučaj 2: Ima teksta
+            const htmlRun = `PRESLOVI<br><span class="btn-subtitle"><b>selekciju</b></span>`;
+            const htmlPrev = `PREGLED<br><span class="btn-subtitle"><b>selekcije</b></span>`; // ISPRAVLJENO
 
-    setCheckboxValue("optProtectBrands", preset.protectBrands);
-    setCheckboxValue("optSerbianQuotes", preset.applySerbianQuotes);
-    setCheckboxValue("optPreserveCodeBlocks", preset.preserveCodeBlocks);
-    setCheckboxValue("optSetProofingLanguage", preset.setProofingLanguage);
-    setCheckboxValue("optProtectRomans", preset.protectRomans);
-    setCheckboxValue("optFixDoubleSpaces", preset.fixDoubleSpaces);
-    setCheckboxValue("optFormatDates", preset.formatDates);
-    setCheckboxValue("optConfirmWholeDoc", preset.confirmWholeDoc);
-    setCheckboxValue("optShowStats", preset.showStats);
-    setDirectionUi(preset.direction);
+            runBtn.innerHTML = htmlRun;
+            runBtn.disabled = false;
 
-    lastStatsTitle = "Statistika poslednje akcije";
-    lastStatsText = `Profil: ${profile} primenjen.`;
-    refreshStatsVisibilityAndContent();
+            prevBtn.innerHTML = htmlPrev;
+            prevBtn.disabled = false;
+        } else {
+            // Slučaj 3: Nema selekcije (ceo dokument)
+            const htmlRun = `PRESLOVI<br><span class="btn-subtitle"><b>ceo dokument</b></span>`;
+            const htmlPrev = `PREGLED<br><span class="btn-subtitle"><b>celog dokumenta</b></span>`; // ISPRAVLJENO
 
-    setStatus(`Profil: ${profile} primenjen.`);
-}
+            runBtn.innerHTML = htmlRun;
+            runBtn.disabled = false;
 
-function showModal(opts: {
-    title: string;
-    message: string;
-    mode: ModalMode;
-    okText?: string;
-    cancelText?: string;
-    value?: string;
-    readOnly?: boolean;
-    isHtml?: boolean;
-    className?: string;
-}): Promise<{ ok: boolean; value?: string }> {
-    if (modalOpen) return Promise.resolve({ ok: false });
-    modalOpen = true;
-
-    const overlay = document.getElementById("modalOverlay") as HTMLDivElement | null;
-    const modalBox = document.getElementById("modal") as HTMLDivElement | null;
-    const titleEl = document.getElementById("modalTitle") as HTMLDivElement | null;
-    const textEl = document.getElementById("modalText") as HTMLDivElement | null;
-    const inputEl = document.getElementById("modalInput") as HTMLTextAreaElement | null;
-    const okBtn = document.getElementById("modalOk") as HTMLButtonElement | null;
-    const cancelBtn = document.getElementById("modalCancel") as HTMLButtonElement | null;
-
-    if (!overlay || !modalBox || !titleEl || !textEl || !inputEl || !okBtn || !cancelBtn) {
-        modalOpen = false;
-        return Promise.resolve({ ok: false });
-    }
-
-    modalBox.className = "modal";
-    if (opts.className) modalBox.classList.add(opts.className);
-
-    titleEl.textContent = opts.title;
-
-    if (opts.isHtml) {
-        textEl.innerHTML = opts.message;
-    } else {
-        textEl.textContent = opts.message;
-    }
-
-    okBtn.textContent = opts.okText ?? "OK";
-    cancelBtn.textContent = opts.cancelText ?? "Cancel";
-
-    if (opts.mode === "text") {
-        inputEl.style.display = "block";
-        inputEl.value = opts.value ?? "";
-        inputEl.readOnly = !!opts.readOnly;
-    } else {
-        inputEl.style.display = "none";
-        inputEl.value = "";
-        inputEl.readOnly = false;
-    }
-
-    if (opts.cancelText === "NONE") {
-        cancelBtn.style.display = "none";
-    } else {
-        cancelBtn.style.display = "inline-flex";
-    }
-
-    overlay.style.display = "flex";
-
-    return new Promise((resolve) => {
-        const cleanup = (result: { ok: boolean; value?: string }) => {
-            overlay.style.display = "none";
-            okBtn.onclick = null;
-            cancelBtn.onclick = null;
-            modalOpen = false;
-            resolve(result);
-        };
-        okBtn.onclick = () => {
-            if (opts.mode === "text") cleanup({ ok: true, value: inputEl.value });
-            else cleanup({ ok: true });
-        };
-        cancelBtn.onclick = () => cleanup({ ok: false });
+            prevBtn.innerHTML = htmlPrev;
+            prevBtn.disabled = false;
+        }
     });
 }
 
-async function confirmInPanel(message: string): Promise<boolean> {
-    const res = await showModal({
-        title: "Potvrda",
-        message,
-        mode: "confirm",
-        okText: "Da",
-        cancelText: "Ne",
-    });
-    return res.ok;
-}
-
-async function showTextDialog(title: string, message: string, value: string, readOnly: boolean): Promise<string | null> {
-    const cancelTxt = readOnly ? "NONE" : "Otkaži";
-    const okTxt = readOnly ? "U redu" : "OK";
-
-    const res = await showModal({
-        title,
-        message,
-        mode: "text",
-        okText: okTxt,
-        cancelText: cancelTxt,
-        value,
-        readOnly,
-    });
-
-    if (!res.ok && !readOnly) return null;
-    return res.value ?? "";
-}
-
-function showDiffModal(title: string, htmlContent: string) {
-    showModal({
-        title,
-        message: htmlContent,
-        mode: "confirm",
-        okText: "Zatvori",
-        cancelText: "NONE",
-        isHtml: true,
-        className: "wide"
-    });
-}
-
-/* ─────────────────────────────
-   Main Logic
-   ───────────────────────────── */
+// --- CORE LOGIC ---
 
 async function runSmart() {
-    setStatus("Radim preslovljavanje...");
-
     try {
         await Word.run(async (context) => {
             let range = context.document.getSelection();
             range.load("text");
             await context.sync();
 
-            const selectionText = range.text ?? "";
-            const hasSelection = selectionText.trim().length > 0;
+            const rawText = range.text;
+            const hasText = rawText.trim().length > 0;
+            const isJustWhitespace = rawText.length > 0 && !hasText;
 
-            const confirmWholeDoc = getCheckboxValue("optConfirmWholeDoc", true);
-            if (!hasSelection) {
-                if (confirmWholeDoc) {
-                    const ok = await confirmInPanel("Nema selekcije. Da li želiš da presloviš CEO dokument?");
+            if (isJustWhitespace) {
+                showModalInfo("Greška", "Selektovan je samo prazan prostor (razmaci).<br>Molimo selektujte tekst ili ne selektujte ništa za ceo dokument.");
+                setStatus("Greška: Prazna selekcija.", "error");
+                return;
+            }
+
+            if (!hasText) {
+                if (getCheckValue("optConfirmWholeDoc")) {
+                    const ok = await confirmInPanel("Nije selektovan tekst.<br/>Da li želite da preslovite <b>CEO dokument</b>?");
                     if (!ok) {
-                        setStatus("Otkazano (nema selekcije).");
+                        setStatus("Otkazano.", "neutral");
                         return;
                     }
                 }
                 range = context.document.body.getRange("Whole");
             }
 
+            setStatus("Obrada u toku...", "info");
+
             const ooxml = range.getOoxml();
             await context.sync();
 
-            const opts = readOptionsFromUi();
-            saveSettings();
-
-            const result = convertOoxml(ooxml.value, opts as any) as any as { xml: string; type: string; stats?: ConvertStatsLike };
-
-            if (result.type === "Nema teksta") {
-                setStatus("Nema teksta za konverziju.");
-                return;
-            }
-
-            const newRange = range.insertOoxml(result.xml, Word.InsertLocation.replace);
-
-            if (getCheckboxValue("optSetProofingLanguage", true)) {
-                if (result.stats.direction === "lat-to-cyr") {
-                    (newRange.font as any).localeId = "sr-Cyrl-RS";
-                } else if (result.stats.direction === "cyr-to-lat") {
-                    (newRange.font as any).localeId = "sr-Latn-RS";
+            // Provera da li je dokument prazan
+            if (!ooxml.value || ooxml.value.length < 500) {
+                range.load("text");
+                await context.sync();
+                if (!range.text.trim()) {
+                    setStatus("Dokument je prazan.", "neutral");
+                    return;
                 }
             }
 
+            const opts = getOoxmlOptionsFromUi();
+            const result = convertOoxml(ooxml.value, opts);
+
+            if (result.type === "Nema teksta") {
+                setStatus("Nije pronađen tekst za obradu.", "neutral");
+                return;
+            }
+
+            range.insertOoxml(result.xml, Word.InsertLocation.replace);
             await context.sync();
 
-            setStatus(`Uspeh: ${result.type}\n(Undo sa Ctrl+Z)`);
+            const scope = hasText ? "Selekcija" : "Ceo dokument";
+            const time = result.stats.timingMs.toFixed(0);
 
-            const scope = hasSelection ? "Selekcija" : "Ceo dokument";
+            setStatus(`Završeno: ${result.type} (${time}ms)`, "success");
+
             lastStatsTitle = `Statistika: ${result.type}`;
-            lastStatsText = formatStatsFriendly(result.stats, scope);
-            refreshStatsVisibilityAndContent();
+            lastStatsText = `Opseg: ${scope}\nPromenjeno čvorova: ${result.stats.textNodes}\nVreme: ${time}ms`;
+            if (result.stats.bridges.links > 0) lastStatsText += `\nZaštićeno linkova: ${result.stats.bridges.links}`;
+            if (result.stats.bridges.userTokens > 0) lastStatsText += `\nZaštićeno tvojih reči: ${result.stats.bridges.userTokens}`;
+
+            refreshStats();
         });
-    } catch (error) {
-        console.error(error);
-        setStatus("Greška: " + error);
+    } catch (e) {
+        console.error(e);
+        setStatus("Greška: " + (e as Error).message, "error");
     }
 }
 
 async function runPreview() {
-    setStatus("Generišem preview...");
+    setStatus("Generišem pregled...", "info");
     try {
         await Word.run(async (context) => {
             let range = context.document.getSelection();
             range.load("text");
             await context.sync();
 
-            const selectionText = range.text ?? "";
-            const hasSelection = selectionText.trim().length > 0;
+            let textToPreview = range.text;
+            let label = "Pregled selekcije";
 
-            const confirmWholeDoc = getCheckboxValue("optConfirmWholeDoc", true);
-            if (!hasSelection) {
-                if (confirmWholeDoc) {
-                    const ok = await confirmInPanel("Nema selekcije. Da li želiš Preview za CEO dokument?\n(Ovo može potrajati za velike fajlove).");
-                    if (!ok) {
-                        setStatus("Otkazano preview.");
-                        return;
-                    }
-                }
-                range = context.document.body.getRange("Whole");
+            const hasText = textToPreview.trim().length > 0;
+            const isJustWhitespace = textToPreview.length > 0 && !hasText;
+
+            if (isJustWhitespace) {
+                showModalInfo("Greška", "Selektovan je samo prazan prostor.");
+                setStatus("Greška: Prazna selekcija.", "error");
+                return;
             }
 
-            range.load("text");
-            const ooxml = range.getOoxml();
-            await context.sync();
+            if (!hasText) {
+                const body = context.document.body;
+                body.load("text");
+                await context.sync();
+                textToPreview = body.text.substring(0, 2000);
+                label = "Pregled (Početak dokumenta)";
 
-            const originalText = range.text;
+                if (!textToPreview.trim()) {
+                    setStatus("Dokument je prazan.", "neutral");
+                    return;
+                }
+            }
 
-            const opts = readOptionsFromUi();
-            const result = convertOoxml(ooxml.value, opts as any) as any as { xml: string; type: string; stats?: ConvertStatsLike };
+            const opts = getOoxmlOptionsFromUi();
+            const dummyOoxml = `<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>${escapeXml(textToPreview)}</w:t></w:r></w:p></w:body></w:document>`;
 
-            const newText = extractTextFromOoxml(result.xml);
+            const result = convertOoxml(dummyOoxml, opts);
 
-            const diffHtml = generateHighlightHtml(originalText, newText);
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(result.xml, "application/xml");
+            const finalText = xmlDoc.getElementsByTagName("w:t")[0]?.textContent || "";
 
-            showDiffModal("Pregled", diffHtml);
-
-            setStatus(`Preview završen. (${result.type})`);
+            if (textToPreview === finalText) {
+                showModalInfo("Nema izmena", "Tekst je već u traženom pismu ili nema šta da se menja.");
+                setStatus("Nema izmena.", "neutral");
+            } else {
+                showPreviewModal(label, textToPreview, finalText);
+                setStatus(`Prikazan pregled (${result.type})`, "success");
+            }
         });
-    } catch (error) {
-        console.error(error);
-        setStatus("Greška (preview): " + error);
+    } catch (e) {
+        setStatus("Greška pri pregledu: " + (e as Error).message, "error");
     }
 }
 
-function generateHighlightHtml(oldText: string, newText: string): string {
+// --- AUTOMATSKO PREBACIVANJE NA 'RUČNO' ---
+
+function switchToCustomIfManual() {
+    if (isApplyingProfile) return;
+
+    if (currentProfile === 'custom') {
+        saveSettings();
+        return;
+    }
+
+    currentProfile = 'custom';
+    const select = document.getElementById("profilePreset") as HTMLSelectElement;
+    if (select) select.value = 'custom';
+
+    saveSettings();
+}
+
+// --- TAGOVI ---
+
+function setupTagEvents() {
+    const input = document.getElementById("tagInput") as HTMLInputElement;
+    const addBtn = document.getElementById("addTagBtn") as HTMLButtonElement;
+    const container = document.getElementById("tagsContainer")!;
+
+    // INICIJALNO STANJE: Dugme je onemogućeno
+    addBtn.disabled = true;
+
+    container.onclick = (e) => {
+        if (e.target === container || e.target === document.getElementById("tagsList")) {
+            input.focus();
+        }
+    };
+
+    input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            addTag();
+        }
+    });
+
+    addBtn.onclick = () => {
+        addTag();
+        input.focus();
+    };
+
+    input.addEventListener("input", () => {
+        const val = input.value.trim();
+        const exists = customWordsSet.has(val) || presetWordsSet.has(val);
+        addBtn.disabled = val.length === 0 || exists;
+    });
+
+    document.getElementById("clearCustomBtn")!.onclick = () => clearTags("custom");
+    document.getElementById("clearPresetBtn")!.onclick = () => clearTags("preset");
+    document.getElementById("clearAllBtn")!.onclick = () => clearTags("all");
+}
+
+function addTag() {
+    const input = document.getElementById("tagInput") as HTMLInputElement;
+    const addBtn = document.getElementById("addTagBtn") as HTMLButtonElement;
+    const val = input.value.trim();
+    if (!val) return;
+
+    if (presetWordsSet.has(val)) {
+        input.value = "";
+        addBtn.disabled = true;
+        return;
+    }
+
+    customWordsSet.add(val);
+    input.value = "";
+    addBtn.disabled = true;
+
+    renderTags();
+    switchToCustomIfManual();
+    updateUiState();
+}
+
+function removeTag(word: string, type: "custom" | "preset") {
+    if (type === "custom") {
+        customWordsSet.delete(word);
+    } else {
+        presetWordsSet.delete(word);
+    }
+    renderTags();
+    switchToCustomIfManual();
+    updateUiState();
+}
+
+function clearTags(scope: "custom" | "preset" | "all") {
+    if (scope === "custom" || scope === "all") customWordsSet.clear();
+    if (scope === "preset" || scope === "all") presetWordsSet.clear();
+    renderTags();
+    switchToCustomIfManual();
+    updateUiState();
+}
+
+function renderTags() {
+    const container = document.getElementById("tagsList")!;
+    container.innerHTML = "";
+
+    const customSorted = Array.from(customWordsSet).sort();
+    const presetSorted = Array.from(presetWordsSet).sort();
+
+    customSorted.forEach(word => {
+        const tag = createTagEl(word, "custom");
+        container.appendChild(tag);
+    });
+
+    presetSorted.forEach(word => {
+        const tag = createTagEl(word, "preset");
+        container.appendChild(tag);
+    });
+
+    updateUiState();
+}
+
+function createTagEl(text: string, type: "custom" | "preset"): HTMLElement {
+    const div = document.createElement("div");
+    div.className = `tag ${type}`;
+    div.innerHTML = `<span>${text}</span><span class="tag-remove" title="Ukloni">&times;</span>`;
+
+    div.querySelector(".tag-remove")!.addEventListener("click", (e) => {
+        e.stopPropagation();
+        removeTag(text, type);
+    });
+
+    return div;
+}
+
+function updateUiState() {
+    (document.getElementById("clearCustomBtn") as HTMLButtonElement).disabled = customWordsSet.size === 0;
+    (document.getElementById("clearPresetBtn") as HTMLButtonElement).disabled = presetWordsSet.size === 0;
+    (document.getElementById("clearAllBtn") as HTMLButtonElement).disabled = (customWordsSet.size === 0 && presetWordsSet.size === 0);
+}
+
+// --- PODEŠAVANJA ---
+
+function changeProfile(profile: ProfilePreset) {
+    currentProfile = profile;
+
+    isApplyingProfile = true;
+
+    if (profile === "custom") {
+        presetWordsSet.clear();
+    } else {
+        const data = PRESETS[profile];
+        if (data) {
+            presetWordsSet = new Set(data.userWords);
+            if (data.direction) setRadioValue("direction", data.direction);
+            if (data.protectBrands !== undefined) setCheckValue("optProtectBrands", data.protectBrands);
+            if (data.applySerbianQuotes !== undefined) setCheckValue("optSerbianQuotes", data.applySerbianQuotes);
+            if (data.preserveCodeBlocks !== undefined) setCheckValue("optPreserveCodeBlocks", data.preserveCodeBlocks);
+            if (data.protectRomans !== undefined) setCheckValue("optProtectRomans", data.protectRomans);
+            if (data.setProofingLanguage !== undefined) setCheckValue("optSetProofingLanguage", data.setProofingLanguage);
+            if (data.fixDoubleSpaces !== undefined) setCheckValue("optFixDoubleSpaces", data.fixDoubleSpaces);
+            if (data.formatDates !== undefined) setCheckValue("optFormatDates", data.formatDates);
+        }
+    }
+
+    renderTags();
+    saveSettings();
+    const displayName = PROFILE_NAMES[profile] || profile;
+    setStatus(`Profil promenjen na: ${displayName}`, "info");
+
+    isApplyingProfile = false;
+}
+
+function setupInputListeners() {
+    const inputs = [
+        "optProtectBrands", "optSerbianQuotes", "optPreserveCodeBlocks",
+        "optProtectRomans", "optSetProofingLanguage",
+        "optShowStats",
+        "optFixDoubleSpaces", "optFormatDates",
+        "dirAuto", "dirLatToCyr", "dirCyrToLat", "dirToAscii"
+    ];
+
+    inputs.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener("change", () => {
+                if (!isApplyingProfile) {
+                    switchToCustomIfManual();
+                } else {
+                    saveSettings();
+                }
+
+                if (id === "optShowStats") refreshStats();
+            });
+        }
+    });
+}
+
+function getSettingsFromUi(): UiSettings {
+    return {
+        schemaVersion: 2,
+        profile: (document.getElementById("profilePreset") as HTMLSelectElement).value as ProfilePreset,
+        userWordsCustom: Array.from(customWordsSet),
+        protectBrands: getCheckValue("optProtectBrands"),
+        applySerbianQuotes: getCheckValue("optSerbianQuotes"),
+        preserveCodeBlocks: getCheckValue("optPreserveCodeBlocks"),
+        setProofingLanguage: getCheckValue("optSetProofingLanguage"),
+        protectRomans: true, // HARDCODED (nema u UI)
+        fixDoubleSpaces: getCheckValue("optFixDoubleSpaces"),
+        formatDates: getCheckValue("optFormatDates"),
+        confirmWholeDoc: true, // HARDCODED
+        showStats: getCheckValue("optShowStats"),
+        direction: getRadioValue("direction") as DirectionUi
+    };
+}
+
+function applySettingsToUi(s: UiSettings) {
+    (document.getElementById("profilePreset") as HTMLSelectElement).value = s.profile;
+    setCheckValue("optProtectBrands", s.protectBrands);
+    setCheckValue("optSerbianQuotes", s.applySerbianQuotes);
+    setCheckValue("optPreserveCodeBlocks", s.preserveCodeBlocks);
+    setCheckValue("optSetProofingLanguage", s.setProofingLanguage);
+    setCheckValue("optShowStats", s.showStats);
+    setCheckValue("optFixDoubleSpaces", s.fixDoubleSpaces);
+    setCheckValue("optFormatDates", s.formatDates);
+    setRadioValue("direction", s.direction);
+}
+
+function updateResetButtonState() {
+    const current = getSettingsFromUi();
+
+    const def = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+    const curCopy = JSON.parse(JSON.stringify(current));
+
+    curCopy.userWordsCustom = [];
+    def.userWordsCustom = [];
+
+    // Obe strane moraju imati iste hardkodovane vrednosti
+    curCopy.confirmWholeDoc = true;
+    def.confirmWholeDoc = true;
+    curCopy.protectRomans = true;
+    def.protectRomans = true;
+
+    const isSame = JSON.stringify(curCopy) === JSON.stringify(def);
+
+    const btn = document.getElementById("resetBtn") as HTMLButtonElement;
+    if (btn) btn.disabled = isSame;
+}
+
+function saveSettings() {
+    const s = getSettingsFromUi();
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+    updateResetButtonState();
+}
+
+function loadSettings(): UiSettings | null {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (!raw) return null;
+    try {
+        const parsed = JSON.parse(raw);
+        if (parsed.schemaVersion === 2) return parsed;
+        return null;
+    } catch {
+        return null;
+    }
+}
+
+function resetSettings() {
+    const currentWords = Array.from(customWordsSet);
+    const newSettings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+    newSettings.userWordsCustom = currentWords;
+
+    isApplyingProfile = true;
+    applySettingsToUi(newSettings);
+    changeProfile("custom");
+    isApplyingProfile = false;
+
+    presetWordsSet.clear();
+    renderTags();
+
+    saveSettings();
+    setStatus("Podešavanja vraćena (reči sačuvane).", "success");
+}
+
+function getOoxmlOptionsFromUi(): OoxmlOptions & { showStats: boolean } {
+    const s = getSettingsFromUi();
+
+    let dir: OoxmlOptions["direction"] = "auto";
+    if (s.direction === "lat-to-cyr") dir = "lat-to-cyr";
+    if (s.direction === "cyr-to-lat") dir = "cyr-to-lat";
+    if (s.direction === "to-ascii") dir = "to-ascii";
+
+    return {
+        direction: dir,
+        protectBrands: s.protectBrands,
+        applySerbianQuotes: s.applySerbianQuotes,
+        preserveCodeBlocks: s.preserveCodeBlocks,
+        setProofingLanguage: false,
+        fixDoubleSpaces: s.fixDoubleSpaces,
+        formatDates: s.formatDates,
+        protectRomans: true,
+        userProtected: [...Array.from(customWordsSet), ...Array.from(presetWordsSet)],
+        // @ts-ignore
+        showStats: s.showStats
+    };
+}
+
+// --- IMPORT / EXPORT ---
+
+function exportSettingsAsDownload() {
+    saveSettings();
+    const s = getSettingsFromUi();
+    const json = JSON.stringify(s, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "serbian-transliterator-settings.json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function handleFileImport(e: Event) {
+    const input = e.target as HTMLInputElement;
+    if (!input.files?.[0]) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+        try {
+            const json = evt.target?.result as string;
+            const parsed = JSON.parse(json);
+
+            if (typeof parsed.profile !== "string" || !Array.isArray(parsed.userWordsCustom)) {
+                throw new Error("Invalid format");
+            }
+
+            const newSettings: UiSettings = { ...DEFAULT_SETTINGS, ...parsed, schemaVersion: 2 };
+
+            localStorage.setItem(SETTINGS_KEY, JSON.stringify(newSettings));
+            initUi();
+            setStatus("Podešavanja uspešno učitana.", "success");
+        } catch (err) {
+            setStatus("Greška: Neispravan fajl.", "error");
+        }
+        input.value = "";
+    };
+    reader.readAsText(input.files[0]);
+}
+
+// --- HELPERS ---
+
+async function runWithUiLock(fn: () => Promise<void>) {
+    const runBtn = document.getElementById("runBtn") as HTMLButtonElement;
+    const previewBtn = document.getElementById("previewBtn") as HTMLButtonElement;
+
+    runBtn.disabled = true;
+    previewBtn.disabled = true;
+    document.body.style.cursor = "wait";
+
+    try {
+        await fn();
+    } finally {
+        runBtn.disabled = false;
+        previewBtn.disabled = false;
+        document.body.style.cursor = "default";
+    }
+}
+
+function setStatus(msg: string, type: "info" | "success" | "error" | "neutral") {
+    const el = document.getElementById("msg")!;
+    el.innerText = msg;
+    el.style.color = type === "error" ? "var(--error-color)" : (type === "success" ? "var(--success-color)" : "var(--text-color)");
+}
+
+function refreshStats() {
+    const box = document.getElementById("statsBox")!;
+    const show = getCheckValue("optShowStats");
+
+    box.style.display = show ? "block" : "none";
+    if (show) {
+        document.getElementById("statsTitle")!.innerText = lastStatsTitle;
+        document.getElementById("statsText")!.innerText = lastStatsText;
+    }
+}
+
+function getCheckValue(id: string): boolean {
+    const el = document.getElementById(id) as HTMLInputElement;
+    return el && el.checked;
+}
+
+function setCheckValue(id: string, val: boolean) {
+    const el = document.getElementById(id) as HTMLInputElement;
+    if (el) el.checked = val;
+}
+
+function getRadioValue(name: string): string {
+    const els = document.getElementsByName(name);
+    for (let i = 0; i < els.length; i++) {
+        if ((els[i] as HTMLInputElement).checked) return (els[i] as HTMLInputElement).value;
+    }
+    return "";
+}
+
+function setRadioValue(name: string, val: string) {
+    const els = document.getElementsByName(name);
+    for (let i = 0; i < els.length; i++) {
+        if ((els[i] as HTMLInputElement).value === val) (els[i] as HTMLInputElement).checked = true;
+    }
+}
+
+function escapeXml(unsafe: string) {
+    return unsafe.replace(/[<>&'"]/g, (c) => {
+        switch (c) {
+            case '<': return '&lt;';
+            case '>': return '&gt;';
+            case '&': return '&amp;';
+            case '\'': return '&apos;';
+            case '"': return '&quot;';
+        }
+        return c;
+    });
+}
+
+function escapeHtml(unsafe: string) {
+    return escapeXml(unsafe);
+}
+
+// --- MODAL SYSTEM ---
+
+let modalPromiseResolver: ((val: boolean) => void) | null = null;
+
+function confirmInPanel(htmlMsg: string): Promise<boolean> {
+    const overlay = document.getElementById("modalOverlay")!;
+    const title = document.getElementById("modalTitle")!;
+    const text = document.getElementById("modalText")!;
+    const input = document.getElementById("modalInput")!;
+    const okBtn = document.getElementById("modalOk")!;
+
+    title.innerText = "Potvrda";
+    text.innerHTML = htmlMsg;
+    input.style.display = "none";
+
+    // Za potvrdu nam treba OK dugme
+    okBtn.style.display = "inline-flex";
+    okBtn.innerText = "OK";
+
+    document.getElementById("modal")!.classList.remove("wide");
+    overlay.style.display = "flex";
+
+    return new Promise((resolve) => {
+        modalPromiseResolver = resolve;
+    });
+}
+
+function showModalInfo(titleStr: string, msg: string) {
+    const overlay = document.getElementById("modalOverlay")!;
+    const title = document.getElementById("modalTitle")!;
+    const text = document.getElementById("modalText")!;
+    const input = document.getElementById("modalInput")!;
+    const okBtn = document.getElementById("modalOk")!;
+    const cancelBtn = document.getElementById("modalCancel")!;
+
+    title.innerText = titleStr;
+    text.innerHTML = msg;
+    input.style.display = "none";
+
+    // Za info nam treba SAMO Zatvori dugme (plavo)
+    okBtn.style.display = "none";
+
+    // Menjamo stil "Cancel" dugmeta da izgleda kao "Zatvori" (plavo)
+    cancelBtn.innerText = "Zatvori";
+    cancelBtn.style.backgroundColor = "var(--primary-color)";
+    cancelBtn.style.color = "white";
+    cancelBtn.style.border = "none";
+
+    document.getElementById("modal")!.classList.remove("wide");
+    overlay.style.display = "flex";
+
+    modalPromiseResolver = null;
+}
+
+function showPreviewModal(titleStr: string, original: string, converted: string) {
+    const overlay = document.getElementById("modalOverlay")!;
+    const title = document.getElementById("modalTitle")!;
+    const text = document.getElementById("modalText")!;
+    const input = document.getElementById("modalInput")!;
+    const okBtn = document.getElementById("modalOk")!;
+    const cancelBtn = document.getElementById("modalCancel")!;
+
+    title.innerText = titleStr;
+    input.style.display = "none";
+    document.getElementById("modal")!.classList.add("wide");
+
+    text.innerHTML = generateDiffHtml(original, converted);
+
+    // Za preview takođe samo plavo "Zatvori"
+    okBtn.style.display = "none";
+    cancelBtn.innerText = "Zatvori";
+    cancelBtn.style.backgroundColor = "var(--primary-color)";
+    cancelBtn.style.color = "white";
+    cancelBtn.style.border = "none";
+
+    overlay.style.display = "flex";
+    modalPromiseResolver = null;
+}
+
+function handleModalOk() {
+    document.getElementById("modalOverlay")!.style.display = "none";
+
+    // Resetuj stil Cancel dugmeta za sledeći put
+    resetModalButtons();
+
+    if (modalPromiseResolver) modalPromiseResolver(true);
+}
+
+function closeModal() {
+    document.getElementById("modalOverlay")!.style.display = "none";
+
+    // Resetuj stil Cancel dugmeta za sledeći put
+    resetModalButtons();
+
+    if (modalPromiseResolver) modalPromiseResolver(false);
+}
+
+function resetModalButtons() {
+    const cancelBtn = document.getElementById("modalCancel")!;
+    const okBtn = document.getElementById("modalOk")!;
+
+    // Vrati Cancel na default (sivo, "Otkaži")
+    cancelBtn.innerText = "Otkaži";
+    cancelBtn.style.backgroundColor = ""; // Vraća na CSS default
+    cancelBtn.style.color = "";
+    cancelBtn.style.border = "";
+
+    // Vrati OK dugme da bude vidljivo
+    okBtn.style.display = "inline-flex";
+}
+
+function generateDiffHtml(oldText: string, newText: string): string {
     if (oldText === newText) {
-        return `<div class="preview-single-pane" style="text-align:center;">Nema izmena u tekstu.</div>`;
+        return `<div class="preview-single-pane" style="text-align:center; padding:20px;">Nema izmena u tekstu.</div>`;
     }
 
     const splitRegex = /([^\s\w\u0400-\u04FF\u0100-\u017F]+|\s+)/;
@@ -624,7 +881,6 @@ function generateHighlightHtml(oldText: string, newText: string): string {
     const newParts = newText.split(splitRegex).filter(Boolean);
 
     let html = "";
-
     const maxLen = Math.max(oldParts.length, newParts.length);
 
     for (let k = 0; k < maxLen; k++) {
@@ -634,251 +890,9 @@ function generateHighlightHtml(oldText: string, newText: string): string {
         if (o === n) {
             html += escapeHtml(n);
         } else {
-            html += `<span class="diff-changed">${escapeHtml(n)}</span>`;
+            html += `<span class="diff-changed" title="Original: ${escapeHtml(o)}">${escapeHtml(n)}</span>`;
         }
     }
 
     return `<div class="preview-single-pane">${html}</div>`;
-}
-
-function escapeHtml(text: string): string {
-    if (!text) return "";
-    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
-function formatStatsFriendly(stats: ConvertStatsLike | undefined, scope: string): string {
-    if (!stats) return `Opseg: ${scope}\nStatistika nije dostupna.`;
-    const time = typeof stats.timingMs === "number" ? `${stats.timingMs.toFixed(1)} ms` : "n/a";
-    const charsBefore = stats.charsBefore ?? 0;
-    const charsAfter = stats.charsAfter ?? 0;
-    return `Opseg: ${scope}\nKaraktera: ${charsBefore} -> ${charsAfter}\nVreme: ${time}`;
-}
-
-function extractTextFromOoxml(ooxml: string): string {
-    try {
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(ooxml, "application/xml");
-        let nodes = doc.getElementsByTagName("w:t");
-        if (nodes.length === 0) nodes = doc.getElementsByTagName("t");
-        let out = "";
-        for (let i = 0; i < nodes.length; i++) out += nodes[i].textContent ?? "";
-        return out;
-    } catch { return ""; }
-}
-
-async function exportSettingsAsDownload() {
-    const settings = readSettingsFromUi();
-    const json = JSON.stringify(settings, null, 2);
-
-    try {
-        const blob = new Blob([json], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "serbian-transliterator-settings.json";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        setStatus("Fajl sa podešavanjima je preuzet.");
-    } catch (e) {
-        await showTextDialog("Izvezi podešavanja", "Kopiraj ručno:", json, true);
-    }
-}
-
-// NOVO: Handle File Import
-async function handleFileImport(e: Event) {
-    const input = e.target as HTMLInputElement;
-    if (!input.files || input.files.length === 0) return;
-
-    const file = input.files[0];
-    const reader = new FileReader();
-
-    reader.onload = (event) => {
-        try {
-            const json = event.target?.result as string;
-            const parsed = JSON.parse(json) as Partial<UiSettings>;
-
-            // Normalizacija i primena
-            const normalized: UiSettings = {
-                schemaVersion: 2,
-                profile: parsed.profile || "custom",
-                userWordsCustom: parsed.userWordsCustom || parsed.userWords || "",
-                userWordsPreset: parsed.userWordsPreset || "",
-                protectBrands: parsed.protectBrands ?? true,
-                applySerbianQuotes: parsed.applySerbianQuotes ?? true,
-                preserveCodeBlocks: parsed.preserveCodeBlocks ?? true,
-                setProofingLanguage: parsed.setProofingLanguage ?? true,
-                protectRomans: parsed.protectRomans ?? true,
-                fixDoubleSpaces: parsed.fixDoubleSpaces ?? false,
-                formatDates: parsed.formatDates ?? false,
-                confirmWholeDoc: parsed.confirmWholeDoc ?? true,
-                showStats: parsed.showStats ?? false,
-                direction: parsed.direction || "auto"
-            };
-
-            applySettingsToUi(normalized);
-            saveSettings();
-            checkIfDirty();
-            setStatus("Podešavanja su uspešno učitana.");
-        } catch (err) {
-            setStatus("Greška: Fajl nije validan JSON.");
-        }
-        // Reset input da bi mogao isti fajl opet
-        input.value = "";
-    };
-
-    reader.readAsText(file);
-}
-
-// Legacy import (ako neko pozove ručno, mada se više ne koristi)
-async function importSettings() {
-    // Ova funkcija je sada redundantna jer imamo file input, 
-    // ali je ostavljam ako želiš da zadržiš fallback.
-    // U initUi je već vezana za fileInput.click()
-}
-
-function resetSettings() {
-    try { localStorage.removeItem(SETTINGS_KEY); } catch { }
-    applySettingsToUi(DEFAULT_SETTINGS);
-    saveSettings();
-    setStatus("Resetovano.");
-    checkIfDirty();
-}
-
-function readOptionsFromUi() {
-    return {
-        userProtected: getAllUserWords(), // Koristi helper
-        protectBrands: getCheckboxValue("optProtectBrands", true),
-        applySerbianQuotes: getCheckboxValue("optSerbianQuotes", true),
-        preserveCodeBlocks: getCheckboxValue("optPreserveCodeBlocks", true),
-        setProofingLanguage: getCheckboxValue("optSetProofingLanguage", true),
-        protectRomans: true, // Always true
-        fixDoubleSpaces: getCheckboxValue("optFixDoubleSpaces", false),
-        formatDates: getCheckboxValue("optFormatDates", false),
-        confirmWholeDoc: getCheckboxValue("optConfirmWholeDoc", true),
-        showStats: getCheckboxValue("optShowStats", false),
-        direction: getDirectionFromUi(),
-    };
-}
-
-function setStatus(text: string) {
-    const el = document.getElementById("msg");
-    if (el) el.textContent = text;
-}
-
-function getUserProtectedWords(): string[] {
-    const el = document.getElementById("userWords") as HTMLTextAreaElement | null;
-    if (!el) return [];
-    return el.value.split(/\r?\n/).map((w) => w.trim()).filter((w) => w.length > 0);
-}
-
-function getTextareaValue(id: string): string {
-    const el = document.getElementById(id) as HTMLTextAreaElement | null;
-    return el?.value ?? "";
-}
-
-function getCheckboxValue(id: string, defaultValue: boolean): boolean {
-    const el = document.getElementById(id) as HTMLInputElement | null;
-    if (!el) return defaultValue;
-    return !!el.checked;
-}
-
-function setCheckboxValue(id: string, value: boolean) {
-    const el = document.getElementById(id) as HTMLInputElement | null;
-    if (el) el.checked = value;
-}
-
-function setTextareaValue(id: string, value: string) {
-    const el = document.getElementById(id) as HTMLTextAreaElement | null;
-    if (el) el.value = value;
-}
-
-function setPresetSelectValue(value: string) {
-    const el = document.getElementById("profilePreset") as HTMLSelectElement | null;
-    if (el) el.value = value;
-}
-
-function setDirectionUi(dir: DirectionUi) {
-    const dirAuto = document.getElementById("dirAuto") as HTMLInputElement | null;
-    const dirLatToCyr = document.getElementById("dirLatToCyr") as HTMLInputElement | null;
-    const dirCyrToLat = document.getElementById("dirCyrToLat") as HTMLInputElement | null;
-    const dirToAscii = document.getElementById("dirToAscii") as HTMLInputElement | null;
-
-    if (dir === "lat-to-cyr") dirLatToCyr && (dirLatToCyr.checked = true);
-    else if (dir === "cyr-to-lat") dirCyrToLat && (dirCyrToLat.checked = true);
-    else if (dir === "to-ascii") dirToAscii && (dirToAscii.checked = true);
-    else dirAuto && (dirAuto.checked = true);
-}
-
-function getDirectionFromUi(): DirectionUi {
-    const latToCyr = document.getElementById("dirLatToCyr") as HTMLInputElement | null;
-    const cyrToLat = document.getElementById("dirCyrToLat") as HTMLInputElement | null;
-    const toAscii = document.getElementById("dirToAscii") as HTMLInputElement | null;
-
-    if (latToCyr?.checked) return "lat-to-cyr";
-    if (cyrToLat?.checked) return "cyr-to-lat";
-    if (toAscii?.checked) return "to-ascii";
-    return "auto";
-}
-
-function loadSettings(): UiSettings | null {
-    try {
-        if (typeof localStorage === "undefined") return null;
-        const raw = localStorage.getItem(SETTINGS_KEY);
-        if (!raw) return null;
-        return JSON.parse(raw) as Partial<UiSettings> as UiSettings;
-    } catch {
-        return null;
-    }
-}
-
-function applySettingsToUi(settings: UiSettings) {
-    setPresetSelectValue(settings.profile || "custom");
-    setTextareaValue("userWordsCustom", settings.userWordsCustom || settings.userWords || "");
-    setTextareaValue("userWordsPreset", settings.userWordsPreset || "");
-
-    document.getElementById("userWordsCustom")?.dispatchEvent(new Event("input"));
-    document.getElementById("userWordsPreset")?.dispatchEvent(new Event("input"));
-
-    setCheckboxValue("optProtectBrands", settings.protectBrands);
-    setCheckboxValue("optSerbianQuotes", settings.applySerbianQuotes);
-    setCheckboxValue("optPreserveCodeBlocks", settings.preserveCodeBlocks);
-    setCheckboxValue("optSetProofingLanguage", settings.setProofingLanguage ?? true);
-    setCheckboxValue("optFixDoubleSpaces", settings.fixDoubleSpaces ?? false);
-    setCheckboxValue("optFormatDates", settings.formatDates ?? false);
-    // confirmWholeDoc se ne postavlja u UI jer nema checkboxa, ali se koristi u logici
-    setCheckboxValue("optShowStats", settings.showStats);
-    setDirectionUi(settings.direction || "auto");
-
-    refreshStatsVisibilityAndContent();
-    checkIfDirty();
-}
-
-function readSettingsFromUi(): UiSettings {
-    const presetEl = document.getElementById("profilePreset") as HTMLSelectElement | null;
-    return {
-        schemaVersion: 2,
-        profile: ((presetEl?.value as ProfilePreset) ?? "custom"),
-        userWords: "", // Deprecated field
-        userWordsCustom: getTextareaValue("userWordsCustom"),
-        userWordsPreset: getTextareaValue("userWordsPreset"),
-        protectBrands: getCheckboxValue("optProtectBrands", true),
-        applySerbianQuotes: getCheckboxValue("optSerbianQuotes", true),
-        preserveCodeBlocks: getCheckboxValue("optPreserveCodeBlocks", true),
-        setProofingLanguage: getCheckboxValue("optSetProofingLanguage", true),
-        protectRomans: true, // Hardcoded
-        fixDoubleSpaces: getCheckboxValue("optFixDoubleSpaces", false),
-        formatDates: getCheckboxValue("optFormatDates", false),
-        confirmWholeDoc: true, // Hardcoded
-        showStats: getCheckboxValue("optShowStats", false),
-        direction: getDirectionFromUi(),
-    };
-}
-
-function saveSettings() {
-    try {
-        if (typeof localStorage === "undefined") return;
-        localStorage.setItem(SETTINGS_KEY, JSON.stringify(readSettingsFromUi()));
-    } catch { }
 }

@@ -9,6 +9,14 @@
     <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
 
     <style>
+        /* Fluent UI / Office stilovi */
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
         :root {
             --bg-color: #ffffff;
             --text-color: #323130;
@@ -26,7 +34,6 @@
             --disabled-bg: #f3f2f1;
             --disabled-text: #a19f9d;
             --link-color: #005a9e;
-            /* Tag Colors */
             --tag-custom-bg: #e0f2ff;
             --tag-custom-border: #0f6cbd;
             --tag-custom-text: #004e8c;
@@ -60,13 +67,7 @@
             }
         }
 
-        * {
-            box-sizing: border-box;
-        }
-
         body {
-            margin: 0;
-            padding: 0;
             font-family: "Segoe UI", sans-serif;
             font-size: 14px;
             background-color: var(--bg-color);
@@ -86,12 +87,18 @@
             align-items: flex-start;
         }
 
-        .header-content h1 {
-            margin: 0;
-            font-size: 18px;
-            font-weight: 600;
-            color: var(--primary-color);
+        .header-content {
+            display: flex;
+            align-items: center;
+            width: 100%;
         }
+
+            .header-content h1 {
+                margin: 0;
+                font-size: 18px;
+                font-weight: 600;
+                color: var(--primary-color);
+            }
 
         .subtitle {
             margin-top: 2px;
@@ -107,7 +114,8 @@
             padding: 2px 6px;
             border-radius: 4px;
             font-family: monospace;
-            margin-top: 4px;
+            margin-left: auto;
+            margin-top: 5px;
         }
 
         main {
@@ -121,22 +129,24 @@
         .section {
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 5px;
         }
 
         .section-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 5px;
+            margin-bottom: 2px;
+            height: 24px;
         }
 
         .section-title {
             font-weight: 600;
             font-size: 12px;
-            text-transform: uppercase;
             opacity: 0.7;
             margin: 0;
+            line-height: 24px;
+            text-transform: uppercase;
         }
 
         .header-actions {
@@ -145,7 +155,108 @@
             align-items: center;
         }
 
-        /* IKONICE DUGMAD */
+        .settings-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0px;
+            margin-top: 15px;
+        }
+
+        .settings-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        #addTagBtn {
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            padding: 2px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--success-color);
+            transition: all 0.2s;
+            width: 22px;
+            height: 24px;
+        }
+
+            #addTagBtn:hover:not(:disabled) {
+                background-color: #e6ffec;
+                border-color: var(--success-color);
+            }
+
+            #addTagBtn:disabled {
+                background-color: var(--neutral-lighter);
+                color: var(--disabled-text);
+                border-color: var(--border-color);
+                cursor: default;
+                opacity: 0.6;
+            }
+
+            #addTagBtn svg {
+                width: 16px;
+                height: 16px;
+                fill: currentColor;
+            }
+
+        .mini-btn {
+            border: 1px solid var(--border-color);
+            background-color: var(--bg-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            cursor: pointer;
+            font-size: 11px;
+            padding: 2px 4px;
+            border-radius: 4px;
+            color: var(--primary-color);
+            transition: all 0.2s;
+            height: 24px;
+        }
+
+            .mini-btn:hover:not(:disabled) {
+                background-color: #e0f2ff;
+                color: var(--primary-hover);
+                border-color: var(--primary-hover);
+            }
+
+            .mini-btn:disabled {
+                background-color: var(--neutral-lighter);
+                color: var(--disabled-text);
+                border-color: var(--border-color);
+                cursor: default;
+                opacity: 0.6;
+            }
+
+            .mini-btn svg {
+                width: 13px;
+                height: 13px;
+                fill: currentColor;
+            }
+
+            .mini-btn span {
+                font-weight: 600;
+                font-size: 11px;
+            }
+
+        #clearAllBtn {
+            color: var(--error-color);
+        }
+
+            #clearAllBtn:hover:not(:disabled) {
+                background-color: #fde7e9;
+                border-color: var(--error-color);
+                color: var(--error-color);
+            }
+
+            #clearAllBtn:disabled {
+                color: var(--disabled-text);
+            }
+
         .icon-btn {
             background: none;
             border: 1px solid transparent;
@@ -160,42 +271,6 @@
             transition: all 0.2s;
         }
 
-            .icon-btn:hover:not(:disabled) {
-                background-color: var(--neutral-lighter);
-                opacity: 1;
-            }
-
-            .icon-btn:disabled {
-                opacity: 0.2;
-                cursor: default;
-            }
-
-            .icon-btn svg {
-                width: 16px;
-                height: 16px;
-                fill: currentColor;
-            }
-
-        /* Specifične boje */
-        .btn-add:hover:not(:disabled) {
-            color: var(--success-color);
-            background-color: #e6ffec;
-        }
-        /* Dodatno pojačanje boje za zeleni plus */
-        .btn-add svg {
-            fill: currentColor;
-        }
-
-        .btn-delete-all:hover:not(:disabled) {
-            color: var(--error-color);
-            background-color: #fde7e9;
-        }
-
-        .btn-delete-custom:hover:not(:disabled) {
-            color: var(--primary-color);
-            background-color: var(--tag-custom-bg);
-        }
-
         .small-blue-btn {
             background-color: var(--primary-color);
             color: var(--primary-text);
@@ -203,13 +278,13 @@
             font-size: 11px;
             font-weight: 600;
             cursor: pointer;
-            padding: 3px 10px;
+            padding: 6px 12px;
             border-radius: 4px;
             text-decoration: none;
             transition: background 0.2s;
             line-height: 1.4;
-            min-width: 24px;
             text-align: center;
+            display: inline-block;
         }
 
             .small-blue-btn:hover:not(:disabled) {
@@ -220,28 +295,8 @@
                 background-color: var(--disabled-bg);
                 color: var(--disabled-text);
                 border-color: var(--border-color);
-                cursor: default;
-            }
-
-        .tiny-btn {
-            background: none;
-            border: none;
-            color: var(--error-color);
-            font-size: 11px;
-            cursor: pointer;
-            padding: 0;
-            text-decoration: underline;
-        }
-
-            .tiny-btn:disabled {
-                color: var(--disabled-text);
+                cursor: not-allowed;
                 opacity: 0.6;
-                cursor: default;
-                text-decoration: none;
-            }
-
-            .tiny-btn:hover:not(:disabled) {
-                opacity: 0.8;
             }
 
         label {
@@ -285,18 +340,19 @@
             border: 1px solid var(--input-border);
             background-color: var(--input-bg);
             border-radius: 4px;
-            padding: 6px;
+            padding: 4px 6px;
             display: flex;
             flex-wrap: wrap;
             gap: 6px;
-            min-height: 80px;
+            min-height: 32px; /* 32px visina */
             cursor: text;
+            align-items: center;
         }
 
             .tags-container:focus-within {
                 border-color: var(--focus-border);
                 border-bottom-width: 2px;
-                padding-bottom: 5px;
+                padding-bottom: 3px;
             }
 
         .tag {
@@ -369,49 +425,89 @@
             transition: background 0.2s;
         }
 
+        /* --- PRESLOVI DUGME (TAMNO PLAVO) --- */
         #runBtn {
             background-color: var(--primary-color);
             color: var(--primary-text);
+            flex-direction: column;
+            line-height: 1.1;
+            min-height: 50px;
+            padding: 6px 10px;
+            text-align: center;
         }
 
             #runBtn:hover {
                 background-color: var(--primary-hover);
             }
 
-            #runBtn:disabled {
-                opacity: 0.5;
-                cursor: not-allowed;
+        /* --- PREGLED DUGME (KAO IZVEZI/UVEZI) --- */
+        #previewBtn {
+            background-color: var(--bg-color); /* Bela pozadina */
+            color: var(--primary-color); /* Tamno sivi tekst */
+            border: 1px solid var(--input-border); /* Sivi okvir */
+            flex-direction: column;
+            line-height: 1.1;
+            min-height: 50px;
+            padding: 6px 10px;
+            text-align: center;
+        }
+
+            #previewBtn:hover {
+                background-color: var(--neutral-lighter);
             }
 
-        button:not(#runBtn, .small-blue-btn, .icon-btn) {
+            #runBtn:disabled, #previewBtn:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+                background-color: var(--neutral-lighter);
+                color: var(--disabled-text);
+                border-color: var(--border-color);
+            }
+
+        #runBtn .btn-subtitle {
+            font-size: 11px;
+            font-weight: normal;
+            opacity: 0.7;
+            margin-top: 2px;
+            color: white;
+        }
+
+        #previewBtn .btn-subtitle {
+            font-size: 11px;
+            font-weight: normal;
+            opacity: 0.7;
+            margin-top: 2px;
+            color: white;
+        }
+
+        button:not(#runBtn, #previewBtn, .small-blue-btn, .icon-btn, .mini-btn, #addTagBtn) {
             background-color: var(--bg-color);
             border: 1px solid var(--input-border);
             color: var(--text-color);
         }
 
-            button:not(#runBtn, .small-blue-btn, .icon-btn):hover {
+            button:not(#runBtn, #previewBtn, .small-blue-btn, .icon-btn, .mini-btn, #addTagBtn):hover {
                 background-color: var(--neutral-lighter);
             }
 
         #resetBtn {
-            margin-top: 5px;
-            color: var(--error-color);
-            border-color: transparent;
-            background: transparent;
-            font-weight: normal;
+            margin-top: 0;
             font-size: 12px;
-            text-decoration: none;
+            font-weight: 600;
             padding: 2px 8px;
+            line-height: 1;
+            white-space: nowrap;
             height: auto;
+            min-height: 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
         }
 
-            #resetBtn:disabled {
-                color: var(--disabled-text);
-                cursor: default;
-            }
-
-            #resetBtn:hover:not(:disabled) {
-                background-color: var(--neutral-lighter);
+            #resetBtn svg {
+                width: 12px;
+                height: 12px;
+                fill: currentColor;
             }
 
         #msg {
@@ -535,6 +631,9 @@
             border-radius: 3px;
             font-family: monospace;
             font-size: 11px;
+            position: relative;
+            top: 2px;
+            vertical-align: middle;
         }
 
         .preview-single-pane {
@@ -575,27 +674,41 @@
     <header>
         <div class="header-content">
             <h1>Serbian Transliterator</h1>
-            <div class="subtitle">Pametno preslovljavanje</div>
+            <div class="version">v1.0.0</div>
         </div>
-        <div class="version">v1.0.0</div>
     </header>
     <main>
         <div class="section">
             <div class="button-group">
-                <button id="runBtn">PRESLOVI</button>
-                <button id="previewBtn">PREGLED</button>
+                <button id="runBtn">PRESLOVI<br><span class="btn-subtitle">ceo dokument</span></button>
+                <button id="previewBtn">PREGLED<br><span class="btn-subtitle">ceo dokument</span></button>
             </div>
 
-            <div class="button-group">
-                <button id="exportBtn">Izvezi podešavanja</button>
-                <button id="importBtn" style="background-color: var(--bg-color); border: 1px solid var(--input-border); color: var(--text-color);">Uvezi podešavanja</button>
+            <div class="settings-row">
+                <div class="section-title">PODEŠAVANJA</div>
+                <div class="settings-actions">
+                    <button id="exportBtn" class="mini-btn" title="Izvezi">
+                        <svg viewBox="0 0 24 24"><path d="M4 10l8-8 8 8h-5v10h-6v-10z" /><path d="M0 0h24v24H0z" fill="none" /></svg>
+                        <span>Izvezi</span>
+                    </button>
+                    <button id="importBtn" class="mini-btn" title="Uvezi">
+                        <svg viewBox="0 0 24 24"><path d="M20 14l-8 8-8-8h5v-10h6v10z" /><path d="M0 0h24v24H0z" fill="none" /></svg>
+                        <span>Uvezi</span>
+                    </button>
+                </div>
             </div>
 
             <input type="file" id="fileInput" accept=".json" style="display:none" />
         </div>
 
         <div class="section">
-            <div class="section-title">Podešavanja</div>
+            <div class="section-header">
+                <div class="section-title">PROFIL</div>
+                <button id="resetBtn" class="small-blue-btn" disabled>
+                    <svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" /><path d="M0 0h24v24H0z" fill="none" /></svg>
+                    Fabrička podešavanja
+                </button>
+            </div>
             <select id="profilePreset">
                 <option value="custom">Ručno</option>
                 <option value="it">IT / Tehnologija</option>
@@ -603,16 +716,15 @@
                 <option value="medical">Medicina / Farmacija</option>
                 <option value="legal">Pravo / Administracija</option>
                 <option value="marketing">Marketing / Društvene mreže</option>
+                <option value="journalism">Novinarstvo / Mediji</option>
             </select>
         </div>
 
         <div class="section">
             <div class="section-header">
-                <div class="section-title">Smer</div>
-                <button id="resetBtn" class="small-blue-btn" disabled>Vrati na fabrička podešavanja</button>
+                <div class="section-title">SMER</div>
             </div>
-
-            <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+            <div style="display: flex; column-gap: 15px; row-gap: 5px; flex-wrap: wrap;">
                 <label><input type="radio" id="dirAuto" name="direction" value="auto" checked /> Auto</label>
                 <label><input type="radio" id="dirToAscii" name="direction" value="to-ascii" /> Ošišana latinica</label>
                 <label><input type="radio" id="dirLatToCyr" name="direction" value="lat-to-cyr" /> Lat → Ćir</label>
@@ -621,18 +733,18 @@
         </div>
 
         <div class="section">
-            <div class="section-title">Opcije</div>
+            <div class="section-title">OPCIJE</div>
             <label><input type="checkbox" id="optProtectBrands" checked /> Zaštiti brendove (Windows, ...)</label>
             <label><input type="checkbox" id="optSerbianQuotes" checked /> Pametni navodnici ( „ … ” )</label>
             <label><input type="checkbox" id="optPreserveCodeBlocks" checked /> Zaštiti kod (<code>inline</code> / <code>blok</code>)</label>
+            <label><input type="checkbox" id="optProtectRomans" checked /> Zaštiti rimske brojeve (IV, XIV)</label>
             <label><input type="checkbox" id="optSetProofingLanguage" checked /> Postavi jezik provere (sr-Cyrl / sr-Latn)</label>
-            <label><input type="checkbox" id="optConfirmWholeDoc" checked /> Traži potvrdu za ceo dokument</label>
             <label><input type="checkbox" id="optShowStats" /> Prikaži detaljnu statistiku</label>
         </div>
 
         <div class="section">
-            <div class="section-title">Korekcija</div>
-            <label><input type="checkbox" id="optFixDoubleSpaces" checked /> Ukloni duple razmake</label>
+            <div class="section-title">KOREKCIJA</div>
+            <label><input type="checkbox" id="optFixDoubleSpaces" checked /> Ukloni višak razmaka</label>
             <label><input type="checkbox" id="optFormatDates" /> Formatiraj datume (npr. 21.10.2023.)</label>
         </div>
 
@@ -640,27 +752,24 @@
             <div class="section-header">
                 <div class="section-title">ZAŠTIĆENO</div>
                 <div class="header-actions">
-                    <!-- DODAJ REČ (Samo ikonica, Zeleni Plus) -->
-                    <button id="addTagBtn" class="icon-btn btn-add" title="Dodaj reč" disabled>
-                        <svg viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none" /><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" /></svg>
+                    <button id="addTagBtn" title="Dodaj reč" disabled>
+                        <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" /><path d="M0 0h24v24H0z" fill="none" /></svg>
                     </button>
-                    <!-- MOJE -->
-                    <button id="clearCustomBtn" class="mini-btn btn-custom" title="Obriši samo moje reči" disabled>
+
+                    <button id="clearCustomBtn" class="mini-btn" title="Obriši samo moje reči" disabled>
                         <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" /><path d="M0 0h24v24H0z" fill="none" /></svg> <span>Moje</span>
                     </button>
-                    <!-- PROFIL -->
-                    <button id="clearPresetBtn" class="mini-btn btn-preset" title="Obriši reči iz profila" disabled>
+                    <button id="clearPresetBtn" class="mini-btn" title="Obriši reči iz profila" disabled>
                         <svg viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none" /><path d="M14 6V4h-4v2h4zM4 8v11h16V8H4zm10-2V4h-4v2h4z" opacity=".3" /><path d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-2 .89-2 2v11c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zM10 4h4v2h-4V4zm10 15H4V8h16v11z" /></svg> <span>Profil</span>
                     </button>
-                    <!-- SVE (Crveno X) -->
-                    <button id="clearAllBtn" class="mini-btn btn-all" title="Obriši sve reči" disabled>
-                        <svg viewBox="0 0 24 24" style="fill:var(--error-color)"><path d="M0 0h24v24H0z" fill="none" /><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" /></svg> <span>Sve</span>
+                    <button id="clearAllBtn" class="mini-btn" title="Obriši sve reči" disabled>
+                        <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" /></svg> <span>Sve</span>
                     </button>
                 </div>
             </div>
             <div class="tags-container" id="tagsContainer">
                 <div class="tags-list" id="tagsList" style="display:contents;"></div>
-                <input type="text" id="tagInput" class="tag-input" placeholder="Upiši reč..." autocomplete="off" />
+                <input type="text" id="tagInput" class="tag-input" placeholder="Upiši reč ili frazu..." autocomplete="off" />
             </div>
             <textarea id="userWordsCustom" style="display:none;"></textarea>
             <textarea id="userWordsPreset" style="display:none;"></textarea>
