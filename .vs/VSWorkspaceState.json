@@ -1,0 +1,15 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\src",
+    "\\src\\commands",
+    "\\src\\core",
+    "\\src\\shared",
+    "\\src\\shared\\ooxml",
+    "\\src\\shared\\ooxml\\bridge",
+    "\\src\\static",
+    "\\src\\taskpane",
+    "\\tests"
+  ],
+  "PreviewInSolutionExplorer": false
+}
