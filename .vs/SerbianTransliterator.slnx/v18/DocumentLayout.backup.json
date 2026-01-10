@@ -3,16 +3,36 @@
   "WorkspaceRootPath": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\shared\\transliterator.ts||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:src\\shared\\transliterator.ts||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\shared\\ooxml\\convertOoxml.ts||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}",
       "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:src\\shared\\ooxml\\convertOoxml.ts||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\taskpane\\taskpane.ts||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:src\\taskpane\\taskpane.ts||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\taskpane\\taskpane.html||{40D31677-CBC0-4297-A9EF-89D907823A98}",
       "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:src\\taskpane\\taskpane.html||{40D31677-CBC0-4297-A9EF-89D907823A98}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\taskpane\\taskpane.ts||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:src\\taskpane\\taskpane.ts||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}"
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\shared\\ooxml\\bridge\\bridgeSpaces.ts||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:src\\shared\\ooxml\\bridge\\bridgeSpaces.ts||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\core\\utils.ts||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:src\\core\\utils.ts||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\static\\index.html||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:src\\static\\index.html||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\shared\\ooxml\\dom.ts||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:src\\shared\\ooxml\\dom.ts||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\manifest.prod.xml||{FA3CD31E-987B-443A-9B81-186104E8DAC1}",
@@ -21,10 +41,6 @@
     {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\core\\textCore.ts||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}",
       "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:src\\core\\textCore.ts||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\shared\\ooxml\\dom.ts||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:src\\shared\\ooxml\\dom.ts||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\commands\\commands.html||{40D31677-CBC0-4297-A9EF-89D907823A98}",
@@ -213,10 +229,6 @@
     {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\tests\\basic.test.ts||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}",
       "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:tests\\basic.test.ts||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\shared\\transliterator.ts||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:src\\shared\\transliterator.ts||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}"
     }
   ],
   "DocumentGroupContainers": [
@@ -226,24 +238,35 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 6,
+          "SelectedChildIndex": 8,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 6,
-              "Title": "commands.html",
-              "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\commands\\commands.html",
-              "RelativeDocumentMoniker": "src\\commands\\commands.html",
-              "ToolTip": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\commands\\commands.html",
-              "RelativeToolTip": "src\\commands\\commands.html",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAoAAAAHAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001512|",
-              "WhenOpened": "2026-01-04T22:57:19.469Z",
-              "EditorCaption": ""
+              "DocumentIndex": 4,
+              "Title": "bridgeSpaces.ts",
+              "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\shared\\ooxml\\bridge\\bridgeSpaces.ts",
+              "RelativeDocumentMoniker": "src\\shared\\ooxml\\bridge\\bridgeSpaces.ts",
+              "ToolTip": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\shared\\ooxml\\bridge\\bridgeSpaces.ts",
+              "RelativeToolTip": "src\\shared\\ooxml\\bridge\\bridgeSpaces.ts",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAwAAAAsAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
+              "WhenOpened": "2026-01-09T22:00:14.07Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 9,
+              "DocumentIndex": 5,
+              "Title": "utils.ts",
+              "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\core\\utils.ts",
+              "RelativeDocumentMoniker": "src\\core\\utils.ts",
+              "ToolTip": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\core\\utils.ts",
+              "RelativeToolTip": "src\\core\\utils.ts",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABEAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
+              "WhenOpened": "2026-01-09T21:18:44.754Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 13,
               "Title": "corrections.ts",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\core\\corrections.ts",
               "RelativeDocumentMoniker": "src\\core\\corrections.ts",
@@ -251,12 +274,11 @@
               "RelativeToolTip": "src\\core\\corrections.ts",
               "ViewState": "AgIAAA4AAAAAAAAAAAAuwCIAAAAjAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
-              "WhenOpened": "2026-01-08T19:04:58.495Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-08T19:04:58.495Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 8,
+              "DocumentIndex": 12,
               "Title": "protect.ts",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\core\\protect.ts",
               "RelativeDocumentMoniker": "src\\core\\protect.ts",
@@ -264,12 +286,11 @@
               "RelativeToolTip": "src\\core\\protect.ts",
               "ViewState": "AgIAAGkAAAAAAAAAAAAuwHsAAAA0AAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
-              "WhenOpened": "2026-01-08T19:05:06.736Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-08T19:05:06.736Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 7,
+              "DocumentIndex": 11,
               "Title": "allCapsHints.ts",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\shared\\ooxml\\bridge\\allCapsHints.ts",
               "RelativeDocumentMoniker": "src\\shared\\ooxml\\bridge\\allCapsHints.ts",
@@ -277,8 +298,7 @@
               "RelativeToolTip": "src\\shared\\ooxml\\bridge\\allCapsHints.ts",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAABQAAAAcAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
-              "WhenOpened": "2026-01-08T19:07:00.235Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-08T19:07:00.235Z"
             },
             {
               "$type": "Document",
@@ -288,40 +308,77 @@
               "RelativeDocumentMoniker": "src\\taskpane\\taskpane.ts",
               "ToolTip": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\taskpane\\taskpane.ts",
               "RelativeToolTip": "src\\taskpane\\taskpane.ts",
-              "ViewState": "AgIAAGYDAAAAAAAAAAAIwIEDAAABAAAAAAAAAA==",
+              "ViewState": "AgIAALEDAAAAAAAAAAAUwNgDAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
               "WhenOpened": "2026-01-04T21:51:56.753Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 3,
               "Title": "taskpane.html",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\taskpane\\taskpane.html",
               "RelativeDocumentMoniker": "src\\taskpane\\taskpane.html",
               "ToolTip": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\taskpane\\taskpane.html",
               "RelativeToolTip": "src\\taskpane\\taskpane.html",
-              "ViewState": "AgIAAP0CAAAAAAAAAAAwwCIDAAAKAAAAAAAAAA==",
+              "ViewState": "AgIAAOICAAAAAAAAAAAuwAsDAAAHAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001512|",
               "WhenOpened": "2026-01-04T22:05:19.206Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 1,
               "Title": "convertOoxml.ts",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\shared\\ooxml\\convertOoxml.ts",
               "RelativeDocumentMoniker": "src\\shared\\ooxml\\convertOoxml.ts",
               "ToolTip": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\shared\\ooxml\\convertOoxml.ts",
               "RelativeToolTip": "src\\shared\\ooxml\\convertOoxml.ts",
-              "ViewState": "AgIAAPgAAAAAAAAAAAAYwBIBAAAPAAAAAAAAAA==",
+              "ViewState": "AgIAACIBAAAAAAAAAAAYwEkBAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
               "WhenOpened": "2026-01-08T09:36:25.458Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 0,
+              "Title": "transliterator.ts",
+              "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\shared\\transliterator.ts",
+              "RelativeDocumentMoniker": "src\\shared\\transliterator.ts",
+              "ToolTip": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\shared\\transliterator.ts",
+              "RelativeToolTip": "src\\shared\\transliterator.ts",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAMAAABHAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
+              "WhenOpened": "2026-01-04T21:51:35.718Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "index.html",
+              "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\static\\index.html",
+              "RelativeDocumentMoniker": "src\\static\\index.html",
+              "ToolTip": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\static\\index.html",
+              "RelativeToolTip": "src\\static\\index.html",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAoAAAAHAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001512|",
+              "WhenOpened": "2026-01-09T22:00:33.263Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
+              "Title": "commands.html",
+              "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\commands\\commands.html",
+              "RelativeDocumentMoniker": "src\\commands\\commands.html",
+              "ToolTip": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\commands\\commands.html",
+              "RelativeToolTip": "src\\commands\\commands.html",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAoAAAAHAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001512|",
+              "WhenOpened": "2026-01-04T22:57:19.469Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
               "Title": "dom.ts",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\shared\\ooxml\\dom.ts",
               "RelativeDocumentMoniker": "src\\shared\\ooxml\\dom.ts",
@@ -329,12 +386,11 @@
               "RelativeToolTip": "src\\shared\\ooxml\\dom.ts",
               "ViewState": "AgIAAAgAAAAAAAAAAAAowCQAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
-              "WhenOpened": "2026-01-08T19:10:52.888Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-08T19:10:52.888Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 9,
               "Title": "textCore.ts",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\core\\textCore.ts",
               "RelativeDocumentMoniker": "src\\core\\textCore.ts",
@@ -342,12 +398,11 @@
               "RelativeToolTip": "src\\core\\textCore.ts",
               "ViewState": "AgIAAPsAAAAAAAAAAAAowBABAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
-              "WhenOpened": "2026-01-05T08:33:13.089Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-05T08:33:13.089Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 10,
+              "DocumentIndex": 14,
               "Title": "commands.ts",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\commands\\commands.ts",
               "RelativeDocumentMoniker": "src\\commands\\commands.ts",
@@ -355,12 +410,11 @@
               "RelativeToolTip": "src\\commands\\commands.ts",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAYAAAADAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
-              "WhenOpened": "2026-01-04T21:50:52.057Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-04T21:50:52.057Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 11,
+              "DocumentIndex": 15,
               "Title": "vitest.config.ts",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\vitest.config.ts",
               "RelativeDocumentMoniker": "vitest.config.ts",
@@ -368,12 +422,11 @@
               "RelativeToolTip": "vitest.config.ts",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAADAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
-              "WhenOpened": "2026-01-08T19:43:51.938Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-08T19:43:51.938Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 12,
+              "DocumentIndex": 16,
               "Title": ".gitignore",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\.gitignore",
               "RelativeDocumentMoniker": ".gitignore",
@@ -381,12 +434,11 @@
               "RelativeToolTip": ".gitignore",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAYAAAADAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
-              "WhenOpened": "2026-01-08T19:42:17.055Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-08T19:42:17.055Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 13,
+              "DocumentIndex": 17,
               "Title": ".gitattributes",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\.gitattributes",
               "RelativeDocumentMoniker": ".gitattributes",
@@ -394,12 +446,11 @@
               "RelativeToolTip": ".gitattributes",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAwAAAAPAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
-              "WhenOpened": "2026-01-08T19:42:05.006Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-08T19:42:05.006Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 14,
+              "DocumentIndex": 18,
               "Title": ".eslintrc.json",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\.eslintrc.json",
               "RelativeDocumentMoniker": ".eslintrc.json",
@@ -407,12 +458,11 @@
               "RelativeToolTip": ".eslintrc.json",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-              "WhenOpened": "2026-01-04T21:53:21.765Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-04T21:53:21.765Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 8,
               "Title": "manifest.prod.xml",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\manifest.prod.xml",
               "RelativeDocumentMoniker": "manifest.prod.xml",
@@ -420,12 +470,11 @@
               "RelativeToolTip": "manifest.prod.xml",
               "ViewState": "AgIAADYAAAAAAAAAAAAuwFQAAAAMAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003576|",
-              "WhenOpened": "2026-01-08T08:05:54.936Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-08T08:05:54.936Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 15,
+              "DocumentIndex": 19,
               "Title": "taskpane.css",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\taskpane\\taskpane.css",
               "RelativeDocumentMoniker": "src\\taskpane\\taskpane.css",
@@ -433,12 +482,11 @@
               "RelativeToolTip": "src\\taskpane\\taskpane.css",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAIECAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003000|",
-              "WhenOpened": "2026-01-04T21:51:58.353Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-04T21:51:58.353Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 16,
+              "DocumentIndex": 20,
               "Title": "_headers",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\static\\_headers",
               "RelativeDocumentMoniker": "src\\static\\_headers",
@@ -446,12 +494,11 @@
               "RelativeToolTip": "src\\static\\_headers",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAAlAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
-              "WhenOpened": "2026-01-08T19:18:31.915Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-08T19:18:31.915Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 17,
+              "DocumentIndex": 21,
               "Title": "support.html",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\static\\support.html",
               "RelativeDocumentMoniker": "src\\static\\support.html",
@@ -459,12 +506,11 @@
               "RelativeToolTip": "src\\static\\support.html",
               "ViewState": "AgIAADUAAAAAAAAAAAAowFUAAAAHAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001512|",
-              "WhenOpened": "2026-01-08T15:24:35.476Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-08T15:24:35.476Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 18,
+              "DocumentIndex": 22,
               "Title": "privacy.html",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\static\\privacy.html",
               "RelativeDocumentMoniker": "src\\static\\privacy.html",
@@ -472,12 +518,11 @@
               "RelativeToolTip": "src\\static\\privacy.html",
               "ViewState": "AgIAADYAAAAAAAAAAAAowFMAAAAHAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001512|",
-              "WhenOpened": "2026-01-08T15:25:11.838Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-08T15:25:11.838Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 19,
+              "DocumentIndex": 23,
               "Title": "serbian.ts",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\core\\serbian.ts",
               "RelativeDocumentMoniker": "src\\core\\serbian.ts",
@@ -485,12 +530,11 @@
               "RelativeToolTip": "src\\core\\serbian.ts",
               "ViewState": "AgIAAG8AAAAAAAAAAAAuwI4AAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
-              "WhenOpened": "2026-01-08T19:05:51.495Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-08T19:05:51.495Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 20,
+              "DocumentIndex": 24,
               "Title": "bridgePhrases.ts",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\shared\\ooxml\\bridge\\bridgePhrases.ts",
               "RelativeDocumentMoniker": "src\\shared\\ooxml\\bridge\\bridgePhrases.ts",
@@ -498,12 +542,11 @@
               "RelativeToolTip": "src\\shared\\ooxml\\bridge\\bridgePhrases.ts",
               "ViewState": "AgIAAHkAAAAAAAAAAAAuwJgAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
-              "WhenOpened": "2026-01-08T19:09:17.477Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-08T19:09:17.477Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 21,
+              "DocumentIndex": 25,
               "Title": "bridgeLinks.ts",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\shared\\ooxml\\bridge\\bridgeLinks.ts",
               "RelativeDocumentMoniker": "src\\shared\\ooxml\\bridge\\bridgeLinks.ts",
@@ -511,12 +554,11 @@
               "RelativeToolTip": "src\\shared\\ooxml\\bridge\\bridgeLinks.ts",
               "ViewState": "AgIAAGQAAAAAAAAAAAAuwIMAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
-              "WhenOpened": "2026-01-08T19:08:48.801Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-08T19:08:48.801Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 22,
+              "DocumentIndex": 26,
               "Title": "bridgeExactTokens.ts",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\shared\\ooxml\\bridge\\bridgeExactTokens.ts",
               "RelativeDocumentMoniker": "src\\shared\\ooxml\\bridge\\bridgeExactTokens.ts",
@@ -524,12 +566,11 @@
               "RelativeToolTip": "src\\shared\\ooxml\\bridge\\bridgeExactTokens.ts",
               "ViewState": "AgIAAFcAAAAAAAAAAAAuwHYAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
-              "WhenOpened": "2026-01-08T19:08:21.742Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-08T19:08:21.742Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 23,
+              "DocumentIndex": 27,
               "Title": "bridgeDigraphs.ts",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\shared\\ooxml\\bridge\\bridgeDigraphs.ts",
               "RelativeDocumentMoniker": "src\\shared\\ooxml\\bridge\\bridgeDigraphs.ts",
@@ -537,12 +578,11 @@
               "RelativeToolTip": "src\\shared\\ooxml\\bridge\\bridgeDigraphs.ts",
               "ViewState": "AgIAAAoAAAAAAAAAAAAuwCkAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
-              "WhenOpened": "2026-01-08T19:07:47.521Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-08T19:07:47.521Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 24,
+              "DocumentIndex": 28,
               "Title": "bridgeAlwaysLatinTokens.ts",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\shared\\ooxml\\bridge\\bridgeAlwaysLatinTokens.ts",
               "RelativeDocumentMoniker": "src\\shared\\ooxml\\bridge\\bridgeAlwaysLatinTokens.ts",
@@ -550,12 +590,11 @@
               "RelativeToolTip": "src\\shared\\ooxml\\bridge\\bridgeAlwaysLatinTokens.ts",
               "ViewState": "AgIAAGIAAAAAAAAAAAAuwIEAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
-              "WhenOpened": "2026-01-08T19:07:21.487Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-08T19:07:21.487Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 25,
+              "DocumentIndex": 29,
               "Title": "quotes.ts",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\shared\\ooxml\\quotes.ts",
               "RelativeDocumentMoniker": "src\\shared\\ooxml\\quotes.ts",
@@ -563,12 +602,11 @@
               "RelativeToolTip": "src\\shared\\ooxml\\quotes.ts",
               "ViewState": "AgIAAAAAAAAAAAAAAAAuwB8AAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
-              "WhenOpened": "2026-01-08T19:11:13.327Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-08T19:11:13.327Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 26,
+              "DocumentIndex": 30,
               "Title": "code.ts",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\shared\\ooxml\\code.ts",
               "RelativeDocumentMoniker": "src\\shared\\ooxml\\code.ts",
@@ -576,12 +614,11 @@
               "RelativeToolTip": "src\\shared\\ooxml\\code.ts",
               "ViewState": "AgIAAEAAAAAAAAAAAAAuwF8AAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
-              "WhenOpened": "2026-01-08T19:09:38.725Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-08T19:09:38.725Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 27,
+              "DocumentIndex": 31,
               "Title": "common.ts",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\shared\\ooxml\\common.ts",
               "RelativeDocumentMoniker": "src\\shared\\ooxml\\common.ts",
@@ -589,12 +626,11 @@
               "RelativeToolTip": "src\\shared\\ooxml\\common.ts",
               "ViewState": "AgIAAFAAAAAAAAAAAAAuwG8AAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
-              "WhenOpened": "2026-01-08T19:10:01.595Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-08T19:10:01.595Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 28,
+              "DocumentIndex": 32,
               "Title": "rules.ts",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\core\\rules.ts",
               "RelativeDocumentMoniker": "src\\core\\rules.ts",
@@ -602,12 +638,11 @@
               "RelativeToolTip": "src\\core\\rules.ts",
               "ViewState": "AgIAABUAAAAAAAAAAAAuwDQAAABNAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
-              "WhenOpened": "2026-01-05T08:37:02.937Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-05T08:37:02.937Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 29,
+              "DocumentIndex": 33,
               "Title": "quotes.ts",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\core\\quotes.ts",
               "RelativeDocumentMoniker": "src\\core\\quotes.ts",
@@ -615,12 +650,11 @@
               "RelativeToolTip": "src\\core\\quotes.ts",
               "ViewState": "AgIAAAAAAAAAAAAAAAAuwA0AAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
-              "WhenOpened": "2026-01-08T19:05:21.802Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-08T19:05:21.802Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 30,
+              "DocumentIndex": 34,
               "Title": "manifest.xml",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\manifest.xml",
               "RelativeDocumentMoniker": "manifest.xml",
@@ -628,12 +662,11 @@
               "RelativeToolTip": "manifest.xml",
               "ViewState": "AgIAAD4AAAAAAAAAAAAYwFQAAAAMAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003576|",
-              "WhenOpened": "2026-01-04T21:53:57.457Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-04T21:53:57.457Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 31,
+              "DocumentIndex": 35,
               "Title": "webpack.config.js",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\webpack.config.js",
               "RelativeDocumentMoniker": "webpack.config.js",
@@ -641,12 +674,11 @@
               "RelativeToolTip": "webpack.config.js",
               "ViewState": "AgIAAC4AAAAAAAAAAAAuwEEAAAACAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001646|",
-              "WhenOpened": "2026-01-04T21:55:45.187Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-04T21:55:45.187Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 32,
+              "DocumentIndex": 36,
               "Title": "babel.config.json",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\babel.config.json",
               "RelativeDocumentMoniker": "babel.config.json",
@@ -654,12 +686,11 @@
               "RelativeToolTip": "babel.config.json",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAwAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-              "WhenOpened": "2026-01-04T21:53:41.914Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-04T21:53:41.914Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 33,
+              "DocumentIndex": 37,
               "Title": "tsconfig.json",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\tsconfig.json",
               "RelativeDocumentMoniker": "tsconfig.json",
@@ -667,12 +698,11 @@
               "RelativeToolTip": "tsconfig.json",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAA0AAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-              "WhenOpened": "2026-01-04T21:55:21.865Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-04T21:55:21.865Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 34,
+              "DocumentIndex": 38,
               "Title": "package.json",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\package.json",
               "RelativeDocumentMoniker": "package.json",
@@ -680,12 +710,11 @@
               "RelativeToolTip": "package.json",
               "ViewState": "AgIAAAcAAAAAAAAAAADwvycAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-              "WhenOpened": "2026-01-04T21:54:46.485Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-04T21:54:46.485Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 35,
+              "DocumentIndex": 39,
               "Title": "package-lock.json",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\package-lock.json",
               "RelativeDocumentMoniker": "package-lock.json",
@@ -697,7 +726,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 36,
+              "DocumentIndex": 40,
               "Title": "roundtripFuzz.test.ts",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\tests\\roundtripFuzz.test.ts",
               "RelativeDocumentMoniker": "tests\\roundtripFuzz.test.ts",
@@ -709,7 +738,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 37,
+              "DocumentIndex": 41,
               "Title": "options.test.ts",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\tests\\options.test.ts",
               "RelativeDocumentMoniker": "tests\\options.test.ts",
@@ -721,7 +750,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 39,
+              "DocumentIndex": 43,
               "Title": "ooxmlUrlEmailPunctuationAcrossRuns.test.ts",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\tests\\ooxmlUrlEmailPunctuationAcrossRuns.test.ts",
               "RelativeDocumentMoniker": "tests\\ooxmlUrlEmailPunctuationAcrossRuns.test.ts",
@@ -733,7 +762,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 40,
+              "DocumentIndex": 44,
               "Title": "ooxmlUrlEmailAcrossRuns.test.ts",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\tests\\ooxmlUrlEmailAcrossRuns.test.ts",
               "RelativeDocumentMoniker": "tests\\ooxmlUrlEmailAcrossRuns.test.ts",
@@ -745,7 +774,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 41,
+              "DocumentIndex": 45,
               "Title": "ooxmlSpacePreserve.test.ts",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\tests\\ooxmlSpacePreserve.test.ts",
               "RelativeDocumentMoniker": "tests\\ooxmlSpacePreserve.test.ts",
@@ -757,7 +786,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 42,
+              "DocumentIndex": 46,
               "Title": "ooxmlSmokeLarge.test.ts",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\tests\\ooxmlSmokeLarge.test.ts",
               "RelativeDocumentMoniker": "tests\\ooxmlSmokeLarge.test.ts",
@@ -769,7 +798,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 38,
+              "DocumentIndex": 42,
               "Title": "ooxmlUserProtectedPhraseAcrossRuns.test.ts",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\tests\\ooxmlUserProtectedPhraseAcrossRuns.test.ts",
               "RelativeDocumentMoniker": "tests\\ooxmlUserProtectedPhraseAcrossRuns.test.ts",
@@ -781,7 +810,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 43,
+              "DocumentIndex": 47,
               "Title": "ooxmlQuotesAcrossRuns.test.ts",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\tests\\ooxmlQuotesAcrossRuns.test.ts",
               "RelativeDocumentMoniker": "tests\\ooxmlQuotesAcrossRuns.test.ts",
@@ -793,7 +822,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 44,
+              "DocumentIndex": 48,
               "Title": "ooxmlPhraseAcrossRuns.test.ts",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\tests\\ooxmlPhraseAcrossRuns.test.ts",
               "RelativeDocumentMoniker": "tests\\ooxmlPhraseAcrossRuns.test.ts",
@@ -805,7 +834,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 45,
+              "DocumentIndex": 49,
               "Title": "ooxmlParagraph.test.ts",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\tests\\ooxmlParagraph.test.ts",
               "RelativeDocumentMoniker": "tests\\ooxmlParagraph.test.ts",
@@ -817,7 +846,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 46,
+              "DocumentIndex": 50,
               "Title": "ooxmlDigraphAcrossRuns.test.ts",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\tests\\ooxmlDigraphAcrossRuns.test.ts",
               "RelativeDocumentMoniker": "tests\\ooxmlDigraphAcrossRuns.test.ts",
@@ -829,7 +858,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 47,
+              "DocumentIndex": 51,
               "Title": "ooxmlCyrAllCapsDigraphAcrossRuns.test.ts",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\tests\\ooxmlCyrAllCapsDigraphAcrossRuns.test.ts",
               "RelativeDocumentMoniker": "tests\\ooxmlCyrAllCapsDigraphAcrossRuns.test.ts",
@@ -841,7 +870,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 48,
+              "DocumentIndex": 52,
               "Title": "ooxmlCodeBlocksAcrossRuns.test.ts",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\tests\\ooxmlCodeBlocksAcrossRuns.test.ts",
               "RelativeDocumentMoniker": "tests\\ooxmlCodeBlocksAcrossRuns.test.ts",
@@ -853,7 +882,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 49,
+              "DocumentIndex": 53,
               "Title": "ooxmlBrandAcrossRuns.test.ts",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\tests\\ooxmlBrandAcrossRuns.test.ts",
               "RelativeDocumentMoniker": "tests\\ooxmlBrandAcrossRuns.test.ts",
@@ -865,7 +894,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 50,
+              "DocumentIndex": 54,
               "Title": "corePlain.test.ts",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\tests\\corePlain.test.ts",
               "RelativeDocumentMoniker": "tests\\corePlain.test.ts",
@@ -877,7 +906,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 51,
+              "DocumentIndex": 55,
               "Title": "codeBlocks.test.ts",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\tests\\codeBlocks.test.ts",
               "RelativeDocumentMoniker": "tests\\codeBlocks.test.ts",
@@ -889,7 +918,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 52,
+              "DocumentIndex": 56,
               "Title": "basic.test.ts",
               "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\tests\\basic.test.ts",
               "RelativeDocumentMoniker": "tests\\basic.test.ts",
@@ -898,18 +927,6 @@
               "ViewState": "AgIAACkAAAAAAAAAAAAIwEkAAAADAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
               "WhenOpened": "2026-01-05T08:45:46.978Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 53,
-              "Title": "transliterator.ts",
-              "DocumentMoniker": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\shared\\transliterator.ts",
-              "RelativeDocumentMoniker": "src\\shared\\transliterator.ts",
-              "ToolTip": "D:\\SerbianTransliteratorWeb\\SerbianTransliterator\\src\\shared\\transliterator.ts",
-              "RelativeToolTip": "src\\shared\\transliterator.ts",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAIAAABHAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
-              "WhenOpened": "2026-01-04T21:51:35.718Z"
             }
           ]
         }

@@ -1,7 +1,7 @@
 import { convertPlainText, detectScript, Direction, CoreOptions } from "../../core/textCore";
 import { ALWAYS_LATIN_PHRASES } from "../../core/rules";
 
-import { XML_NS, collectTextNodes, getFullText, needsXmlSpacePreserve } from "./dom";
+import { XML_NS, WORD_NS, collectTextNodes, getFullText, needsXmlSpacePreserve } from "./dom";
 import { buildPhraseInfos, bridgePhrasesAcrossTextNodes } from "./bridge/bridgePhrases";
 import { bridgeAlwaysLatinTokensAcrossTextNodes } from "./bridge/bridgeAlwaysLatinTokens";
 import { bridgeExactTokensAcrossTextNodes } from "./bridge/bridgeExactTokens";
@@ -15,6 +15,9 @@ import {
     createInitialCodeParseStats,
     transformTextRespectingCode,
 } from "./code";
+
+import { removeMultipleSpaces } from "../../core/utils";
+import { bridgeSpacesAcrossTextNodes } from "./bridge/bridgeSpaces";
 
 export interface OoxmlOptions extends CoreOptions {
     direction?: Direction | "auto" | "to-ascii";
@@ -44,6 +47,7 @@ export type ConvertStats = {
         userPhrases: number;
         userTokens: number;
         allCapsHints: number;
+        spaces: number;
     };
     timingMs: number;
 };
@@ -57,13 +61,14 @@ function countMatches(text: string, re: RegExp): number {
 
 function toAscii(text: string): string {
     const map: Record<string, string> = {
-        'č': 'c', 'ć': 'c', 'š': 's', 'đ': 'dj', 'ž': 'z',
-        'Č': 'C', 'Ć': 'C', 'Š': 'S', 'Đ': 'Dj', 'Ž': 'Z'
+        "č": "c", "ć": "c", "š": "s", "đ": "dj", "ž": "z",
+        "Č": "C", "Ć": "C", "Š": "S", "Đ": "Dj", "Ž": "Z"
     };
-    return text.replace(/[čćšđžČĆŠĐŽ]/g, match => map[match]);
+    return text.replace(/[čćšđžČĆŠĐŽ]/g, (match) => map[match]!);
 }
 
-const ROMAN_REGEX_STRICT = /\b(?!I\b)(?=[MDCLXVI]+\b)M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})\b/g;
+const ROMAN_REGEX_STRICT =
+    /\b(?!I\b)(?=[MDCLXVI]+\b)M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})\b/g;
 
 const ROMAN_I_PREFIXES = [
     "Petar", "Aleksandar", "Pavle", "Đorđe", "Djordje", "Milan", "Miloš", "Milos",
@@ -79,16 +84,6 @@ const ROMAN_I_PREFIXES = [
 
 const ROMAN_I_REGEX = new RegExp(`\\b(${ROMAN_I_PREFIXES.join("|")})\\s+I\\b`, "g");
 
-// --- REŠENJE ZA RAZMAKE (REGEX /g) ---
-function removeDoubleSpaces(text: string): string {
-    // 1. Zameni sve "čudne" razmake (tab, non-breaking, itd.) u običan razmak ' '
-    let out = text.replace(/[\t\u00A0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]/g, " ");
-
-    // 2. Zameni svako pojavljivanje 2 ili više razmaka ({2,}) jednim razmakom
-    // 'g' flag je obavezan da bi zamenio SVE pojave, a ne samo prvu.
-    return out.replace(/ {2,}/g, " ");
-}
-
 function formatSerbianDates(text: string): string {
     let out = text.replace(/\b(\d{1,2})\/(\d{1,2})\/(\d{4})\b/g, "$2.$1.$3.");
     out = out.replace(/\b(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})\.?/g, "$1.$2.$3.");
@@ -96,8 +91,52 @@ function formatSerbianDates(text: string): string {
     return out;
 }
 
-// OVO SMO ISKLJUČILI ZA SADA
-// function ensureRunLanguage(textNode: Element, langId: string) { ... }
+/**
+ * NOVO: Postavi w:lang na <w:r> run-ovima koji sadrže tekst.
+ * Ovo utiče na proofing/spellcheck u Word-u.
+ */
+function findAncestor(el: Element, localName: string): Element | null {
+    let cur: Element | null = el;
+    while (cur) {
+        if (cur.localName === localName) return cur;
+        cur = cur.parentElement;
+    }
+    return null;
+}
+
+function setProofingLanguageOnRuns(doc: Document, textNodes: Element[], lang: string): number {
+    const seen = new WeakSet<Element>();
+    let changed = 0;
+
+    for (const t of textNodes) {
+        const run = findAncestor(t, "r"); // <w:r>
+        if (!run || seen.has(run)) continue;
+        seen.add(run);
+
+        // <w:rPr>
+        let rPr: Element | undefined = Array.from(run.children).find((c) => c.localName === "rPr");
+        if (!rPr) {
+            rPr = doc.createElementNS(WORD_NS, "w:rPr");
+            run.insertBefore(rPr, run.firstChild);
+        }
+
+        // <w:lang>
+        let langEl: Element | undefined = Array.from(rPr.children).find((c) => c.localName === "lang");
+        if (!langEl) {
+            langEl = doc.createElementNS(WORD_NS, "w:lang");
+            rPr.appendChild(langEl);
+        }
+
+        // set attributes (w:val je najbitniji; eastAsia/bidi su “safe”)
+        langEl.setAttributeNS(WORD_NS, "w:val", lang);
+        langEl.setAttributeNS(WORD_NS, "w:eastAsia", lang);
+        langEl.setAttributeNS(WORD_NS, "w:bidi", lang);
+
+        changed++;
+    }
+
+    return changed;
+}
 
 export function convertOoxml(ooxml: string, options?: OoxmlOptions): { xml: string; type: string; stats: ConvertStats } {
     const t0 = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
@@ -119,7 +158,7 @@ export function convertOoxml(ooxml: string, options?: OoxmlOptions): { xml: stri
                 charsAfter: fullText.length,
                 detected: { urls: 0, emails: 0 },
                 code: { fenceMarkersSeen: 0, inlineTicksSeen: 0, endedInFence: false, endedInInline: false },
-                bridges: { links: 0, brandPhrases: 0, brandTokens: 0, digraphs: 0, userPhrases: 0, userTokens: 0, allCapsHints: 0 },
+                bridges: { links: 0, brandPhrases: 0, brandTokens: 0, digraphs: 0, userPhrases: 0, userTokens: 0, allCapsHints: 0, spaces: 0 },
                 timingMs: 0,
             },
         };
@@ -158,7 +197,10 @@ export function convertOoxml(ooxml: string, options?: OoxmlOptions): { xml: stri
     const userProtectedTokens = userProtected.filter((x) => !/\s/.test(x) && x.trim().length > 0);
     const userProtectedTokenSet = new Set(userProtectedTokens.map((x) => x.normalize("NFC")));
 
-    const bridges = { links: 0, brandPhrases: 0, brandTokens: 0, digraphs: 0, userPhrases: 0, userTokens: 0, allCapsHints: 0 };
+    const bridges = { links: 0, brandPhrases: 0, brandTokens: 0, digraphs: 0, userPhrases: 0, userTokens: 0, allCapsHints: 0, spaces: 0 };
+
+    // prvo spoji višestruke space preko čvorova
+    bridges.spaces = bridgeSpacesAcrossTextNodes(textNodes);
 
     if (userProtectedPhrases.length) bridges.userPhrases = bridgePhrasesAcrossTextNodes(textNodes, buildPhraseInfos(userProtectedPhrases));
     if (userProtectedTokens.length) bridges.userTokens = bridgeExactTokensAcrossTextNodes(textNodes, userProtectedTokens);
@@ -204,8 +246,7 @@ export function convertOoxml(ooxml: string, options?: OoxmlOptions): { xml: stri
 
         const transformFn = (input: string) => {
             let temp = input;
-
-            if (doFixSpaces) temp = removeDoubleSpaces(temp);
+            if (doFixSpaces) temp = removeMultipleSpaces(temp);
             if (doFixDates) temp = formatSerbianDates(temp);
 
             if (direction === "to-ascii") {
@@ -241,9 +282,6 @@ export function convertOoxml(ooxml: string, options?: OoxmlOptions): { xml: stri
             }
         }
 
-        // DEAKTIVIRANO: Jezik
-        // if (shouldSetLang && direction !== "to-ascii") { ... }
-
         if (needsXmlSpacePreserve(finalText)) {
             node.setAttributeNS(XML_NS, "xml:space", "preserve");
         }
@@ -255,6 +293,12 @@ export function convertOoxml(ooxml: string, options?: OoxmlOptions): { xml: stri
         applySerbianQuotesAcrossNodes(textNodes, preserveCodeBlocks);
     }
 
+    // NOVO: proofing language (sr-Cyrl-RS / sr-Latn-RS)
+    if (shouldSetLang) {
+        const lang = (direction === "lat-to-cyr") ? "sr-Cyrl-RS" : "sr-Latn-RS";
+        setProofingLanguageOnRuns(doc, textNodes, lang);
+    }
+
     let charsAfter = 0;
     for (const node of textNodes) {
         charsAfter += (node.textContent ?? "").length;
@@ -262,7 +306,7 @@ export function convertOoxml(ooxml: string, options?: OoxmlOptions): { xml: stri
 
     let xml = new XMLSerializer().serializeToString(doc);
 
-    // CLEANUP XMLNS (Standardno čišćenje)
+    // cleanup xmlns=""
     xml = xml.replace(/ xmlns=""/g, "");
 
     const t1 = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();

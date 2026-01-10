@@ -9,7 +9,6 @@
     <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
 
     <style>
-        /* Fluent UI / Office stilovi */
         html, body {
             width: 100%;
             height: 100%;
@@ -99,12 +98,6 @@
                 font-weight: 600;
                 color: var(--primary-color);
             }
-
-        .subtitle {
-            margin-top: 2px;
-            font-size: 12px;
-            opacity: 0.8;
-        }
 
         .version {
             font-size: 11px;
@@ -257,20 +250,6 @@
                 color: var(--disabled-text);
             }
 
-        .icon-btn {
-            background: none;
-            border: 1px solid transparent;
-            cursor: pointer;
-            padding: 4px;
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--text-color);
-            opacity: 0.7;
-            transition: all 0.2s;
-        }
-
         .small-blue-btn {
             background-color: var(--primary-color);
             color: var(--primary-text);
@@ -344,7 +323,7 @@
             display: flex;
             flex-wrap: wrap;
             gap: 6px;
-            min-height: 32px; /* 32px visina */
+            min-height: 32px;
             cursor: text;
             align-items: center;
         }
@@ -408,10 +387,6 @@
             gap: 10px;
         }
 
-        .full-width {
-            width: 100%;
-        }
-
         button {
             display: inline-flex;
             align-items: center;
@@ -425,7 +400,6 @@
             transition: background 0.2s;
         }
 
-        /* --- PRESLOVI DUGME (TAMNO PLAVO) --- */
         #runBtn {
             background-color: var(--primary-color);
             color: var(--primary-text);
@@ -440,11 +414,10 @@
                 background-color: var(--primary-hover);
             }
 
-        /* --- PREGLED DUGME (KAO IZVEZI/UVEZI) --- */
         #previewBtn {
-            background-color: var(--bg-color); /* Bela pozadina */
-            color: var(--primary-color); /* Tamno sivi tekst */
-            border: 1px solid var(--input-border); /* Sivi okvir */
+            background-color: var(--bg-color);
+            color: var(--primary-color);
+            border: 1px solid var(--input-border);
             flex-direction: column;
             line-height: 1.1;
             min-height: 50px;
@@ -471,24 +444,14 @@
             margin-top: 2px;
             color: white;
         }
-
+        /* FIX: subtitle na preview dugmetu ne sme biti beo */
         #previewBtn .btn-subtitle {
             font-size: 11px;
             font-weight: normal;
-            opacity: 0.7;
+            opacity: 0.75;
             margin-top: 2px;
-            color: white;
+            color: var(--primary-color);
         }
-
-        button:not(#runBtn, #previewBtn, .small-blue-btn, .icon-btn, .mini-btn, #addTagBtn) {
-            background-color: var(--bg-color);
-            border: 1px solid var(--input-border);
-            color: var(--text-color);
-        }
-
-            button:not(#runBtn, #previewBtn, .small-blue-btn, .icon-btn, .mini-btn, #addTagBtn):hover {
-                background-color: var(--neutral-lighter);
-            }
 
         #resetBtn {
             margin-top: 0;
@@ -677,6 +640,7 @@
             <div class="version">v1.0.0</div>
         </div>
     </header>
+
     <main>
         <div class="section">
             <div class="button-group">
@@ -734,8 +698,11 @@
 
         <div class="section">
             <div class="section-title">OPCIJE</div>
+            <!-- NOVO: postojalo u TS kodu, ali nije bilo u HTML-u -->
+            <label><input type="checkbox" id="optConfirmWholeDoc" checked /> Potvrdi preslovljavanje celog dokumenta</label>
+
             <label><input type="checkbox" id="optProtectBrands" checked /> Zaštiti brendove (Windows, ...)</label>
-            <label><input type="checkbox" id="optSerbianQuotes" checked /> Pametni navodnici ( „ … ” )</label>
+            <label><input type="checkbox" id="optSerbianQuotes" checked /> Pametni navodnici ( „ … “ )</label>
             <label><input type="checkbox" id="optPreserveCodeBlocks" checked /> Zaštiti kod (<code>inline</code> / <code>blok</code>)</label>
             <label><input type="checkbox" id="optProtectRomans" checked /> Zaštiti rimske brojeve (IV, XIV)</label>
             <label><input type="checkbox" id="optSetProofingLanguage" checked /> Postavi jezik provere (sr-Cyrl / sr-Latn)</label>
@@ -760,26 +727,34 @@
                         <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" /><path d="M0 0h24v24H0z" fill="none" /></svg>
                         <span>Moje</span>
                     </button>
+
                     <button id="clearPresetBtn" class="mini-btn" title="Obriši reči iz profila" disabled>
-                        <svg viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none" /><path d="M14 6V4h-4v2h4zM4 8v11h16V8H4zm10-2V4h-4v2h4z" opacity=".3" /><path d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-2 .89-2 2v11c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zM10 4h4v2h-4V4zm10 15H4V8h16v11z" /></svg> <span>Profil</span>
+                        <svg viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none" /><path d="M14 6V4h-4v2h4zM4 8v11h16V8H4zm10-2V4h-4v2h4z" opacity=".3" /><path d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-2 .89-2 2v11c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zM10 4h4v2h-4V4zm10 15H4V8h16v11z" /></svg>
+                        <span>Profil</span>
                     </button>
+
                     <button id="clearAllBtn" class="mini-btn" title="Obriši sve reči" disabled>
                         <svg viewBox="0 0 24 24" style="width: 14px; height: 14px;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" /><path d="M0 0h24v24H0z" fill="none" /></svg>
                         <span>Sve</span>
                     </button>
                 </div>
             </div>
+
             <div class="tags-container" id="tagsContainer">
                 <div class="tags-list" id="tagsList" style="display:contents;"></div>
                 <input type="text" id="tagInput" class="tag-input" placeholder="Upiši reč ili frazu..." autocomplete="off" />
             </div>
+
             <textarea id="userWordsCustom" style="display:none;"></textarea>
             <textarea id="userWordsPreset" style="display:none;"></textarea>
             <div class="hint">Reči ovde ostaju u originalnom pismu.</div>
         </div>
 
         <div id="msg">Spreman za rad.</div>
-        <div id="statsBox"><div id="statsTitle">Statistika poslednje akcije:</div><pre id="statsText"></pre></div>
+        <div id="statsBox">
+            <div id="statsTitle">Statistika poslednje akcije:</div>
+            <pre id="statsText"></pre>
+        </div>
     </main>
 
     <footer>
