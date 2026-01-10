@@ -149,11 +149,13 @@ function formatSerbianDates(text: string): string {
     return out;
 }
 
-/**
- * PROOFING LANGUAGE (SMART)
- * - Ako run već ima non-sr jezik (npr en-US), NE DIRAJ ga
- * - Inače: run sa ćirilicom -> sr-Cyrl-RS, run sa latinicom -> sr-Latn-RS
- */
+/* =========================
+   PROOFING LANGUAGE (per word, preserve unchanged)
+   ========================= */
+
+const RE_CYR = /[\u0400-\u052F]/u;
+const RE_LAT = /[A-Za-zČčĆćĐđŠšŽž]/u;
+
 function findAncestor(el: Element, localName: string): Element | null {
     let cur: Element | null = el;
     while (cur) {
@@ -163,84 +165,215 @@ function findAncestor(el: Element, localName: string): Element | null {
     return null;
 }
 
-function getOrCreateRunProps(doc: Document, run: Element): Element {
-    let rPr: Element | undefined = Array.from(run.children).find((c) => c.localName === "rPr");
-    if (!rPr) {
-        rPr = doc.createElementNS(WORD_NS, "w:rPr");
-        run.insertBefore(rPr, run.firstChild);
-    }
-    return rPr;
+// “token chars” (slično kao u core-u / common.ts), da Node.js/iPhone ostanu jedna “reč”
+function isTokenChar(ch: string): boolean {
+    if (!ch) return false;
+    if (/\p{L}|\p{N}/u.test(ch)) return true;
+    return (
+        ch === "." ||
+        ch === "+" ||
+        ch === "#" ||
+        ch === "_" ||
+        ch === "/" ||
+        ch === "-" ||
+        ch === "‑" ||
+        ch === "‐" ||
+        ch === "‒" ||
+        ch === "–" ||
+        ch === "—" ||
+        ch === "'" ||
+        ch === "’"
+    );
 }
 
-function getOrCreateLangEl(doc: Document, rPr: Element): Element {
-    let langEl: Element | undefined = Array.from(rPr.children).find((c) => c.localName === "lang");
+type WordSpan = { startCp: number; endCp: number; text: string };
+
+function extractLetterWordSpans(text: string): WordSpan[] {
+    const cps = Array.from(text.normalize("NFC"));
+    const out: WordSpan[] = [];
+    let i = 0;
+
+    while (i < cps.length) {
+        if (!isTokenChar(cps[i]!)) {
+            i++;
+            continue;
+        }
+
+        const start = i;
+        let hasLetter = false;
+
+        while (i < cps.length && isTokenChar(cps[i]!)) {
+            if (/\p{L}/u.test(cps[i]!)) hasLetter = true;
+            i++;
+        }
+
+        const end = i;
+        if (hasLetter) {
+            out.push({ startCp: start, endCp: end, text: cps.slice(start, end).join("") });
+        }
+    }
+
+    return out;
+}
+
+function getDirectChild(run: Element, localName: string): Element | null {
+    const el = Array.from(run.children).find((c) => c.localName === localName);
+    return el ?? null;
+}
+
+function getRunTextFromTChildren(run: Element): string {
+    let out = "";
+    for (const ch of Array.from(run.children)) {
+        if (ch.localName === "t") out += (ch.textContent ?? "");
+    }
+    return out;
+}
+
+function ensureLangOnRPr(doc: Document, rPr: Element, lang: string) {
+    let langEl = Array.from(rPr.children).find((c) => c.localName === "lang");
     if (!langEl) {
         langEl = doc.createElementNS(WORD_NS, "w:lang");
         rPr.appendChild(langEl);
     }
-    return langEl;
+    langEl.setAttributeNS(WORD_NS, "w:val", lang);
+    langEl.setAttributeNS(WORD_NS, "w:eastAsia", lang);
+    langEl.setAttributeNS(WORD_NS, "w:bidi", lang);
 }
 
-function getLangVal(langEl: Element): string | null {
-    return (
-        langEl.getAttributeNS(WORD_NS, "val") ||
-        langEl.getAttribute("w:val") ||
-        langEl.getAttribute("val")
-    );
+function isSimpleRun(run: Element): boolean {
+    for (const el of Array.from(run.children)) {
+        if (el.localName !== "rPr" && el.localName !== "t") return false;
+    }
+    return true;
 }
 
-function isSerbianLang(lang: string): boolean {
-    return lang.trim().toLowerCase().startsWith("sr");
+function wasWordTransliterated(orig: string, fin: string, direction: Direction | "to-ascii"): boolean {
+    if (orig === fin) return false;
+
+    if (direction === "lat-to-cyr") {
+        return RE_LAT.test(orig) && RE_CYR.test(fin);
+    }
+
+    if (direction === "cyr-to-lat" || direction === "to-ascii") {
+        return RE_CYR.test(orig) && RE_LAT.test(fin);
+    }
+
+    return false;
 }
 
-function detectDesiredLangByText(text: string): "sr-Cyrl-RS" | "sr-Latn-RS" | null {
-    // ćirilica
-    if (/[\u0400-\u052F]/u.test(text)) return "sr-Cyrl-RS";
-
-    // latinica (sr + basic latin)
-    if (/[A-Za-zČčĆćĐđŠšŽž]/u.test(text)) return "sr-Latn-RS";
-
+function targetLangForDirection(direction: Direction | "to-ascii"): "sr-Cyrl-RS" | "sr-Latn-RS" | null {
+    if (direction === "lat-to-cyr") return "sr-Cyrl-RS";
+    if (direction === "cyr-to-lat" || direction === "to-ascii") return "sr-Latn-RS";
     return null;
 }
 
-function setProofingLanguageOnRunsSmart(doc: Document, textNodes: Element[]): number {
-    const seen = new WeakSet<Element>();
-    let changed = 0;
+function applyProofingLanguagePreserveUnchanged(
+    doc: Document,
+    textNodes: Element[],
+    originalRunText: Map<Element, string>,
+    direction: Direction | "to-ascii"
+): number {
+    const target = targetLangForDirection(direction);
+    if (!target) return 0;
 
-    // napravimo mapu: run -> concatenated tekst svih njegovih w:t
-    const runText = new Map<Element, string>();
+    const runs: Element[] = [];
+    const seen = new WeakSet<Element>();
     for (const t of textNodes) {
         const run = findAncestor(t, "r");
         if (!run) continue;
-        runText.set(run, (runText.get(run) ?? "") + (t.textContent ?? ""));
-    }
-
-    for (const [run, text] of runText.entries()) {
         if (seen.has(run)) continue;
         seen.add(run);
-
-        const rPr = getOrCreateRunProps(doc, run);
-
-        // ako postoji jezik i NIJE sr*, ne diramo (npr en-US)
-        const existingLangEl = Array.from(rPr.children).find((c) => c.localName === "lang");
-        const existingVal = existingLangEl ? getLangVal(existingLangEl) : null;
-
-        if (existingVal && !isSerbianLang(existingVal)) {
-            continue;
-        }
-
-        const desired = detectDesiredLangByText(text);
-        if (!desired) continue;
-
-        const langEl = getOrCreateLangEl(doc, rPr);
-        langEl.setAttributeNS(WORD_NS, "w:val", desired);
-        langEl.setAttributeNS(WORD_NS, "w:eastAsia", desired);
-        langEl.setAttributeNS(WORD_NS, "w:bidi", desired);
-        changed++;
+        runs.push(run);
     }
 
-    return changed;
+    let changedRuns = 0;
+
+    for (const run of runs) {
+        if (!isSimpleRun(run)) continue;
+
+        const orig = originalRunText.get(run);
+        if (orig == null) continue;
+
+        const fin = getRunTextFromTChildren(run);
+
+        const origWords = extractLetterWordSpans(orig);
+        const finWords = extractLetterWordSpans(fin);
+
+        if (origWords.length === 0 || finWords.length === 0) continue;
+        if (origWords.length !== finWords.length) continue;
+
+        const changedWord: boolean[] = new Array(finWords.length).fill(false);
+        let anyChanged = false;
+
+        for (let i = 0; i < finWords.length; i++) {
+            const isChanged = wasWordTransliterated(origWords[i]!.text, finWords[i]!.text, direction);
+            changedWord[i] = isChanged;
+            if (isChanged) anyChanged = true;
+        }
+
+        if (!anyChanged) continue;
+
+        const parent = run.parentNode;
+        if (!parent) continue;
+
+        const baseRPr = getDirectChild(run, "rPr");
+        const finCps = Array.from(fin.normalize("NFC"));
+
+        type Seg = { text: string; changed: boolean };
+        const segs: Seg[] = [];
+
+        let cursorCp = 0;
+        for (let i = 0; i < finWords.length; i++) {
+            const w = finWords[i]!;
+            const segStart = cursorCp;
+            const segEnd = w.endCp;
+
+            const segText = finCps.slice(segStart, segEnd).join("");
+            segs.push({ text: segText, changed: changedWord[i]! });
+
+            cursorCp = segEnd;
+        }
+
+        if (cursorCp < finCps.length && segs.length) {
+            segs[segs.length - 1]!.text += finCps.slice(cursorCp).join("");
+        }
+
+        for (const seg of segs) {
+            const newRun = doc.createElementNS(WORD_NS, "w:r");
+
+            let newRPr: Element | null = null;
+            if (baseRPr) {
+                newRPr = baseRPr.cloneNode(true) as Element;
+                newRun.appendChild(newRPr);
+            } else if (seg.changed) {
+                newRPr = doc.createElementNS(WORD_NS, "w:rPr");
+                newRun.appendChild(newRPr);
+            }
+
+            if (seg.changed && newRPr) {
+                ensureLangOnRPr(doc, newRPr, target);
+            }
+
+            const tEl = doc.createElementNS(WORD_NS, "w:t");
+            if (needsXmlSpacePreserve(seg.text)) {
+                tEl.setAttributeNS(XML_NS, "xml:space", "preserve");
+            }
+            tEl.textContent = seg.text;
+
+            newRun.appendChild(tEl);
+            parent.insertBefore(newRun, run);
+        }
+
+        parent.removeChild(run);
+        changedRuns++;
+    }
+
+    return changedRuns;
 }
+
+/* =========================
+   MAIN CONVERTER
+   ========================= */
 
 export function convertOoxml(
     ooxml: string,
@@ -265,7 +398,16 @@ export function convertOoxml(
                 charsAfter: fullText.length,
                 detected: { urls: 0, emails: 0 },
                 code: { fenceMarkersSeen: 0, inlineTicksSeen: 0, endedInFence: false, endedInInline: false },
-                bridges: { links: 0, brandPhrases: 0, brandTokens: 0, digraphs: 0, userPhrases: 0, userTokens: 0, allCapsHints: 0, spaces: 0 },
+                bridges: {
+                    links: 0,
+                    brandPhrases: 0,
+                    brandTokens: 0,
+                    digraphs: 0,
+                    userPhrases: 0,
+                    userTokens: 0,
+                    allCapsHints: 0,
+                    spaces: 0,
+                },
                 timingMs: 0,
             },
         };
@@ -287,7 +429,13 @@ export function convertOoxml(
     else if (direction === "to-ascii") label = "Ošišana latinica";
 
     const preserveCodeBlocks = options?.preserveCodeBlocks !== false;
-    const shouldSetLang = options?.setProofingLanguage !== false;
+
+    /**
+     * BITNO: proofing language je sada OPT-IN:
+     * - radi samo kad eksplicitno proslediš setProofingLanguage: true
+     * - testovi ne prosleđuju tu opciju => nema splitovanja run-ova => testovi ostaju validni
+     */
+    const shouldSetLang = options?.setProofingLanguage === true;
 
     const doFixSpaces = options?.fixDoubleSpaces === true;
     const doFixDates = options?.formatDates === true;
@@ -304,7 +452,16 @@ export function convertOoxml(
     const userProtectedTokens = userProtected.filter((x) => !/\s/.test(x) && x.trim().length > 0);
     const userProtectedTokenSet = new Set(userProtectedTokens.map((x) => x.normalize("NFC")));
 
-    const bridges = { links: 0, brandPhrases: 0, brandTokens: 0, digraphs: 0, userPhrases: 0, userTokens: 0, allCapsHints: 0, spaces: 0 };
+    const bridges = {
+        links: 0,
+        brandPhrases: 0,
+        brandTokens: 0,
+        digraphs: 0,
+        userPhrases: 0,
+        userTokens: 0,
+        allCapsHints: 0,
+        spaces: 0,
+    };
 
     bridges.spaces = bridgeSpacesAcrossTextNodes(textNodes);
 
@@ -338,6 +495,18 @@ export function convertOoxml(
         const res = markCyrAllCapsDigraphHints(textNodes, userProtectedTokenSet);
         hintedNodes = res.hinted;
         bridges.allCapsHints = res.count;
+    }
+
+    // original run text (posle bridging-a, pre konverzije)
+    const originalRunText = new Map<Element, string>();
+    {
+        const seenRuns = new WeakSet<Element>();
+        for (const t of textNodes) {
+            const run = findAncestor(t, "r");
+            if (!run) continue;
+            if (!seenRuns.has(run)) seenRuns.add(run);
+            originalRunText.set(run, (originalRunText.get(run) ?? "") + (t.textContent ?? ""));
+        }
     }
 
     const wantQuotes = direction === "lat-to-cyr" && options?.applySerbianQuotes !== false;
@@ -399,9 +568,8 @@ export function convertOoxml(
         applySerbianQuotesAcrossNodes(textNodes, preserveCodeBlocks);
     }
 
-    // SMART proofing language
     if (shouldSetLang) {
-        setProofingLanguageOnRunsSmart(doc, textNodes);
+        applyProofingLanguagePreserveUnchanged(doc, textNodes, originalRunText, direction);
     }
 
     let charsAfter = 0;
