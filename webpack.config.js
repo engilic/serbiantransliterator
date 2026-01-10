@@ -11,7 +11,7 @@ async function getHttpsOptions() {
 
 module.exports = async (env, options) => {
     const dev = options.mode === "development";
-    
+
     const config = {
         devtool: dev ? "source-map" : false,
         entry: {
@@ -22,15 +22,15 @@ module.exports = async (env, options) => {
         resolve: { extensions: [".ts", ".html", ".js"] },
         module: {
             rules: [
-                { 
-                    test: /\.ts$/, 
-                    use: "babel-loader", 
-                    exclude: /node_modules/ 
+                {
+                    test: /\.ts$/,
+                    use: "babel-loader",
+                    exclude: /node_modules/,
                 },
-                { 
-                    test: /\.html$/, 
-                    use: "html-loader", 
-                    exclude: /node_modules/ 
+                {
+                    test: /\.html$/,
+                    use: "html-loader",
+                    exclude: /node_modules/,
                 },
                 {
                     test: /\.(png|jpg|gif|ico)$/,
@@ -45,13 +45,13 @@ module.exports = async (env, options) => {
                 new TerserPlugin({
                     terserOptions: {
                         compress: {
-                            drop_console: !dev, // Uklanja console.log u production
+                            drop_console: !dev,
                         },
                         mangle: {
-                            toplevel: true, // Bolja minifikacija
+                            toplevel: true,
                         },
                         output: {
-                            comments: false, // Uklanja komentare
+                            comments: false,
                         },
                     },
                     extractComments: false,
@@ -74,25 +74,32 @@ module.exports = async (env, options) => {
                 filename: "taskpane.html",
                 template: "./src/taskpane/taskpane.html",
                 chunks: ["polyfill", "taskpane"],
-                minify: !dev ? {
-                    collapseWhitespace: true,
-                    removeComments: true,
-                    removeRedundantAttributes: true,
-                } : false,
+                minify: !dev
+                    ? {
+                        collapseWhitespace: true,
+                        removeComments: true,
+                        removeRedundantAttributes: true,
+                    }
+                    : false,
             }),
             new HtmlWebpackPlugin({
                 filename: "commands.html",
                 template: "./src/commands/commands.html",
                 chunks: ["polyfill", "commands"],
-                minify: !dev ? {
-                    collapseWhitespace: true,
-                    removeComments: true,
-                } : false,
+                minify: !dev
+                    ? {
+                        collapseWhitespace: true,
+                        removeComments: true,
+                    }
+                    : false,
             }),
             new CopyWebpackPlugin({
                 patterns: [
                     { from: "assets/*", to: "assets/[name][ext]" },
                     { from: "manifest*.xml", to: "[name][ext]" },
+
+                    // STATIC PAGES
+                    { from: "src/static/index.html", to: "index.html", noErrorOnMissing: true },
                     { from: "src/static/support.html", to: "support.html", noErrorOnMissing: true },
                     { from: "src/static/privacy.html", to: "privacy.html", noErrorOnMissing: true },
                     { from: "src/static/_headers", to: "_headers", toType: "file", noErrorOnMissing: true },
@@ -103,7 +110,7 @@ module.exports = async (env, options) => {
             headers: { "Access-Control-Allow-Origin": "*" },
             server: {
                 type: "https",
-                options: dev ? await getHttpsOptions() : {}
+                options: dev ? await getHttpsOptions() : {},
             },
             port: 3000,
             hot: false,
@@ -111,5 +118,6 @@ module.exports = async (env, options) => {
             watchFiles: ["src/**/*"],
         },
     };
+
     return config;
 };

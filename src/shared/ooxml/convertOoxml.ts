@@ -10,11 +10,7 @@ import { bridgeDigraphsAcrossTextNodes } from "./bridge/bridgeDigraphs";
 import { markCyrAllCapsDigraphHints, LAT_ALLCAPS_HINT } from "./bridge/allCapsHints";
 import { applySerbianQuotesAcrossNodes } from "./quotes";
 
-import {
-    createInitialCodeState,
-    createInitialCodeParseStats,
-    transformTextRespectingCode,
-} from "./code";
+import { createInitialCodeState, createInitialCodeParseStats, transformTextRespectingCode } from "./code";
 
 import { removeMultipleSpaces } from "../../core/utils";
 import { bridgeSpacesAcrossTextNodes } from "./bridge/bridgeSpaces";
@@ -61,8 +57,16 @@ function countMatches(text: string, re: RegExp): number {
 
 function toAscii(text: string): string {
     const map: Record<string, string> = {
-        "č": "c", "ć": "c", "š": "s", "đ": "dj", "ž": "z",
-        "Č": "C", "Ć": "C", "Š": "S", "Đ": "Dj", "Ž": "Z"
+        č: "c",
+        ć: "c",
+        š: "s",
+        đ: "dj",
+        ž: "z",
+        Č: "C",
+        Ć: "C",
+        Š: "S",
+        Đ: "Dj",
+        Ž: "Z",
     };
     return text.replace(/[čćšđžČĆŠĐŽ]/g, (match) => map[match]!);
 }
@@ -71,15 +75,69 @@ const ROMAN_REGEX_STRICT =
     /\b(?!I\b)(?=[MDCLXVI]+\b)M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})\b/g;
 
 const ROMAN_I_PREFIXES = [
-    "Petar", "Aleksandar", "Pavle", "Đorđe", "Djordje", "Milan", "Miloš", "Milos",
-    "Katarina", "Elizabeta", "Viktorija", "Marija", "Ana",
-    "Luj", "Šarl", "Sarl", "Anri", "Filip", "Felipe", "Huan", "Karlos",
-    "Viljem", "Fridrih", "Oskar", "Gustav", "Erik", "Jovan", "Jozef",
-    "Benedikt", "Pije", "Lav", "Grgur", "Klement", "Inoćentije", "Jovan",
-    "Nikola", "Napoleon", "Konstantin", "Stefan", "Uroš", "Uros", "Dušan", "Dusan",
-    "Član", "Clan", "Glava", "Deo", "Stav", "Tačka", "Tacka", "Odeljak", "Aneks",
-    "Klasa", "Grupa", "Tom", "Knjiga", "Sveska", "Partija", "Zona", "Sektor",
-    "Svetski rat", "Boj", "Put"
+    "Petar",
+    "Aleksandar",
+    "Pavle",
+    "Đorđe",
+    "Djordje",
+    "Milan",
+    "Miloš",
+    "Milos",
+    "Katarina",
+    "Elizabeta",
+    "Viktorija",
+    "Marija",
+    "Ana",
+    "Luj",
+    "Šarl",
+    "Sarl",
+    "Anri",
+    "Filip",
+    "Felipe",
+    "Huan",
+    "Karlos",
+    "Viljem",
+    "Fridrih",
+    "Oskar",
+    "Gustav",
+    "Erik",
+    "Jovan",
+    "Jozef",
+    "Benedikt",
+    "Pije",
+    "Lav",
+    "Grgur",
+    "Klement",
+    "Inoćentije",
+    "Jovan",
+    "Nikola",
+    "Napoleon",
+    "Konstantin",
+    "Stefan",
+    "Uroš",
+    "Uros",
+    "Dušan",
+    "Dusan",
+    "Član",
+    "Clan",
+    "Glava",
+    "Deo",
+    "Stav",
+    "Tačka",
+    "Tacka",
+    "Odeljak",
+    "Aneks",
+    "Klasa",
+    "Grupa",
+    "Tom",
+    "Knjiga",
+    "Sveska",
+    "Partija",
+    "Zona",
+    "Sektor",
+    "Svetski rat",
+    "Boj",
+    "Put",
 ];
 
 const ROMAN_I_REGEX = new RegExp(`\\b(${ROMAN_I_PREFIXES.join("|")})\\s+I\\b`, "g");
@@ -92,8 +150,9 @@ function formatSerbianDates(text: string): string {
 }
 
 /**
- * NOVO: Postavi w:lang na <w:r> run-ovima koji sadrže tekst.
- * Ovo utiče na proofing/spellcheck u Word-u.
+ * PROOFING LANGUAGE (SMART)
+ * - Ako run već ima non-sr jezik (npr en-US), NE DIRAJ ga
+ * - Inače: run sa ćirilicom -> sr-Cyrl-RS, run sa latinicom -> sr-Latn-RS
  */
 function findAncestor(el: Element, localName: string): Element | null {
     let cur: Element | null = el;
@@ -104,42 +163,90 @@ function findAncestor(el: Element, localName: string): Element | null {
     return null;
 }
 
-function setProofingLanguageOnRuns(doc: Document, textNodes: Element[], lang: string): number {
+function getOrCreateRunProps(doc: Document, run: Element): Element {
+    let rPr: Element | undefined = Array.from(run.children).find((c) => c.localName === "rPr");
+    if (!rPr) {
+        rPr = doc.createElementNS(WORD_NS, "w:rPr");
+        run.insertBefore(rPr, run.firstChild);
+    }
+    return rPr;
+}
+
+function getOrCreateLangEl(doc: Document, rPr: Element): Element {
+    let langEl: Element | undefined = Array.from(rPr.children).find((c) => c.localName === "lang");
+    if (!langEl) {
+        langEl = doc.createElementNS(WORD_NS, "w:lang");
+        rPr.appendChild(langEl);
+    }
+    return langEl;
+}
+
+function getLangVal(langEl: Element): string | null {
+    return (
+        langEl.getAttributeNS(WORD_NS, "val") ||
+        langEl.getAttribute("w:val") ||
+        langEl.getAttribute("val")
+    );
+}
+
+function isSerbianLang(lang: string): boolean {
+    return lang.trim().toLowerCase().startsWith("sr");
+}
+
+function detectDesiredLangByText(text: string): "sr-Cyrl-RS" | "sr-Latn-RS" | null {
+    // ćirilica
+    if (/[\u0400-\u052F]/u.test(text)) return "sr-Cyrl-RS";
+
+    // latinica (sr + basic latin)
+    if (/[A-Za-zČčĆćĐđŠšŽž]/u.test(text)) return "sr-Latn-RS";
+
+    return null;
+}
+
+function setProofingLanguageOnRunsSmart(doc: Document, textNodes: Element[]): number {
     const seen = new WeakSet<Element>();
     let changed = 0;
 
+    // napravimo mapu: run -> concatenated tekst svih njegovih w:t
+    const runText = new Map<Element, string>();
     for (const t of textNodes) {
-        const run = findAncestor(t, "r"); // <w:r>
-        if (!run || seen.has(run)) continue;
+        const run = findAncestor(t, "r");
+        if (!run) continue;
+        runText.set(run, (runText.get(run) ?? "") + (t.textContent ?? ""));
+    }
+
+    for (const [run, text] of runText.entries()) {
+        if (seen.has(run)) continue;
         seen.add(run);
 
-        // <w:rPr>
-        let rPr: Element | undefined = Array.from(run.children).find((c) => c.localName === "rPr");
-        if (!rPr) {
-            rPr = doc.createElementNS(WORD_NS, "w:rPr");
-            run.insertBefore(rPr, run.firstChild);
+        const rPr = getOrCreateRunProps(doc, run);
+
+        // ako postoji jezik i NIJE sr*, ne diramo (npr en-US)
+        const existingLangEl = Array.from(rPr.children).find((c) => c.localName === "lang");
+        const existingVal = existingLangEl ? getLangVal(existingLangEl) : null;
+
+        if (existingVal && !isSerbianLang(existingVal)) {
+            continue;
         }
 
-        // <w:lang>
-        let langEl: Element | undefined = Array.from(rPr.children).find((c) => c.localName === "lang");
-        if (!langEl) {
-            langEl = doc.createElementNS(WORD_NS, "w:lang");
-            rPr.appendChild(langEl);
-        }
+        const desired = detectDesiredLangByText(text);
+        if (!desired) continue;
 
-        // set attributes (w:val je najbitniji; eastAsia/bidi su “safe”)
-        langEl.setAttributeNS(WORD_NS, "w:val", lang);
-        langEl.setAttributeNS(WORD_NS, "w:eastAsia", lang);
-        langEl.setAttributeNS(WORD_NS, "w:bidi", lang);
-
+        const langEl = getOrCreateLangEl(doc, rPr);
+        langEl.setAttributeNS(WORD_NS, "w:val", desired);
+        langEl.setAttributeNS(WORD_NS, "w:eastAsia", desired);
+        langEl.setAttributeNS(WORD_NS, "w:bidi", desired);
         changed++;
     }
 
     return changed;
 }
 
-export function convertOoxml(ooxml: string, options?: OoxmlOptions): { xml: string; type: string; stats: ConvertStats } {
-    const t0 = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+export function convertOoxml(
+    ooxml: string,
+    options?: OoxmlOptions
+): { xml: string; type: string; stats: ConvertStats } {
+    const t0 = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
 
     const parser = new DOMParser();
     const doc = parser.parseFromString(ooxml, "application/xml");
@@ -199,7 +306,6 @@ export function convertOoxml(ooxml: string, options?: OoxmlOptions): { xml: stri
 
     const bridges = { links: 0, brandPhrases: 0, brandTokens: 0, digraphs: 0, userPhrases: 0, userTokens: 0, allCapsHints: 0, spaces: 0 };
 
-    // prvo spoji višestruke space preko čvorova
     bridges.spaces = bridgeSpacesAcrossTextNodes(textNodes);
 
     if (userProtectedPhrases.length) bridges.userPhrases = bridgePhrasesAcrossTextNodes(textNodes, buildPhraseInfos(userProtectedPhrases));
@@ -252,7 +358,7 @@ export function convertOoxml(ooxml: string, options?: OoxmlOptions): { xml: stri
             if (direction === "to-ascii") {
                 const { text: tempLat } = convertPlainText(temp, "cyr-to-lat", {
                     ...options,
-                    applySerbianQuotes: false
+                    applySerbianQuotes: false,
                 });
                 return toAscii(tempLat);
             } else {
@@ -293,10 +399,9 @@ export function convertOoxml(ooxml: string, options?: OoxmlOptions): { xml: stri
         applySerbianQuotesAcrossNodes(textNodes, preserveCodeBlocks);
     }
 
-    // NOVO: proofing language (sr-Cyrl-RS / sr-Latn-RS)
+    // SMART proofing language
     if (shouldSetLang) {
-        const lang = (direction === "lat-to-cyr") ? "sr-Cyrl-RS" : "sr-Latn-RS";
-        setProofingLanguageOnRuns(doc, textNodes, lang);
+        setProofingLanguageOnRunsSmart(doc, textNodes);
     }
 
     let charsAfter = 0;
@@ -305,11 +410,10 @@ export function convertOoxml(ooxml: string, options?: OoxmlOptions): { xml: stri
     }
 
     let xml = new XMLSerializer().serializeToString(doc);
-
-    // cleanup xmlns=""
     xml = xml.replace(/ xmlns=""/g, "");
 
-    const t1 = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+    const t1 = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+
     const stats: ConvertStats = {
         direction,
         textNodes: textNodes.length,
