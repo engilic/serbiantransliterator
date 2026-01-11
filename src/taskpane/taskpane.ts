@@ -24,6 +24,7 @@ interface UiSettings {
     fixDoubleSpaces: boolean;
     formatDates: boolean;
     confirmWholeDoc: boolean;
+    includeHeadersFooters: boolean;
     showStats: boolean;
     direction: DirectionUi;
 }
@@ -34,18 +35,33 @@ const SETTINGS_KEY = "serbiantransliterator.settings.v2";
 
 const DEFAULT_SETTINGS: UiSettings = {
     schemaVersion: 2,
+
+    // Profil + korisničke reči
     profile: "custom",
     userWordsCustom: [],
+
+    // Opseg obrade / ponašanje
+    confirmWholeDoc: true,
+    includeHeadersFooters: false,
+
+    // Smer preslovljavanja
+    direction: "auto",
+
+    // Zaštite / pravila
     protectBrands: true,
-    applySerbianQuotes: true,
     preserveCodeBlocks: true,
-    setProofingLanguage: true,
     protectRomans: true,
+
+    // Korekcije / formatiranje
+    applySerbianQuotes: true,
     fixDoubleSpaces: true,
     formatDates: true,
-    confirmWholeDoc: true,
+
+    // Word jezik provere
+    setProofingLanguage: true,
+
+    // UI
     showStats: false,
-    direction: "auto",
 };
 
 const PROFILE_NAMES: Record<string, string> = {
@@ -416,6 +432,59 @@ async function checkSelectionAndUpdateButtons() {
 
 // --- APPLY TO WORD (OOXML) ---
 
+async function processHeadersFooters(context: Word.RequestContext, opts: OoxmlOptions): Promise<number> {
+    let processed = 0;
+
+    const sections = context.document.sections;
+    sections.load("items");
+    await context.sync();
+
+    const types: Word.HeaderFooterType[] = [
+        Word.HeaderFooterType.primary,
+        Word.HeaderFooterType.firstPage,
+        Word.HeaderFooterType.evenPages,
+    ];
+
+    for (let si = 0; si < sections.items.length; si++) {
+        const sec = sections.items[si]!;
+        for (const t of types) {
+            // HEADER
+            try {
+                const hr = sec.getHeader(t).getRange();
+                const ooxml = hr.getOoxml();
+                await context.sync();
+
+                const res = convertOoxml(ooxml.value, opts);
+                if (res.type !== "Nema teksta") {
+                    hr.insertOoxml(res.xml, Word.InsertLocation.replace);
+                    await context.sync();
+                    processed++;
+                }
+            } catch {
+                // neka okruženja/sekcije mogu baciti grešku – ignorišemo i nastavljamo
+            }
+
+            // FOOTER
+            try {
+                const fr = sec.getFooter(t).getRange();
+                const ooxml = fr.getOoxml();
+                await context.sync();
+
+                const res = convertOoxml(ooxml.value, opts);
+                if (res.type !== "Nema teksta") {
+                    fr.insertOoxml(res.xml, Word.InsertLocation.replace);
+                    await context.sync();
+                    processed++;
+                }
+            } catch {
+                // ignore
+            }
+        }
+    }
+
+    return processed;
+}
+
 async function runSmart() {
     try {
         await Word.run(async (context) => {
@@ -437,7 +506,11 @@ async function runSmart() {
             }
 
             const ui = getSettingsFromUi();
+            const opts = getOoxmlOptionsFromUi();
 
+            let headersFootersProcessed = 0;
+
+            // Ako nema selekcije -> ceo dokument
             if (!hasText) {
                 if (ui.confirmWholeDoc) {
                     const ok = await confirmInPanel("Nije selektovan tekst.<br/>Da li želite da preslovite <b>CEO dokument</b>?");
@@ -446,6 +519,23 @@ async function runSmart() {
                         return;
                     }
                 }
+
+                // 1) Header/Footer (opciono)
+                // Ako još nisi dodao ui.includeHeadersFooters u UiSettings,
+                // možeš privremeno koristiti: const includeHF = getCheckValue("optIncludeHeadersFooters");
+                const includeHF = ui.includeHeadersFooters === true;
+
+                if (includeHF) {
+                    try {
+                        setStatus("Obrada: zaglavlja/podnožja...", "info");
+                        headersFootersProcessed = await processHeadersFooters(context, opts);
+                    } catch (e) {
+                        console.warn("Header/Footer obrada nije uspela:", e);
+                        // Ne prekidamo ceo proces – nastavljamo na body
+                    }
+                }
+
+                // 2) Body
                 range = context.document.body.getRange("Whole");
             }
 
@@ -454,7 +544,6 @@ async function runSmart() {
             const ooxml = range.getOoxml();
             await context.sync();
 
-            const opts = getOoxmlOptionsFromUi();
             const result = convertOoxml(ooxml.value, opts);
 
             if (result.type === "Nema teksta") {
@@ -468,10 +557,16 @@ async function runSmart() {
             const scope = hasText ? "Selekcija" : "Ceo dokument";
             const time = result.stats.timingMs.toFixed(0);
 
-            setStatus(`Završeno: ${result.type} (${time}ms)`, "success");
+            const hfInfo = !hasText && headersFootersProcessed > 0 ? ` | H/F: ${headersFootersProcessed}` : "";
+            setStatus(`Završeno: ${result.type} (${time}ms)${hfInfo}`, "success");
 
             lastStatsTitle = `Statistika: ${result.type}`;
-            lastStatsText = `Opseg: ${scope}\nPromenjeno čvorova: ${result.stats.textNodes}\nVreme: ${time}ms`;
+            lastStatsText =
+                `Opseg: ${scope}\n` +
+                `Promenjeno čvorova: ${result.stats.textNodes}\n` +
+                `Vreme: ${time}ms` +
+                (!hasText ? `\nHeader/Footer obrađeno: ${headersFootersProcessed}` : "");
+
             refreshStats();
         });
     } catch (e) {
@@ -491,6 +586,11 @@ async function applyFromPreview(scope: "selection" | "document") {
             const hasText = rawText.trim().length > 0;
             const isJustWhitespace = rawText.length > 0 && !hasText;
 
+            const ui = getSettingsFromUi();
+            const opts = getOoxmlOptionsFromUi();
+            const includeHF = ui.includeHeadersFooters === true;
+
+            // Validacija za selekciju
             if (scope === "selection") {
                 if (!hasText) {
                     showModalInfo("Greška", "Nema selekcije za preslovljavanje.");
@@ -501,6 +601,20 @@ async function applyFromPreview(scope: "selection" | "document") {
                     return;
                 }
             } else {
+                // Whole document apply (iz preview-a)
+
+                // 1) Header/Footer (opciono)
+                if (includeHF) {
+                    try {
+                        setStatus("Obrada: zaglavlja/podnožja...", "info");
+                        await processHeadersFooters(context, opts);
+                    } catch (e) {
+                        console.warn("Header/Footer obrada nije uspela:", e);
+                        // Ne prekidamo proces – nastavljamo na body
+                    }
+                }
+
+                // 2) Body
                 range = context.document.body.getRange("Whole");
             }
 
@@ -509,7 +623,6 @@ async function applyFromPreview(scope: "selection" | "document") {
             const ooxml = range.getOoxml();
             await context.sync();
 
-            const opts = getOoxmlOptionsFromUi();
             const result = convertOoxml(ooxml.value, opts);
 
             if (result.type === "Nema teksta") {
@@ -522,6 +635,16 @@ async function applyFromPreview(scope: "selection" | "document") {
 
             const time = result.stats.timingMs.toFixed(0);
             setStatus(`Završeno: ${result.type} (${time}ms)`, "success");
+
+            // (opciono) ažuriraj stats kao u runSmart
+            lastStatsTitle = `Statistika: ${result.type}`;
+            lastStatsText =
+                `Opseg: ${scope === "selection" ? "Selekcija" : "Ceo dokument"}\n` +
+                `Promenjeno čvorova: ${result.stats.textNodes}\n` +
+                `Vreme: ${time}ms` +
+                (scope === "document" && includeHF ? `\nHeader/Footer: uključeno` : "");
+
+            refreshStats();
         });
     } catch (e) {
         console.error(e);
@@ -1110,6 +1233,7 @@ function setupInputListeners() {
         "optShowStats",
         "optFixDoubleSpaces",
         "optFormatDates",
+	"optIncludeHeadersFooters",
         "dirAuto",
         "dirLatToCyr",
         "dirCyrToLat",
@@ -1144,6 +1268,7 @@ function getSettingsFromUi(): UiSettings {
         confirmWholeDoc: getCheckValue("optConfirmWholeDoc"),
         showStats: getCheckValue("optShowStats"),
         direction: getRadioValue("direction") as DirectionUi,
+	includeHeadersFooters: getCheckValue("optIncludeHeadersFooters"),
     };
 }
 
@@ -1162,6 +1287,8 @@ function applySettingsToUi(s: UiSettings) {
     setCheckValue("optFormatDates", s.formatDates);
 
     setRadioValue("direction", s.direction);
+
+    setCheckValue("optIncludeHeadersFooters", s.includeHeadersFooters);
 }
 
 function updateResetButtonState() {
