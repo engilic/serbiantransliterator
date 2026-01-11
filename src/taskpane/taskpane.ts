@@ -68,10 +68,41 @@ const PRESETS: Record<string, Partial<UiSettings> & { userWords: string[] }> = {
         formatDates: true,
         confirmWholeDoc: true,
         userWords: [
-            "Git", "GitHub", "GitLab", "Azure", "AWS", "GCP", "DevOps", "Docker", "Kubernetes", "CI/CD",
-            "YAML", "REST", "GraphQL", "PowerShell", "VS Code", "Visual Studio", "Windows Server", "Linux",
-            "SerbianTransliterator", "Python", "JavaScript", "Typescript", "Node.js", "React", "Angular", "Vue",
-            "Frontend", "Backend", "Fullstack", "Database", "Cache", "Cookie", "Token", "API", "Endpoint",
+            "Git",
+            "GitHub",
+            "GitLab",
+            "Azure",
+            "AWS",
+            "GCP",
+            "DevOps",
+            "Docker",
+            "Kubernetes",
+            "CI/CD",
+            "YAML",
+            "REST",
+            "GraphQL",
+            "PowerShell",
+            "VS Code",
+            "Visual Studio",
+            "Windows Server",
+            "Linux",
+            "SerbianTransliterator",
+            "Python",
+            "JavaScript",
+            "Typescript",
+            "Node.js",
+            "React",
+            "Angular",
+            "Vue",
+            "Frontend",
+            "Backend",
+            "Fullstack",
+            "Database",
+            "Cache",
+            "Cookie",
+            "Token",
+            "API",
+            "Endpoint",
         ],
     },
     finance: {
@@ -85,9 +116,30 @@ const PRESETS: Record<string, Partial<UiSettings> & { userWords: string[] }> = {
         formatDates: true,
         confirmWholeDoc: true,
         userWords: [
-            "SWIFT", "IBAN", "EUR", "USD", "RSD", "CHF", "GBP",
-            "MasterCard", "Visa", "PayPal", "Intesa", "Raiffeisen", "OTP", "NLB", "AIK", "Erste", "UniCredit",
-            "Western Union", "E-banking", "M-banking", "Leasing", "Factoring", "Equity", "Forex",
+            "SWIFT",
+            "IBAN",
+            "EUR",
+            "USD",
+            "RSD",
+            "CHF",
+            "GBP",
+            "MasterCard",
+            "Visa",
+            "PayPal",
+            "Intesa",
+            "Raiffeisen",
+            "OTP",
+            "NLB",
+            "AIK",
+            "Erste",
+            "UniCredit",
+            "Western Union",
+            "E-banking",
+            "M-banking",
+            "Leasing",
+            "Factoring",
+            "Equity",
+            "Forex",
         ],
     },
     medical: {
@@ -101,9 +153,28 @@ const PRESETS: Record<string, Partial<UiSettings> & { userWords: string[] }> = {
         formatDates: true,
         confirmWholeDoc: true,
         userWords: [
-            "mg", "ml", "kg", "Covid", "SARS", "Hemofarm", "Galenika", "Pfizer", "Actavis", "Alkaloid",
-            "Bayer", "Roche", "Stada", "Anamnesis", "Diagnosis", "Therapia", "CT", "MRI", "EKG", "EEG",
-            "In vitro", "In vivo",
+            "mg",
+            "ml",
+            "kg",
+            "Covid",
+            "SARS",
+            "Hemofarm",
+            "Galenika",
+            "Pfizer",
+            "Actavis",
+            "Alkaloid",
+            "Bayer",
+            "Roche",
+            "Stada",
+            "Anamnesis",
+            "Diagnosis",
+            "Therapia",
+            "CT",
+            "MRI",
+            "EKG",
+            "EEG",
+            "In vitro",
+            "In vivo",
         ],
     },
     marketing: {
@@ -117,9 +188,31 @@ const PRESETS: Record<string, Partial<UiSettings> & { userWords: string[] }> = {
         formatDates: false,
         confirmWholeDoc: true,
         userWords: [
-            "Facebook", "Instagram", "LinkedIn", "TikTok", "Twitter", "X", "YouTube", "Google",
-            "SEO", "PR", "Copywriter", "Content", "Ads", "Influencer", "Giveaway", "Hashtag",
-            "Story", "Reel", "Post", "Follow", "Like", "Share", "Subscribe", "Timeline", "Feed",
+            "Facebook",
+            "Instagram",
+            "LinkedIn",
+            "TikTok",
+            "Twitter",
+            "X",
+            "YouTube",
+            "Google",
+            "SEO",
+            "PR",
+            "Copywriter",
+            "Content",
+            "Ads",
+            "Influencer",
+            "Giveaway",
+            "Hashtag",
+            "Story",
+            "Reel",
+            "Post",
+            "Follow",
+            "Like",
+            "Share",
+            "Subscribe",
+            "Timeline",
+            "Feed",
         ],
     },
     legal: {
@@ -133,10 +226,23 @@ const PRESETS: Record<string, Partial<UiSettings> & { userWords: string[] }> = {
         formatDates: true,
         confirmWholeDoc: true,
         userWords: [
-            "Ustav Republike Srbije", "Zakon o obligacionim odnosima", "Zakon o radu",
-            "Ministarstvo pravde", "Privredni sud", "Advokatska komora Srbije", "Službeni glasnik",
-            "Bona fide", "De facto", "Ex officio",
-            "Copyright", "Trademark", "Disclaimer", "Policy", "Terms", "Conditions", "GDPR",
+            "Ustav Republike Srbije",
+            "Zakon o obligacionim odnosima",
+            "Zakon o radu",
+            "Ministarstvo pravde",
+            "Privredni sud",
+            "Advokatska komora Srbije",
+            "Službeni glasnik",
+            "Bona fide",
+            "De facto",
+            "Ex officio",
+            "Copyright",
+            "Trademark",
+            "Disclaimer",
+            "Policy",
+            "Terms",
+            "Conditions",
+            "GDPR",
         ],
     },
     journalism: {
@@ -150,8 +256,21 @@ const PRESETS: Record<string, Partial<UiSettings> & { userWords: string[] }> = {
         formatDates: true,
         confirmWholeDoc: true,
         userWords: [
-            "Reuters", "Associated Press", "BBC", "CNN", "Euronews", "N1", "RTS", "Tanjug",
-            "NBA", "UEFA", "FIFA", "FIBA", "ATP", "WTA", "Olimpijske igre",
+            "Reuters",
+            "Associated Press",
+            "BBC",
+            "CNN",
+            "Euronews",
+            "N1",
+            "RTS",
+            "Tanjug",
+            "NBA",
+            "UEFA",
+            "FIFA",
+            "FIBA",
+            "ATP",
+            "WTA",
+            "Olimpijske igre",
         ],
     },
 };
@@ -164,6 +283,7 @@ let currentProfile: ProfilePreset = "custom";
 
 let lastStatsTitle = "Statistika poslednje akcije";
 let lastStatsText = "(Nema statistike još)";
+
 let selectionTimeout: any = null;
 let isApplyingProfile = false;
 
@@ -171,14 +291,14 @@ let isApplyingProfile = false;
 const PREVIEW_BATCH = 20;
 
 let previewScope: "selection" | "document" = "selection";
-let previewMode: "diff" | "plain" = "diff";
+let previewSettingsSnap: UiSettings | null = null;
 
+let previewMode: "diff" | "plain" = "diff";
 let previewTypeText = "";
 let previewTitleText = "";
 let previewOriginal = "";
 let previewConverted = "";
 
-let previewSettingsSnap: UiSettings | null = null;
 let previewAllParagraphs: string[] = [];
 let previewShownCount = 0;
 let previewCanLoadMore = false;
@@ -189,10 +309,7 @@ Office.onReady((info) => {
     if (info.host === Office.HostType.Word) {
         initUi();
 
-        Office.context.document.addHandlerAsync(
-            Office.EventType.DocumentSelectionChanged,
-            onSelectionChange
-        );
+        Office.context.document.addHandlerAsync(Office.EventType.DocumentSelectionChanged, onSelectionChange);
 
         checkSelectionAndUpdateButtons();
     }
@@ -319,9 +436,7 @@ async function runSmart() {
 
             if (!hasText) {
                 if (ui.confirmWholeDoc) {
-                    const ok = await confirmInPanel(
-                        "Nije selektovan tekst.<br/>Da li želite da preslovite <b>CEO dokument</b>?"
-                    );
+                    const ok = await confirmInPanel("Nije selektovan tekst.<br/>Da li želite da preslovite <b>CEO dokument</b>?");
                     if (!ok) {
                         setStatus("Otkazano.", "neutral");
                         return;
@@ -411,12 +526,10 @@ async function applyFromPreview(scope: "selection" | "document") {
 }
 
 /* =========================
-   PREVIEW (SELECTION = OOXML 1:1)
+   PREVIEW HELPERS
    ========================= */
 
 function normalizeWeirdBreaks(s: string): string {
-    // Word ume da vrati vertical tab (U+000B) koji izgleda kao ""
-    // i form feed (U+000C). U preview-u to normalizujemo na newline.
     return (s ?? "").replace(/\u000b/g, "\n").replace(/\u000c/g, "\n");
 }
 
@@ -447,14 +560,9 @@ function toAscii(text: string): string {
     return text.replace(/[čćšđžČĆŠĐŽ]/g, (m) => map[m]!);
 }
 
-/**
- * Preview za ceo dokument ostaje plain-text (prvih N paragrafa),
- * ali pokušava da emulira OOXML pipeline za fixDoubleSpaces/formatDates tako što ne dira code blocks.
- */
 function convertTextForPreviewPlain(input: string, s: UiSettings): { out: string; type: string } {
     let temp = normalizeWeirdBreaks(input);
 
-    // emulate OOXML: fix spaces/dates samo van code blocks
     const applyFixesOutsideCode = (txt: string) => {
         let t = txt;
         if (s.fixDoubleSpaces) t = removeMultipleSpaces(t);
@@ -494,10 +602,6 @@ function convertTextForPreviewPlain(input: string, s: UiSettings): { out: string
     return { out: text, type };
 }
 
-/**
- * 1:1 extractor iz Word OOXML-a: pokušava da vrati tekst sa \n između paragrafa.
- * Podržava i <w:tab/> i <w:br/> ako postoje.
- */
 function extractTextFromWordOoxml(xml: string): string {
     const W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
     const doc = new DOMParser().parseFromString(xml, "application/xml");
@@ -520,18 +624,19 @@ function extractTextFromWordOoxml(xml: string): string {
     };
 
     if (!hasParas) {
-        // fallback: samo svi w:t
         return Array.from(doc.getElementsByTagNameNS(W_NS, "t"))
-            .map((n) => (n.textContent ?? ""))
+            .map((n) => n.textContent ?? "")
             .join("");
     }
 
     const out: string[] = [];
-    for (const p of paras) {
-        out.push(walk(p));
-    }
+    for (const p of paras) out.push(walk(p));
     return out.join("\n");
 }
+
+/* =========================
+   PREVIEW MAIN
+   ========================= */
 
 async function runPreview() {
     setStatus("Generišem pregled...", "info");
@@ -552,17 +657,15 @@ async function runPreview() {
                 return;
             }
 
-            // snapshot settings za preview
             const settings = getSettingsFromUi();
             previewSettingsSnap = JSON.parse(JSON.stringify(settings));
 
-            // reset preview paging
             previewAllParagraphs = [];
             previewShownCount = 0;
             previewCanLoadMore = false;
 
             if (hasSelectionText) {
-                // === SELECTION PREVIEW: OOXML 1:1 ===
+                // Selection preview: OOXML 1:1
                 previewScope = "selection";
 
                 const ooxml = range.getOoxml();
@@ -571,10 +674,8 @@ async function runPreview() {
                 const originalOoxml = ooxml.value;
                 const opts = getOoxmlOptionsFromUi();
 
-                // original text from original OOXML (da diff bude realniji)
                 const origText = extractTextFromWordOoxml(originalOoxml);
 
-                // converted OOXML via same pipeline as "PRESLOVI"
                 const converted = convertOoxml(originalOoxml, opts);
                 const convText = extractTextFromWordOoxml(converted.xml);
 
@@ -604,7 +705,7 @@ async function runPreview() {
                 return;
             }
 
-            // === WHOLE DOCUMENT PREVIEW: plain-text first N paragraphs ===
+            // Whole doc preview: first N paragraphs (plain text)
             previewScope = "document";
 
             const body = context.document.body;
@@ -745,43 +846,49 @@ function showPreviewModal() {
     (document.getElementById("modal") as HTMLDivElement).classList.add("wide");
 
     text.innerHTML = `
-    <div id="previewStickyHeader"
-         style="position:sticky; top:0; z-index:2; background: var(--bg-color);
-                border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 10px;">
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
-        <div id="previewTitleText"
-             style="color: var(--primary-color); font-weight: 800; line-height: 1.3; padding-top:2px; flex:1;">
-          ${escapeHtml(previewTitleText)}
-        </div>
+      <div id="previewStickyHeader"
+           style="position:sticky; top:0; z-index:2; background: var(--bg-color);
+                  border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 10px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+          <div id="previewTitleText"
+               style="color: var(--primary-color); font-weight: 800; line-height: 1.3; padding-top:2px; flex:1;">
+            ${escapeHtml(previewTitleText)}
+          </div>
 
-        <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px;">
-          <button id="previewCloseBtn"
-                  class="icon-btn"
-                  type="button"
-                  aria-label="Zatvori"
-                  title="Zatvori"
-                  style="width:28px; height:28px; padding:0; font-size:20px; line-height:1;">
-            ×
-          </button>
+          <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px;">
+            <button id="previewCloseBtn"
+                    class="icon-btn"
+                    type="button"
+                    aria-label="Zatvori"
+                    title="Zatvori"
+                    style="width:28px; height:28px; padding:0; font-size:20px; line-height:1;">
+              ×
+            </button>
 
-          <div style="display:flex; flex-direction:column; gap:6px; align-items:stretch; min-width:110px;">
-            <button id="previewBtnDiff" class="mini-btn" type="button" title="Označi promene">Razlike</button>
-            <button id="previewBtnPlain" class="mini-btn" type="button" title="Prikaži samo rezultat">Rezultat</button>
+            <div style="display:flex; flex-direction:column; gap:6px; align-items:stretch; min-width:110px;">
+              <button id="previewBtnDiff" class="mini-btn" type="button" title="Označi promene">Razlike</button>
+              <button id="previewBtnPlain" class="mini-btn" type="button" title="Prikaži samo rezultat">Rezultat</button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <div id="previewHolder"></div>
-  `;
+      <div id="previewHolder"></div>
+    `;
 
     (document.getElementById("previewCloseBtn") as HTMLButtonElement).onclick = () => closeModal();
 
     const bDiff = document.getElementById("previewBtnDiff") as HTMLButtonElement;
     const bPlain = document.getElementById("previewBtnPlain") as HTMLButtonElement;
 
-    bDiff.onclick = () => { previewMode = "diff"; renderPreviewMode(); };
-    bPlain.onclick = () => { previewMode = "plain"; renderPreviewMode(); };
+    bDiff.onclick = () => {
+        previewMode = "diff";
+        renderPreviewMode();
+    };
+    bPlain.onclick = () => {
+        previewMode = "plain";
+        renderPreviewMode();
+    };
 
     renderPreviewMode();
 
@@ -801,14 +908,15 @@ function showPreviewModal() {
         };
     } else {
         setLoadMoreButtonState(okBtn, false, "Dostupno samo kada pregledate ceo dokument");
-        okBtn.onclick = () => { /* no-op */ };
+        okBtn.onclick = () => {
+            /* no-op */
+        };
     }
 
     applyBtn.style.display = "inline-flex";
     applyBtn.onclick = async () => {
         overlay.style.display = "none";
         resetModalButtons();
-
         await runWithUiLock(async () => {
             await applyFromPreview(previewScope);
         });
@@ -819,7 +927,7 @@ function showPreviewModal() {
 }
 
 /* =========================
-   TAGS
+   TAGOVI
    ========================= */
 
 function setupTagEvents() {
@@ -1032,7 +1140,6 @@ function applySettingsToUi(s: UiSettings) {
 
 function updateResetButtonState() {
     const current = getSettingsFromUi();
-
     const def: UiSettings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
     const curCopy: UiSettings = JSON.parse(JSON.stringify(current));
 
@@ -1040,7 +1147,6 @@ function updateResetButtonState() {
     def.userWordsCustom = [];
 
     const isSame = JSON.stringify(curCopy) === JSON.stringify(def);
-
     const btn = document.getElementById("resetBtn") as HTMLButtonElement;
     if (btn) btn.disabled = isSame;
 }
@@ -1192,11 +1298,7 @@ function setStatus(msg: string, type: "info" | "success" | "error" | "neutral") 
     const el = document.getElementById("msg") as HTMLDivElement;
     el.innerText = msg;
     el.style.color =
-        type === "error"
-            ? "var(--error-color)"
-            : type === "success"
-                ? "var(--success-color)"
-                : "var(--text-color)";
+        type === "error" ? "var(--error-color)" : type === "success" ? "var(--success-color)" : "var(--text-color)";
 }
 
 function refreshStats() {
@@ -1380,7 +1482,8 @@ function resetModalButtons() {
 }
 
 /* =========================
-   DIFF renderer
+   DIFF renderer (IMPROVED)
+   - NE OBELEŽAVA WHITESPACE-ONLY PROMENE
    ========================= */
 
 function generateDiffHtml(oldText: string, newText: string): string {
@@ -1392,6 +1495,8 @@ function generateDiffHtml(oldText: string, newText: string): string {
     const oldParts = oldText.split(splitRegex).filter(Boolean);
     const newParts = newText.split(splitRegex).filter(Boolean);
 
+    const isWs = (s: string) => /^\s+$/u.test(s);
+
     let html = "";
     const maxLen = Math.max(oldParts.length, newParts.length);
 
@@ -1401,9 +1506,17 @@ function generateDiffHtml(oldText: string, newText: string): string {
 
         if (o === n) {
             html += escapeHtml(n);
-        } else {
-            html += `<span class="diff-changed" title="Original: ${escapeHtml(o)}">${escapeHtml(n)}</span>`;
+            continue;
         }
+
+        // NOVO: ne highlightujemo promene koje su samo whitespace (razmak/tab/newline)
+        // ovo smanjuje “sve je obojeno” efekat kada je puno izmena
+        if (isWs(o) || isWs(n)) {
+            html += escapeHtml(n);
+            continue;
+        }
+
+        html += `<span class="diff-changed" title="Original: ${escapeHtml(o)}">${escapeHtml(n)}</span>`;
     }
 
     return `<div class="preview-single-pane">${html}</div>`;
