@@ -68,12 +68,18 @@ export function transformTextRespectingCode(
     return out;
 }
 
+const QUOTE_VARIANTS_RE =
+    /[\u201C\u201D\u2018\u2019\u00AB\u00BB\u201E\u201F\u201A\u201B\u2039\u203A]/g;
+
+const OPEN_QUOTE = "\u201E";  // „
+const CLOSE_QUOTE = "\u201D"; // ”
+
 export function transformQuotesRespectingCode(
     input: string,
     codeState: CodeState,
     quoteState: { open: boolean }
 ): string {
-    const normalizeQuotes = (s: string) => s.replace(/[“”‘’«»„‟‚‛‹›]/g, `"`);
+    const normalizeQuotes = (s: string) => s.replace(QUOTE_VARIANTS_RE, `"`);
 
     return transformTextRespectingCode(
         input,
@@ -83,7 +89,7 @@ export function transformQuotesRespectingCode(
             let out = "";
             for (const ch of normalized) {
                 if (ch === `"`) {
-                    out += quoteState.open ? "”" : "„";
+                    out += quoteState.open ? CLOSE_QUOTE : OPEN_QUOTE;
                     quoteState.open = !quoteState.open;
                 } else {
                     out += ch;
