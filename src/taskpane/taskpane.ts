@@ -305,6 +305,8 @@ let previewAllParagraphs: string[] = [];
 let previewShownCount = 0;
 let previewCanLoadMore = false;
 
+let previewToastTimer: number | null = null;
+
 // --- INIT ---
 
 Office.onReady((info) => {
@@ -880,6 +882,8 @@ function showPreviewModal() {
               ×
             </button>
 
+            <div id="previewToast" class="preview-toast" role="status" aria-live="polite"></div>
+
             <div style="display:flex; flex-direction:column; gap:6px; align-items:stretch; min-width:110px;">
               <button id="previewBtnDiff" class="mini-btn" type="button" title="Označi promene">Razlike</button>
               <button id="previewBtnPlain" class="mini-btn" type="button" title="Prikaži samo rezultat">Rezultat</button>
@@ -904,20 +908,24 @@ function showPreviewModal() {
         previewMode = "diff";
         renderPreviewMode();
     };
+
     bPlain.onclick = () => {
         previewMode = "plain";
         renderPreviewMode();
     };
+
     bSide.onclick = () => {
         previewMode = "side";
         renderPreviewMode();
     };
+
     bCopy.onclick = async () => {
         const ok = await copyToClipboard(previewConverted ?? "");
-        setStatus(ok ? "Rezultat kopiran u clipboard." : "Ne mogu da kopiram (clipboard nije dostupan).", ok ? "success" : "error");
+        if (ok) showPreviewToast("Kopirano", "success");
+        else showPreviewToast("Ne mogu da kopiram", "error", 2200);
     };
 
-    // inicijalno (ako nešto promeniš pre showPreviewModal)
+    // inicijalno
     if (previewMode !== "diff" && previewMode !== "plain" && previewMode !== "side") previewMode = "diff";
     renderPreviewMode();
 
@@ -1335,6 +1343,21 @@ async function copyToClipboard(text: string): Promise<boolean> {
     } catch {
         return false;
     }
+}
+
+function showPreviewToast(message: string, type: "success" | "error" | "info" = "info", ms = 1600) {
+    const el = document.getElementById("previewToast") as HTMLDivElement | null;
+    if (!el) return;
+
+    el.textContent = message;
+    el.classList.remove("success", "error", "info");
+    el.classList.add("show", type);
+
+    if (previewToastTimer) window.clearTimeout(previewToastTimer);
+    previewToastTimer = window.setTimeout(() => {
+        el.classList.remove("show", "success", "error", "info");
+        el.textContent = "";
+    }, ms);
 }
 
 async function runWithUiLock(fn: () => Promise<void>) {
