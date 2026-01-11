@@ -623,6 +623,22 @@ code {
   padding: 0 2px;
 }
 
+.diff-added {
+  background-color: rgba(16, 124, 16, 0.14);
+  border: 1px solid rgba(16, 124, 16, 0.35);
+  border-radius: 3px;
+  padding: 0 2px;
+  font-weight: 600;
+}
+
+.diff-removed {
+  background-color: rgba(209, 52, 56, 0.14);
+  border: 1px solid rgba(209, 52, 56, 0.35);
+  border-radius: 3px;
+  padding: 0 2px;
+  font-weight: 600;
+}
+
 /* Preview toast (modal) */
 .preview-toast {
   display: none;
@@ -708,6 +724,16 @@ code {
     background-color: #002a45;
     border-color: #4ba0ff;
     color: inherit;
+  }
+
+  .diff-added {
+    background-color: rgba(84, 176, 84, 0.18);
+    border-color: rgba(84, 176, 84, 0.45);
+  }
+
+  .diff-removed {
+    background-color: rgba(209, 52, 56, 0.22);
+    border-color: rgba(209, 52, 56, 0.55);
   }
 
   .preview-single-pane {
