@@ -359,7 +359,7 @@ button {
 
 .icon-btn {
   background: none;
-  border: 1px solid transparent;
+  border: 1px solid var(--border-color);
   cursor: pointer;
   padding: 4px;
   border-radius: 4px;
@@ -743,4 +743,55 @@ code {
   .preview-pane-body {
     background-color: #333;
   }
+}
+
+/* + dugme: normalno zeleno, na hover kao mini-btn */
+#addTagBtn {
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-color);
+  border-radius: 4px;
+
+  color: var(--success-color);
+  opacity: 1;
+
+  height: 24px;
+  width: 24px;
+  padding: 2px;
+}
+
+/* hover kao .mini-btn (plavi hover) */
+#addTagBtn:hover:not(:disabled) {
+  background-color: #e0f2ff;
+  border-color: var(--primary-hover);
+  color: var(--primary-hover);
+}
+
+/* disabled isto kao ostala dugmad */
+#addTagBtn:disabled {
+  background-color: var(--neutral-lighter);
+  color: var(--disabled-text);
+  border-color: var(--border-color);
+  opacity: 0.6;
+}
+
+/* Dugme "Sve" (tekst + ikonica) crveno */
+#clearAllBtn {
+  color: var(--error-color);
+}
+
+#clearAllBtn svg {
+  fill: currentColor; /* prati boju teksta */
+}
+
+/* "Sve" je crveno samo kad je enabled; kad je disabled – sivo */
+#clearAllBtn:disabled {
+  color: var(--disabled-text);
+  background-color: var(--neutral-lighter);
+  border-color: var(--border-color);
+  opacity: 0.6;
+  cursor: default;
+}
+
+#clearAllBtn:disabled svg {
+  fill: currentColor;
 }
