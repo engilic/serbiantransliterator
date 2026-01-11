@@ -1,8 +1,9 @@
-﻿/* global Word, Office, document, window, console, Blob, URL, FileReader */
+﻿/* global Word, Office, document, window, console, Blob, URL, FileReader, DOMParser */
 
 import { convertOoxml, OoxmlOptions } from "../shared/ooxml/convertOoxml";
 import { convertPlainText, Direction } from "../core/textCore";
 import { removeMultipleSpaces } from "../core/utils";
+import { createInitialCodeState, transformTextRespectingCode } from "../shared/ooxml/code";
 
 // --- TIPOVI ---
 
@@ -67,10 +68,41 @@ const PRESETS: Record<string, Partial<UiSettings> & { userWords: string[] }> = {
         formatDates: true,
         confirmWholeDoc: true,
         userWords: [
-            "Git", "GitHub", "GitLab", "Azure", "AWS", "GCP", "DevOps", "Docker", "Kubernetes", "CI/CD",
-            "YAML", "REST", "GraphQL", "PowerShell", "VS Code", "Visual Studio", "Windows Server", "Linux",
-            "SerbianTransliterator", "Python", "JavaScript", "Typescript", "Node.js", "React", "Angular", "Vue",
-            "Frontend", "Backend", "Fullstack", "Database", "Cache", "Cookie", "Token", "API", "Endpoint",
+            "Git",
+            "GitHub",
+            "GitLab",
+            "Azure",
+            "AWS",
+            "GCP",
+            "DevOps",
+            "Docker",
+            "Kubernetes",
+            "CI/CD",
+            "YAML",
+            "REST",
+            "GraphQL",
+            "PowerShell",
+            "VS Code",
+            "Visual Studio",
+            "Windows Server",
+            "Linux",
+            "SerbianTransliterator",
+            "Python",
+            "JavaScript",
+            "Typescript",
+            "Node.js",
+            "React",
+            "Angular",
+            "Vue",
+            "Frontend",
+            "Backend",
+            "Fullstack",
+            "Database",
+            "Cache",
+            "Cookie",
+            "Token",
+            "API",
+            "Endpoint",
         ],
     },
     finance: {
@@ -84,9 +116,30 @@ const PRESETS: Record<string, Partial<UiSettings> & { userWords: string[] }> = {
         formatDates: true,
         confirmWholeDoc: true,
         userWords: [
-            "SWIFT", "IBAN", "EUR", "USD", "RSD", "CHF", "GBP",
-            "MasterCard", "Visa", "PayPal", "Intesa", "Raiffeisen", "OTP", "NLB", "AIK", "Erste", "UniCredit",
-            "Western Union", "E-banking", "M-banking", "Leasing", "Factoring", "Equity", "Forex",
+            "SWIFT",
+            "IBAN",
+            "EUR",
+            "USD",
+            "RSD",
+            "CHF",
+            "GBP",
+            "MasterCard",
+            "Visa",
+            "PayPal",
+            "Intesa",
+            "Raiffeisen",
+            "OTP",
+            "NLB",
+            "AIK",
+            "Erste",
+            "UniCredit",
+            "Western Union",
+            "E-banking",
+            "M-banking",
+            "Leasing",
+            "Factoring",
+            "Equity",
+            "Forex",
         ],
     },
     medical: {
@@ -100,9 +153,28 @@ const PRESETS: Record<string, Partial<UiSettings> & { userWords: string[] }> = {
         formatDates: true,
         confirmWholeDoc: true,
         userWords: [
-            "mg", "ml", "kg", "Covid", "SARS", "Hemofarm", "Galenika", "Pfizer", "Actavis", "Alkaloid",
-            "Bayer", "Roche", "Stada", "Anamnesis", "Diagnosis", "Therapia", "CT", "MRI", "EKG", "EEG",
-            "In vitro", "In vivo",
+            "mg",
+            "ml",
+            "kg",
+            "Covid",
+            "SARS",
+            "Hemofarm",
+            "Galenika",
+            "Pfizer",
+            "Actavis",
+            "Alkaloid",
+            "Bayer",
+            "Roche",
+            "Stada",
+            "Anamnesis",
+            "Diagnosis",
+            "Therapia",
+            "CT",
+            "MRI",
+            "EKG",
+            "EEG",
+            "In vitro",
+            "In vivo",
         ],
     },
     marketing: {
@@ -116,9 +188,31 @@ const PRESETS: Record<string, Partial<UiSettings> & { userWords: string[] }> = {
         formatDates: false,
         confirmWholeDoc: true,
         userWords: [
-            "Facebook", "Instagram", "LinkedIn", "TikTok", "Twitter", "X", "YouTube", "Google",
-            "SEO", "PR", "Copywriter", "Content", "Ads", "Influencer", "Giveaway", "Hashtag",
-            "Story", "Reel", "Post", "Follow", "Like", "Share", "Subscribe", "Timeline", "Feed",
+            "Facebook",
+            "Instagram",
+            "LinkedIn",
+            "TikTok",
+            "Twitter",
+            "X",
+            "YouTube",
+            "Google",
+            "SEO",
+            "PR",
+            "Copywriter",
+            "Content",
+            "Ads",
+            "Influencer",
+            "Giveaway",
+            "Hashtag",
+            "Story",
+            "Reel",
+            "Post",
+            "Follow",
+            "Like",
+            "Share",
+            "Subscribe",
+            "Timeline",
+            "Feed",
         ],
     },
     legal: {
@@ -132,10 +226,23 @@ const PRESETS: Record<string, Partial<UiSettings> & { userWords: string[] }> = {
         formatDates: true,
         confirmWholeDoc: true,
         userWords: [
-            "Ustav Republike Srbije", "Zakon o obligacionim odnosima", "Zakon o radu",
-            "Ministarstvo pravde", "Privredni sud", "Advokatska komora Srbije", "Službeni glasnik",
-            "Bona fide", "De facto", "Ex officio",
-            "Copyright", "Trademark", "Disclaimer", "Policy", "Terms", "Conditions", "GDPR",
+            "Ustav Republike Srbije",
+            "Zakon o obligacionim odnosima",
+            "Zakon o radu",
+            "Ministarstvo pravde",
+            "Privredni sud",
+            "Advokatska komora Srbije",
+            "Službeni glasnik",
+            "Bona fide",
+            "De facto",
+            "Ex officio",
+            "Copyright",
+            "Trademark",
+            "Disclaimer",
+            "Policy",
+            "Terms",
+            "Conditions",
+            "GDPR",
         ],
     },
     journalism: {
@@ -148,11 +255,27 @@ const PRESETS: Record<string, Partial<UiSettings> & { userWords: string[] }> = {
         fixDoubleSpaces: true,
         formatDates: true,
         confirmWholeDoc: true,
-        userWords: ["Reuters", "Associated Press", "BBC", "CNN", "Euronews", "N1", "RTS", "Tanjug", "NBA", "UEFA", "FIFA", "FIBA", "ATP", "WTA", "Olimpijske igre"],
+        userWords: [
+            "Reuters",
+            "Associated Press",
+            "BBC",
+            "CNN",
+            "Euronews",
+            "N1",
+            "RTS",
+            "Tanjug",
+            "NBA",
+            "UEFA",
+            "FIFA",
+            "FIBA",
+            "ATP",
+            "WTA",
+            "Olimpijske igre",
+        ],
     },
 };
 
-// --- GLOBALNO STANJE ---
+// --- GLOBAL STATE ---
 
 let customWordsSet: Set<string> = new Set();
 let presetWordsSet: Set<string> = new Set();
@@ -186,10 +309,7 @@ Office.onReady((info) => {
     if (info.host === Office.HostType.Word) {
         initUi();
 
-        Office.context.document.addHandlerAsync(
-            Office.EventType.DocumentSelectionChanged,
-            onSelectionChange
-        );
+        Office.context.document.addHandlerAsync(Office.EventType.DocumentSelectionChanged, onSelectionChange);
 
         checkSelectionAndUpdateButtons();
     }
@@ -199,12 +319,10 @@ function initUi() {
     const settings = loadSettings() || DEFAULT_SETTINGS;
 
     customWordsSet = new Set(settings.userWordsCustom);
-
-    if (settings.profile !== "custom" && PRESETS[settings.profile]) {
-        presetWordsSet = new Set(PRESETS[settings.profile]!.userWords);
-    } else {
-        presetWordsSet = new Set();
-    }
+    presetWordsSet =
+        settings.profile !== "custom" && PRESETS[settings.profile]
+            ? new Set(PRESETS[settings.profile]!.userWords)
+            : new Set();
 
     currentProfile = settings.profile;
 
@@ -219,7 +337,8 @@ function initUi() {
     (document.getElementById("previewBtn") as HTMLButtonElement).onclick = () => runWithUiLock(runPreview);
 
     (document.getElementById("exportBtn") as HTMLButtonElement).onclick = exportSettingsAsDownload;
-    (document.getElementById("importBtn") as HTMLButtonElement).onclick = () => (document.getElementById("fileInput") as HTMLInputElement).click();
+    (document.getElementById("importBtn") as HTMLButtonElement).onclick = () =>
+        (document.getElementById("fileInput") as HTMLInputElement).click();
     (document.getElementById("fileInput") as HTMLInputElement).onchange = handleFileImport;
 
     (document.getElementById("resetBtn") as HTMLButtonElement).onclick = async () => {
@@ -262,7 +381,7 @@ async function checkSelectionAndUpdateButtons() {
             const prevBtn = document.getElementById("previewBtn") as HTMLButtonElement;
             if (!runBtn || !prevBtn) return;
 
-            const rawText = range.text;
+            const rawText = range.text ?? "";
             const hasContent = rawText.trim().length > 0;
             const isJustWhitespace = rawText.length > 0 && !hasContent;
 
@@ -300,12 +419,15 @@ async function runSmart() {
             range.load("text");
             await context.sync();
 
-            const rawText = range.text;
+            const rawText = range.text ?? "";
             const hasText = rawText.trim().length > 0;
             const isJustWhitespace = rawText.length > 0 && !hasText;
 
             if (isJustWhitespace) {
-                showModalInfo("Greška", "Selektovan je samo prazan prostor (razmaci).<br>Molimo selektujte tekst ili ne selektujte ništa za ceo dokument.");
+                showModalInfo(
+                    "Greška",
+                    "Selektovan je samo prazan prostor (razmaci).<br>Molimo selektujte tekst ili ne selektujte ništa za ceo dokument."
+                );
                 setStatus("Greška: Prazna selekcija.", "error");
                 return;
             }
@@ -368,12 +490,10 @@ async function applyFromPreview(scope: "selection" | "document") {
             if (scope === "selection") {
                 if (!hasText) {
                     showModalInfo("Greška", "Nema selekcije za preslovljavanje.");
-                    setStatus("Greška: Nema selekcije.", "error");
                     return;
                 }
                 if (isJustWhitespace) {
                     showModalInfo("Greška", "Selektovan je samo prazan prostor (razmaci).");
-                    setStatus("Greška: Prazna selekcija.", "error");
                     return;
                 }
             } else {
@@ -406,12 +526,10 @@ async function applyFromPreview(scope: "selection" | "document") {
 }
 
 /* =========================
-   PREVIEW (plain-text engine)
+   PREVIEW HELPERS
    ========================= */
 
 function normalizeWeirdBreaks(s: string): string {
-    // Word ume da vrati vertical tab (U+000B) koji izgleda kao ""
-    // i form feed (U+000C). U preview-u to normalizujemo na newline.
     return (s ?? "").replace(/\u000b/g, "\n").replace(/\u000c/g, "\n");
 }
 
@@ -442,11 +560,27 @@ function toAscii(text: string): string {
     return text.replace(/[čćšđžČĆŠĐŽ]/g, (m) => map[m]!);
 }
 
-function convertTextForPreview(input: string, s: UiSettings): { out: string; type: string } {
+function convertTextForPreviewPlain(input: string, s: UiSettings): { out: string; type: string } {
     let temp = normalizeWeirdBreaks(input);
 
-    if (s.fixDoubleSpaces) temp = removeMultipleSpaces(temp);
-    if (s.formatDates) temp = formatSerbianDates(temp);
+    const applyFixesOutsideCode = (txt: string) => {
+        let t = txt;
+        if (s.fixDoubleSpaces) t = removeMultipleSpaces(t);
+        if (s.formatDates) t = formatSerbianDates(t);
+        return t;
+    };
+
+    if (s.preserveCodeBlocks) {
+        const cs = createInitialCodeState();
+        temp = transformTextRespectingCode(
+            temp,
+            cs,
+            (nonCode) => applyFixesOutsideCode(nonCode),
+            (code) => code
+        );
+    } else {
+        temp = applyFixesOutsideCode(temp);
+    }
 
     const coreOpts = {
         userProtected: [...Array.from(customWordsSet), ...Array.from(presetWordsSet)],
@@ -468,6 +602,42 @@ function convertTextForPreview(input: string, s: UiSettings): { out: string; typ
     return { out: text, type };
 }
 
+function extractTextFromWordOoxml(xml: string): string {
+    const W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+    const doc = new DOMParser().parseFromString(xml, "application/xml");
+
+    const paras = Array.from(doc.getElementsByTagNameNS(W_NS, "p"));
+    const hasParas = paras.length > 0;
+
+    const walk = (node: Node): string => {
+        if (node.nodeType === Node.TEXT_NODE) return "";
+        const el = node as Element;
+        if (!el || !el.localName) return "";
+
+        if (el.localName === "t") return el.textContent ?? "";
+        if (el.localName === "tab") return "\t";
+        if (el.localName === "br" || el.localName === "cr") return "\n";
+
+        let out = "";
+        for (const ch of Array.from(el.childNodes)) out += walk(ch);
+        return out;
+    };
+
+    if (!hasParas) {
+        return Array.from(doc.getElementsByTagNameNS(W_NS, "t"))
+            .map((n) => n.textContent ?? "")
+            .join("");
+    }
+
+    const out: string[] = [];
+    for (const p of paras) out.push(walk(p));
+    return out.join("\n");
+}
+
+/* =========================
+   PREVIEW MAIN
+   ========================= */
+
 async function runPreview() {
     setStatus("Generišem pregled...", "info");
 
@@ -487,7 +657,6 @@ async function runPreview() {
                 return;
             }
 
-            // snapshot settings za preview
             const settings = getSettingsFromUi();
             previewSettingsSnap = JSON.parse(JSON.stringify(settings));
 
@@ -495,42 +664,72 @@ async function runPreview() {
             previewShownCount = 0;
             previewCanLoadMore = false;
 
-            let textToPreview = "";
-            let titleBase = "";
-
             if (hasSelectionText) {
+                // Selection preview: OOXML 1:1
                 previewScope = "selection";
-                textToPreview = selectionText;
-                titleBase = "Selektovani tekst";
-            } else {
-                previewScope = "document";
 
-                const body = context.document.body;
-                body.load("text");
+                const ooxml = range.getOoxml();
                 await context.sync();
 
-                const full = normalizeWeirdBreaks(body.text ?? "");
-                let paragraphs = full.split(/\r/);
-                if (paragraphs.length === 1) paragraphs = full.split(/\n/);
-                if (paragraphs.length === 1) paragraphs = [full];
+                const originalOoxml = ooxml.value;
+                const opts = getOoxmlOptionsFromUi();
 
-                while (paragraphs.length && !paragraphs[paragraphs.length - 1]!.trim()) paragraphs.pop();
+                const origText = extractTextFromWordOoxml(originalOoxml);
 
-                previewAllParagraphs = paragraphs;
-                previewShownCount = Math.min(PREVIEW_BATCH, paragraphs.length);
-                previewCanLoadMore = previewShownCount < paragraphs.length;
+                const converted = convertOoxml(originalOoxml, opts);
+                const convText = extractTextFromWordOoxml(converted.xml);
 
-                textToPreview = paragraphs.slice(0, previewShownCount).join("\n");
-                titleBase = `Prvih ${previewShownCount} paragrafa`;
+                const a = normalizeNewlines(origText);
+                const b = normalizeNewlines(convText);
+
+                if (!b.trim()) {
+                    showModalInfo("Greška", "Pregled nije uspeo: rezultat je prazan tekst.");
+                    setStatus("Greška: Prazan rezultat pregleda.", "error");
+                    return;
+                }
+
+                if (a === b) {
+                    showModalInfo("Nema izmena", "Tekst je već u traženom pismu ili nema šta da se menja.");
+                    setStatus("Nema izmena.", "neutral");
+                    return;
+                }
+
+                previewMode = "diff";
+                previewTypeText = converted.type;
+                previewTitleText = `Selektovani tekst (${converted.type})`;
+                previewOriginal = origText;
+                previewConverted = convText;
+
+                showPreviewModal();
+                setStatus(`Prikazan pregled (${converted.type})`, "success");
+                return;
             }
 
+            // Whole doc preview: first N paragraphs (plain text)
+            previewScope = "document";
+
+            const body = context.document.body;
+            body.load("text");
+            await context.sync();
+
+            const full = normalizeWeirdBreaks(body.text ?? "");
+            let paragraphs = full.split(/\r/);
+            if (paragraphs.length === 1) paragraphs = full.split(/\n/);
+            if (paragraphs.length === 1) paragraphs = [full];
+
+            while (paragraphs.length && !paragraphs[paragraphs.length - 1]!.trim()) paragraphs.pop();
+
+            previewAllParagraphs = paragraphs;
+            previewShownCount = Math.min(PREVIEW_BATCH, paragraphs.length);
+            previewCanLoadMore = previewShownCount < paragraphs.length;
+
+            const textToPreview = paragraphs.slice(0, previewShownCount).join("\n");
             if (!textToPreview.trim()) {
                 setStatus("Dokument je prazan.", "neutral");
                 return;
             }
 
-            const { out: finalText, type } = convertTextForPreview(textToPreview, previewSettingsSnap!);
-            previewTypeText = type;
+            const { out: finalText, type } = convertTextForPreviewPlain(textToPreview, previewSettingsSnap!);
 
             const a = normalizeNewlines(textToPreview);
             const b = normalizeNewlines(finalText);
@@ -548,7 +747,8 @@ async function runPreview() {
             }
 
             previewMode = "diff";
-            previewTitleText = `${titleBase} (${type})`;
+            previewTypeText = type;
+            previewTitleText = `Prvih ${previewShownCount} paragrafa (${type})`;
             previewOriginal = textToPreview;
             previewConverted = finalText;
 
@@ -556,6 +756,7 @@ async function runPreview() {
             setStatus(`Prikazan pregled (${type})`, "success");
         });
     } catch (e) {
+        console.error(e);
         setStatus("Greška pri pregledu: " + (e as Error).message, "error");
     }
 }
@@ -580,16 +781,14 @@ async function loadMorePreviewParagraphs() {
     const newOriginal = previewAllParagraphs.slice(0, previewShownCount).join("\n");
     previewOriginal = newOriginal;
 
-    const { out: newConverted } = convertTextForPreview(newOriginal, previewSettingsSnap);
+    const { out: newConverted } = convertTextForPreviewPlain(newOriginal, previewSettingsSnap);
     previewConverted = newConverted;
 
     const titleEl = document.getElementById("previewTitleText");
     if (titleEl) titleEl.textContent = previewTitleText;
 
     const okBtn = document.getElementById("modalOk") as HTMLButtonElement | null;
-    if (okBtn) {
-        setLoadMoreButtonState(okBtn, previewCanLoadMore);
-    }
+    if (okBtn) setLoadMoreButtonState(okBtn, previewCanLoadMore);
 
     renderPreviewMode();
 }
@@ -682,8 +881,14 @@ function showPreviewModal() {
     const bDiff = document.getElementById("previewBtnDiff") as HTMLButtonElement;
     const bPlain = document.getElementById("previewBtnPlain") as HTMLButtonElement;
 
-    bDiff.onclick = () => { previewMode = "diff"; renderPreviewMode(); };
-    bPlain.onclick = () => { previewMode = "plain"; renderPreviewMode(); };
+    bDiff.onclick = () => {
+        previewMode = "diff";
+        renderPreviewMode();
+    };
+    bPlain.onclick = () => {
+        previewMode = "plain";
+        renderPreviewMode();
+    };
 
     renderPreviewMode();
 
@@ -703,7 +908,9 @@ function showPreviewModal() {
         };
     } else {
         setLoadMoreButtonState(okBtn, false, "Dostupno samo kada pregledate ceo dokument");
-        okBtn.onclick = () => { /* no-op */ };
+        okBtn.onclick = () => {
+            /* no-op */
+        };
     }
 
     applyBtn.style.display = "inline-flex";
@@ -791,6 +998,7 @@ function removeTag(word: string, type: "custom" | "preset") {
 function clearTags(scope: "custom" | "preset" | "all") {
     if (scope === "custom" || scope === "all") customWordsSet.clear();
     if (scope === "preset" || scope === "all") presetWordsSet.clear();
+
     renderTags();
     switchToCustomIfManual();
     updateUiState();
@@ -825,27 +1033,13 @@ function createTagEl(text: string, type: "custom" | "preset"): HTMLElement {
 function updateUiState() {
     (document.getElementById("clearCustomBtn") as HTMLButtonElement).disabled = customWordsSet.size === 0;
     (document.getElementById("clearPresetBtn") as HTMLButtonElement).disabled = presetWordsSet.size === 0;
-    (document.getElementById("clearAllBtn") as HTMLButtonElement).disabled = customWordsSet.size === 0 && presetWordsSet.size === 0;
+    (document.getElementById("clearAllBtn") as HTMLButtonElement).disabled =
+        customWordsSet.size === 0 && presetWordsSet.size === 0;
 }
 
 /* =========================
-   PODEŠAVANJA
+   SETTINGS
    ========================= */
-
-function switchToCustomIfManual() {
-    if (isApplyingProfile) return;
-
-    if (currentProfile === "custom") {
-        saveSettings();
-        return;
-    }
-
-    currentProfile = "custom";
-    const select = document.getElementById("profilePreset") as HTMLSelectElement;
-    if (select) select.value = "custom";
-
-    saveSettings();
-}
 
 function changeProfile(profile: ProfilePreset) {
     currentProfile = profile;
@@ -995,6 +1189,21 @@ function resetSettings() {
     setStatus("Podešavanja vraćena (reči sačuvane).", "success");
 }
 
+function switchToCustomIfManual() {
+    if (isApplyingProfile) return;
+
+    if (currentProfile === "custom") {
+        saveSettings();
+        return;
+    }
+
+    currentProfile = "custom";
+    const select = document.getElementById("profilePreset") as HTMLSelectElement;
+    if (select) select.value = "custom";
+
+    saveSettings();
+}
+
 function getOoxmlOptionsFromUi(): OoxmlOptions & { showStats: boolean } {
     const s = getSettingsFromUi();
 
@@ -1066,7 +1275,7 @@ function handleFileImport(e: Event) {
 }
 
 /* =========================
-   HELPERS
+   UI HELPERS
    ========================= */
 
 async function runWithUiLock(fn: () => Promise<void>) {
@@ -1131,11 +1340,16 @@ function setRadioValue(name: string, val: string) {
 function escapeHtml(unsafe: string) {
     return (unsafe ?? "").replace(/[<>&'"]/g, (c) => {
         switch (c) {
-            case "<": return "&lt;";
-            case ">": return "&gt;";
-            case "&": return "&amp;";
-            case "'": return "&apos;";
-            case "\"": return "&quot;";
+            case "<":
+                return "&lt;";
+            case ">":
+                return "&gt;";
+            case "&":
+                return "&amp;";
+            case "'":
+                return "&apos;";
+            case "\"":
+                return "&quot;";
         }
         return c;
     });
@@ -1155,7 +1369,7 @@ function confirmInPanel(htmlMsg: string): Promise<boolean> {
     const okBtn = document.getElementById("modalOk") as HTMLButtonElement;
     const cancelBtn = document.getElementById("modalCancel") as HTMLButtonElement;
 
-    // uvek vrati klasičan modal layout
+    // restore default modal layout
     title.style.display = "";
     cancelBtn.style.display = "inline-flex";
 
@@ -1242,7 +1456,6 @@ function resetModalButtons() {
 
     title.style.display = "";
 
-    // vrati cancel
     cancelBtn.style.display = "inline-flex";
     cancelBtn.innerText = "Otkaži";
     cancelBtn.style.backgroundColor = "";
@@ -1250,7 +1463,6 @@ function resetModalButtons() {
     cancelBtn.style.border = "";
     cancelBtn.onclick = closeModal;
 
-    // vrati OK (plavo)
     okBtn.style.display = "inline-flex";
     okBtn.innerText = "OK";
     okBtn.disabled = false;
@@ -1270,7 +1482,8 @@ function resetModalButtons() {
 }
 
 /* =========================
-   DIFF renderer
+   DIFF renderer (IMPROVED)
+   - NE OBELEŽAVA WHITESPACE-ONLY PROMENE
    ========================= */
 
 function generateDiffHtml(oldText: string, newText: string): string {
@@ -1282,6 +1495,8 @@ function generateDiffHtml(oldText: string, newText: string): string {
     const oldParts = oldText.split(splitRegex).filter(Boolean);
     const newParts = newText.split(splitRegex).filter(Boolean);
 
+    const isWs = (s: string) => /^\s+$/u.test(s);
+
     let html = "";
     const maxLen = Math.max(oldParts.length, newParts.length);
 
@@ -1291,9 +1506,17 @@ function generateDiffHtml(oldText: string, newText: string): string {
 
         if (o === n) {
             html += escapeHtml(n);
-        } else {
-            html += `<span class="diff-changed" title="Original: ${escapeHtml(o)}">${escapeHtml(n)}</span>`;
+            continue;
         }
+
+        // NOVO: ne highlightujemo promene koje su samo whitespace (razmak/tab/newline)
+        // ovo smanjuje “sve je obojeno” efekat kada je puno izmena
+        if (isWs(o) || isWs(n)) {
+            html += escapeHtml(n);
+            continue;
+        }
+
+        html += `<span class="diff-changed" title="Original: ${escapeHtml(o)}">${escapeHtml(n)}</span>`;
     }
 
     return `<div class="preview-single-pane">${html}</div>`;
