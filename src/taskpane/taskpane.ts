@@ -823,18 +823,7 @@ function renderPreviewMode() {
     if (previewMode === "plain") {
         holder.innerHTML = `<div class="preview-single-pane">${escapeHtml(conv)}</div>`;
     } else if (previewMode === "side") {
-        holder.innerHTML = `
-          <div class="preview-grid">
-            <div class="preview-pane">
-              <div class="preview-pane-title">Pre</div>
-              <div class="preview-pane-body">${escapeHtml(orig)}</div>
-            </div>
-            <div class="preview-pane">
-              <div class="preview-pane-title">Posle</div>
-              <div class="preview-pane-body">${escapeHtml(conv)}</div>
-            </div>
-          </div>
-        `;
+        holder.innerHTML = renderSideBySideWithHighlights(orig, conv);
     } else {
         holder.innerHTML = generateDiffHtml(orig, conv);
     }
@@ -1566,6 +1555,167 @@ function resetModalButtons() {
    DIFF renderer (IMPROVED)
    - NE OBELEŽAVA WHITESPACE-ONLY PROMENE
    ========================= */
+
+type DiffOp = { type: "equal" | "insert" | "delete"; value: string };
+
+function tokenizeForDiff(text: string): string[] {
+    // isti split kao tvoj generateDiffHtml
+    const splitRegex = /([^\s\w\u0400-\u04FF\u0100-\u017F]+|\s+)/;
+    return normalizeNewlines(text).split(splitRegex).filter(Boolean);
+}
+
+function isWhitespaceToken(s: string): boolean {
+    return /^\s+$/u.test(s);
+}
+
+// Minimal Myers diff za niz tokena (string[])
+function myersDiff(a: string[], b: string[]): DiffOp[] {
+    const n = a.length;
+    const m = b.length;
+    const max = n + m;
+
+    // v[k] = x; k je pomeren za +max
+    const v: number[] = new Array(2 * max + 1).fill(0);
+    const trace: number[][] = [];
+
+    for (let d = 0; d <= max; d++) {
+        trace.push(v.slice());
+
+        for (let k = -d; k <= d; k += 2) {
+            const km = k + max;
+
+            let x: number;
+            if (k === -d || (k !== d && v[km - 1] < v[km + 1])) {
+                // insert (down)
+                x = v[km + 1];
+            } else {
+                // delete (right)
+                x = v[km - 1] + 1;
+            }
+
+            let y = x - k;
+
+            // snake
+            while (x < n && y < m && a[x] === b[y]) {
+                x++;
+                y++;
+            }
+
+            v[km] = x;
+
+            if (x >= n && y >= m) {
+                // reconstruct
+                const ops: DiffOp[] = [];
+                let curX = n;
+                let curY = m;
+
+                for (let dd = d; dd >= 0; dd--) {
+                    const vv = trace[dd]!;
+                    const kk = curX - curY;
+                    const kkm = kk + max;
+
+                    let prevK: number;
+                    if (kk === -dd || (kk !== dd && vv[kkm - 1] < vv[kkm + 1])) {
+                        prevK = kk + 1; // came from down => insert
+                    } else {
+                        prevK = kk - 1; // came from right => delete
+                    }
+
+                    const prevX = vv[prevK + max]!;
+                    const prevY = prevX - prevK;
+
+                    // snake (equal)
+                    while (curX > prevX && curY > prevY) {
+                        ops.push({ type: "equal", value: a[curX - 1]! });
+                        curX--;
+                        curY--;
+                    }
+
+                    if (dd === 0) break;
+
+                    // edit step
+                    if (curX === prevX) {
+                        // insert
+                        ops.push({ type: "insert", value: b[curY - 1]! });
+                        curY--;
+                    } else {
+                        // delete
+                        ops.push({ type: "delete", value: a[curX - 1]! });
+                        curX--;
+                    }
+                }
+
+                ops.reverse();
+                return ops;
+            }
+        }
+    }
+
+    // fallback (ne bi trebalo)
+    return [{ type: "equal", value: b.join("") }];
+}
+
+function renderSideBySideWithHighlights(oldText: string, newText: string): string {
+    const a = tokenizeForDiff(oldText);
+    const b = tokenizeForDiff(newText);
+
+    // safety: ako je preveliko, nemoj diff (samo plain side-by-side)
+    const MAX_TOKENS = 8000;
+    if (a.length + b.length > MAX_TOKENS) {
+        return `
+          <div class="preview-grid">
+            <div class="preview-pane">
+              <div class="preview-pane-title">Pre</div>
+              <div class="preview-pane-body">${escapeHtml(normalizeNewlines(oldText))}</div>
+            </div>
+            <div class="preview-pane">
+              <div class="preview-pane-title">Posle</div>
+              <div class="preview-pane-body">${escapeHtml(normalizeNewlines(newText))}</div>
+            </div>
+          </div>
+        `;
+    }
+
+    const ops = myersDiff(a, b);
+
+    let left = "";
+    let right = "";
+
+    for (const op of ops) {
+        const v = op.value;
+
+        if (op.type === "equal") {
+            left += escapeHtml(v);
+            right += escapeHtml(v);
+            continue;
+        }
+
+        // whitespace nikad ne obojimo
+        const wrap = !isWhitespaceToken(v);
+
+        if (op.type === "delete") {
+            left += wrap ? `<span class="diff-removed">${escapeHtml(v)}</span>` : escapeHtml(v);
+            // na desnoj strani ništa
+            continue;
+        }
+
+        // insert
+        right += wrap ? `<span class="diff-added">${escapeHtml(v)}</span>` : escapeHtml(v);
+    }
+
+    return `
+      <div class="preview-grid">
+        <div class="preview-pane">
+          <div class="preview-pane-title">Pre</div>
+          <div class="preview-pane-body">${left}</div>
+        </div>
+        <div class="preview-pane">
+          <div class="preview-pane-title">Posle</div>
+          <div class="preview-pane-body">${right}</div>
+        </div>
+      </div>
+    `;
+}
 
 function generateDiffHtml(oldText: string, newText: string): string {
     if (oldText === newText) {
