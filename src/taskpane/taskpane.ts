@@ -432,6 +432,7 @@ async function checkSelectionAndUpdateButtons() {
 
 // --- APPLY TO WORD (OOXML) ---
 
+/* eslint-disable office-addins/no-context-sync-in-loop */
 async function processHeadersFooters(context: Word.RequestContext, opts: OoxmlOptions): Promise<number> {
     let processed = 0;
 
@@ -484,6 +485,7 @@ async function processHeadersFooters(context: Word.RequestContext, opts: OoxmlOp
 
     return processed;
 }
+/* eslint-enable office-addins/no-context-sync-in-loop */
 
 async function runSmart() {
     try {
