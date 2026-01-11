@@ -1,783 +1,190 @@
 <!DOCTYPE html>
 <html lang="sr">
 <head>
-    <meta charset="UTF-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Serbian Transliterator</title>
-    <!-- Office.js -->
-    <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <style>
-        html, body {
-            width: 100%;
-            height: 100%;
-            margin: 0;
-            padding: 0;
-        }
+  <title>Serbian Transliterator</title>
 
-        :root {
-            --bg-color: #ffffff;
-            --text-color: #323130;
-            --neutral-lighter: #f3f2f1;
-            --neutral-light: #edebe9;
-            --border-color: #e1dfdd;
-            --primary-color: #0f6cbd;
-            --primary-hover: #115ea3;
-            --primary-text: #ffffff;
-            --input-bg: #ffffff;
-            --input-border: #8a8886;
-            --focus-border: #0f6cbd;
-            --error-color: #d13438;
-            --success-color: #107c10;
-            --disabled-bg: #f3f2f1;
-            --disabled-text: #a19f9d;
-            --link-color: #005a9e;
-            --tag-custom-bg: #e0f2ff;
-            --tag-custom-border: #0f6cbd;
-            --tag-custom-text: #004e8c;
-            --tag-preset-bg: #f3f2f1;
-            --tag-preset-border: #8a8886;
-            --tag-preset-text: #323130;
-        }
+  <!-- Office.js -->
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
 
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --bg-color: #262626;
-                --text-color: #ffffff;
-                --neutral-lighter: #333333;
-                --neutral-light: #3b3a39;
-                --border-color: #605e5c;
-                --primary-color: #4ba0ff;
-                --primary-hover: #2886de;
-                --primary-text: #000000;
-                --input-bg: #333333;
-                --input-border: #a19f9d;
-                --focus-border: #4ba0ff;
-                --disabled-bg: #3b3a39;
-                --link-color: #69afe5;
-                --tag-custom-bg: #004578;
-                --tag-custom-border: #4ba0ff;
-                --tag-custom-text: #ffffff;
-                --tag-preset-bg: #3b3a39;
-                --tag-preset-border: #8a8886;
-                --tag-preset-text: #f3f2f1;
-                --success-color: #54b054;
-            }
-        }
-
-        body {
-            font-family: "Segoe UI", sans-serif;
-            font-size: 14px;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            line-height: 1.5;
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-        }
-
-        header {
-            padding: 15px 20px;
-            background-color: var(--neutral-lighter);
-            border-bottom: 1px solid var(--border-color);
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-        }
-
-        .header-content {
-            display: flex;
-            align-items: center;
-            width: 100%;
-        }
-
-            .header-content h1 {
-                margin: 0;
-                font-size: 18px;
-                font-weight: 600;
-                color: var(--primary-color);
-            }
-
-        .version {
-            font-size: 11px;
-            color: var(--text-color);
-            opacity: 0.6;
-            background: var(--border-color);
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: monospace;
-            margin-left: auto;
-            margin-top: 5px;
-        }
-
-        main {
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            flex: 1;
-        }
-
-        .section {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-
-        .section-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2px;
-            height: 24px;
-        }
-
-        .section-title {
-            font-weight: 600;
-            font-size: 12px;
-            opacity: 0.7;
-            margin: 0;
-            line-height: 24px;
-            text-transform: uppercase;
-        }
-
-        .header-actions {
-            display: flex;
-            gap: 4px;
-            align-items: center;
-        }
-
-        .settings-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 0px;
-            margin-top: 15px;
-        }
-
-        .settings-actions {
-            display: flex;
-            gap: 5px;
-        }
-
-        #addTagBtn {
-            background-color: var(--bg-color);
-            border: 1px solid var(--border-color);
-            cursor: pointer;
-            padding: 2px;
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--success-color);
-            transition: all 0.2s;
-            width: 22px;
-            height: 24px;
-        }
-
-            #addTagBtn:hover:not(:disabled) {
-                background-color: #e6ffec;
-                border-color: var(--success-color);
-            }
-
-            #addTagBtn:disabled {
-                background-color: var(--neutral-lighter);
-                color: var(--disabled-text);
-                border-color: var(--border-color);
-                cursor: default;
-                opacity: 0.6;
-            }
-
-            #addTagBtn svg {
-                width: 16px;
-                height: 16px;
-                fill: currentColor;
-            }
-
-        .mini-btn {
-            border: 1px solid var(--border-color);
-            background-color: var(--bg-color);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 3px;
-            cursor: pointer;
-            font-size: 11px;
-            padding: 2px 4px;
-            border-radius: 4px;
-            color: var(--primary-color);
-            transition: all 0.2s;
-            height: 24px;
-        }
-
-            .mini-btn:hover:not(:disabled) {
-                background-color: #e0f2ff;
-                color: var(--primary-hover);
-                border-color: var(--primary-hover);
-            }
-
-            .mini-btn:disabled {
-                background-color: var(--neutral-lighter);
-                color: var(--disabled-text);
-                border-color: var(--border-color);
-                cursor: default;
-                opacity: 0.6;
-            }
-
-            .mini-btn svg {
-                width: 13px;
-                height: 13px;
-                fill: currentColor;
-            }
-
-            .mini-btn span {
-                font-weight: 600;
-                font-size: 11px;
-            }
-
-        #clearAllBtn {
-            color: var(--error-color);
-        }
-
-            #clearAllBtn:hover:not(:disabled) {
-                background-color: #fde7e9;
-                border-color: var(--error-color);
-                color: var(--error-color);
-            }
-
-            #clearAllBtn:disabled {
-                color: var(--disabled-text);
-            }
-
-        .small-blue-btn {
-            background-color: var(--primary-color);
-            color: var(--primary-text);
-            border: 1px solid transparent;
-            font-size: 11px;
-            font-weight: 600;
-            cursor: pointer;
-            padding: 6px 12px;
-            border-radius: 4px;
-            text-decoration: none;
-            transition: background 0.2s;
-            line-height: 1.4;
-            text-align: center;
-            display: inline-block;
-        }
-
-            .small-blue-btn:hover:not(:disabled) {
-                background-color: var(--primary-hover);
-            }
-
-            .small-blue-btn:disabled {
-                background-color: var(--disabled-bg);
-                color: var(--disabled-text);
-                border-color: var(--border-color);
-                cursor: not-allowed;
-                opacity: 0.6;
-            }
-
-        label {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            cursor: pointer;
-            padding: 4px 0;
-        }
-
-        input[type="checkbox"], input[type="radio"] {
-            accent-color: var(--primary-color);
-            width: 16px;
-            height: 16px;
-            cursor: pointer;
-        }
-
-        select {
-            width: 100%;
-            padding: 8px 12px;
-            border: 1px solid var(--input-border);
-            border-radius: 4px;
-            background-color: var(--input-bg);
-            color: var(--text-color);
-        }
-
-            select:focus {
-                outline: none;
-                border-color: var(--focus-border);
-                border-bottom-width: 2px;
-                padding-bottom: 7px;
-            }
-
-        .hint {
-            font-size: 11px;
-            opacity: 0.7;
-            margin-top: -5px;
-        }
-
-        .tags-container {
-            border: 1px solid var(--input-border);
-            background-color: var(--input-bg);
-            border-radius: 4px;
-            padding: 4px 6px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            min-height: 32px;
-            cursor: text;
-            align-items: center;
-        }
-
-            .tags-container:focus-within {
-                border-color: var(--focus-border);
-                border-bottom-width: 2px;
-                padding-bottom: 3px;
-            }
-
-        .tag {
-            border-radius: 12px;
-            padding: 2px 8px 2px 10px;
-            font-size: 13px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            user-select: none;
-            border: 1px solid transparent;
-        }
-
-            .tag.custom {
-                background-color: var(--tag-custom-bg);
-                border-color: var(--tag-custom-border);
-                color: var(--tag-custom-text);
-            }
-
-            .tag.preset {
-                background-color: var(--tag-preset-bg);
-                border-color: var(--tag-preset-border);
-                color: var(--tag-preset-text);
-            }
-
-        .tag-remove {
-            cursor: pointer;
-            font-weight: bold;
-            color: inherit;
-            font-size: 14px;
-            opacity: 0.6;
-        }
-
-            .tag-remove:hover {
-                opacity: 1;
-            }
-
-        .tag-input {
-            border: none;
-            outline: none;
-            flex: 1;
-            min-width: 120px;
-            background: transparent;
-            color: var(--text-color);
-            font-size: 14px;
-            padding: 4px 0;
-            font-family: inherit;
-        }
-
-        .button-group {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-        }
-
-        button {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            padding: 10px 20px;
-            border-radius: 4px;
-            font-weight: 600;
-            font-size: 14px;
-            cursor: pointer;
-            border: 1px solid transparent;
-            transition: background 0.2s;
-        }
-
-        #runBtn {
-            background-color: var(--primary-color);
-            color: var(--primary-text);
-            flex-direction: column;
-            line-height: 1.1;
-            min-height: 50px;
-            padding: 6px 10px;
-            text-align: center;
-        }
-
-            #runBtn:hover {
-                background-color: var(--primary-hover);
-            }
-
-        #previewBtn {
-            background-color: var(--bg-color);
-            color: var(--primary-color);
-            border: 1px solid var(--input-border);
-            flex-direction: column;
-            line-height: 1.1;
-            min-height: 50px;
-            padding: 6px 10px;
-            text-align: center;
-        }
-
-            #previewBtn:hover {
-                background-color: var(--neutral-lighter);
-            }
-
-            #runBtn:disabled, #previewBtn:disabled {
-                opacity: 0.5;
-                cursor: not-allowed;
-                background-color: var(--neutral-lighter);
-                color: var(--disabled-text);
-                border-color: var(--border-color);
-            }
-
-        #runBtn .btn-subtitle {
-            font-size: 11px;
-            font-weight: normal;
-            opacity: 0.7;
-            margin-top: 2px;
-            color: white;
-        }
-        /* FIX: subtitle na preview dugmetu ne sme biti beo */
-        #previewBtn .btn-subtitle {
-            font-size: 11px;
-            font-weight: normal;
-            opacity: 0.75;
-            margin-top: 2px;
-            color: var(--primary-color);
-        }
-
-        #resetBtn {
-            margin-top: 0;
-            font-size: 11px;
-            font-weight: 600;
-            padding: 2px 8px;
-            line-height: 1;
-            white-space: nowrap;
-            height: 24px;
-            min-height: 20px;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-            #resetBtn svg {
-                width: 12px;
-                height: 12px;
-                fill: currentColor;
-            }
-
-        #msg {
-            padding: 10px;
-            border-radius: 4px;
-            background-color: var(--neutral-lighter);
-            font-size: 13px;
-            min-height: 20px;
-        }
-
-        #statsBox {
-            display: none;
-            margin-top: 10px;
-            padding: 10px;
-            border-left: 3px solid var(--primary-color);
-            background-color: var(--neutral-lighter);
-            font-size: 12px;
-        }
-
-        #statsTitle {
-            font-weight: 700;
-            margin-bottom: 5px;
-        }
-
-        #statsText {
-            margin: 0;
-            white-space: pre-wrap;
-            font-family: monospace;
-        }
-
-        footer {
-            padding: 15px 20px;
-            border-top: 1px solid var(--border-color);
-            text-align: center;
-            font-size: 12px;
-            color: var(--text-color);
-            opacity: 0.8;
-        }
-
-            footer a {
-                color: var(--link-color);
-                text-decoration: none;
-                margin: 0 5px;
-            }
-
-                footer a:hover {
-                    text-decoration: underline;
-                }
-
-        .copyright {
-            margin-left: 8px;
-        }
-
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.6);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 999;
-        }
-
-        .modal {
-            background: var(--bg-color);
-            padding: 20px;
-            border-radius: 8px;
-            width: 90%;
-            max-width: 500px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-            border: 1px solid var(--border-color);
-            max-height: 90vh;
-            display: flex;
-            flex-direction: column;
-        }
-
-            .modal.wide {
-                max-width: 700px;
-                width: 95%;
-                height: 75vh;
-            }
-
-            .modal h3 {
-                margin-top: 0;
-                color: var(--text-color);
-                font-size: 16px;
-                border-bottom: 1px solid var(--border-color);
-                padding-bottom: 10px;
-                margin-bottom: 10px;
-            }
-
-        .modal-content {
-            overflow-y: auto;
-            margin-bottom: 20px;
-            width: 100%;
-            flex: 1;
-        }
-
-        .modal-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-            margin-top: auto;
-            padding-top: 10px;
-            border-top: 1px solid var(--border-color);
-        }
-
-        #modalInput {
-            margin-bottom: 15px;
-            display: none;
-            width: 100%;
-            min-height: 100px;
-        }
-
-        code {
-            background: var(--neutral-lighter);
-            padding: 2px 4px;
-            border-radius: 3px;
-            font-family: monospace;
-            font-size: 11px;
-            position: relative;
-            top: 2px;
-            vertical-align: middle;
-        }
-
-        .preview-single-pane {
-            font-family: 'Consolas', monospace;
-            font-size: 13px;
-            line-height: 1.6;
-            white-space: pre-wrap;
-            word-break: break-word;
-            padding: 15px;
-            background-color: var(--neutral-lighter);
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            height: 100%;
-            overflow-y: auto;
-        }
-
-        .diff-changed {
-            background-color: #e0f2ff;
-            border: 1px solid #0f6cbd;
-            color: inherit;
-            font-weight: 600;
-            border-radius: 3px;
-            padding: 0 2px;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .diff-changed {
-                background-color: #002a45;
-                border-color: #4ba0ff;
-                color: inherit;
-            }
-        }
-
-            .preview-single-pane {
-                background-color: #333;
-            }
-        }
-    </style>
+  <!-- CSS se bundluje iz taskpane.ts (import "./taskpane.css") i HtmlWebpackPlugin će ubaciti <link> -->
 </head>
+
 <body>
-    <header>
-        <div class="header-content">
-            <h1>Serbian Transliterator</h1>
-            <div class="version">v1.0.0</div>
-        </div>
-    </header>
-
-    <main>
-        <div class="section">
-            <div class="button-group">
-                <button id="runBtn">PRESLOVI<br><span class="btn-subtitle">ceo dokument</span></button>
-                <button id="previewBtn">PREGLED<br><span class="btn-subtitle">ceo dokument</span></button>
-            </div>
-
-            <div class="settings-row">
-                <div class="section-title">PODEŠAVANJA</div>
-                <div class="settings-actions">
-                    <button id="exportBtn" class="mini-btn" title="Izvezi podešavanja">
-                        <svg viewBox="0 0 24 24"><path d="M4 10l8-8 8 8h-5v10h-6v-10z" /><path d="M0 0h24v24H0z" fill="none" /></svg>
-                        <span>Izvezi</span>
-                    </button>
-                    <button id="importBtn" class="mini-btn" title="Uvezi podešavanja">
-                        <svg viewBox="0 0 24 24"><path d="M20 14l-8 8-8-8h5v-10h6v10z" /><path d="M0 0h24v24H0z" fill="none" /></svg>
-                        <span>Uvezi</span>
-                    </button>
-                </div>
-            </div>
-
-            <input type="file" id="fileInput" accept=".json" style="display:none" />
-        </div>
-
-        <div class="section">
-            <div class="section-header">
-                <div class="section-title">PROFIL</div>
-                <button id="resetBtn" class="mini-btn" disabled>
-                    <svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" /><path d="M0 0h24v24H0z" fill="none" /></svg>
-                    Fabrička podešavanja
-                </button>
-            </div>
-            <select id="profilePreset">
-                <option value="custom">Ručno</option>
-                <option value="it">IT / Tehnologija</option>
-                <option value="finance">Finansije / Bankarstvo</option>
-                <option value="medical">Medicina / Farmacija</option>
-                <option value="legal">Pravo / Administracija</option>
-                <option value="marketing">Marketing / Društvene mreže</option>
-                <option value="journalism">Novinarstvo / Mediji</option>
-            </select>
-        </div>
-
-        <div class="section">
-            <div class="section-header">
-                <div class="section-title">SMER</div>
-            </div>
-            <div style="display: flex; column-gap: 15px; row-gap: 5px; flex-wrap: wrap;">
-                <label><input type="radio" id="dirAuto" name="direction" value="auto" checked /> Auto</label>
-                <label><input type="radio" id="dirToAscii" name="direction" value="to-ascii" /> Ošišana latinica</label>
-                <label><input type="radio" id="dirLatToCyr" name="direction" value="lat-to-cyr" /> Lat → Ćir</label>
-                <label><input type="radio" id="dirCyrToLat" name="direction" value="cyr-to-lat" /> Ćir → Lat</label>
-            </div>
-        </div>
-
-        <div class="section">
-            <div class="section-title">OPCIJE</div>
-            <!-- NOVO: postojalo u TS kodu, ali nije bilo u HTML-u -->
-            <label><input type="checkbox" id="optConfirmWholeDoc" checked /> Potvrdi preslovljavanje celog dokumenta</label>
-
-            <label><input type="checkbox" id="optProtectBrands" checked /> Zaštiti brendove (Windows, ...)</label>
-            <label><input type="checkbox" id="optSerbianQuotes" checked /> Pametni navodnici ( „ … “ )</label>
-            <label><input type="checkbox" id="optPreserveCodeBlocks" checked /> Zaštiti kod (<code>inline</code> / <code>blok</code>)</label>
-            <label><input type="checkbox" id="optProtectRomans" checked /> Zaštiti rimske brojeve (IV, XIV)</label>
-            <label><input type="checkbox" id="optSetProofingLanguage" checked /> Postavi jezik provere (sr-Cyrl / sr-Latn)</label>
-            <label><input type="checkbox" id="optShowStats" /> Prikaži detaljnu statistiku</label>
-        </div>
-
-        <div class="section">
-            <div class="section-title">KOREKCIJA</div>
-            <label><input type="checkbox" id="optFixDoubleSpaces" checked /> Ukloni višak razmaka</label>
-            <label><input type="checkbox" id="optFormatDates" /> Formatiraj datume (npr. 21.10.2023.)</label>
-        </div>
-
-        <div class="section">
-            <div class="section-header">
-                <div class="section-title">ZAŠTIĆENO</div>
-                <div class="header-actions">
-                    <button id="addTagBtn" title="Dodaj reč" disabled>
-                        <svg viewBox="0 0 24 24" style="width: 14px; height: 14px;"><path d="M18 10h-4V6c0-1.1-.9-2-2-2s-2 .9-2 2v4H6c-1.1 0-2 .9-2 2s.9 2 2 2h4v4c0 1.1.9 2 2 2s2-.9 2-2v-4h4c1.1 0 2-.9 2-2s-.9-2-2-2z" /><path d="M0 0h24v24H0z" fill="none" /></svg>
-                    </button>
-
-                    <button id="clearCustomBtn" class="mini-btn" title="Obriši samo moje reči" disabled>
-                        <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" /><path d="M0 0h24v24H0z" fill="none" /></svg>
-                        <span>Moje</span>
-                    </button>
-
-                    <button id="clearPresetBtn" class="mini-btn" title="Obriši reči iz profila" disabled>
-                        <svg viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none" /><path d="M14 6V4h-4v2h4zM4 8v11h16V8H4zm10-2V4h-4v2h4z" opacity=".3" /><path d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-2 .89-2 2v11c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zM10 4h4v2h-4V4zm10 15H4V8h16v11z" /></svg>
-                        <span>Profil</span>
-                    </button>
-
-                    <button id="clearAllBtn" class="mini-btn" title="Obriši sve reči" disabled>
-                        <svg viewBox="0 0 24 24" style="width: 14px; height: 14px;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" /><path d="M0 0h24v24H0z" fill="none" /></svg>
-                        <span>Sve</span>
-                    </button>
-                </div>
-            </div>
-
-            <div class="tags-container" id="tagsContainer">
-                <div class="tags-list" id="tagsList" style="display:contents;"></div>
-                <input type="text" id="tagInput" class="tag-input" placeholder="Upiši reč ili frazu..." autocomplete="off" />
-            </div>
-
-            <textarea id="userWordsCustom" style="display:none;"></textarea>
-            <textarea id="userWordsPreset" style="display:none;"></textarea>
-            <div class="hint">Reči ovde ostaju u originalnom pismu.</div>
-        </div>
-
-        <div id="msg">Spreman za rad.</div>
-        <div id="statsBox">
-            <div id="statsTitle">Statistika poslednje akcije:</div>
-            <pre id="statsText"></pre>
-        </div>
-    </main>
-
-    <footer>
-        <a href="support.html" target="_blank">Pomoć</a> •
-        <a href="privacy.html" target="_blank">Privatnost</a> •
-        <span class="copyright">© 2026</span>
-    </footer>
-
-    <div id="modalOverlay" class="modal-overlay" role="dialog" aria-modal="true">
-        <div id="modal" class="modal">
-            <h3 id="modalTitle">Potvrda</h3>
-            <div class="modal-content">
-                <div id="modalText">Tekst poruke...</div>
-                <textarea id="modalInput" rows="5"></textarea>
-            </div>
-            <div class="modal-actions">
-                <button id="modalCancel">Otkaži</button>
-                <button id="modalOk" style="background: var(--primary-color); color: white; border: none;">OK</button>
-            </div>
-        </div>
+  <header>
+    <div class="header-content">
+      <h1>Serbian Transliterator</h1>
+      <div class="version">v1.0.0</div>
     </div>
+  </header>
+
+  <main>
+    <div class="section">
+      <div class="button-group">
+        <button id="runBtn">PRESLOVI<br><span class="btn-subtitle">ceo dokument</span></button>
+        <button id="previewBtn">PREGLED<br><span class="btn-subtitle">ceo dokument</span></button>
+      </div>
+
+      <div class="settings-row">
+        <div class="section-title">PODEŠAVANJA</div>
+        <div class="settings-actions">
+          <button id="exportBtn" class="mini-btn" title="Izvezi podešavanja">
+            <svg viewBox="0 0 24 24">
+              <path d="M4 10l8-8 8 8h-5v10h-6v-10z" />
+              <path d="M0 0h24v24H0z" fill="none" />
+            </svg>
+            <span>Izvezi</span>
+          </button>
+
+          <button id="importBtn" class="mini-btn" title="Uvezi podešavanja">
+            <svg viewBox="0 0 24 24">
+              <path d="M20 14l-8 8-8-8h5v-10h6v10z" />
+              <path d="M0 0h24v24H0z" fill="none" />
+            </svg>
+            <span>Uvezi</span>
+          </button>
+        </div>
+      </div>
+
+      <input type="file" id="fileInput" accept=".json" style="display:none" />
+    </div>
+
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">PROFIL</div>
+
+        <button id="resetBtn" class="mini-btn" disabled>
+          <svg viewBox="0 0 24 24">
+            <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
+            <path d="M0 0h24v24H0z" fill="none" />
+          </svg>
+          Fabrička podešavanja
+        </button>
+      </div>
+
+      <select id="profilePreset">
+        <option value="custom">Ručno</option>
+        <option value="it">IT / Tehnologija</option>
+        <option value="finance">Finansije / Bankarstvo</option>
+        <option value="medical">Medicina / Farmacija</option>
+        <option value="legal">Pravo / Administracija</option>
+        <option value="marketing">Marketing / Društvene mreže</option>
+        <option value="journalism">Novinarstvo / Mediji</option>
+      </select>
+    </div>
+
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">SMER</div>
+      </div>
+
+      <div class="direction-row">
+        <label><input type="radio" id="dirAuto" name="direction" value="auto" checked /> Auto</label>
+        <label><input type="radio" id="dirToAscii" name="direction" value="to-ascii" /> Ošišana latinica</label>
+        <label><input type="radio" id="dirLatToCyr" name="direction" value="lat-to-cyr" /> Lat → Ćir</label>
+        <label><input type="radio" id="dirCyrToLat" name="direction" value="cyr-to-lat" /> Ćir → Lat</label>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">OPCIJE</div>
+
+      <label><input type="checkbox" id="optConfirmWholeDoc" checked /> Potvrdi preslovljavanje celog dokumenta</label>
+      <label><input type="checkbox" id="optProtectBrands" checked /> Zaštiti brendove (Windows, ...)</label>
+      <label><input type="checkbox" id="optSerbianQuotes" checked /> Pametni navodnici ( „ … “ )</label>
+      <label><input type="checkbox" id="optPreserveCodeBlocks" checked /> Zaštiti kod (<code>inline</code> / <code>blok</code>)</label>
+      <label><input type="checkbox" id="optProtectRomans" checked /> Zaštiti rimske brojeve (IV, XIV)</label>
+      <label><input type="checkbox" id="optSetProofingLanguage" checked /> Postavi jezik provere (sr-Cyrl / sr-Latn)</label>
+      <label><input type="checkbox" id="optShowStats" /> Prikaži detaljnu statistiku</label>
+    </div>
+
+    <div class="section">
+      <div class="section-title">KOREKCIJA</div>
+      <label><input type="checkbox" id="optFixDoubleSpaces" checked /> Ukloni višak razmaka</label>
+      <label><input type="checkbox" id="optFormatDates" /> Formatiraj datume (npr. 21.10.2023.)</label>
+    </div>
+
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">ZAŠTIĆENO</div>
+
+        <div class="header-actions">
+          <button id="addTagBtn" class="icon-btn btn-add" title="Dodaj reč" disabled>
+            <svg viewBox="0 0 24 24">
+              <path d="M18 10h-4V6c0-1.1-.9-2-2-2s-2 .9-2 2v4H6c-1.1 0-2 .9-2 2s.9 2 2 2h4v4c0 1.1.9 2 2 2s2-.9 2-2v-4h4c1.1 0 2-.9 2-2s-.9-2-2-2z" />
+              <path d="M0 0h24v24H0z" fill="none" />
+            </svg>
+          </button>
+
+          <button id="clearCustomBtn" class="mini-btn" title="Obriši samo moje reči" disabled>
+            <svg viewBox="0 0 24 24">
+              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+              <path d="M0 0h24v24H0z" fill="none" />
+            </svg>
+            <span>Moje</span>
+          </button>
+
+          <button id="clearPresetBtn" class="mini-btn" title="Obriši reči iz profila" disabled>
+            <svg viewBox="0 0 24 24">
+              <path d="M0 0h24v24H0z" fill="none" />
+              <path d="M14 6V4h-4v2h4zM4 8v11h16V8H4zm10-2V4h-4v2h4z" opacity=".3" />
+              <path d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-2 .89-2 2v11c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zM10 4h4v2h-4V4zm10 15H4V8h16v11z" />
+            </svg>
+            <span>Profil</span>
+          </button>
+
+          <button id="clearAllBtn" class="mini-btn" title="Obriši sve reči" disabled>
+            <svg viewBox="0 0 24 24">
+              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+              <path d="M0 0h24v24H0z" fill="none" />
+            </svg>
+            <span>Sve</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="tags-container" id="tagsContainer">
+        <div class="tags-list" id="tagsList"></div>
+        <input type="text" id="tagInput" class="tag-input" placeholder="Upiši reč ili frazu..." autocomplete="off" />
+      </div>
+
+      <textarea id="userWordsCustom" style="display:none;"></textarea>
+      <textarea id="userWordsPreset" style="display:none;"></textarea>
+
+      <div class="hint">Reči ovde ostaju u originalnom pismu.</div>
+    </div>
+
+    <div id="msg">Spreman za rad.</div>
+
+    <div id="statsBox">
+      <div id="statsTitle">Statistika poslednje akcije:</div>
+      <pre id="statsText"></pre>
+    </div>
+  </main>
+
+  <footer>
+    <a href="support.html" target="_blank">Pomoć</a> •
+    <a href="privacy.html" target="_blank">Privatnost</a> •
+    <span class="copyright">© 2026</span>
+  </footer>
+
+  <div id="modalOverlay" class="modal-overlay" role="dialog" aria-modal="true">
+    <div id="modal" class="modal">
+      <h3 id="modalTitle">Potvrda</h3>
+
+      <div class="modal-content">
+        <div id="modalText">Tekst poruke...</div>
+        <textarea id="modalInput" rows="5"></textarea>
+      </div>
+
+      <div class="modal-actions">
+        <button id="modalCancel">Otkaži</button>
+        <button id="modalOk" class="btn-primary">OK</button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>

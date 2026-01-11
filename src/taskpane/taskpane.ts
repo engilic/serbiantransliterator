@@ -1,5 +1,12 @@
 ﻿/* global Word, Office, document, window, console, Blob, URL, FileReader, DOMParser */
 
+/**
+ * VAŽNO:
+ * - CSS je premešten u src/taskpane/taskpane.css
+ * - Da bi Webpack bundlovao CSS, ovde mora da postoji import:
+ */
+
+import "./taskpane.css";
 import { convertOoxml, OoxmlOptions } from "../shared/ooxml/convertOoxml";
 import { convertPlainText, Direction } from "../core/textCore";
 import { removeMultipleSpaces } from "../core/utils";
@@ -1509,8 +1516,7 @@ function generateDiffHtml(oldText: string, newText: string): string {
             continue;
         }
 
-        // NOVO: ne highlightujemo promene koje su samo whitespace (razmak/tab/newline)
-        // ovo smanjuje “sve je obojeno” efekat kada je puno izmena
+        // ne highlightujemo promene koje su samo whitespace (razmak/tab/newline)
         if (isWs(o) || isWs(n)) {
             html += escapeHtml(n);
             continue;
