@@ -623,6 +623,42 @@ code {
   padding: 0 2px;
 }
 
+/* Preview toast (modal) */
+.preview-toast {
+  display: none;
+  max-width: 160px;
+  text-align: right;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: var(--neutral-lighter);
+  color: var(--text-color);
+}
+
+.preview-toast.show {
+  display: block;
+}
+
+.preview-toast.success {
+  border-color: rgba(16, 124, 16, 0.35);
+  background: rgba(16, 124, 16, 0.12);
+  color: var(--success-color);
+}
+
+.preview-toast.error {
+  border-color: rgba(209, 52, 56, 0.35);
+  background: rgba(209, 52, 56, 0.12);
+  color: var(--error-color);
+}
+
+.preview-toast.info {
+  border-color: rgba(15, 108, 189, 0.35);
+  background: rgba(15, 108, 189, 0.12);
+  color: var(--primary-color);
+}
+
 /* Side-by-side preview */
 .preview-grid {
   display: grid;
