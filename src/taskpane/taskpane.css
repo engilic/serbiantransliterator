@@ -1,4 +1,4 @@
-﻿/* taskpane.css (clean) */
+﻿/* taskpane.css */
 
 :root {
   --bg-color: #ffffff;
@@ -90,10 +90,7 @@ b {
   font-weight: 700;
 }
 
-/* =========================
-   Header
-   ========================= */
-
+/* Header */
 header {
   padding: 15px 20px;
   background-color: var(--neutral-lighter);
@@ -129,10 +126,7 @@ header {
   margin-top: 5px;
 }
 
-/* =========================
-   Layout
-   ========================= */
-
+/* Layout */
 main {
   padding: 20px;
   display: flex;
@@ -189,10 +183,7 @@ main {
   flex-wrap: wrap;
 }
 
-/* =========================
-   Inputs
-   ========================= */
-
+/* Inputs */
 label {
   display: flex;
   align-items: center;
@@ -231,10 +222,7 @@ select:focus {
   margin-top: -5px;
 }
 
-/* =========================
-   Buttons
-   ========================= */
-
+/* Buttons */
 .button-group {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -410,10 +398,7 @@ button {
   border: none;
 }
 
-/* =========================
-   Status/Stats
-   ========================= */
-
+/* Status/Stats */
 #msg {
   padding: 10px;
   border-radius: 4px;
@@ -442,10 +427,7 @@ button {
   font-family: monospace;
 }
 
-/* =========================
-   Footer
-   ========================= */
-
+/* Footer */
 footer {
   padding: 15px 20px;
   border-top: 1px solid var(--border-color);
@@ -469,10 +451,7 @@ footer a:hover {
   margin-left: 8px;
 }
 
-/* =========================
-   Tags
-   ========================= */
-
+/* Tags */
 .tags-container {
   border: 1px solid var(--input-border);
   background-color: var(--input-bg);
@@ -555,10 +534,7 @@ code {
   vertical-align: middle;
 }
 
-/* =========================
-   Modal
-   ========================= */
-
+/* Modal */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -623,10 +599,7 @@ code {
   min-height: 100px;
 }
 
-/* =========================
-   Preview / Diff
-   ========================= */
-
+/* Preview / Diff */
 .preview-single-pane {
   font-family: "Consolas", monospace;
   font-size: 13px;
@@ -650,6 +623,50 @@ code {
   padding: 0 2px;
 }
 
+/* Side-by-side preview */
+.preview-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.preview-pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.preview-pane-title {
+  font-weight: 700;
+  font-size: 11px;
+  opacity: 0.75;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.preview-pane-body {
+  font-family: "Consolas", monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  padding: 15px;
+  background-color: var(--neutral-lighter);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  overflow-y: auto;
+  max-height: 52vh;
+}
+
+@media (max-width: 620px) {
+  .preview-grid {
+    grid-template-columns: 1fr;
+  }
+  .preview-pane-body {
+    max-height: 30vh;
+  }
+}
+
 @media (prefers-color-scheme: dark) {
   .diff-changed {
     background-color: #002a45;
@@ -658,6 +675,10 @@ code {
   }
 
   .preview-single-pane {
+    background-color: #333;
+  }
+
+  .preview-pane-body {
     background-color: #333;
   }
 }
