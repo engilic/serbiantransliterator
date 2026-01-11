@@ -1,12 +1,7 @@
 ﻿/* global Word, Office, document, window, console, Blob, URL, FileReader, DOMParser */
 
-/**
- * VAŽNO:
- * - CSS je premešten u src/taskpane/taskpane.css
- * - Da bi Webpack bundlovao CSS, ovde mora da postoji import:
- */
-
 import "./taskpane.css";
+
 import { convertOoxml, OoxmlOptions } from "../shared/ooxml/convertOoxml";
 import { convertPlainText, Direction } from "../core/textCore";
 import { removeMultipleSpaces } from "../core/utils";
@@ -300,7 +295,7 @@ const PREVIEW_BATCH = 20;
 let previewScope: "selection" | "document" = "selection";
 let previewSettingsSnap: UiSettings | null = null;
 
-let previewMode: "diff" | "plain" = "diff";
+let previewMode: "diff" | "plain" | "side" = "diff";
 let previewTypeText = "";
 let previewTitleText = "";
 let previewOriginal = "";
@@ -672,7 +667,6 @@ async function runPreview() {
             previewCanLoadMore = false;
 
             if (hasSelectionText) {
-                // Selection preview: OOXML 1:1
                 previewScope = "selection";
 
                 const ooxml = range.getOoxml();
@@ -826,16 +820,30 @@ function renderPreviewMode() {
 
     if (previewMode === "plain") {
         holder.innerHTML = `<div class="preview-single-pane">${escapeHtml(conv)}</div>`;
+    } else if (previewMode === "side") {
+        holder.innerHTML = `
+          <div class="preview-grid">
+            <div class="preview-pane">
+              <div class="preview-pane-title">Pre</div>
+              <div class="preview-pane-body">${escapeHtml(orig)}</div>
+            </div>
+            <div class="preview-pane">
+              <div class="preview-pane-title">Posle</div>
+              <div class="preview-pane-body">${escapeHtml(conv)}</div>
+            </div>
+          </div>
+        `;
     } else {
         holder.innerHTML = generateDiffHtml(orig, conv);
     }
 
     const btnDiff = document.getElementById("previewBtnDiff") as HTMLButtonElement | null;
     const btnPlain = document.getElementById("previewBtnPlain") as HTMLButtonElement | null;
-    if (btnDiff && btnPlain) {
-        btnDiff.disabled = previewMode === "diff";
-        btnPlain.disabled = previewMode === "plain";
-    }
+    const btnSide = document.getElementById("previewBtnSide") as HTMLButtonElement | null;
+
+    if (btnDiff) btnDiff.disabled = previewMode === "diff";
+    if (btnPlain) btnPlain.disabled = previewMode === "plain";
+    if (btnSide) btnSide.disabled = previewMode === "side";
 }
 
 function showPreviewModal() {
@@ -875,6 +883,8 @@ function showPreviewModal() {
             <div style="display:flex; flex-direction:column; gap:6px; align-items:stretch; min-width:110px;">
               <button id="previewBtnDiff" class="mini-btn" type="button" title="Označi promene">Razlike</button>
               <button id="previewBtnPlain" class="mini-btn" type="button" title="Prikaži samo rezultat">Rezultat</button>
+              <button id="previewBtnSide" class="mini-btn" type="button" title="Pre / Posle">Pre/Posle</button>
+              <button id="previewBtnCopy" class="mini-btn" type="button" title="Kopiraj rezultat">Kopiraj</button>
             </div>
           </div>
         </div>
@@ -887,6 +897,8 @@ function showPreviewModal() {
 
     const bDiff = document.getElementById("previewBtnDiff") as HTMLButtonElement;
     const bPlain = document.getElementById("previewBtnPlain") as HTMLButtonElement;
+    const bSide = document.getElementById("previewBtnSide") as HTMLButtonElement;
+    const bCopy = document.getElementById("previewBtnCopy") as HTMLButtonElement;
 
     bDiff.onclick = () => {
         previewMode = "diff";
@@ -896,7 +908,17 @@ function showPreviewModal() {
         previewMode = "plain";
         renderPreviewMode();
     };
+    bSide.onclick = () => {
+        previewMode = "side";
+        renderPreviewMode();
+    };
+    bCopy.onclick = async () => {
+        const ok = await copyToClipboard(previewConverted ?? "");
+        setStatus(ok ? "Rezultat kopiran u clipboard." : "Ne mogu da kopiram (clipboard nije dostupan).", ok ? "success" : "error");
+    };
 
+    // inicijalno (ako nešto promeniš pre showPreviewModal)
+    if (previewMode !== "diff" && previewMode !== "plain" && previewMode !== "side") previewMode = "diff";
     renderPreviewMode();
 
     // Dole: PRESLOVI + Učitaj još. "Zatvori" sakriven jer postoji X gore.
@@ -1285,6 +1307,36 @@ function handleFileImport(e: Event) {
    UI HELPERS
    ========================= */
 
+async function copyToClipboard(text: string): Promise<boolean> {
+    try {
+        if ((navigator as any).clipboard?.writeText) {
+            await (navigator as any).clipboard.writeText(text);
+            return true;
+        }
+    } catch {
+        // fallback below
+    }
+
+    try {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.setAttribute("readonly", "true");
+        ta.style.position = "fixed";
+        ta.style.top = "0";
+        ta.style.left = "0";
+        ta.style.width = "1px";
+        ta.style.height = "1px";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        const ok = document.execCommand("copy");
+        document.body.removeChild(ta);
+        return ok;
+    } catch {
+        return false;
+    }
+}
+
 async function runWithUiLock(fn: () => Promise<void>) {
     const runBtn = document.getElementById("runBtn") as HTMLButtonElement;
     const previewBtn = document.getElementById("previewBtn") as HTMLButtonElement;
@@ -1376,7 +1428,6 @@ function confirmInPanel(htmlMsg: string): Promise<boolean> {
     const okBtn = document.getElementById("modalOk") as HTMLButtonElement;
     const cancelBtn = document.getElementById("modalCancel") as HTMLButtonElement;
 
-    // restore default modal layout
     title.style.display = "";
     cancelBtn.style.display = "inline-flex";
 
@@ -1516,7 +1567,6 @@ function generateDiffHtml(oldText: string, newText: string): string {
             continue;
         }
 
-        // ne highlightujemo promene koje su samo whitespace (razmak/tab/newline)
         if (isWs(o) || isWs(n)) {
             html += escapeHtml(n);
             continue;
