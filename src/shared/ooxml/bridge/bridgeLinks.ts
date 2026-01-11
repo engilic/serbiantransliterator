@@ -14,7 +14,12 @@ const LINK_PATTERNS: RegExp[] = [
 ];
 
 function trimLinkEnd(s: string): string {
-    return s.replace(/[,.;:!?)\]\}]+$/g, "");
+    // Skida završnu interpunkciju koja često "nalepe" URL/email u tekstu.
+    // Uključuje: , . ; : ! ? ) } ]
+    // NOTE:
+    // - ']' mora biti escaped kao \]
+    // - '}' NE treba escapovati u char class (no-useless-escape)
+    return s.replace(/[,.;:!?)}\]]+$/g, "");
 }
 
 function buildLookahead(textNodes: Element[], startIndex: number, maxCp: number) {

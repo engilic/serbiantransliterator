@@ -1,8 +1,23 @@
 {
-    "plugins": [
-        "office-addins"
-    ],
-    "extends": [
-        "plugin:office-addins/recommended"
-    ]
+  "plugins": ["office-addins"],
+  "extends": ["plugin:office-addins/recommended"],
+  "env": {
+    "browser": true,
+    "es2021": true
+  },
+  "rules": {
+    "prettier/prettier": "off",
+    "no-undef": "off"
+  },
+  "overrides": [
+    {
+      "files": ["src/taskpane/taskpane.ts"],
+      "rules": {
+        "office-addins/load-object-before-read": "off",
+        "no-control-regex": "off",
+        "no-redeclare": "off",
+        "@typescript-eslint/no-unused-vars": "off"
+      }
+    }
+  ]
 }

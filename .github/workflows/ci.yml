@@ -14,6 +14,7 @@ concurrency:
 
 jobs:
   test-build-validate:
+    name: test-build-validate
     runs-on: ubuntu-latest
 
     steps:
@@ -28,6 +29,12 @@ jobs:
 
       - name: Install deps (npm ci)
         run: npm ci
+
+      - name: Typecheck (tsc --noEmit)
+        run: npm run typecheck
+
+      - name: Lint (eslint)
+        run: npm run lint
 
       - name: Unit tests
         run: npm test
