@@ -1228,7 +1228,7 @@ function renderPreviewMode() {
     const conv = normalizeNewlines(previewConverted);
 
     if (previewMode === "plain") {
-        holder.innerHTML = `<div class="preview-single-pane">${escapeHtml(conv)}</div>`;
+        holder.innerHTML = `<div class="preview-text-pane preview-single-pane">${escapeHtml(conv)}</div>`;
     } else if (previewMode === "side") {
         holder.innerHTML = renderSideBySideWithHighlights(orig, conv);
     } else {
@@ -2092,11 +2092,11 @@ function renderSideBySideWithHighlights(oldText: string, newText: string): strin
           <div class="preview-grid">
             <div class="preview-pane">
               <div class="preview-pane-title">Pre</div>
-              <div class="preview-pane-body">${escapeHtml(normalizeNewlines(oldText))}</div>
+              <div class="preview-text-pane preview-pane-body">${escapeHtml(normalizeNewlines(oldText))}</div>
             </div>
             <div class="preview-pane">
               <div class="preview-pane-title">Posle</div>
-              <div class="preview-pane-body">${escapeHtml(normalizeNewlines(newText))}</div>
+              <div class="preview-text-pane preview-pane-body">${escapeHtml(normalizeNewlines(newText))}</div>
             </div>
           </div>
         `;
@@ -2121,7 +2121,6 @@ function renderSideBySideWithHighlights(oldText: string, newText: string): strin
 
         if (op.type === "delete") {
             left += wrap ? `<span class="diff-removed">${escapeHtml(v)}</span>` : escapeHtml(v);
-            // na desnoj strani ništa
             continue;
         }
 
@@ -2133,11 +2132,11 @@ function renderSideBySideWithHighlights(oldText: string, newText: string): strin
       <div class="preview-grid">
         <div class="preview-pane">
           <div class="preview-pane-title">Pre</div>
-          <div class="preview-pane-body">${left}</div>
+          <div class="preview-text-pane preview-pane-body">${left}</div>
         </div>
         <div class="preview-pane">
           <div class="preview-pane-title">Posle</div>
-          <div class="preview-pane-body">${right}</div>
+          <div class="preview-text-pane preview-pane-body">${right}</div>
         </div>
       </div>
     `;
@@ -2148,7 +2147,7 @@ function generateDiffHtml(oldText: string, newText: string): string {
     const newN = normalizeNewlines(newText);
 
     if (oldN === newN) {
-        return `<div class="preview-single-pane preview-no-changes">Nema izmena u tekstu.</div>`;
+        return `<div class="preview-text-pane preview-single-pane preview-no-changes">Nema izmena u tekstu.</div>`;
     }
 
     const a = tokenizeForDiff(oldN);
@@ -2157,7 +2156,7 @@ function generateDiffHtml(oldText: string, newText: string): string {
     // safety: ako je preveliko, nemoj Myers (sporije); prikaži samo rezultat
     const MAX_TOKENS = 8000;
     if (a.length + b.length > MAX_TOKENS) {
-        return `<div class="preview-single-pane">${escapeHtml(newN)}</div>`;
+        return `<div class="preview-text-pane preview-single-pane">${escapeHtml(newN)}</div>`;
     }
 
     const ops = myersDiff(a, b);
@@ -2173,8 +2172,7 @@ function generateDiffHtml(oldText: string, newText: string): string {
         }
 
         if (op.type === "delete") {
-            // U single-pane prikazu ne prikazujemo obrisano (jer “Razlike” prikazuje rezultat),
-            // ali Myers nam pomaže da insert bude na pravom mestu.
+            // "Razlike" prikazuje rezultat; delete ne renderujemo
             continue;
         }
 
@@ -2182,10 +2180,9 @@ function generateDiffHtml(oldText: string, newText: string): string {
         if (isWhitespaceToken(v)) {
             html += escapeHtml(v);
         } else {
-            // ranije si koristio diff-changed, može i diff-added; ostavljam diff-changed radi doslednog izgleda
             html += `<span class="diff-changed">${escapeHtml(v)}</span>`;
         }
     }
 
-    return `<div class="preview-single-pane">${html}</div>`;
+    return `<div class="preview-text-pane preview-single-pane">${html}</div>`;
 }

@@ -587,7 +587,8 @@ code {
 }
 
 /* Preview / Diff */
-.preview-single-pane {
+/* Shared preview pane styling (dedupe) */
+.preview-text-pane {
     font-family: "Consolas", monospace;
     font-size: 13px;
     line-height: 1.6;
@@ -597,8 +598,11 @@ code {
     background-color: var(--neutral-lighter);
     border: 1px solid var(--border-color);
     border-radius: 4px;
-    height: 100%;
     overflow-y: auto;
+}
+
+.preview-single-pane {
+    height: 100%;
 }
 
 .diff-changed {
@@ -684,16 +688,6 @@ code {
 }
 
 .preview-pane-body {
-    font-family: "Consolas", monospace;
-    font-size: 13px;
-    line-height: 1.6;
-    white-space: pre-wrap;
-    word-break: break-word;
-    padding: 15px;
-    background-color: var(--neutral-lighter);
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    overflow-y: auto;
     max-height: 52vh;
 }
 
@@ -724,11 +718,7 @@ code {
         border-color: rgba(209, 52, 56, 0.55);
     }
 
-    .preview-single-pane {
-        background-color: #333;
-    }
-
-    .preview-pane-body {
+    .preview-text-pane {
         background-color: #333;
     }
 }
