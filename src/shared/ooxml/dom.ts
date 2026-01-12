@@ -23,6 +23,8 @@ export function collectTextNodes(doc: Document): Element[] {
     // preskoči field-code i deleted tekst
     return allTextNodes.filter((n) => {
         if (isInsideTag(n, "instrText")) return false;
+        if (isInsideTag(n, "fldSimple")) return false;
+        if (isInsideTag(n, "fldChar")) return false;
         if (isInsideTag(n, "delText")) return false;
         return true;
     });
