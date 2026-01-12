@@ -16,7 +16,7 @@ import {
     bridgeSpacesAcrossTextNodes,
     markCyrAllCapsDigraphHints,
     LAT_ALLCAPS_HINT,
-} from "./bridge";
+} from "./bridge/index";
 
 export interface OoxmlOptions extends CoreOptions {
     direction?: Direction | "auto" | "to-ascii";
