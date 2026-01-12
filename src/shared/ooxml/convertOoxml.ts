@@ -153,7 +153,8 @@ function extractLetterWordSpans(text: string): WordSpan[] {
     let i = 0;
 
     while (i < cps.length) {
-        if (!isTokenChar(cps[i]!)) {
+        const cp = cps[i];
+        if (!cp || !isTokenChar(cp)) {
             i++;
             continue;
         }
@@ -161,8 +162,10 @@ function extractLetterWordSpans(text: string): WordSpan[] {
         const start = i;
         let hasLetter = false;
 
-        while (i < cps.length && isTokenChar(cps[i]!)) {
-            if (/\p{L}/u.test(cps[i]!)) hasLetter = true;
+        while (i < cps.length) {
+            const cp = cps[i];
+            if (!cp || !isTokenChar(cp)) break;
+            if (/\p{L}/u.test(cp)) hasLetter = true;
             i++;
         }
 
@@ -265,7 +268,10 @@ function applyProofingLanguagePreserveUnchanged(
         let anyChanged = false;
 
         for (let i = 0; i < finWords.length; i++) {
-            const isChanged = wasWordTransliterated(origWords[i]!.text, finWords[i]!.text, direction);
+            const origWord = origWords[i];
+            const finWord = finWords[i];
+            if (!origWord || !finWord) continue;
+            const isChanged = wasWordTransliterated(origWord.text, finWord.text, direction);
             changedWord[i] = isChanged;
             if (isChanged) anyChanged = true;
         }
@@ -283,18 +289,22 @@ function applyProofingLanguagePreserveUnchanged(
 
         let cursorCp = 0;
         for (let i = 0; i < finWords.length; i++) {
-            const w = finWords[i]!;
+            const w = finWords[i];
+            if (!w) continue;
             const segStart = cursorCp;
             const segEnd = w.endCp;
 
             const segText = finCps.slice(segStart, segEnd).join("");
-            segs.push({ text: segText, changed: changedWord[i]! });
+            segs.push({ text: segText, changed: changedWord[i] ?? false });
 
             cursorCp = segEnd;
         }
 
         if (cursorCp < finCps.length && segs.length) {
-            segs[segs.length - 1]!.text += finCps.slice(cursorCp).join("");
+            const lastSeg = segs[segs.length - 1];
+            if (lastSeg) {
+                lastSeg.text += finCps.slice(cursorCp).join("");
+            }
         }
 
         for (const seg of segs) {

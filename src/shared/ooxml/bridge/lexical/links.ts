@@ -42,7 +42,8 @@ function buildLookahead(textNodes: Element[], startIndex: number, maxCp: number)
     while (remaining > 0) {
         if (j == null) break;
 
-        const node = textNodes[j]!;
+        const node = textNodes[j];
+        if (!node) break;
         const raw = ((node.textContent ?? "")).normalize("NFC");
         if (!raw) {
             j = findNextNodeWithText(textNodes, j + 1);
@@ -78,7 +79,8 @@ function consumeFromPlan(
         const take = Math.min(remaining, step.takeCp);
         moved += step.cps.slice(0, take).join("");
 
-        const node = textNodes[step.nodeIndex]!;
+        const node = textNodes[step.nodeIndex];
+        if (!node) continue;
         node.textContent = step.cps.slice(take).join("");
 
         remaining -= take;
@@ -92,7 +94,8 @@ export function bridgeLinksAcrossTextNodes(textNodes: Element[]): number {
     let changed = 0;
 
     for (let i = 0; i < textNodes.length - 1; i++) {
-        const aNode = textNodes[i]!;
+        const aNode = textNodes[i];
+        if (!aNode) continue;
         const aRaw = ((aNode.textContent ?? "")).normalize("NFC");
         if (!aRaw) continue;
 
@@ -104,7 +107,7 @@ export function bridgeLinksAcrossTextNodes(textNodes: Element[]): number {
         const { frag, startCpIndex } = fragInfo;
 
         const aCps = Array.from(aRaw);
-        const prevChar = startCpIndex > 0 ? aCps[startCpIndex - 1]! : "";
+        const prevChar = startCpIndex > 0 ? (aCps[startCpIndex - 1] ?? "") : "";
         if (prevChar && isLinkChar(prevChar)) continue;
 
         const fragLower = normKey(frag);

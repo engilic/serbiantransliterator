@@ -48,8 +48,9 @@ export function detectMajorityScript(text: string): ScriptMajority {
 }
 
 function latinDigraphLjNjToCyr(two: string): string | null {
-    const a = two[0]!;
-    const b = two[1]!;
+    if (two.length < 2) return null;
+    const a = two[0];
+    const b = two[1];
     const lower = (a + b).toLowerCase();
 
     if (lower === "lj") {
@@ -66,8 +67,9 @@ function latinDigraphLjNjToCyr(two: string): string | null {
 }
 
 function latinDigraphDžToCyr(two: string): string | null {
-    const a = two[0]!;
-    const b = two[1]!;
+    if (two.length < 2) return null;
+    const a = two[0];
+    const b = two[1];
     if ((a + b).toLowerCase() !== "dž") {
         return null;
     }
@@ -121,7 +123,8 @@ export function latinToCyrillic(text: string): string {
         }
 
         // 3) single-char map
-        const ch = text[i]!;
+        const ch = text[i];
+        if (!ch) continue;
         out += LAT_TO_CYR_1[ch] ?? ch;
         i++;
     }
@@ -131,10 +134,11 @@ export function latinToCyrillic(text: string): string {
 export function cyrillicToLatin(text: string): string {
     let out = "";
     for (let i = 0; i < text.length; i++) {
-        const ch = text[i]!;
+        const ch = text[i];
+        if (!ch) continue;
         if (ch === "Љ" || ch === "Њ" || ch === "Џ" || ch === "љ" || ch === "њ" || ch === "џ") {
             const next = i + 1 < text.length ? text[i + 1] : undefined;
-            out += cyrDigraphToLatin(ch as any, next);
+            out += cyrDigraphToLatin(ch as "Љ" | "Њ" | "Џ" | "љ" | "њ" | "џ", next);
             continue;
         }
         out += CYR_TO_LAT_1[ch] ?? ch;

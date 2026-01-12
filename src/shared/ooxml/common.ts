@@ -6,12 +6,12 @@ export function getCpArray(text: string): string[] {
 
 export function firstCp(text: string): string | null {
     const arr = Array.from(text);
-    return arr.length ? arr[0]! : null;
+    return arr.length ? (arr[0] ?? null) : null;
 }
 
 export function lastCp(text: string): string | null {
     const arr = Array.from(text);
-    return arr.length ? arr[arr.length - 1]! : null;
+    return arr.length ? (arr[arr.length - 1] ?? null) : null;
 }
 
 export function dropFirstCp(text: string): string {
@@ -21,7 +21,9 @@ export function dropFirstCp(text: string): string {
 
 export function findNextNodeWithText(textNodes: Element[], startIdx: number): number | null {
     for (let i = startIdx; i < textNodes.length; i++) {
-        const t = textNodes[i]!.textContent ?? "";
+        const node = textNodes[i];
+        if (!node) continue;
+        const t = node.textContent ?? "";
         if (t.length > 0) return i;
     }
     return null;
@@ -86,10 +88,15 @@ export function isLinkChar(ch: string): boolean {
 export function trailingTokenFragment(text: string): { frag: string; startCpIndex: number } | null {
     const cps = getCpArray(text);
     if (cps.length === 0) return null;
-    if (/\s/u.test(cps[cps.length - 1]!)) return null;
+    const lastCp = cps[cps.length - 1];
+    if (!lastCp || /\s/u.test(lastCp)) return null;
 
     let i = cps.length - 1;
-    while (i >= 0 && isTokenChar(cps[i]!)) i--;
+    while (i >= 0) {
+        const cp = cps[i];
+        if (!cp || !isTokenChar(cp)) break;
+        i--;
+    }
 
     const start = i + 1;
     if (start >= cps.length) return null;
@@ -101,10 +108,15 @@ export function trailingTokenFragment(text: string): { frag: string; startCpInde
 export function trailingLinkFragment(text: string): { frag: string; startCpIndex: number } | null {
     const cps = getCpArray(text);
     if (cps.length === 0) return null;
-    if (/\s/u.test(cps[cps.length - 1]!)) return null;
+    const lastCp = cps[cps.length - 1];
+    if (!lastCp || /\s/u.test(lastCp)) return null;
 
     let i = cps.length - 1;
-    while (i >= 0 && isLinkChar(cps[i]!)) i--;
+    while (i >= 0) {
+        const cp = cps[i];
+        if (!cp || !isLinkChar(cp)) break;
+        i--;
+    }
 
     const start = i + 1;
     if (start >= cps.length) return null;

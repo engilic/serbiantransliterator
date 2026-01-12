@@ -54,7 +54,8 @@ export function myersDiff(a: string[], b: string[]): DiffOp[] {
                 let curY = m;
 
                 for (let dd = d; dd >= 0; dd--) {
-                    const vv = trace[dd]!;
+                    const vv = trace[dd];
+                    if (!vv) break;
                     const kk = curX - curY;
                     const kkm = kk + max;
 
@@ -65,12 +66,15 @@ export function myersDiff(a: string[], b: string[]): DiffOp[] {
                         prevK = kk - 1; // came from right => delete
                     }
 
-                    const prevX = vv[prevK + max]!;
+                    const prevX = vv[prevK + max];
+                    if (prevX === undefined) break;
                     const prevY = prevX - prevK;
 
                     // snake (equal)
                     while (curX > prevX && curY > prevY) {
-                        ops.push({ type: "equal", value: a[curX - 1]! });
+                        const val = a[curX - 1];
+                        if (val === undefined) break;
+                        ops.push({ type: "equal", value: val });
                         curX--;
                         curY--;
                     }
@@ -80,11 +84,17 @@ export function myersDiff(a: string[], b: string[]): DiffOp[] {
                     // edit step
                     if (curX === prevX) {
                         // insert
-                        ops.push({ type: "insert", value: b[curY - 1]! });
+                        const val = b[curY - 1];
+                        if (val !== undefined) {
+                            ops.push({ type: "insert", value: val });
+                        }
                         curY--;
                     } else {
                         // delete
-                        ops.push({ type: "delete", value: a[curX - 1]! });
+                        const val = a[curX - 1];
+                        if (val !== undefined) {
+                            ops.push({ type: "delete", value: val });
+                        }
                         curX--;
                     }
                 }

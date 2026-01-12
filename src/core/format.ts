@@ -20,5 +20,5 @@ export function toAscii(text: string): string {
     Đ: "Dj",
     Ž: "Z",
   };
-  return text.replace(/[čćšđžČĆŠĐŽ]/g, (m) => map[m]!);
+    return text.replace(/[čćšđžČĆŠĐŽ]/g, (m) => map[m] ?? m);
 }

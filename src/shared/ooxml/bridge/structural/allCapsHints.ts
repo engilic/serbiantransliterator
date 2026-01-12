@@ -16,7 +16,8 @@ export function markCyrAllCapsDigraphHints(
     let count = 0;
 
     for (let i = 0; i < textNodes.length - 1; i++) {
-        const aNode = textNodes[i]!;
+        const aNode = textNodes[i];
+        if (!aNode) continue;
         const aRaw = ((aNode.textContent ?? "")).normalize("NFC");
         if (!aRaw) continue;
 
@@ -29,7 +30,8 @@ export function markCyrAllCapsDigraphHints(
         const j = findNextNodeWithText(textNodes, i + 1);
         if (j == null) continue;
 
-        const bNode = textNodes[j]!;
+        const bNode = textNodes[j];
+        if (!bNode) continue;
         const bRaw = ((bNode.textContent ?? "")).normalize("NFC");
         if (!bRaw) continue;
 
