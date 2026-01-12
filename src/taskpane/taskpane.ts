@@ -1259,28 +1259,24 @@ function showPreviewModal() {
     (document.getElementById("modal") as HTMLDivElement).classList.add("wide");
 
     text.innerHTML = `
-      <div id="previewStickyHeader"
-           style="position:sticky; top:0; z-index:2; background: var(--bg-color);
-                  border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 10px;">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
-          <div id="previewTitleText"
-               style="color: var(--primary-color); font-weight: 800; line-height: 1.3; padding-top:2px; flex:1;">
+      <div id="previewStickyHeader" class="preview-sticky-header">
+        <div class="preview-header-row">
+          <div id="previewTitleText" class="preview-title">
             ${escapeHtml(previewTitleText)}
           </div>
 
-          <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px;">
+          <div class="preview-header-right">
             <button id="previewCloseBtn"
-                    class="icon-btn"
+                    class="icon-btn preview-close-btn"
                     type="button"
                     aria-label="Zatvori"
-                    title="Zatvori"
-                    style="width:28px; height:28px; padding:0; font-size:20px; line-height:1;">
+                    title="Zatvori">
               ×
             </button>
 
             <div id="previewToast" class="preview-toast" role="status" aria-live="polite"></div>
 
-            <div style="display:flex; flex-direction:column; gap:6px; align-items:stretch; min-width:110px;">
+            <div class="preview-header-buttons">
               <button id="previewBtnDiff" class="mini-btn" type="button" title="Označi promene">Razlike</button>
               <button id="previewBtnPlain" class="mini-btn" type="button" title="Prikaži samo rezultat">Rezultat</button>
               <button id="previewBtnSide" class="mini-btn" type="button" title="Pre / Posle">Pre/Posle</button>
