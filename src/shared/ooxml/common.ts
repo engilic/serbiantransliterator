@@ -80,7 +80,7 @@ export function isLinkChar(ch: string): boolean {
     if (!ch) return false;
     if (/\s/u.test(ch)) return false;
     if (/\p{L}|\p{N}/u.test(ch)) return true;
-    return /[:/@?&=%#._+\-~]/u.test(ch);
+    return /[:/@?&=%#._+~;-]/u.test(ch);
 }
 
 export function trailingTokenFragment(text: string): { frag: string; startCpIndex: number } | null {
