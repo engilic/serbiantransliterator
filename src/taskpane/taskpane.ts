@@ -407,43 +407,52 @@ function onSelectionChange() {
     selectionTimeout = setTimeout(() => checkSelectionAndUpdateButtons(), 50);
 }
 
+function getSelectedTextAsync(): Promise<string> {
+    return new Promise((resolve, reject) => {
+        Office.context.document.getSelectedDataAsync(
+            Office.CoercionType.Text,
+            (result) => {
+                if (result.status === Office.AsyncResultStatus.Succeeded) {
+                    resolve(String(result.value ?? ""));
+                } else {
+                    reject(result.error);
+                }
+            }
+        );
+    });
+}
+
 async function checkSelectionAndUpdateButtons() {
     try {
-        await Word.run(async (context) => {
-            const range = context.document.getSelection();
-            range.load("text");
-            await context.sync();
+        const runBtn = document.getElementById("runBtn") as HTMLButtonElement | null;
+        const prevBtn = document.getElementById("previewBtn") as HTMLButtonElement | null;
+        if (!runBtn || !prevBtn) return;
 
-            const runBtn = document.getElementById("runBtn") as HTMLButtonElement;
-            const prevBtn = document.getElementById("previewBtn") as HTMLButtonElement;
-            if (!runBtn || !prevBtn) return;
+        const rawText = normalizeWeirdBreaks(await getSelectedTextAsync());
+        const hasContent = rawText.trim().length > 0;
+        const isJustWhitespace = rawText.length > 0 && !hasContent;
 
-            const rawText = range.text ?? "";
-            const hasContent = rawText.trim().length > 0;
-            const isJustWhitespace = rawText.length > 0 && !hasContent;
+        if (isJustWhitespace) {
+            runBtn.innerHTML = `PRESLOVI<br><span class="btn-subtitle"><b>NEMA TEKSTA</b></span>`;
+            runBtn.disabled = true;
 
-            if (isJustWhitespace) {
-                runBtn.innerHTML = `PRESLOVI<br><span class="btn-subtitle"><b>NEMA TEKSTA</b></span>`;
-                runBtn.disabled = true;
+            prevBtn.innerHTML = `PREGLED<br><span class="btn-subtitle"><b>NEMA TEKSTA</b></span>`;
+            prevBtn.disabled = true;
+        } else if (hasContent) {
+            runBtn.innerHTML = `PRESLOVI<br><span class="btn-subtitle"><b>selekciju</b></span>`;
+            runBtn.disabled = false;
 
-                prevBtn.innerHTML = `PREGLED<br><span class="btn-subtitle"><b>NEMA TEKSTA</b></span>`;
-                prevBtn.disabled = true;
-            } else if (hasContent) {
-                runBtn.innerHTML = `PRESLOVI<br><span class="btn-subtitle"><b>selekciju</b></span>`;
-                runBtn.disabled = false;
+            prevBtn.innerHTML = `PREGLED<br><span class="btn-subtitle"><b>selekcije</b></span>`;
+            prevBtn.disabled = false;
+        } else {
+            runBtn.innerHTML = `PRESLOVI<br><span class="btn-subtitle"><b>ceo dokument</b></span>`;
+            runBtn.disabled = false;
 
-                prevBtn.innerHTML = `PREGLED<br><span class="btn-subtitle"><b>selekcije</b></span>`;
-                prevBtn.disabled = false;
-            } else {
-                runBtn.innerHTML = `PRESLOVI<br><span class="btn-subtitle"><b>ceo dokument</b></span>`;
-                runBtn.disabled = false;
-
-                prevBtn.innerHTML = `PREGLED<br><span class="btn-subtitle"><b>celog dokumenta</b></span>`;
-                prevBtn.disabled = false;
-            }
-        });
+            prevBtn.innerHTML = `PREGLED<br><span class="btn-subtitle"><b>celog dokumenta</b></span>`;
+            prevBtn.disabled = false;
+        }
     } catch {
-        // ignore
+        // best-effort: ako Office API ne vrati selekciju (npr. neka non-text selekcija), ne ruši UI
     }
 }
 
