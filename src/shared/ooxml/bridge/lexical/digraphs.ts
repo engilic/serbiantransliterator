@@ -4,7 +4,7 @@ import {
     lastCp,
     dropFirstCp,
     latinLetterSr,
-} from "../common";
+} from "../../common";
 
 export function bridgeDigraphsAcrossTextNodes(textNodes: Element[]): number {
     let changed = 0;

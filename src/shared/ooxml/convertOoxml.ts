@@ -1,22 +1,22 @@
 import { convertPlainText, detectScript, Direction, CoreOptions } from "../../core/textCore";
 import { ALWAYS_LATIN_PHRASES } from "../../core/rules";
-
 import { XML_NS, WORD_NS, collectTextNodes, getFullText, needsXmlSpacePreserve } from "./dom";
-import { buildPhraseInfos, bridgePhrasesAcrossTextNodes } from "./bridge/bridgePhrases";
-import { bridgeAlwaysLatinTokensAcrossTextNodes } from "./bridge/bridgeAlwaysLatinTokens";
-import { bridgeExactTokensAcrossTextNodes } from "./bridge/bridgeExactTokens";
-import { bridgeLinksAcrossTextNodes } from "./bridge/bridgeLinks";
-import { bridgeDigraphsAcrossTextNodes } from "./bridge/bridgeDigraphs";
-import { markCyrAllCapsDigraphHints, LAT_ALLCAPS_HINT } from "./bridge/allCapsHints";
 import { applySerbianQuotesAcrossNodes } from "./quotes";
-
 import { createInitialCodeState, createInitialCodeParseStats, transformTextRespectingCode } from "./code";
-
 import { removeMultipleSpaces } from "../../core/utils";
-import { bridgeSpacesAcrossTextNodes } from "./bridge/bridgeSpaces";
-
 import { formatSerbianDates, toAscii } from "../../core/format";
 import { isTokenChar } from "./common";
+import {
+    bridgeLinksAcrossTextNodes,
+    bridgeAlwaysLatinTokensAcrossTextNodes,
+    bridgeExactTokensAcrossTextNodes,
+    buildPhraseInfos,
+    bridgePhrasesAcrossTextNodes,
+    bridgeDigraphsAcrossTextNodes,
+    bridgeSpacesAcrossTextNodes,
+    markCyrAllCapsDigraphHints,
+    LAT_ALLCAPS_HINT,
+} from "./bridge";
 
 export interface OoxmlOptions extends CoreOptions {
     direction?: Direction | "auto" | "to-ascii";

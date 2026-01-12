@@ -3,7 +3,7 @@ import {
     trailingLinkFragment,
     isLinkChar,
     normKey,
-} from "../common";
+} from "../../common";
 
 const LINK_PATTERNS: RegExp[] = [
     /^(https?:\/\/[^\s<>"')]+)/iu,

@@ -2,7 +2,7 @@ import {
     findNextNodeWithText,
     isBoundaryChar,
     normKey,
-} from "../common";
+} from "../../common";
 
 export type PhraseInfo = { raw: string; lowerCps: string[]; len: number };
 

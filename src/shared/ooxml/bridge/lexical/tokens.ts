@@ -1,26 +1,42 @@
-import { ALWAYS_LATIN_TOKENS } from "../../../core/rules";
+﻿import { ALWAYS_LATIN_TOKENS } from "../../../../core/rules";
 import {
     findNextNodeWithText,
     trailingTokenFragment,
     isTokenChar,
     normKey,
-} from "../common";
+} from "../../common";
 
 type TokenLowerCps = { s: string; cps: string[]; len: number };
 
-const ALWAYS_TOKENS_LIST: TokenLowerCps[] = Array.from(ALWAYS_LATIN_TOKENS)
-    .map((s) => ({ s, cps: Array.from(s), len: Array.from(s).length }))
-    .sort((a, b) => b.len - a.len);
+/**
+ * Generički bridging funkcija za tokene (case-sensitive ili insensitive).
+ */
+function bridgeTokensAcrossTextNodes(
+    textNodes: Element[],
+    tokensSource: Set<string> | string[],
+    caseSensitive = false
+): number {
+    const tokens: TokenLowerCps[] = (
+        Array.isArray(tokensSource)
+            ? tokensSource
+            : Array.from(tokensSource)
+    )
+        .map((s) => s.normalize("NFC"))
+        .filter((s) => s.length > 0)
+        .map((token) => {
+            const normalized = caseSensitive ? token : normKey(token);
+            return { s: normalized, cps: Array.from(normalized), len: Array.from(normalized).length };
+        })
+        .sort((a, b) => b.len - a.len);
 
-export function bridgeAlwaysLatinTokensAcrossTextNodes(textNodes: Element[]): number {
+    if (tokens.length === 0) return 0;
+
     let changed = 0;
 
     for (let i = 0; i < textNodes.length - 1; i++) {
         const aNode = textNodes[i]!;
         let aRaw = ((aNode.textContent ?? "")).normalize("NFC");
-        if (!aRaw) continue;
-
-        if (aRaw.trimEnd() !== aRaw) continue;
+        if (!aRaw || aRaw.trimEnd() !== aRaw) continue;
 
         const fragInfo = trailingTokenFragment(aRaw);
         if (!fragInfo) continue;
@@ -31,24 +47,21 @@ export function bridgeAlwaysLatinTokensAcrossTextNodes(textNodes: Element[]): nu
         const prevChar = startCpIndex > 0 ? aCps[startCpIndex - 1]! : "";
         if (prevChar && isTokenChar(prevChar)) continue;
 
-        const fragLower = normKey(frag);
-        if (!fragLower) continue;
+        const fragKey = caseSensitive ? frag : normKey(frag);
+        if (!fragKey) continue;
 
-        if (ALWAYS_LATIN_TOKENS.has(fragLower)) continue;
+        const fragCps = Array.from(fragKey);
+        const candidates = tokens.filter(
+            (t) => t.len > fragCps.length && t.cps.slice(0, fragCps.length).join("") === fragKey
+        );
+
+        if (candidates.length === 0) continue;
 
         const j0 = findNextNodeWithText(textNodes, i + 1);
         if (j0 == null) continue;
 
-        const fragLowerCps = Array.from(fragLower);
-        const candidates = ALWAYS_TOKENS_LIST.filter(
-            (t) =>
-                t.cps.length > fragLowerCps.length &&
-                t.cps.slice(0, fragLowerCps.length).join("") === fragLower
-        );
-        if (candidates.length === 0) continue;
-
         for (const cand of candidates) {
-            const rem = cand.cps.slice(fragLowerCps.length);
+            const rem = cand.cps.slice(fragCps.length);
 
             let remainingIdx = 0;
             const consumePlan: Array<{ nodeIndex: number; takeCount: number }> = [];
@@ -77,8 +90,8 @@ export function bridgeAlwaysLatinTokensAcrossTextNodes(textNodes: Element[]): nu
                     const ch = bCps[take]!;
                     if (!isTokenChar(ch)) break;
 
-                    const chLower = normKey(ch);
-                    if (chLower !== rem[remainingIdx]) break;
+                    const chKey = caseSensitive ? ch : normKey(ch);
+                    if (chKey !== rem[remainingIdx]) break;
 
                     take++;
                     remainingIdx++;
@@ -127,4 +140,18 @@ export function bridgeAlwaysLatinTokensAcrossTextNodes(textNodes: Element[]): nu
     }
 
     return changed;
+}
+
+/**
+ * Bridge ALWAYS_LATIN tokens (case-insensitive).
+ */
+export function bridgeAlwaysLatinTokensAcrossTextNodes(textNodes: Element[]): number {
+    return bridgeTokensAcrossTextNodes(textNodes, ALWAYS_LATIN_TOKENS, false);
+}
+
+/**
+ * Bridge exact user-provided tokens (case-sensitive).
+ */
+export function bridgeExactTokensAcrossTextNodes(textNodes: Element[], tokens: string[]): number {
+    return bridgeTokensAcrossTextNodes(textNodes, tokens, true);
 }
