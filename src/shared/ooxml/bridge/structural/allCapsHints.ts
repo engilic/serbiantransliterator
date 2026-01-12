@@ -3,7 +3,7 @@ import {
     firstCp,
     lastCp,
     isUpperCyrillicLetter,
-} from "../common";
+} from "../../common";
 
 export const CYR_ALLCAPS_HINT = "А";
 export const LAT_ALLCAPS_HINT = "A";

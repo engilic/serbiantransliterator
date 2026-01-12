@@ -69,6 +69,8 @@ const DEFAULT_SETTINGS: UiSettings = {
     showStats: false,
 };
 
+const PREVIEW_CACHE_TTL_MS = 30_000; // 30 sekundi (može biti i 60_000 za 1 minut)
+
 const PROFILE_NAMES: Record<string, string> = {
     custom: "Ručno",
     it: "IT / Tehnologija",
@@ -331,11 +333,20 @@ let previewToastTimer: number | null = null;
 let previewConvertedOoxml: string | null = null;
 let previewOoxmlOptsSnapJson: string | null = null;
 let previewSelectionTextHash: string | null = null;
+let previewCacheTimestamp: number | null = null;
 
 function invalidatePreviewCache() {
     previewConvertedOoxml = null;
     previewOoxmlOptsSnapJson = null;
     previewSelectionTextHash = null;
+    previewCacheTimestamp = null; // ← NOVA LINIJA
+}
+
+function isPreviewCacheValid(): boolean {
+    if (!previewConvertedOoxml || !previewCacheTimestamp) return false;
+
+    const age = Date.now() - previewCacheTimestamp;
+    return age < PREVIEW_CACHE_TTL_MS;
 }
 
 // --- INIT ---
@@ -829,10 +840,10 @@ async function applyFromPreview(scope: "selection" | "document") {
                 // - imamo cached converted OOXML
                 // - opcije su iste kao u preview-u
                 // - tekst selekcije je isti kao u preview-u
-                if (previewConvertedOoxml && previewOoxmlOptsSnapJson && previewSelectionTextHash) {
+                if(previewConvertedOoxml && previewOoxmlOptsSnapJson && previewSelectionTextHash) {
                     const currentJson = JSON.stringify(opts);
 
-                    if (currentJson === previewOoxmlOptsSnapJson) {
+                    if (currentJson === previewOoxmlOptsSnapJson && isPreviewCacheValid()) {
                         if (currentSelectionHash === previewSelectionTextHash) {
                             setStatus("Primena pregleda (bez ponovne konverzije)...", "info");
 
@@ -850,11 +861,11 @@ async function applyFromPreview(scope: "selection" | "document") {
                             return;
                         }
 
-                        // selekcija nije ista -> ne koristimo cache
+                        // selekcija nije ista ili cache je istekao -> ne koristimo cache
                         invalidatePreviewCache();
                         showModalInfo(
-                            "Selecija je promenjena",
-                            "Ne mogu da primenim sačuvani preview jer selekcija više nije ista. Pokrećem ponovnu konverziju."
+                            "Cache je nevažeći",
+                            "Ne mogu da primenim sačuvani preview (selekcija je promenjena ili je cache istekao). Pokrećem ponovnu konverziju."
                         );
                         // nastavlja dalje na fallback pipeline
                     }
@@ -1088,6 +1099,7 @@ async function runPreview() {
                 // cache za apply (samo za selekciju)
                 previewConvertedOoxml = converted.xml;
                 previewOoxmlOptsSnapJson = JSON.stringify(opts);
+                previewCacheTimestamp = Date.now();
 
                 const convText = extractTextFromWordOoxml(converted.xml);
 
