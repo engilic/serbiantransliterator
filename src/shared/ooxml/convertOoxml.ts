@@ -449,13 +449,6 @@ export function convertOoxml(
         }
     }
 
-    let hintedNodes: WeakSet<Element> = new WeakSet<Element>();
-    if (direction === "cyr-to-lat" || direction === "to-ascii") {
-        const res = markCyrAllCapsDigraphHints(textNodes, userProtectedTokenSet);
-        hintedNodes = res.hinted;
-        bridges.allCapsHints = res.count;
-    }
-
     // original run text (posle bridging-a, pre konverzije)
     const originalRunText = new Map<Element, string>();
     {
@@ -466,6 +459,13 @@ export function convertOoxml(
             if (!seenRuns.has(run)) seenRuns.add(run);
             originalRunText.set(run, (originalRunText.get(run) ?? "") + (t.textContent ?? ""));
         }
+    }
+
+    let hintedNodes: WeakSet<Element> = new WeakSet<Element>();
+    if (direction === "cyr-to-lat" || direction === "to-ascii") {
+        const res = markCyrAllCapsDigraphHints(textNodes, userProtectedTokenSet);
+        hintedNodes = res.hinted;
+        bridges.allCapsHints = res.count;
     }
 
     const wantQuotes = direction === "lat-to-cyr" && options?.applySerbianQuotes !== false;
