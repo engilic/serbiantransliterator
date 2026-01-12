@@ -2144,34 +2144,47 @@ function renderSideBySideWithHighlights(oldText: string, newText: string): strin
 }
 
 function generateDiffHtml(oldText: string, newText: string): string {
-    if (oldText === newText) {
-        return `<div class="preview-single-pane" style="text-align:center; padding:20px;">Nema izmena u tekstu.</div>`;
+    const oldN = normalizeNewlines(oldText);
+    const newN = normalizeNewlines(newText);
+
+    if (oldN === newN) {
+        return `<div class="preview-single-pane preview-no-changes">Nema izmena u tekstu.</div>`;
     }
 
-    const splitRegex = /([^\s\w\u0400-\u04FF\u0100-\u017F]+|\s+)/;
-    const oldParts = oldText.split(splitRegex).filter(Boolean);
-    const newParts = newText.split(splitRegex).filter(Boolean);
+    const a = tokenizeForDiff(oldN);
+    const b = tokenizeForDiff(newN);
 
-    const isWs = (s: string) => /^\s+$/u.test(s);
+    // safety: ako je preveliko, nemoj Myers (sporije); prikaži samo rezultat
+    const MAX_TOKENS = 8000;
+    if (a.length + b.length > MAX_TOKENS) {
+        return `<div class="preview-single-pane">${escapeHtml(newN)}</div>`;
+    }
+
+    const ops = myersDiff(a, b);
 
     let html = "";
-    const maxLen = Math.max(oldParts.length, newParts.length);
 
-    for (let k = 0; k < maxLen; k++) {
-        const o = oldParts[k] || "";
-        const n = newParts[k] || "";
+    for (const op of ops) {
+        const v = op.value;
 
-        if (o === n) {
-            html += escapeHtml(n);
+        if (op.type === "equal") {
+            html += escapeHtml(v);
             continue;
         }
 
-        if (isWs(o) || isWs(n)) {
-            html += escapeHtml(n);
+        if (op.type === "delete") {
+            // U single-pane prikazu ne prikazujemo obrisano (jer “Razlike” prikazuje rezultat),
+            // ali Myers nam pomaže da insert bude na pravom mestu.
             continue;
         }
 
-        html += `<span class="diff-changed" title="Original: ${escapeHtml(o)}">${escapeHtml(n)}</span>`;
+        // insert
+        if (isWhitespaceToken(v)) {
+            html += escapeHtml(v);
+        } else {
+            // ranije si koristio diff-changed, može i diff-added; ostavljam diff-changed radi doslednog izgleda
+            html += `<span class="diff-changed">${escapeHtml(v)}</span>`;
+        }
     }
 
     return `<div class="preview-single-pane">${html}</div>`;
