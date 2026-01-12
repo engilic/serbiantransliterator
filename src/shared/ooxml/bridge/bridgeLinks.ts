@@ -11,6 +11,10 @@ const LINK_PATTERNS: RegExp[] = [
     /^(file:\/\/[^\s<>"')]+)/iu,
     /^(www\.[^\s<>"')]+)/iu,
     /^([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})/iu,
+
+    // NEW:
+    /^(mailto:[^\s<>"')]+)/iu,
+    /^(tel:\+?[0-9][0-9().-]{5,}(?:;[a-z0-9-]+=[a-z0-9._+~:%-]+)*)/iu,
 ];
 
 function trimLinkEnd(s: string): string {
@@ -102,6 +106,8 @@ export function bridgeLinksAcrossTextNodes(textNodes: Element[]): number {
             fragLower.startsWith("ftp") ||
             fragLower.startsWith("file") ||
             fragLower.startsWith("www.") ||
+            fragLower.startsWith("mailto:") ||
+            fragLower.startsWith("tel:") ||
             fragLower.includes("@");
 
         if (!looksLikeStart) continue;

@@ -78,12 +78,20 @@ export function collectProtectedRanges(text: string, opts: ProtectOptions): Rang
     // 1) HTML tagovi
     addRangesFromRegex(text, /<\/?[a-zA-Z0-9]+[^>]*>/g, ranges);
 
-    // 2) URL / Email
+    // 2) URL / Email (+ mailto/tel)
     addRangesFromRegex(text, /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/giu, ranges);
     addRangesFromRegex(text, /\bhttps?:\/\/[^\s<>"')]+/giu, ranges);
     addRangesFromRegex(text, /\bftp:\/\/[^\s<>"')]+/giu, ranges);
     addRangesFromRegex(text, /\bfile:\/\/[^\s<>"')]+/giu, ranges);
     addRangesFromRegex(text, /\bwww\.[^\s<>"')]+/giu, ranges);
+
+    // NEW:
+    addRangesFromRegex(text, /\bmailto:[^\s<>"')]+/giu, ranges);
+    addRangesFromRegex(
+        text,
+        /\btel:\+?[0-9][0-9().-]{5,}(?:;[a-z0-9-]+=[a-z0-9._+~:%-]+)*/giu,
+        ranges
+    );
 
     // 3) Putanje (Windows/UNC/Unix)
     addRangesFromRegex(text, /\b[a-zA-Z0-9]+:\\[^\r\n<>:"|?*]+/g, ranges); // C:\..., Cert:\...
