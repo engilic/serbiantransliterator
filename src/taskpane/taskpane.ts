@@ -328,9 +328,13 @@ let previewCanLoadMore = false;
 
 let previewToastTimer: number | null = null;
 
-let previewOriginalOoxml: string | null = null;
 let previewConvertedOoxml: string | null = null;
 let previewOoxmlOptsSnapJson: string | null = null;
+
+function invalidatePreviewCache() {
+    previewConvertedOoxml = null;
+    previewOoxmlOptsSnapJson = null;
+}
 
 // --- INIT ---
 
@@ -395,6 +399,8 @@ function initUi() {
 // --- SELECTION HANDLING ---
 
 function onSelectionChange() {
+    invalidatePreviewCache();
+
     if (selectionTimeout) clearTimeout(selectionTimeout);
     selectionTimeout = setTimeout(() => checkSelectionAndUpdateButtons(), 50);
 }
@@ -547,16 +553,150 @@ async function processNotes(
 }
 /* eslint-enable office-addins/no-context-sync-in-loop */
 
+type OoxmlConvertResult = ReturnType<typeof convertOoxml>;
+
+type ExtrasSummary = {
+    headersFootersProcessed: number;
+    footnotesProcessed: number;
+    endnotesProcessed: number;
+    footnotesSupported: boolean;
+    endnotesSupported: boolean;
+};
+
+function emptyExtrasSummary(): ExtrasSummary {
+    return {
+        headersFootersProcessed: 0,
+        footnotesProcessed: 0,
+        endnotesProcessed: 0,
+        footnotesSupported: true,
+        endnotesSupported: true,
+    };
+}
+
+async function applyExtrasIfEnabled(
+    context: Word.RequestContext,
+    ui: UiSettings,
+    opts: OoxmlOptions
+): Promise<ExtrasSummary> {
+    const summary = emptyExtrasSummary();
+
+    if (ui.includeHeadersFooters) {
+        try {
+            setStatus("Obrada: zaglavlja/podnožja...", "info");
+            summary.headersFootersProcessed = await processHeadersFooters(context, opts);
+        } catch (e) {
+            console.warn("Header/Footer obrada nije uspela:", e);
+        }
+    }
+
+    if (ui.includeFootnotes) {
+        try {
+            setStatus("Obrada: fusnote...", "info");
+            const r = await processNotes(context, opts, "footnotes");
+            summary.footnotesProcessed = r.processed;
+            summary.footnotesSupported = r.supported;
+        } catch (e) {
+            console.warn("Footnotes obrada nije uspela:", e);
+        }
+    }
+
+    if (ui.includeEndnotes) {
+        try {
+            setStatus("Obrada: endnote...", "info");
+            const r = await processNotes(context, opts, "endnotes");
+            summary.endnotesProcessed = r.processed;
+            summary.endnotesSupported = r.supported;
+        } catch (e) {
+            console.warn("Endnotes obrada nije uspela:", e);
+        }
+    }
+
+    return summary;
+}
+
+async function applyRangeWithOoxmlConversion(
+    context: Word.RequestContext,
+    range: Word.Range,
+    opts: OoxmlOptions
+): Promise<OoxmlConvertResult | null> {
+    setStatus("Obrada u toku...", "info");
+
+    const ooxml = range.getOoxml();
+    await context.sync();
+
+    const result = convertOoxml(ooxml.value, opts);
+    if (result.type === "Nema teksta") return null;
+
+    range.insertOoxml(result.xml, Word.InsertLocation.replace);
+    await context.sync();
+
+    return result;
+}
+
+async function applyPipeline(
+    context: Word.RequestContext,
+    scope: "selection" | "document",
+    ui: UiSettings,
+    opts: OoxmlOptions
+): Promise<{ result: OoxmlConvertResult | null; extras: ExtrasSummary }> {
+
+    if (scope === "selection") {
+        const range = context.document.getSelection();
+        range.load("text");
+        await context.sync();
+
+        const rawText = range.text ?? "";
+        const hasText = rawText.trim().length > 0;
+        const isJustWhitespace = rawText.length > 0 && !hasText;
+
+        if (!hasText) {
+            showModalInfo("Greška", "Nema selekcije za preslovljavanje.");
+            return { result: null, extras: emptyExtrasSummary() };
+        }
+        if (isJustWhitespace) {
+            showModalInfo("Greška", "Selektovan je samo prazan prostor (razmaci).");
+            return { result: null, extras: emptyExtrasSummary() };
+        }
+
+        const result = await applyRangeWithOoxmlConversion(context, range, opts);
+        return { result, extras: emptyExtrasSummary() };
+    }
+
+    // scope === "document"
+    const extras = await applyExtrasIfEnabled(context, ui, opts);
+
+    if (ui.includeFootnotes && !extras.footnotesSupported) {
+        showModalInfo(
+            "Napomena",
+            "Fusnote nisu dostupne za automatsku obradu u ovom Word okruženju. " +
+            "I dalje možeš da selektuješ tekst u fusnoti i klikneš PRESLOVI."
+        );
+    }
+
+    if (ui.includeEndnotes && !extras.endnotesSupported) {
+        showModalInfo(
+            "Napomena",
+            "Endnote nisu dostupne za automatsku obradu u ovom Word okruženju. " +
+            "I dalje možeš da selektuješ tekst u endnoti i klikneš PRESLOVI."
+        );
+    }
+
+    const bodyRange = context.document.body.getRange("Whole");
+    const result = await applyRangeWithOoxmlConversion(context, bodyRange, opts);
+    return { result, extras };
+}
+
 async function runSmart() {
     try {
         await Word.run(async (context) => {
-            let range = context.document.getSelection();
-            range.load("text");
+            // odredi scope na osnovu selekcije (kao pre)
+            const sel = context.document.getSelection();
+            sel.load("text");
             await context.sync();
 
-            const rawText = range.text ?? "";
-            const hasText = rawText.trim().length > 0;
-            const isJustWhitespace = rawText.length > 0 && !hasText;
+            const selectionText = sel.text ?? "";
+            const hasSelectionText = selectionText.trim().length > 0;
+            const isJustWhitespace = selectionText.length > 0 && !hasSelectionText;
 
             if (isJustWhitespace) {
                 showModalInfo(
@@ -570,96 +710,40 @@ async function runSmart() {
             const ui = getSettingsFromUi();
             const opts = getOoxmlOptionsFromUi();
 
-            let headersFootersProcessed = 0;
+            const scope: "selection" | "document" = hasSelectionText ? "selection" : "document";
 
-            // Ako nema selekcije -> ceo dokument
-            if (!hasText) {
-                if (ui.confirmWholeDoc) {
-                    const ok = await confirmInPanel(
-                        "Nije selektovan tekst.<br/>Da li želite da preslovite <b>CEO dokument</b>?"
-                    );
-                    if (!ok) {
-                        setStatus("Otkazano.", "neutral");
-                        return;
-                    }
+            if (scope === "document" && ui.confirmWholeDoc) {
+                const ok = await confirmInPanel(
+                    "Nije selektovan tekst.<br/>Da li želite da preslovite <b>CEO dokument</b>?"
+                );
+                if (!ok) {
+                    setStatus("Otkazano.", "neutral");
+                    return;
                 }
-
-                // 1) Header/Footer (opciono)
-                if (ui.includeHeadersFooters) {
-                    try {
-                        setStatus("Obrada: zaglavlja/podnožja...", "info");
-                        headersFootersProcessed = await processHeadersFooters(context, opts);
-                    } catch (e) {
-                        console.warn("Header/Footer obrada nije uspela:", e);
-                        // Ne prekidamo ceo proces – nastavljamo dalje
-                    }
-                }
-
-                // 2) Footnotes (opciono)
-                if (ui.includeFootnotes) {
-                    try {
-                        setStatus("Obrada: fusnote...", "info");
-                        const r = await processNotes(context, opts, "footnotes");
-                        if (!r.supported) {
-                            showModalInfo(
-                                "Napomena",
-                                "Fusnote nisu dostupne za automatsku obradu u ovom Word okruženju. " +
-                                "I dalje možeš da selektuješ tekst u fusnoti i klikneš PRESLOVI."
-                            );
-                        }
-                    } catch (e) {
-                        console.warn("Footnotes obrada nije uspela:", e);
-                    }
-                }
-
-                // 3) Endnotes (opciono)
-                if (ui.includeEndnotes) {
-                    try {
-                        setStatus("Obrada: endnote...", "info");
-                        const r = await processNotes(context, opts, "endnotes");
-                        if (!r.supported) {
-                            showModalInfo(
-                                "Napomena",
-                                "Endnote nisu dostupne za automatsku obradu u ovom Word okruženju. " +
-                                "I dalje možeš da selektuješ tekst u endnoti i klikneš PRESLOVI."
-                            );
-                        }
-                    } catch (e) {
-                        console.warn("Endnotes obrada nije uspela:", e);
-                    }
-                }
-
-                // 4) Body
-                range = context.document.body.getRange("Whole");
             }
 
-            setStatus("Obrada u toku...", "info");
+            const { result, extras } = await applyPipeline(context, scope, ui, opts);
 
-            const ooxml = range.getOoxml();
-            await context.sync();
-
-            const result = convertOoxml(ooxml.value, opts);
-
-            if (result.type === "Nema teksta") {
+            if (!result) {
                 setStatus("Nije pronađen tekst za obradu.", "neutral");
                 return;
             }
 
-            range.insertOoxml(result.xml, Word.InsertLocation.replace);
-            await context.sync();
-
-            const scope = hasText ? "Selekcija" : "Ceo dokument";
             const time = result.stats.timingMs.toFixed(0);
+            const hfInfo = scope === "document" && extras.headersFootersProcessed > 0
+                ? ` | H/F: ${extras.headersFootersProcessed}`
+                : "";
 
-            const hfInfo = !hasText && headersFootersProcessed > 0 ? ` | H/F: ${headersFootersProcessed}` : "";
             setStatus(`Završeno: ${result.type} (${time}ms)${hfInfo}`, "success");
 
             lastStatsTitle = `Statistika: ${result.type}`;
             lastStatsText =
-                `Opseg: ${scope}\n` +
+                `Opseg: ${scope === "selection" ? "Selekcija" : "Ceo dokument"}\n` +
                 `Promenjeno čvorova: ${result.stats.textNodes}\n` +
                 `Vreme: ${time}ms` +
-                (!hasText ? `\nHeader/Footer obrađeno: ${headersFootersProcessed}` : "");
+                (scope === "document"
+                    ? `\nHeader/Footer: ${extras.headersFootersProcessed}\nFusnote: ${extras.footnotesProcessed}\nEndnote: ${extras.endnotesProcessed}`
+                    : "");
 
             refreshStats();
         });
@@ -672,37 +756,34 @@ async function runSmart() {
 async function applyFromPreview(scope: "selection" | "document") {
     try {
         await Word.run(async (context) => {
-            let range = context.document.getSelection();
-            range.load("text");
-            await context.sync();
-
-            const rawText = range.text ?? "";
-            const hasText = rawText.trim().length > 0;
-            const isJustWhitespace = rawText.length > 0 && !hasText;
-
             const ui = getSettingsFromUi();
             const opts = getOoxmlOptionsFromUi();
-            const includeHF = ui.includeHeadersFooters === true;
 
-            // Validacija za selekciju
+            // =========================
+            // SELECTION: pokušaj cache apply (1:1 sa preview)
+            // =========================
             if (scope === "selection") {
+                const range = context.document.getSelection();
+                range.load("text");
+                await context.sync();
+
+                const rawText = range.text ?? "";
+                const hasText = rawText.trim().length > 0;
+                const isJustWhitespace = rawText.length > 0 && !hasText;
+
                 if (!hasText) {
                     showModalInfo("Greška", "Nema selekcije za preslovljavanje.");
                     return;
                 }
+
                 if (isJustWhitespace) {
                     showModalInfo("Greška", "Selektovan je samo prazan prostor (razmaci).");
                     return;
                 }
 
-                // ==========================================
-                // PREVIEW CACHE APPLY (selection)
-                // - primeni tačno ono što je prikazano u preview-u
-                // - samo ako se opcije nisu promenile
-                // ==========================================
+                // cache važi samo ako se opcije nisu promenile od trenutka preview-a
                 if (previewConvertedOoxml && previewOoxmlOptsSnapJson) {
-                    const currentOpts = getOoxmlOptionsFromUi();
-                    const currentJson = JSON.stringify(currentOpts);
+                    const currentJson = JSON.stringify(opts);
 
                     if (currentJson === previewOoxmlOptsSnapJson) {
                         setStatus("Primena pregleda (bez ponovne konverzije)...", "info");
@@ -712,61 +793,47 @@ async function applyFromPreview(scope: "selection" | "document") {
 
                         setStatus("Završeno (primenjen preview).", "success");
 
-                        // (opciono) ažuriraj stats (nemamo timing jer nismo konvertovali sada)
-                        lastStatsTitle = `Statistika: ${previewTypeText || "Primena pregleda"}`;
+                        lastStatsTitle = "Statistika: primenjen preview";
                         lastStatsText =
-                            `Opseg: Selekcija (primenjen preview)\n` +
-                            `Napomena: konverzija nije ponovo rađena (OOXML iz preview-a).`;
+                            `Opseg: Selekcija\n` +
+                            `Napomena: primenjen je OOXML iz pregleda (bez ponovne konverzije).`;
 
                         refreshStats();
                         return;
                     }
                 }
-                // Ako cache nije validan -> nastavljamo na “fallback” (ponovna konverzija)
-            } else {
-                // Whole document apply (iz preview-a)
 
-                // 1) Header/Footer (opciono)
-                if (includeHF) {
-                    try {
-                        setStatus("Obrada: zaglavlja/podnožja...", "info");
-                        await processHeadersFooters(context, opts);
-                    } catch (e) {
-                        console.warn("Header/Footer obrada nije uspela:", e);
-                        // Ne prekidamo proces – nastavljamo na body
-                    }
-                }
-
-                // 2) Body
-                range = context.document.body.getRange("Whole");
+                // ako cache nije validan -> fallback na pipeline (ponovna konverzija)
+                // (pipeline će opet pročitati selekciju i odraditi isto kao runSmart)
             }
 
-            // Fallback put (selection bez validnog cache-a) ili document body
-            setStatus("Obrada u toku...", "info");
+            // =========================
+            // FALLBACK / DOCUMENT: koristi zajednički pipeline
+            // =========================
 
-            const ooxml = range.getOoxml();
-            await context.sync();
+            const { result, extras } = await applyPipeline(context, scope, ui, opts);
 
-            const result = convertOoxml(ooxml.value, opts);
-
-            if (result.type === "Nema teksta") {
+            if (!result) {
                 setStatus("Nije pronađen tekst za obradu.", "neutral");
                 return;
             }
 
-            range.insertOoxml(result.xml, Word.InsertLocation.replace);
-            await context.sync();
-
             const time = result.stats.timingMs.toFixed(0);
-            setStatus(`Završeno: ${result.type} (${time}ms)`, "success");
+            const hfInfo =
+                scope === "document" && extras.headersFootersProcessed > 0
+                    ? ` | H/F: ${extras.headersFootersProcessed}`
+                    : "";
 
-            // (opciono) ažuriraj stats kao u runSmart
+            setStatus(`Završeno: ${result.type} (${time}ms)${hfInfo}`, "success");
+
             lastStatsTitle = `Statistika: ${result.type}`;
             lastStatsText =
                 `Opseg: ${scope === "selection" ? "Selekcija" : "Ceo dokument"}\n` +
                 `Promenjeno čvorova: ${result.stats.textNodes}\n` +
                 `Vreme: ${time}ms` +
-                (scope === "document" && includeHF ? `\nHeader/Footer: uključeno` : "");
+                (scope === "document"
+                    ? `\nHeader/Footer: ${extras.headersFootersProcessed}\nFusnote: ${extras.footnotesProcessed}\nEndnote: ${extras.endnotesProcessed}`
+                    : "");
 
             refreshStats();
         });
@@ -905,7 +972,6 @@ async function runPreview() {
 
                 const converted = convertOoxml(originalOoxml, opts);
 
-                previewOriginalOoxml = originalOoxml;
                 previewConvertedOoxml = converted.xml;
                 previewOoxmlOptsSnapJson = JSON.stringify(opts);
 
@@ -1233,6 +1299,7 @@ function addTag() {
     }
 
     customWordsSet.add(val);
+    invalidatePreviewCache();
     input.value = "";
     addBtn.disabled = true;
 
@@ -1245,6 +1312,8 @@ function removeTag(word: string, type: "custom" | "preset") {
     if (type === "custom") customWordsSet.delete(word);
     else presetWordsSet.delete(word);
 
+    invalidatePreviewCache();
+
     renderTags();
     switchToCustomIfManual();
     updateUiState();
@@ -1253,6 +1322,8 @@ function removeTag(word: string, type: "custom" | "preset") {
 function clearTags(scope: "custom" | "preset" | "all") {
     if (scope === "custom" || scope === "all") customWordsSet.clear();
     if (scope === "preset" || scope === "all") presetWordsSet.clear();
+
+    invalidatePreviewCache();
 
     renderTags();
     switchToCustomIfManual();
@@ -1321,10 +1392,7 @@ function changeProfile(profile: ProfilePreset) {
 
     renderTags();
     saveSettings();
-
-    previewOriginalOoxml = null;
-    previewConvertedOoxml = null;
-    previewOoxmlOptsSnapJson = null;
+    invalidatePreviewCache();
 
     const displayName = PROFILE_NAMES[profile] || profile;
     setStatus(`Profil promenjen na: ${displayName}`, "info");
@@ -1343,7 +1411,7 @@ function setupInputListeners() {
         "optShowStats",
         "optFixDoubleSpaces",
         "optFormatDates",
-	"optIncludeHeadersFooters",
+        "optIncludeHeadersFooters",
         "optIncludeFootnotes",
         "optIncludeEndnotes",
         "dirAuto",
@@ -1357,9 +1425,8 @@ function setupInputListeners() {
         if (!el) return;
 
         el.onchange = () => {
-            previewOriginalOoxml = null;
-            previewConvertedOoxml = null;
-            previewOoxmlOptsSnapJson = null;
+            const affectsConversion = id !== "optShowStats";
+            if (affectsConversion) invalidatePreviewCache();
 
             if (!isApplyingProfile) switchToCustomIfManual();
             else saveSettings();
@@ -1477,7 +1544,7 @@ function switchToCustomIfManual() {
     saveSettings();
 }
 
-function getOoxmlOptionsFromUi(): OoxmlOptions & { showStats: boolean } {
+function getOoxmlOptionsFromUi(): OoxmlOptions {
     const s = getSettingsFromUi();
 
     let dir: OoxmlOptions["direction"] = "auto";
@@ -1495,8 +1562,6 @@ function getOoxmlOptionsFromUi(): OoxmlOptions & { showStats: boolean } {
         formatDates: s.formatDates,
         protectRomans: s.protectRomans,
         userProtected: [...Array.from(customWordsSet), ...Array.from(presetWordsSet)],
-        // @ts-ignore
-        showStats: s.showStats,
     };
 }
 
@@ -1538,6 +1603,7 @@ function handleFileImport(e: Event) {
             localStorage.setItem(SETTINGS_KEY, JSON.stringify(newSettings));
 
             initUi();
+            invalidatePreviewCache();
             setStatus("Podešavanja uspešno učitana.", "success");
         } catch {
             setStatus("Greška: Neispravan fajl.", "error");
@@ -1573,7 +1639,7 @@ async function copyToClipboard(text: string): Promise<boolean> {
         ta.style.opacity = "0";
         document.body.appendChild(ta);
         ta.select();
-        const ok = document.execCommand("copy");
+        const ok = (document as any).execCommand("copy");
         document.body.removeChild(ta);
         return ok;
     } catch {
