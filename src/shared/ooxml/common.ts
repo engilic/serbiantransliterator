@@ -63,11 +63,13 @@ export function isTokenChar(ch: string): boolean {
         ch === "_" ||
         ch === "/" ||
         ch === "-" ||
-        ch === "‑" ||
-        ch === "‐" ||
-        ch === "‒" ||
-        ch === "–" ||
-        ch === "—"
+        ch === "\u2011" || // non-breaking hyphen
+        ch === "\u2010" || // hyphen
+        ch === "\u2012" || // figure dash
+        ch === "\u2013" || // en dash
+        ch === "\u2014" || // em dash
+        ch === "'" ||
+        ch === "\u2019"    // right single quotation mark
     );
 }
 
