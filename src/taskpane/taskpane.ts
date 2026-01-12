@@ -1600,14 +1600,47 @@ function applySettingsToUi(s: UiSettings) {
 
 function updateResetButtonState() {
     const current = getSettingsFromUi();
-    const def: UiSettings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
-    const curCopy: UiSettings = JSON.parse(JSON.stringify(current));
 
-    curCopy.userWordsCustom = [];
-    def.userWordsCustom = [];
+    // Upoređujemo samo "prave" opcije (redosled property-ja nije bitan).
+    // userWordsCustom se IGNORIŠE jer reset ne briše reči.
+    const a = {
+        profile: current.profile,
+        protectBrands: current.protectBrands,
+        applySerbianQuotes: current.applySerbianQuotes,
+        preserveCodeBlocks: current.preserveCodeBlocks,
+        setProofingLanguage: current.setProofingLanguage,
+        protectRomans: current.protectRomans,
+        fixDoubleSpaces: current.fixDoubleSpaces,
+        formatDates: current.formatDates,
+        confirmWholeDoc: current.confirmWholeDoc,
+        includeHeadersFooters: current.includeHeadersFooters,
+        includeFootnotes: current.includeFootnotes,
+        includeEndnotes: current.includeEndnotes,
+        showStats: current.showStats,
+        direction: current.direction,
+    };
 
-    const isSame = JSON.stringify(curCopy) === JSON.stringify(def);
-    const btn = document.getElementById("resetBtn") as HTMLButtonElement;
+    const b = {
+        profile: DEFAULT_SETTINGS.profile,
+        protectBrands: DEFAULT_SETTINGS.protectBrands,
+        applySerbianQuotes: DEFAULT_SETTINGS.applySerbianQuotes,
+        preserveCodeBlocks: DEFAULT_SETTINGS.preserveCodeBlocks,
+        setProofingLanguage: DEFAULT_SETTINGS.setProofingLanguage,
+        protectRomans: DEFAULT_SETTINGS.protectRomans,
+        fixDoubleSpaces: DEFAULT_SETTINGS.fixDoubleSpaces,
+        formatDates: DEFAULT_SETTINGS.formatDates,
+        confirmWholeDoc: DEFAULT_SETTINGS.confirmWholeDoc,
+        includeHeadersFooters: DEFAULT_SETTINGS.includeHeadersFooters,
+        includeFootnotes: DEFAULT_SETTINGS.includeFootnotes,
+        includeEndnotes: DEFAULT_SETTINGS.includeEndnotes,
+        showStats: DEFAULT_SETTINGS.showStats,
+        direction: DEFAULT_SETTINGS.direction,
+    };
+
+    const keys = Object.keys(b) as Array<keyof typeof b>;
+    const isSame = keys.every((k) => a[k] === b[k]);
+
+    const btn = document.getElementById("resetBtn") as HTMLButtonElement | null;
     if (btn) btn.disabled = isSame;
 }
 
