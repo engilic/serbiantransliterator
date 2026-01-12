@@ -69,8 +69,6 @@ const DEFAULT_SETTINGS: UiSettings = {
     showStats: false,
 };
 
-const PREVIEW_CACHE_TTL_MS = 30_000; // 30 sekundi (može biti i 60_000 za 1 minut)
-
 const PROFILE_NAMES: Record<string, string> = {
     custom: "Ručno",
     it: "IT / Tehnologija",
@@ -315,37 +313,59 @@ let isApplyingProfile = false;
 // --- PREVIEW STATE ---
 const PREVIEW_BATCH = 20;
 
-let previewScope: "selection" | "document" = "selection";
-let previewSettingsSnap: UiSettings | null = null;
+// --- PREVIEW STATE (TIPIZIRANO) ---
 
-let previewMode: "diff" | "plain" | "side" = "diff";
-let previewTypeText = "";
-let previewTitleText = "";
-let previewOriginal = "";
-let previewConverted = "";
+interface PreviewState {
+    scope: "selection" | "document";
+    settingsSnap: UiSettings | null;
+    mode: "diff" | "plain" | "side";
+    typeText: string;
+    titleText: string;
+    original: string;
+    converted: string;
+    allParagraphs: string[];
+    shownCount: number;
+    canLoadMore: boolean;
+    toastTimer: number | null;
 
-let previewAllParagraphs: string[] = [];
-let previewShownCount = 0;
-let previewCanLoadMore = false;
+    // Cache
+    convertedOoxml: string | null;
+    ooxmlOptsSnapJson: string | null;
+    selectionTextHash: string | null;
+    cacheTimestamp: number | null;
+}
 
-let previewToastTimer: number | null = null;
+const PREVIEW_CACHE_TTL_MS = 30_000;
 
-let previewConvertedOoxml: string | null = null;
-let previewOoxmlOptsSnapJson: string | null = null;
-let previewSelectionTextHash: string | null = null;
-let previewCacheTimestamp: number | null = null;
+const previewState: PreviewState = {
+    scope: "selection",
+    settingsSnap: null,
+    mode: "diff",
+    typeText: "",
+    titleText: "",
+    original: "",
+    converted: "",
+    allParagraphs: [],
+    shownCount: 0,
+    canLoadMore: false,
+    toastTimer: null,
+    convertedOoxml: null,
+    ooxmlOptsSnapJson: null,
+    selectionTextHash: null,
+    cacheTimestamp: null,
+};
 
 function invalidatePreviewCache() {
-    previewConvertedOoxml = null;
-    previewOoxmlOptsSnapJson = null;
-    previewSelectionTextHash = null;
-    previewCacheTimestamp = null; // ← NOVA LINIJA
+    previewState.convertedOoxml = null;
+    previewState.ooxmlOptsSnapJson = null;
+    previewState.selectionTextHash = null;
+    previewState.cacheTimestamp = null;
 }
 
 function isPreviewCacheValid(): boolean {
-    if (!previewConvertedOoxml || !previewCacheTimestamp) return false;
+    if (!previewState.convertedOoxml || !previewState.cacheTimestamp) return false;
 
-    const age = Date.now() - previewCacheTimestamp;
+    const age = Date.now() - previewState.cacheTimestamp;
     return age < PREVIEW_CACHE_TTL_MS;
 }
 
@@ -840,14 +860,14 @@ async function applyFromPreview(scope: "selection" | "document") {
                 // - imamo cached converted OOXML
                 // - opcije su iste kao u preview-u
                 // - tekst selekcije je isti kao u preview-u
-                if(previewConvertedOoxml && previewOoxmlOptsSnapJson && previewSelectionTextHash) {
+                if(previewState.convertedOoxml && previewState.ooxmlOptsSnapJson && previewState.selectionTextHash) {
                     const currentJson = JSON.stringify(opts);
 
-                    if (currentJson === previewOoxmlOptsSnapJson && isPreviewCacheValid()) {
-                        if (currentSelectionHash === previewSelectionTextHash) {
+                    if (currentJson === previewState.ooxmlOptsSnapJson && isPreviewCacheValid()) {
+                        if (currentSelectionHash === previewState.selectionTextHash) {
                             setStatus("Primena pregleda (bez ponovne konverzije)...", "info");
 
-                            range.insertOoxml(previewConvertedOoxml, Word.InsertLocation.replace);
+                            range.insertOoxml(previewState.convertedOoxml, Word.InsertLocation.replace);
                             await context.sync();
 
                             setStatus("Završeno (primenjen preview).", "success");
@@ -1070,21 +1090,21 @@ async function runPreview() {
             }
 
             const settings = getSettingsFromUi();
-            previewSettingsSnap = JSON.parse(JSON.stringify(settings));
+            previewState.settingsSnap = JSON.parse(JSON.stringify(settings));
 
-            previewAllParagraphs = [];
-            previewShownCount = 0;
-            previewCanLoadMore = false;
+            previewState.allParagraphs = [];
+            previewState.shownCount = 0;
+            previewState.canLoadMore = false;
 
             // =========================
             // PREVIEW: SELECTION (OOXML)
             // =========================
             if (hasSelectionText) {
-                previewScope = "selection";
+                previewState.scope = "selection";
 
                 // Stabilan fingerprint za cache apply: hash nad TEKSTOM selekcije
                 const normPreview = normalizeForSelectionHash(selectionText);
-                previewSelectionTextHash = await sha256Hex(normPreview);
+                previewState.selectionTextHash = await sha256Hex(normPreview);
 
                 const ooxml = range.getOoxml();
                 await context.sync();
@@ -1097,9 +1117,9 @@ async function runPreview() {
                 const converted = convertOoxml(originalOoxml, opts);
 
                 // cache za apply (samo za selekciju)
-                previewConvertedOoxml = converted.xml;
-                previewOoxmlOptsSnapJson = JSON.stringify(opts);
-                previewCacheTimestamp = Date.now();
+                previewState.convertedOoxml = converted.xml;
+                previewState.ooxmlOptsSnapJson = JSON.stringify(opts);
+                previewState.cacheTimestamp = Date.now();
 
                 const convText = extractTextFromWordOoxml(converted.xml);
 
@@ -1118,11 +1138,11 @@ async function runPreview() {
                     return;
                 }
 
-                previewMode = "diff";
-                previewTypeText = converted.type;
-                previewTitleText = `Selektovani tekst (${converted.type})`;
-                previewOriginal = origText;
-                previewConverted = convText;
+                previewState.mode = "diff";
+                previewState.typeText = converted.type;
+                previewState.titleText = `Selektovani tekst (${converted.type})`;
+                previewState.original = origText;
+                previewState.converted = convText;
 
                 showPreviewModal();
                 setStatus(`Prikazan pregled (${converted.type})`, "success");
@@ -1132,7 +1152,7 @@ async function runPreview() {
             // =========================
             // PREVIEW: WHOLE DOC (plain text, first N paragraphs)
             // =========================
-            previewScope = "document";
+            previewState.scope = "document";
 
             // u document modu ne koristimo selection cache
             invalidatePreviewCache();
@@ -1148,17 +1168,17 @@ async function runPreview() {
 
             while (paragraphs.length && !paragraphs[paragraphs.length - 1]!.trim()) paragraphs.pop();
 
-            previewAllParagraphs = paragraphs;
-            previewShownCount = Math.min(PREVIEW_BATCH, paragraphs.length);
-            previewCanLoadMore = previewShownCount < paragraphs.length;
+            previewState.allParagraphs = paragraphs;
+            previewState.shownCount = Math.min(PREVIEW_BATCH, paragraphs.length);
+            previewState.canLoadMore = previewState.shownCount < paragraphs.length;
 
-            const textToPreview = paragraphs.slice(0, previewShownCount).join("\n");
+            const textToPreview = paragraphs.slice(0, previewState.shownCount).join("\n");
             if (!textToPreview.trim()) {
                 setStatus("Dokument je prazan.", "neutral");
                 return;
             }
 
-            const { out: finalText, type } = convertTextForPreviewPlain(textToPreview, previewSettingsSnap!);
+            const { out: finalText, type } = convertTextForPreviewPlain(textToPreview, previewState.settingsSnap!);
 
             const a = normalizeNewlines(textToPreview);
             const b = normalizeNewlines(finalText);
@@ -1175,11 +1195,11 @@ async function runPreview() {
                 return;
             }
 
-            previewMode = "diff";
-            previewTypeText = type;
-            previewTitleText = `Prvih ${previewShownCount} paragrafa (${type})`;
-            previewOriginal = textToPreview;
-            previewConverted = finalText;
+            previewState.mode = "diff";
+            previewState.typeText = type;
+            previewState.titleText = `Prvih ${previewState.shownCount} paragrafa (${type})`;
+            previewState.original = textToPreview;
+            previewState.converted = finalText;
 
             showPreviewModal();
             setStatus(`Prikazan pregled (${type})`, "success");
@@ -1198,26 +1218,26 @@ function setLoadMoreButtonState(btn: HTMLButtonElement, canLoadMore: boolean, re
 }
 
 async function loadMorePreviewParagraphs() {
-    if (!previewSettingsSnap) return;
-    if (!previewAllParagraphs.length) return;
-    if (!previewCanLoadMore) return;
+    if (!previewState.settingsSnap) return;
+    if (!previewState.allParagraphs.length) return;
+    if (!previewState.canLoadMore) return;
 
-    previewShownCount = Math.min(previewAllParagraphs.length, previewShownCount + PREVIEW_BATCH);
-    previewCanLoadMore = previewShownCount < previewAllParagraphs.length;
+    previewState.shownCount = Math.min(previewState.allParagraphs.length, previewState.shownCount + PREVIEW_BATCH);
+    previewState.canLoadMore = previewState.shownCount < previewState.allParagraphs.length;
 
-    previewTitleText = `Prvih ${previewShownCount} paragrafa (${previewTypeText})`;
+    previewState.titleText = `Prvih ${previewState.shownCount} paragrafa (${previewState.typeText})`;
 
-    const newOriginal = previewAllParagraphs.slice(0, previewShownCount).join("\n");
-    previewOriginal = newOriginal;
+    const newOriginal = previewState.allParagraphs.slice(0, previewState.shownCount).join("\n");
+    previewState.original = newOriginal;
 
-    const { out: newConverted } = convertTextForPreviewPlain(newOriginal, previewSettingsSnap);
-    previewConverted = newConverted;
+    const { out: newConverted } = convertTextForPreviewPlain(newOriginal, previewState.settingsSnap);
+    previewState.converted = newConverted;
 
-    const titleEl = document.getElementById("previewTitleText");
-    if (titleEl) titleEl.textContent = previewTitleText;
+    const titleEl = document.getElementById("previewState.titleText");
+    if (titleEl) titleEl.textContent = previewState.titleText;
 
     const okBtn = document.getElementById("modalOk") as HTMLButtonElement | null;
-    if (okBtn) setLoadMoreButtonState(okBtn, previewCanLoadMore);
+    if (okBtn) setLoadMoreButtonState(okBtn, previewState.canLoadMore);
 
     renderPreviewMode();
 }
@@ -1243,12 +1263,12 @@ function renderPreviewMode() {
     const holder = document.getElementById("previewHolder");
     if (!holder) return;
 
-    const orig = normalizeNewlines(previewOriginal);
-    const conv = normalizeNewlines(previewConverted);
+    const orig = normalizeNewlines(previewState.original);
+    const conv = normalizeNewlines(previewState.converted);
 
-    if (previewMode === "plain") {
+    if (previewState.mode === "plain") {
         holder.innerHTML = `<div class="preview-text-pane preview-single-pane">${escapeHtml(conv)}</div>`;
-    } else if (previewMode === "side") {
+    } else if (previewState.mode === "side") {
         holder.innerHTML = renderSideBySideWithHighlights(orig, conv);
     } else {
         holder.innerHTML = generateDiffHtml(orig, conv);
@@ -1258,9 +1278,9 @@ function renderPreviewMode() {
     const btnPlain = document.getElementById("previewBtnPlain") as HTMLButtonElement | null;
     const btnSide = document.getElementById("previewBtnSide") as HTMLButtonElement | null;
 
-    if (btnDiff) btnDiff.disabled = previewMode === "diff";
-    if (btnPlain) btnPlain.disabled = previewMode === "plain";
-    if (btnSide) btnSide.disabled = previewMode === "side";
+    if (btnDiff) btnDiff.disabled = previewState.mode === "diff";
+    if (btnPlain) btnPlain.disabled = previewState.mode === "plain";
+    if (btnSide) btnSide.disabled = previewState.mode === "side";
 }
 
 function showPreviewModal() {
@@ -1280,8 +1300,8 @@ function showPreviewModal() {
     text.innerHTML = `
       <div id="previewStickyHeader" class="preview-sticky-header">
         <div class="preview-header-row">
-          <div id="previewTitleText" class="preview-title">
-            ${escapeHtml(previewTitleText)}
+          <div id="previewState.titleText" class="preview-title">
+            ${escapeHtml(previewState.titleText)}
           </div>
 
           <div class="preview-header-right">
@@ -1316,28 +1336,28 @@ function showPreviewModal() {
     const bCopy = document.getElementById("previewBtnCopy") as HTMLButtonElement;
 
     bDiff.onclick = () => {
-        previewMode = "diff";
+        previewState.mode = "diff";
         renderPreviewMode();
     };
 
     bPlain.onclick = () => {
-        previewMode = "plain";
+        previewState.mode = "plain";
         renderPreviewMode();
     };
 
     bSide.onclick = () => {
-        previewMode = "side";
+        previewState.mode = "side";
         renderPreviewMode();
     };
 
     bCopy.onclick = async () => {
-        const ok = await copyToClipboard(previewConverted ?? "");
+        const ok = await copyToClipboard(previewState.converted ?? "");
         if (ok) showPreviewToast("Kopirano", "success");
         else showPreviewToast("Ne mogu da kopiram", "error", 2200);
     };
 
     // inicijalno
-    if (previewMode !== "diff" && previewMode !== "plain" && previewMode !== "side") previewMode = "diff";
+    if (previewState.mode !== "diff" && previewState.mode !== "plain" && previewState.mode !== "side") previewState.mode = "diff";
     renderPreviewMode();
 
     // Dole: PRESLOVI + Učitaj još. "Zatvori" sakriven jer postoji X gore.
@@ -1349,8 +1369,8 @@ function showPreviewModal() {
     okBtn.style.color = "var(--primary-color)";
     okBtn.style.border = "1px solid var(--input-border)";
 
-    if (previewScope === "document") {
-        setLoadMoreButtonState(okBtn, previewCanLoadMore);
+    if (previewState.scope === "document") {
+        setLoadMoreButtonState(okBtn, previewState.canLoadMore);
         okBtn.onclick = async () => {
             await loadMorePreviewParagraphs();
         };
@@ -1366,7 +1386,7 @@ function showPreviewModal() {
         overlay.style.display = "none";
         resetModalButtons();
         await runWithUiLock(async () => {
-            await applyFromPreview(previewScope);
+            await applyFromPreview(previewState.scope);
         });
     };
 
@@ -1804,8 +1824,8 @@ function showPreviewToast(message: string, type: "success" | "error" | "info" = 
     el.classList.remove("success", "error", "info");
     el.classList.add("show", type);
 
-    if (previewToastTimer) window.clearTimeout(previewToastTimer);
-    previewToastTimer = window.setTimeout(() => {
+    if (previewState.toastTimer) window.clearTimeout(previewState.toastTimer);
+    previewState.toastTimer = window.setTimeout(() => {
         el.classList.remove("show", "success", "error", "info");
         el.textContent = "";
     }, ms);
