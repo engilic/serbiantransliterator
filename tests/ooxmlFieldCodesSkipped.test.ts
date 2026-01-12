@@ -7,7 +7,7 @@ describe("convertOoxml - skip field code text nodes", () => {
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
   <w:body>
     <w:p>
-      <w:fldSimple w:instr="HYPERLINK \\"https://example.com\\"">
+      <w:fldSimple w:instr="HYPERLINK &quot;https://example.com&quot;">
         <w:r><w:t>https://example.com</w:t></w:r>
       </w:fldSimple>
       <w:r><w:t> Zdravo</w:t></w:r>
@@ -16,8 +16,9 @@ describe("convertOoxml - skip field code text nodes", () => {
 </w:document>
 `;
         const r = convertOoxml(OOXML, { direction: "lat-to-cyr" });
-        expect(r.xml).toContain("https://example.com"); // ostaje
-        expect(r.xml).toContain("> Здраво<"); // preslovljeno
+        expect(r.type).toBe("Lat → Ćir");
+        expect(r.xml).toContain("https://example.com"); // fldSimple ostaje
+        expect(r.xml).toMatch(/<w:t\b[^>]*> Здраво<\/w:t>/); // preslovljeno, dozvoli atribute
         expect(r.xml).not.toContain("хттп");
     });
 });
