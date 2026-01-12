@@ -52,7 +52,8 @@ export function transformTextRespectingCode(
             continue;
         }
 
-        const ch = input[i]!;
+        const ch = input[i];
+        if (!ch) break;
         if (ch === "`" && !state.inFence) {
             flush();
             out += "`";

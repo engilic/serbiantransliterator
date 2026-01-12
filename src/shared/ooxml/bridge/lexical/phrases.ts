@@ -37,7 +37,8 @@ function takePrefixAcrossNodes(
     while (remaining > 0) {
         if (j == null) return null;
 
-        const node = textNodes[j]!;
+        const node = textNodes[j];
+        if (!node) return null;
         const raw = ((node.textContent ?? "")).normalize("NFC");
         if (!raw) {
             j = findNextNodeWithText(textNodes, j + 1);
@@ -59,23 +60,28 @@ function takePrefixAcrossNodes(
 
 function peekCharAfterPlan(textNodes: Element[], plan: Array<{ nodeIndex: number; takeCp: number }>): string {
     if (plan.length === 0) return "";
-    const last = plan[plan.length - 1]!;
-    const node = textNodes[last.nodeIndex]!;
+    const last = plan[plan.length - 1];
+    if (!last) return "";
+    const node = textNodes[last.nodeIndex];
+    if (!node) return "";
     const raw = ((node.textContent ?? "")).normalize("NFC");
     const cps = Array.from(raw);
     const idx = last.takeCp;
 
-    if (idx < cps.length) return cps[idx]!;
+    if (idx < cps.length) return cps[idx] ?? "";
     const j = findNextNodeWithText(textNodes, last.nodeIndex + 1);
     if (j == null) return "";
-    const nextRaw = ((textNodes[j]!.textContent ?? "")).normalize("NFC");
+    const nextNode = textNodes[j];
+    if (!nextNode) return "";
+    const nextRaw = ((nextNode.textContent ?? "")).normalize("NFC");
     const nextCps = Array.from(nextRaw);
     return nextCps[0] ?? "";
 }
 
 function applyConsumePlan(textNodes: Element[], plan: Array<{ nodeIndex: number; takeCp: number }>) {
     for (const step of plan) {
-        const node = textNodes[step.nodeIndex]!;
+        const node = textNodes[step.nodeIndex];
+        if (!node) continue;
         const raw = ((node.textContent ?? "")).normalize("NFC");
         const cps = Array.from(raw);
         node.textContent = cps.slice(step.takeCp).join("");
@@ -88,7 +94,8 @@ export function bridgePhrasesAcrossTextNodes(textNodes: Element[], phraseInfos: 
     let changed = 0;
 
     for (let i = 0; i < textNodes.length - 1; i++) {
-        const aNode = textNodes[i]!;
+        const aNode = textNodes[i];
+        if (!aNode) continue;
         const aRaw = ((aNode.textContent ?? "")).normalize("NFC");
         if (!aRaw) continue;
 
@@ -105,7 +112,7 @@ export function bridgePhrasesAcrossTextNodes(textNodes: Element[], phraseInfos: 
             for (let x = maxX; x >= 1; x--) {
                 const startIdx = aLowerCps.length - x;
 
-                const before = startIdx > 0 ? aCps[startIdx - 1]! : "";
+                const before = startIdx > 0 ? (aCps[startIdx - 1] ?? "") : "";
                 if (!isBoundaryChar(before)) continue;
 
                 const suffixLower = aLowerCps.slice(startIdx).join("");
@@ -127,7 +134,9 @@ export function bridgePhrasesAcrossTextNodes(textNodes: Element[], phraseInfos: 
 
                 let ok = true;
                 for (let k = 0; k < remLen; k++) {
-                    if (!matchPhraseChar(remaining[k]!, takenCps[k]!)) {
+                    const remChar = remaining[k];
+                    const takenChar = takenCps[k];
+                    if (!remChar || !takenChar || !matchPhraseChar(remChar, takenChar)) {
                         ok = false;
                         break;
                     }

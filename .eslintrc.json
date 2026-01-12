@@ -1,23 +1,43 @@
 {
-  "plugins": ["office-addins"],
-  "extends": ["plugin:office-addins/recommended"],
-  "env": {
-    "browser": true,
-    "es2021": true
-  },
-  "rules": {
-    "prettier/prettier": "off",
-    "no-undef": "off"
-  },
-  "overrides": [
-    {
-      "files": ["src/taskpane/taskpane.ts"],
-      "rules": {
-        "office-addins/load-object-before-read": "off",
-        "no-control-regex": "off",
-        "no-redeclare": "off",
-        "@typescript-eslint/no-unused-vars": "off"
-      }
-    }
-  ]
+    "parser": "@typescript-eslint/parser",
+    "parserOptions": {
+        "project": "./tsconfig.json",
+        "ecmaVersion": 2021,
+        "sourceType": "module"
+    },
+    "plugins": [ "office-addins", "@typescript-eslint" ],
+    "extends": [
+        "plugin:office-addins/recommended",
+        "plugin:@typescript-eslint/recommended"
+    ],
+    "env": {
+        "browser": true,
+        "es2021": true
+    },
+    "rules": {
+        "prettier/prettier": "off",
+        "no-undef": "off",
+        "@typescript-eslint/no-explicit-any": "warn",
+        "@typescript-eslint/no-unused-vars": [
+            "warn",
+            {
+                "argsIgnorePattern": "^_",
+                "varsIgnorePattern": "^_"
+            }
+        ],
+        "@typescript-eslint/explicit-function-return-type": "off",
+        "@typescript-eslint/no-non-null-assertion": "warn"
+    },
+    "overrides": [
+        {
+            "files": [ "src/taskpane/taskpane.ts" ],
+            "rules": {
+                "office-addins/load-object-before-read": "off",
+                "no-control-regex": "off",
+                "no-redeclare": "off",
+                "@typescript-eslint/no-unused-vars": "off",
+                "@typescript-eslint/no-non-null-assertion": "off"
+            }
+        }
+    ]
 }

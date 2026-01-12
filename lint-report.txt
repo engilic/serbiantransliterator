@@ -1,0 +1,110 @@
+
+> serbian-transliterator@1.0.0 lint
+> eslint src/**/*.ts
+
+
+D:\SerbianTransliteratorWeb\SerbianTransliterator\src\core\corrections.ts
+   3:34  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   4:22  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  24:22  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+D:\SerbianTransliteratorWeb\SerbianTransliterator\src\core\format.ts
+  23:47  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+D:\SerbianTransliteratorWeb\SerbianTransliterator\src\core\serbian.ts
+   51:15  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion
+   52:15  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion
+   69:15  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion
+   70:15  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion
+  124:20  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion
+  134:20  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion
+  137:44  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SerbianTransliteratorWeb\SerbianTransliterator\src\core\textCore.ts
+   77:20  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  114:13  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  114:50  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  117:13  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  117:50  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  124:15  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  161:19  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+D:\SerbianTransliteratorWeb\SerbianTransliterator\src\shared\diff\myers.ts
+  57:32  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  68:35  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  73:58  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  83:59  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  87:59  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+D:\SerbianTransliteratorWeb\SerbianTransliterator\src\shared\ooxml\bridge\lexical\digraphs.ts
+  13:23  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  20:23  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+D:\SerbianTransliteratorWeb\SerbianTransliterator\src\shared\ooxml\bridge\lexical\links.ts
+   45:22  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   81:22  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   95:23  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  107:45  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+D:\SerbianTransliteratorWeb\SerbianTransliterator\src\shared\ooxml\bridge\lexical\phrases.ts
+   40:22  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   62:18  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   63:18  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   68:34  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   71:23  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   78:22  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   91:23  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  108:47  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  130:42  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  130:57  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+D:\SerbianTransliteratorWeb\SerbianTransliterator\src\shared\ooxml\bridge\lexical\tokens.ts
+   37:23  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   47:45  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   74:31  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   90:32  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  122:31  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  131:31  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+D:\SerbianTransliteratorWeb\SerbianTransliterator\src\shared\ooxml\bridge\structural\allCapsHints.ts
+  19:23  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  32:23  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+D:\SerbianTransliteratorWeb\SerbianTransliterator\src\shared\ooxml\bridge\structural\spaces.ts
+  10:23  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  11:23  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+D:\SerbianTransliteratorWeb\SerbianTransliterator\src\shared\ooxml\code.ts
+  55:20  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+D:\SerbianTransliteratorWeb\SerbianTransliterator\src\shared\ooxml\common.ts
+    9:25  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   14:25  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   24:19  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   89:20  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   92:34  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  104:20  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  107:33  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+D:\SerbianTransliteratorWeb\SerbianTransliterator\src\shared\ooxml\convertOoxml.ts
+  156:26  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  164:46  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  165:31  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  268:53  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  268:73  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  286:23  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  291:49  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  297:13  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+D:\SerbianTransliteratorWeb\SerbianTransliterator\src\taskpane\taskpane.ts
+   311:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   563:40  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   564:46  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   579:18  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   964:42  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1792:27  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1793:33  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1812:33  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+Ô£û 73 problems (0 errors, 73 warnings)
+

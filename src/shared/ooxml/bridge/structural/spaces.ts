@@ -7,9 +7,11 @@
 export function bridgeSpacesAcrossTextNodes(textNodes: Element[]): number {
     let changed = 0;
     for (let i = 0; i < textNodes.length - 1; i++) {
-        let aNode = textNodes[i]!;
-        let bNode = textNodes[i + 1]!;
-        let aText = aNode.textContent ?? "";
+        const aNode = textNodes[i];
+        if (!aNode) continue;
+        const bNode = textNodes[i + 1];
+        if (!bNode) continue;
+        const aText = aNode.textContent ?? "";
         let bText = bNode.textContent ?? "";
 
         // Ako a završava sa space, a b počinje sa space

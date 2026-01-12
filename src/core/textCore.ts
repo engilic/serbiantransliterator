@@ -74,7 +74,8 @@ function tokenize(text: string): Tok[] {
     };
 
     while (i < text.length) {
-        const ch = text[i]!;
+        const ch = text[i];
+        if (!ch) break;
         const prev = i > 0 ? text[i - 1] : "";
         const next = i + 1 < text.length ? text[i + 1] : "";
 
@@ -111,17 +112,20 @@ function prevNextWord(tokens: Tok[], idx: number): { prev?: string; next?: strin
     let next: string | undefined;
 
     for (let i = idx - 1; i >= 0; i--) {
-        if (tokens[i]!.type === "word") { prev = tokens[i]!.value; break; }
+        const tok = tokens[i];
+        if (tok && tok.type === "word") { prev = tok.value; break; }
     }
     for (let i = idx + 1; i < tokens.length; i++) {
-        if (tokens[i]!.type === "word") { next = tokens[i]!.value; break; }
+        const tok = tokens[i];
+        if (tok && tok.type === "word") { next = tok.value; break; }
     }
 
     return { prev, next };
 }
 
 function shouldProtectRomanToken(tokens: Tok[], idx: number): boolean {
-    const t = tokens[idx]!;
+    const t = tokens[idx];
+    if (!t) return false;
     if (t.type !== "word") return false;
 
     const v = t.value;
@@ -158,7 +162,8 @@ function convertUnprotectedSegment(
     let out = "";
 
     for (let i = 0; i < toks.length; i++) {
-        const t = toks[i]!;
+        const t = toks[i];
+        if (!t) continue;
         if (t.type !== "word") {
             out += t.value;
             continue;

@@ -8,6 +8,7 @@ import { removeMultipleSpaces } from "../core/utils";
 import { createInitialCodeState, transformTextRespectingCode } from "../shared/ooxml/code";
 import { formatSerbianDates, toAscii } from "../core/format";
 import { myersDiff, type DiffOp } from "../shared/diff";
+import { html, unsafeHtml, unwrapHtml, escapeHtml, type SafeHtml } from "../shared/safeHtml";
 
 // --- TIPOVI ---
 
@@ -308,7 +309,7 @@ let currentProfile: ProfilePreset = "custom";
 let lastStatsTitle = "Statistika poslednje akcije";
 let lastStatsText = "(Nema statistike još)";
 
-let selectionTimeout: any = null;
+let selectionTimeout: ReturnType<typeof setTimeout> | null = null;
 let isApplyingProfile = false;
 
 // --- PREVIEW STATE ---
@@ -410,7 +411,7 @@ function initUi() {
 
     (document.getElementById("resetBtn") as HTMLButtonElement).onclick = async () => {
         const ok = await confirmInPanel(
-            "Ovo će vratiti opcije na fabričke vrednosti.<br><br>Vaše zaštićene reči <b>neće</b> biti obrisane.<br><br>Da li želite da nastavite?"
+            unsafeHtml("Ovo će vratiti opcije na fabričke vrednosti.<br><br>Vaše zaštićene reči <b>neće</b> biti obrisane.<br><br>Da li želite da nastavite?")
         );
         if (ok) resetSettings();
     };
@@ -560,8 +561,15 @@ async function processNotes(
 ): Promise<{ processed: number; supported: boolean }> {
     let processed = 0;
 
-    const docAny = context.document as any;
-    const bodyAny = context.document.body as any;
+    // Type assertion za Office API koji TypeScript ne prepoznaje
+    const docAny = context.document as {
+        footnotes?: { load: (props: string) => void; items: unknown[] };
+        endnotes?: { load: (props: string) => void; items: unknown[] };
+    };
+    const bodyAny = context.document.body as {
+        footnotes?: { load: (props: string) => void; items: unknown[] };
+        endnotes?: { load: (props: string) => void; items: unknown[] };
+    };
 
     const coll = bodyAny?.[kind] ?? docAny?.[kind];
     if (!coll || typeof coll.load !== "function") {
@@ -576,17 +584,24 @@ async function processNotes(
     const reqs: Req[] = [];
 
     // 1) Batch prikupi getOoxml (bez sync u petlji)
-    const items: any[] = coll.items ?? [];
+    const items: unknown[] = coll.items ?? [];
     for (const item of items) {
         let r: Word.Range | null = null;
 
         try {
-            if (typeof item.getRange === "function") {
-                r = item.getRange();
-            } else if (item.body && typeof item.body.getRange === "function") {
-                r = item.body.getRange("Whole");
-            } else if (item.contentRange && typeof item.contentRange.getOoxml === "function") {
-                r = item.contentRange;
+            // Type guard za properties
+            const itemWithRange = item as {
+                getRange?: () => Word.Range;
+                body?: { getRange?: (type: string) => Word.Range };
+                contentRange?: Word.Range;
+            };
+
+            if (typeof itemWithRange.getRange === "function") {
+                r = itemWithRange.getRange();
+            } else if (itemWithRange.body && typeof itemWithRange.body.getRange === "function") {
+                r = itemWithRange.body.getRange("Whole");
+            } else if (itemWithRange.contentRange) {
+                r = itemWithRange.contentRange;
             }
         } catch {
             r = null;
@@ -722,11 +737,11 @@ async function applyPipeline(
         const isJustWhitespace = rawText.length > 0 && !hasText;
 
         if (!hasText) {
-            showModalInfo("Greška", "Nema selekcije za preslovljavanje.");
+            showModalInfo("Greška", unsafeHtml("Nema selekcije za preslovljavanje."));
             return { result: null, extras: emptyExtrasSummary() };
         }
         if (isJustWhitespace) {
-            showModalInfo("Greška", "Selektovan je samo prazan prostor (razmaci).");
+            showModalInfo("Greška", unsafeHtml("Selektovan je samo prazan prostor (razmaci)."));
             return { result: null, extras: emptyExtrasSummary() };
         }
 
@@ -740,16 +755,16 @@ async function applyPipeline(
     if (ui.includeFootnotes && !extras.footnotesSupported) {
         showModalInfo(
             "Napomena",
-            "Fusnote nisu dostupne za automatsku obradu u ovom Word okruženju. " +
-            "I dalje možeš da selektuješ tekst u fusnoti i klikneš PRESLOVI."
+            unsafeHtml("Fusnote nisu dostupne za automatsku obradu u ovom Word okruženju. " +
+                "I dalje možeš da selektuješ tekst u fusnoti i klikneš PRESLOVI.")
         );
     }
 
     if (ui.includeEndnotes && !extras.endnotesSupported) {
         showModalInfo(
             "Napomena",
-            "Endnote nisu dostupne za automatsku obradu u ovom Word okruženju. " +
-            "I dalje možeš da selektuješ tekst u endnoti i klikneš PRESLOVI."
+            unsafeHtml("Endnote nisu dostupne za automatsku obradu u ovom Word okruženju. " +
+                "I dalje možeš da selektuješ tekst u endnoti i klikneš PRESLOVI.")
         );
     }
 
@@ -773,7 +788,7 @@ async function runSmart() {
             if (isJustWhitespace) {
                 showModalInfo(
                     "Greška",
-                    "Selektovan je samo prazan prostor (razmaci).<br>Molimo selektujte tekst ili ne selektujte ništa za ceo dokument."
+                    unsafeHtml("Selektovan je samo prazan prostor (razmaci).<br>Molimo selektujte tekst ili ne selektujte ništa za ceo dokument.")
                 );
                 setStatus("Greška: Prazna selekcija.", "error");
                 return;
@@ -786,7 +801,7 @@ async function runSmart() {
 
             if (scope === "document" && ui.confirmWholeDoc) {
                 const ok = await confirmInPanel(
-                    "Nije selektovan tekst.<br/>Da li želite da preslovite <b>CEO dokument</b>?"
+                    unsafeHtml("Nije selektovan tekst.<br/>Da li želite da preslovite <b>CEO dokument</b>?")
                 );
                 if (!ok) {
                     setStatus("Otkazano.", "neutral");
@@ -844,12 +859,12 @@ async function applyFromPreview(scope: "selection" | "document") {
                 const isJustWhitespace = rawText.length > 0 && !hasText;
 
                 if (!hasText) {
-                    showModalInfo("Greška", "Nema selekcije za preslovljavanje.");
+                    showModalInfo("Greška", unsafeHtml("Nema selekcije za preslovljavanje."));
                     return;
                 }
 
                 if (isJustWhitespace) {
-                    showModalInfo("Greška", "Selektovan je samo prazan prostor (razmaci).");
+                    showModalInfo("Greška", unsafeHtml("Selektovan je samo prazan prostor (razmaci)."));
                     return;
                 }
 
@@ -886,7 +901,7 @@ async function applyFromPreview(scope: "selection" | "document") {
                         invalidatePreviewCache();
                         showModalInfo(
                             "Cache je nevažeći",
-                            "Ne mogu da primenim sačuvani preview (selekcija je promenjena ili je cache istekao). Pokrećem ponovnu konverziju."
+                            unsafeHtml("Ne mogu da primenim sačuvani preview (selekcija je promenjena ili je cache istekao). Pokrećem ponovnu konverziju.")
                         );
                         // nastavlja dalje na fallback pipeline
                     }
@@ -961,7 +976,7 @@ function fnv1a32(str: string): string {
 
 async function sha256Hex(str: string): Promise<string> {
     try {
-        const cryptoAny = (globalThis as any).crypto;
+        const cryptoAny = (globalThis as typeof globalThis & { crypto?: { subtle?: SubtleCrypto } }).crypto;
         if (!cryptoAny?.subtle) return fnv1a32(str);
 
         const enc = new TextEncoder();
@@ -1085,7 +1100,7 @@ async function runPreview() {
             const isJustWhitespace = selectionText.length > 0 && !hasSelectionText;
 
             if (isJustWhitespace) {
-                showModalInfo("Greška", "Selektovan je samo prazan prostor.");
+                showModalInfo("Greška", unsafeHtml("Selektovan je samo prazan prostor."));
                 setStatus("Greška: Prazna selekcija.", "error");
                 return;
             }
@@ -1128,13 +1143,13 @@ async function runPreview() {
                 const b = normalizeNewlines(convText);
 
                 if (!b.trim()) {
-                    showModalInfo("Greška", "Pregled nije uspeo: rezultat je prazan tekst.");
+                    showModalInfo("Greška", unsafeHtml("Pregled nije uspeo: rezultat je prazan tekst."));
                     setStatus("Greška: Prazan rezultat pregleda.", "error");
                     return;
                 }
 
                 if (a === b) {
-                    showModalInfo("Nema izmena", "Tekst je već u traženom pismu ili nema šta da se menja.");
+                    showModalInfo("Nema izmena", unsafeHtml("Tekst je već u traženom pismu ili nema šta da se menja."));
                     setStatus("Nema izmena.", "neutral");
                     return;
                 }
@@ -1185,13 +1200,13 @@ async function runPreview() {
             const b = normalizeNewlines(finalText);
 
             if (!b.trim()) {
-                showModalInfo("Greška", "Pregled nije uspeo: rezultat je prazan tekst.");
+                showModalInfo("Greška", unsafeHtml("Pregled nije uspeo: rezultat je prazan tekst."));
                 setStatus("Greška: Prazan rezultat pregleda.", "error");
                 return;
             }
 
             if (a === b) {
-                showModalInfo("Nema izmena", "Tekst je već u traženom pismu ili nema šta da se menja.");
+                showModalInfo("Nema izmena", unsafeHtml("Tekst je već u traženom pismu ili nema šta da se menja."));
                 setStatus("Nema izmena.", "neutral");
                 return;
             }
@@ -1789,8 +1804,9 @@ function handleFileImport(e: Event) {
 
 async function copyToClipboard(text: string): Promise<boolean> {
     try {
-        if ((navigator as any).clipboard?.writeText) {
-            await (navigator as any).clipboard.writeText(text);
+        const nav = navigator as typeof navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } };
+        if (nav.clipboard?.writeText) {
+            await nav.clipboard.writeText(text);
             return true;
         }
     } catch {
@@ -1809,7 +1825,7 @@ async function copyToClipboard(text: string): Promise<boolean> {
         ta.style.opacity = "0";
         document.body.appendChild(ta);
         ta.select();
-        const ok = (document as any).execCommand("copy");
+        const ok = document.execCommand("copy");
         document.body.removeChild(ta);
         return ok;
     } catch {
@@ -1891,31 +1907,13 @@ function setRadioValue(name: string, val: string) {
     }
 }
 
-function escapeHtml(unsafe: string) {
-    return (unsafe ?? "").replace(/[<>&'"]/g, (c) => {
-        switch (c) {
-            case "<":
-                return "&lt;";
-            case ">":
-                return "&gt;";
-            case "&":
-                return "&amp;";
-            case "'":
-                return "&apos;";
-            case "\"":
-                return "&quot;";
-        }
-        return c;
-    });
-}
-
 /* =========================
    MODAL SYSTEM
    ========================= */
 
 let modalPromiseResolver: ((val: boolean) => void) | null = null;
 
-function confirmInPanel(htmlMsg: string): Promise<boolean> {
+function confirmInPanel(safeHtmlMsg: SafeHtml): Promise<boolean> {
     const overlay = document.getElementById("modalOverlay") as HTMLDivElement;
     const title = document.getElementById("modalTitle") as HTMLHeadingElement;
     const text = document.getElementById("modalText") as HTMLDivElement;
@@ -1927,7 +1925,7 @@ function confirmInPanel(htmlMsg: string): Promise<boolean> {
     cancelBtn.style.display = "inline-flex";
 
     title.innerText = "Potvrda";
-    text.innerHTML = htmlMsg;
+    text.innerHTML = unwrapHtml(safeHtmlMsg); // ← TYPE-SAFE unwrap
     input.style.display = "none";
 
     const applyBtn = document.getElementById("modalApply") as HTMLButtonElement | null;
@@ -1958,7 +1956,7 @@ function confirmInPanel(htmlMsg: string): Promise<boolean> {
     });
 }
 
-function showModalInfo(titleStr: string, msg: string) {
+function showModalInfo(titleStr: string, safeHtmlMsg: SafeHtml) {
     const overlay = document.getElementById("modalOverlay") as HTMLDivElement;
     const title = document.getElementById("modalTitle") as HTMLHeadingElement;
     const text = document.getElementById("modalText") as HTMLDivElement;
@@ -1970,7 +1968,7 @@ function showModalInfo(titleStr: string, msg: string) {
     cancelBtn.style.display = "inline-flex";
 
     title.innerText = titleStr;
-    text.innerHTML = msg;
+    text.innerHTML = unwrapHtml(safeHtmlMsg); // ← TYPE-SAFE unwrap
     input.style.display = "none";
 
     const applyBtn = document.getElementById("modalApply") as HTMLButtonElement | null;

@@ -1,7 +1,14 @@
 function preserveFirstLetterCase(input: string, replacement: string): string {
     if (!input) return replacement;
-    const isUpper = input[0] === input[0]!.toUpperCase();
-    return isUpper ? replacement[0]!.toUpperCase() + replacement.slice(1) : replacement;
+
+    const firstChar = input[0];
+    if (!firstChar) return replacement;
+
+    const firstReplChar = replacement[0];
+    if (!firstReplChar) return replacement;
+
+    const isUpper = firstChar === firstChar.toUpperCase();
+    return isUpper ? firstReplChar.toUpperCase() + replacement.slice(1) : replacement;
 }
 
 export function applyPreCorrectionsLatToCyr(segment: string): string {
@@ -21,7 +28,8 @@ export function applyPreCorrectionsLatToCyr(segment: string): string {
     };
 
     for (const phrase of Object.keys(savaMap)) {
-        const repl = savaMap[phrase]!;
+        const repl = savaMap[phrase];
+        if (!repl) continue;
         text = text.replace(new RegExp(phrase, "gi"), (m) => preserveFirstLetterCase(m, repl));
     }
 
