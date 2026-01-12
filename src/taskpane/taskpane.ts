@@ -449,7 +449,6 @@ async function checkSelectionAndUpdateButtons() {
 
 // --- APPLY TO WORD (OOXML) ---
 
-/* eslint-disable office-addins/no-context-sync-in-loop */
 async function processHeadersFooters(context: Word.RequestContext, opts: OoxmlOptions): Promise<number> {
     let processed = 0;
 
@@ -463,48 +462,56 @@ async function processHeadersFooters(context: Word.RequestContext, opts: OoxmlOp
         Word.HeaderFooterType.evenPages,
     ];
 
-    for (let si = 0; si < sections.items.length; si++) {
-        const sec = sections.items[si]!;
+    type OoxmlResult = ReturnType<Word.Range["getOoxml"]>;
+    type Req = { range: Word.Range; ooxml: OoxmlResult };
+    const reqs: Req[] = [];
+
+    // 1) Batch: prikupi sve getOoxml pozive (bez sync u petlji)
+    for (const sec of sections.items) {
         for (const t of types) {
             // HEADER
             try {
-                const hr = sec.getHeader(t).getRange();
-                const ooxml = hr.getOoxml();
-                await context.sync();
-
-                const res = convertOoxml(ooxml.value, opts);
-                if (res.type !== "Nema teksta") {
-                    hr.insertOoxml(res.xml, Word.InsertLocation.replace);
-                    await context.sync();
-                    processed++;
-                }
+                const r = sec.getHeader(t).getRange();
+                const o = r.getOoxml();
+                reqs.push({ range: r, ooxml: o });
             } catch {
-                // neka okruženja/sekcije mogu baciti grešku – ignorišemo i nastavljamo
+                // ignore
             }
 
             // FOOTER
             try {
-                const fr = sec.getFooter(t).getRange();
-                const ooxml = fr.getOoxml();
-                await context.sync();
-
-                const res = convertOoxml(ooxml.value, opts);
-                if (res.type !== "Nema teksta") {
-                    fr.insertOoxml(res.xml, Word.InsertLocation.replace);
-                    await context.sync();
-                    processed++;
-                }
+                const r = sec.getFooter(t).getRange();
+                const o = r.getOoxml();
+                reqs.push({ range: r, ooxml: o });
             } catch {
                 // ignore
             }
         }
     }
 
+    // 2) Jedan sync da dobijemo sve .value
+    await context.sync();
+
+    // 3) Lokalna konverzija + queue insert (bez sync u petlji)
+    for (const req of reqs) {
+        const xmlIn = req.ooxml.value;
+        if (!xmlIn) continue;
+
+        const res = convertOoxml(xmlIn, opts);
+        if (res.type === "Nema teksta") continue;
+
+        req.range.insertOoxml(res.xml, Word.InsertLocation.replace);
+        processed++;
+    }
+
+    // 4) Jedan sync da se sve primeni
+    if (processed > 0) {
+        await context.sync();
+    }
+
     return processed;
 }
-/* eslint-enable office-addins/no-context-sync-in-loop */
 
-/* eslint-disable office-addins/no-context-sync-in-loop */
 async function processNotes(
     context: Word.RequestContext,
     opts: OoxmlOptions,
@@ -512,8 +519,6 @@ async function processNotes(
 ): Promise<{ processed: number; supported: boolean }> {
     let processed = 0;
 
-    // Best-effort: u nekim hostovima može biti document.footnotes/endnotes,
-    // u nekima document.body.footnotes/endnotes
     const docAny = context.document as any;
     const bodyAny = context.document.body as any;
 
@@ -525,35 +530,59 @@ async function processNotes(
     coll.load("items");
     await context.sync();
 
+    type OoxmlResult = ReturnType<Word.Range["getOoxml"]>;
+    type Req = { range: Word.Range; ooxml: OoxmlResult };
+    const reqs: Req[] = [];
+
+    // 1) Batch prikupi getOoxml (bez sync u petlji)
     const items: any[] = coll.items ?? [];
     for (const item of items) {
         let r: Word.Range | null = null;
 
-        if (typeof item.getRange === "function") {
-            r = item.getRange();
-        } else if (item.body && typeof item.body.getRange === "function") {
-            r = item.body.getRange("Whole");
-        } else if (item.contentRange && typeof item.contentRange.getOoxml === "function") {
-            r = item.contentRange;
+        try {
+            if (typeof item.getRange === "function") {
+                r = item.getRange();
+            } else if (item.body && typeof item.body.getRange === "function") {
+                r = item.body.getRange("Whole");
+            } else if (item.contentRange && typeof item.contentRange.getOoxml === "function") {
+                r = item.contentRange;
+            }
+        } catch {
+            r = null;
         }
 
         if (!r) continue;
 
-        const ooxml = r.getOoxml();
-        await context.sync();
+        try {
+            const o = r.getOoxml();
+            reqs.push({ range: r, ooxml: o });
+        } catch {
+            // ignore
+        }
+    }
 
-        const res = convertOoxml(ooxml.value, opts);
+    // 2) Jedan sync da dobijemo sve .value
+    await context.sync();
+
+    // 3) Konverzija + queue insert
+    for (const req of reqs) {
+        const xmlIn = req.ooxml.value;
+        if (!xmlIn) continue;
+
+        const res = convertOoxml(xmlIn, opts);
         if (res.type === "Nema teksta") continue;
 
-        r.insertOoxml(res.xml, Word.InsertLocation.replace);
-        await context.sync();
-
+        req.range.insertOoxml(res.xml, Word.InsertLocation.replace);
         processed++;
+    }
+
+    // 4) Jedan sync za primenu
+    if (processed > 0) {
+        await context.sync();
     }
 
     return { processed, supported: true };
 }
-/* eslint-enable office-addins/no-context-sync-in-loop */
 
 type OoxmlConvertResult = ReturnType<typeof convertOoxml>;
 
