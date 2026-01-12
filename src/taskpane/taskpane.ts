@@ -330,10 +330,12 @@ let previewToastTimer: number | null = null;
 
 let previewConvertedOoxml: string | null = null;
 let previewOoxmlOptsSnapJson: string | null = null;
+let previewSelectionTextHash: string | null = null;
 
 function invalidatePreviewCache() {
     previewConvertedOoxml = null;
     previewOoxmlOptsSnapJson = null;
+    previewSelectionTextHash = null;
 }
 
 // --- INIT ---
@@ -781,37 +783,70 @@ async function applyFromPreview(scope: "selection" | "document") {
                     return;
                 }
 
-                // cache važi samo ako se opcije nisu promenile od trenutka preview-a
-                if (previewConvertedOoxml && previewOoxmlOptsSnapJson) {
+                // Stabilan fingerprint: hash nad TEKSTOM selekcije (ne OOXML)
+                const normApply = normalizeForSelectionHash(rawText);
+                const currentSelectionHash = await sha256Hex(normApply);
+
+                // cache važi samo ako:
+                // - imamo cached converted OOXML
+                // - opcije su iste kao u preview-u
+                // - tekst selekcije je isti kao u preview-u
+                if (previewConvertedOoxml && previewOoxmlOptsSnapJson && previewSelectionTextHash) {
                     const currentJson = JSON.stringify(opts);
 
                     if (currentJson === previewOoxmlOptsSnapJson) {
-                        setStatus("Primena pregleda (bez ponovne konverzije)...", "info");
+                        if (currentSelectionHash === previewSelectionTextHash) {
+                            setStatus("Primena pregleda (bez ponovne konverzije)...", "info");
 
-                        range.insertOoxml(previewConvertedOoxml, Word.InsertLocation.replace);
-                        await context.sync();
+                            range.insertOoxml(previewConvertedOoxml, Word.InsertLocation.replace);
+                            await context.sync();
 
-                        setStatus("Završeno (primenjen preview).", "success");
+                            setStatus("Završeno (primenjen preview).", "success");
 
-                        lastStatsTitle = "Statistika: primenjen preview";
-                        lastStatsText =
-                            `Opseg: Selekcija\n` +
-                            `Napomena: primenjen je OOXML iz pregleda (bez ponovne konverzije).`;
+                            lastStatsTitle = "Statistika: primenjen preview";
+                            lastStatsText =
+                                `Opseg: Selekcija\n` +
+                                `Napomena: primenjen je OOXML iz pregleda (bez ponovne konverzije).`;
 
-                        refreshStats();
-                        return;
+                            refreshStats();
+                            return;
+                        }
+
+                        // selekcija nije ista -> ne koristimo cache
+                        invalidatePreviewCache();
+                        showModalInfo(
+                            "Selecija je promenjena",
+                            "Ne mogu da primenim sačuvani preview jer selekcija više nije ista. Pokrećem ponovnu konverziju."
+                        );
+                        // nastavlja dalje na fallback pipeline
                     }
                 }
 
-                // ako cache nije validan -> fallback na pipeline (ponovna konverzija)
-                // (pipeline će opet pročitati selekciju i odraditi isto kao runSmart)
+                // fallback: ponovna konverzija selekcije
+                const { result } = await applyPipeline(context, "selection", ui, opts);
+
+                if (!result) {
+                    setStatus("Nije pronađen tekst za obradu.", "neutral");
+                    return;
+                }
+
+                const time = result.stats.timingMs.toFixed(0);
+                setStatus(`Završeno: ${result.type} (${time}ms)`, "success");
+
+                lastStatsTitle = `Statistika: ${result.type}`;
+                lastStatsText =
+                    `Opseg: Selekcija\n` +
+                    `Promenjeno čvorova: ${result.stats.textNodes}\n` +
+                    `Vreme: ${time}ms`;
+
+                refreshStats();
+                return;
             }
 
             // =========================
-            // FALLBACK / DOCUMENT: koristi zajednički pipeline
+            // DOCUMENT: koristi pipeline
             // =========================
-
-            const { result, extras } = await applyPipeline(context, scope, ui, opts);
+            const { result, extras } = await applyPipeline(context, "document", ui, opts);
 
             if (!result) {
                 setStatus("Nije pronađen tekst za obradu.", "neutral");
@@ -820,20 +855,18 @@ async function applyFromPreview(scope: "selection" | "document") {
 
             const time = result.stats.timingMs.toFixed(0);
             const hfInfo =
-                scope === "document" && extras.headersFootersProcessed > 0
-                    ? ` | H/F: ${extras.headersFootersProcessed}`
-                    : "";
+                extras.headersFootersProcessed > 0 ? ` | H/F: ${extras.headersFootersProcessed}` : "";
 
             setStatus(`Završeno: ${result.type} (${time}ms)${hfInfo}`, "success");
 
             lastStatsTitle = `Statistika: ${result.type}`;
             lastStatsText =
-                `Opseg: ${scope === "selection" ? "Selekcija" : "Ceo dokument"}\n` +
+                `Opseg: Ceo dokument\n` +
                 `Promenjeno čvorova: ${result.stats.textNodes}\n` +
-                `Vreme: ${time}ms` +
-                (scope === "document"
-                    ? `\nHeader/Footer: ${extras.headersFootersProcessed}\nFusnote: ${extras.footnotesProcessed}\nEndnote: ${extras.endnotesProcessed}`
-                    : "");
+                `Vreme: ${time}ms\n` +
+                `Header/Footer: ${extras.headersFootersProcessed}\n` +
+                `Fusnote: ${extras.footnotesProcessed}\n` +
+                `Endnote: ${extras.endnotesProcessed}`;
 
             refreshStats();
         });
@@ -847,12 +880,47 @@ async function applyFromPreview(scope: "selection" | "document") {
    PREVIEW HELPERS
    ========================= */
 
+function fnv1a32(str: string): string {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < str.length; i++) {
+        h ^= str.charCodeAt(i);
+        h = Math.imul(h, 0x01000193);
+    }
+    return (h >>> 0).toString(16).padStart(8, "0");
+}
+
+async function sha256Hex(str: string): Promise<string> {
+    try {
+        const cryptoAny = (globalThis as any).crypto;
+        if (!cryptoAny?.subtle) return fnv1a32(str);
+
+        const enc = new TextEncoder();
+        const buf = await cryptoAny.subtle.digest("SHA-256", enc.encode(str));
+        const bytes = new Uint8Array(buf);
+        return Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
+    } catch {
+        return fnv1a32(str);
+    }
+}
+
 function normalizeWeirdBreaks(s: string): string {
     return (s ?? "").replace(/\u000b/g, "\n").replace(/\u000c/g, "\n");
 }
 
 function normalizeNewlines(s: string): string {
     return normalizeWeirdBreaks(s).replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+}
+
+function normalizeForSelectionHash(s: string): string {
+    let t = normalizeNewlines(s ?? "").normalize("NFC");
+
+    // Word zna da ubaci "end-of-cell" marker u tabelama
+    t = t.replace(/\u0007/g, "");
+
+    // često varira da li vraća završni paragraph mark ili newline
+    t = t.replace(/\n+$/g, "");
+
+    return t;
 }
 
 function convertTextForPreviewPlain(input: string, s: UiSettings): { out: string; type: string } {
@@ -959,8 +1027,17 @@ async function runPreview() {
             previewShownCount = 0;
             previewCanLoadMore = false;
 
+            // =========================
+            // PREVIEW: SELECTION (OOXML)
+            // =========================
             if (hasSelectionText) {
                 previewScope = "selection";
+
+                // Stabilan fingerprint za cache apply: hash nad TEKSTOM selekcije
+                previewSelectionTextHash = await sha256Hex(normalizeForSelectionHash(selectionText));
+
+                const normPreview = normalizeForSelectionHash(selectionText);
+                previewSelectionTextHash = await sha256Hex(normPreview);
 
                 const ooxml = range.getOoxml();
                 await context.sync();
@@ -972,6 +1049,7 @@ async function runPreview() {
 
                 const converted = convertOoxml(originalOoxml, opts);
 
+                // cache za apply (samo za selekciju)
                 previewConvertedOoxml = converted.xml;
                 previewOoxmlOptsSnapJson = JSON.stringify(opts);
 
@@ -1003,8 +1081,13 @@ async function runPreview() {
                 return;
             }
 
-            // Whole doc preview: first N paragraphs (plain text)
+            // =========================
+            // PREVIEW: WHOLE DOC (plain text, first N paragraphs)
+            // =========================
             previewScope = "document";
+
+            // u document modu ne koristimo selection cache
+            invalidatePreviewCache();
 
             const body = context.document.body;
             body.load("text");
@@ -1476,6 +1559,9 @@ function applySettingsToUi(s: UiSettings) {
     setCheckValue("optIncludeHeadersFooters", s.includeHeadersFooters);
     setCheckValue("optIncludeFootnotes", s.includeFootnotes);
     setCheckValue("optIncludeEndnotes", s.includeEndnotes);
+
+    refreshStats();
+    updateResetButtonState();
 }
 
 function updateResetButtonState() {
@@ -1526,6 +1612,8 @@ function resetSettings() {
     renderTags();
 
     saveSettings();
+    refreshStats();
+    updateResetButtonState();
     setStatus("Podešavanja vraćena (reči sačuvane).", "success");
 }
 
