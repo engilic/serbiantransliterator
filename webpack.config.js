@@ -1,4 +1,6 @@
 ﻿/* eslint-disable no-undef */
+const path = require("path");
+const pkg = require("./package.json");
 const devCerts = require("office-addin-dev-certs");
 const CopyWebpackPlugin = require("copy-webpack-plugin");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
@@ -28,11 +30,15 @@ module.exports = async (env, options) => {
           use: "babel-loader",
           exclude: /node_modules/,
         },
-        {
-          test: /\.html$/,
-          use: "html-loader",
-          exclude: /node_modules/,
-        },
+            {
+                test: /\.html$/,
+                use: "html-loader",
+                exclude: [
+                    /node_modules/,
+                    path.resolve(__dirname, "src/taskpane/taskpane.html"),
+                    path.resolve(__dirname, "src/commands/commands.html"),
+                ],
+            },
 
         // CSS bundling (taskpane.css se uvozi iz taskpane.ts)
         {
@@ -83,29 +89,19 @@ module.exports = async (env, options) => {
         filename: "[name].css",
       }),
 
-      new HtmlWebpackPlugin({
-        filename: "taskpane.html",
-        template: "./src/taskpane/taskpane.html",
-        chunks: ["polyfill", "taskpane"],
-        minify: !dev
-          ? {
-              collapseWhitespace: true,
-              removeComments: true,
-              removeRedundantAttributes: true,
-            }
-          : false,
-      }),
-      new HtmlWebpackPlugin({
-        filename: "commands.html",
-        template: "./src/commands/commands.html",
-        chunks: ["polyfill", "commands"],
-        minify: !dev
-          ? {
-              collapseWhitespace: true,
-              removeComments: true,
-            }
-          : false,
-      }),
+        new HtmlWebpackPlugin({
+            filename: "taskpane.html",
+            template: "./src/taskpane/taskpane.html",
+            chunks: ["polyfill", "taskpane"],
+            templateParameters: { appVersion: pkg.version },
+            minify: !dev
+                ? {
+                    collapseWhitespace: true,
+                    removeComments: true,
+                    removeRedundantAttributes: true,
+                }
+                : false,
+        }),
       new CopyWebpackPlugin({
         patterns: [
           { from: "assets/*", to: "assets/[name][ext]" },
