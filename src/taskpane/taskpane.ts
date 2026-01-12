@@ -25,6 +25,8 @@ interface UiSettings {
     formatDates: boolean;
     confirmWholeDoc: boolean;
     includeHeadersFooters: boolean;
+    includeFootnotes: boolean;
+    includeEndnotes: boolean;
     showStats: boolean;
     direction: DirectionUi;
 }
@@ -43,6 +45,8 @@ const DEFAULT_SETTINGS: UiSettings = {
     // Opseg obrade / ponašanje
     confirmWholeDoc: true,
     includeHeadersFooters: false,
+    includeFootnotes: false,
+    includeEndnotes: false,
 
     // Smer preslovljavanja
     direction: "auto",
@@ -487,6 +491,57 @@ async function processHeadersFooters(context: Word.RequestContext, opts: OoxmlOp
 }
 /* eslint-enable office-addins/no-context-sync-in-loop */
 
+/* eslint-disable office-addins/no-context-sync-in-loop */
+async function processNotes(
+    context: Word.RequestContext,
+    opts: OoxmlOptions,
+    kind: "footnotes" | "endnotes"
+): Promise<{ processed: number; supported: boolean }> {
+    let processed = 0;
+
+    // Best-effort: u nekim hostovima može biti document.footnotes/endnotes,
+    // u nekima document.body.footnotes/endnotes
+    const docAny = context.document as any;
+    const bodyAny = context.document.body as any;
+
+    const coll = bodyAny?.[kind] ?? docAny?.[kind];
+    if (!coll || typeof coll.load !== "function") {
+        return { processed: 0, supported: false };
+    }
+
+    coll.load("items");
+    await context.sync();
+
+    const items: any[] = coll.items ?? [];
+    for (const item of items) {
+        let r: Word.Range | null = null;
+
+        if (typeof item.getRange === "function") {
+            r = item.getRange();
+        } else if (item.body && typeof item.body.getRange === "function") {
+            r = item.body.getRange("Whole");
+        } else if (item.contentRange && typeof item.contentRange.getOoxml === "function") {
+            r = item.contentRange;
+        }
+
+        if (!r) continue;
+
+        const ooxml = r.getOoxml();
+        await context.sync();
+
+        const res = convertOoxml(ooxml.value, opts);
+        if (res.type === "Nema teksta") continue;
+
+        r.insertOoxml(res.xml, Word.InsertLocation.replace);
+        await context.sync();
+
+        processed++;
+    }
+
+    return { processed, supported: true };
+}
+/* eslint-enable office-addins/no-context-sync-in-loop */
+
 async function runSmart() {
     try {
         await Word.run(async (context) => {
@@ -515,7 +570,9 @@ async function runSmart() {
             // Ako nema selekcije -> ceo dokument
             if (!hasText) {
                 if (ui.confirmWholeDoc) {
-                    const ok = await confirmInPanel("Nije selektovan tekst.<br/>Da li želite da preslovite <b>CEO dokument</b>?");
+                    const ok = await confirmInPanel(
+                        "Nije selektovan tekst.<br/>Da li želite da preslovite <b>CEO dokument</b>?"
+                    );
                     if (!ok) {
                         setStatus("Otkazano.", "neutral");
                         return;
@@ -523,21 +580,51 @@ async function runSmart() {
                 }
 
                 // 1) Header/Footer (opciono)
-                // Ako još nisi dodao ui.includeHeadersFooters u UiSettings,
-                // možeš privremeno koristiti: const includeHF = getCheckValue("optIncludeHeadersFooters");
-                const includeHF = ui.includeHeadersFooters === true;
-
-                if (includeHF) {
+                if (ui.includeHeadersFooters) {
                     try {
                         setStatus("Obrada: zaglavlja/podnožja...", "info");
                         headersFootersProcessed = await processHeadersFooters(context, opts);
                     } catch (e) {
                         console.warn("Header/Footer obrada nije uspela:", e);
-                        // Ne prekidamo ceo proces – nastavljamo na body
+                        // Ne prekidamo ceo proces – nastavljamo dalje
                     }
                 }
 
-                // 2) Body
+                // 2) Footnotes (opciono)
+                if (ui.includeFootnotes) {
+                    try {
+                        setStatus("Obrada: fusnote...", "info");
+                        const r = await processNotes(context, opts, "footnotes");
+                        if (!r.supported) {
+                            showModalInfo(
+                                "Napomena",
+                                "Fusnote nisu dostupne za automatsku obradu u ovom Word okruženju. " +
+                                "I dalje možeš da selektuješ tekst u fusnoti i klikneš PRESLOVI."
+                            );
+                        }
+                    } catch (e) {
+                        console.warn("Footnotes obrada nije uspela:", e);
+                    }
+                }
+
+                // 3) Endnotes (opciono)
+                if (ui.includeEndnotes) {
+                    try {
+                        setStatus("Obrada: endnote...", "info");
+                        const r = await processNotes(context, opts, "endnotes");
+                        if (!r.supported) {
+                            showModalInfo(
+                                "Napomena",
+                                "Endnote nisu dostupne za automatsku obradu u ovom Word okruženju. " +
+                                "I dalje možeš da selektuješ tekst u endnoti i klikneš PRESLOVI."
+                            );
+                        }
+                    } catch (e) {
+                        console.warn("Endnotes obrada nije uspela:", e);
+                    }
+                }
+
+                // 4) Body
                 range = context.document.body.getRange("Whole");
             }
 
@@ -1236,6 +1323,8 @@ function setupInputListeners() {
         "optFixDoubleSpaces",
         "optFormatDates",
 	"optIncludeHeadersFooters",
+        "optIncludeFootnotes",
+        "optIncludeEndnotes",
         "dirAuto",
         "dirLatToCyr",
         "dirCyrToLat",
@@ -1270,7 +1359,9 @@ function getSettingsFromUi(): UiSettings {
         confirmWholeDoc: getCheckValue("optConfirmWholeDoc"),
         showStats: getCheckValue("optShowStats"),
         direction: getRadioValue("direction") as DirectionUi,
-	includeHeadersFooters: getCheckValue("optIncludeHeadersFooters"),
+        includeHeadersFooters: getCheckValue("optIncludeHeadersFooters"),
+        includeFootnotes: getCheckValue("optIncludeFootnotes"),
+        includeEndnotes: getCheckValue("optIncludeEndnotes"),
     };
 }
 
@@ -1291,6 +1382,8 @@ function applySettingsToUi(s: UiSettings) {
     setRadioValue("direction", s.direction);
 
     setCheckValue("optIncludeHeadersFooters", s.includeHeadersFooters);
+    setCheckValue("optIncludeFootnotes", s.includeFootnotes);
+    setCheckValue("optIncludeEndnotes", s.includeEndnotes);
 }
 
 function updateResetButtonState() {
