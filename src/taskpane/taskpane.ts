@@ -312,6 +312,8 @@ let lastStatsText = "(Nema statistike još)";
 let selectionTimeout: ReturnType<typeof setTimeout> | null = null;
 let isApplyingProfile = false;
 
+let selectionChangeHandler: (() => void) | null = null;
+
 // --- PREVIEW STATE ---
 const PREVIEW_BATCH = 20;
 
@@ -377,9 +379,22 @@ Office.onReady((info) => {
     if (info.host === Office.HostType.Word) {
         initUi();
 
-        Office.context.document.addHandlerAsync(Office.EventType.DocumentSelectionChanged, onSelectionChange);
+        // Wrapper da bi imali referencu za removeHandlerAsync
+        selectionChangeHandler = () => {
+            onSelectionChange();
+        };
+
+        Office.context.document.addHandlerAsync(
+            Office.EventType.DocumentSelectionChanged,
+            selectionChangeHandler
+        );
 
         checkSelectionAndUpdateButtons();
+
+        // Cleanup event handler na unload
+        window.addEventListener("beforeunload", () => {
+            cleanupEventHandlers();
+        });
     }
 });
 
@@ -1802,17 +1817,21 @@ function handleFileImport(e: Event) {
    UI HELPERS
    ========================= */
 
+/**
+ * Kopira tekst u clipboard koristeći moderan Clipboard API.
+ * Fallback za stare browsere koji ne podržavaju Clipboard API.
+ */
 async function copyToClipboard(text: string): Promise<boolean> {
+    // 1. Pokušaj moderan Clipboard API (Chrome 66+, Edge 79+, Firefox 63+)
     try {
-        const nav = navigator as typeof navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } };
-        if (nav.clipboard?.writeText) {
-            await nav.clipboard.writeText(text);
-            return true;
-        }
-    } catch {
-        // fallback below
+        await navigator.clipboard.writeText(text);
+        return true;
+    } catch (err) {
+        // Clipboard API failed - možda permissions denied ili nije dostupan
+        console.warn("Clipboard API failed:", err);
     }
 
+    // 2. Fallback: Selection API (bez execCommand)
     try {
         const ta = document.createElement("textarea");
         ta.value = text;
@@ -1823,11 +1842,42 @@ async function copyToClipboard(text: string): Promise<boolean> {
         ta.style.width = "1px";
         ta.style.height = "1px";
         ta.style.opacity = "0";
+        ta.style.pointerEvents = "none";
+
         document.body.appendChild(ta);
+
+        // Focus i select
+        ta.focus();
         ta.select();
-        const ok = document.execCommand("copy");
+
+        // Range selection za maksimalnu kompatibilnost
+        const range = document.createRange();
+        range.selectNodeContents(ta);
+        const selection = window.getSelection();
+        if (selection) {
+            selection.removeAllRanges();
+            selection.addRange(range);
+        }
+
+        ta.setSelectionRange(0, text.length);
+
+        // Trigger copy event (moderna alternativa execCommand)
+        let success = false;
+        try {
+            const copyEvent = new ClipboardEvent('copy', {
+                bubbles: true,
+                cancelable: true,
+                clipboardData: new DataTransfer()
+            });
+            copyEvent.clipboardData?.setData('text/plain', text);
+            success = document.dispatchEvent(copyEvent);
+        } catch {
+            // ClipboardEvent nije podržan, korisnik mora ručno Ctrl+C
+            success = false;
+        }
+
         document.body.removeChild(ta);
-        return ok;
+        return success;
     } catch {
         return false;
     }
@@ -2151,4 +2201,28 @@ function generateDiffHtml(oldText: string, newText: string): string {
     }
 
     return `<div class="preview-text-pane preview-single-pane">${html}</div>`;
+}
+
+/**
+* Cleanup event handlers to prevent memory leaks.
+* Called on window beforeunload.
+*/
+function cleanupEventHandlers() {
+    if (selectionChangeHandler) {
+        try {
+            Office.context.document.removeHandlerAsync(
+                Office.EventType.DocumentSelectionChanged,
+                { handler: selectionChangeHandler }
+            );
+        } catch (e) {
+            console.warn("Failed to remove selection change handler:", e);
+        }
+        selectionChangeHandler = null;
+    }
+
+    // Cleanup timeout ako postoji
+    if (selectionTimeout) {
+        clearTimeout(selectionTimeout);
+        selectionTimeout = null;
+    }
 }
