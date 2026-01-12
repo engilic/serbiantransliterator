@@ -1,10 +1,5 @@
 import { createInitialCodeState, transformQuotesRespectingCode } from "./code";
-
-const QUOTE_VARIANTS_RE =
-    /[\u201C\u201D\u2018\u2019\u00AB\u00BB\u201E\u201F\u201A\u201B\u2039\u203A]/g;
-
-const OPEN_QUOTE = "\u201E";  // „
-const CLOSE_QUOTE = "\u201D"; // ”
+import { QUOTE_VARIANTS_RE, OPEN_QUOTE, CLOSE_QUOTE } from "./quoteConstants";
 
 export function applySerbianQuotesAcrossNodes(textNodes: Element[], preserveCodeBlocks: boolean) {
     if (!preserveCodeBlocks) {

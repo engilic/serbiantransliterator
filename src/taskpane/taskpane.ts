@@ -6,6 +6,7 @@ import { convertOoxml, OoxmlOptions } from "../shared/ooxml/convertOoxml";
 import { convertPlainText, Direction } from "../core/textCore";
 import { removeMultipleSpaces } from "../core/utils";
 import { createInitialCodeState, transformTextRespectingCode } from "../shared/ooxml/code";
+import { formatSerbianDates, toAscii } from "../core/format";
 
 // --- TIPOVI ---
 
@@ -326,6 +327,10 @@ let previewShownCount = 0;
 let previewCanLoadMore = false;
 
 let previewToastTimer: number | null = null;
+
+let previewOriginalOoxml: string | null = null;
+let previewConvertedOoxml: string | null = null;
+let previewOoxmlOptsSnapJson: string | null = null;
 
 // --- INIT ---
 
@@ -689,6 +694,35 @@ async function applyFromPreview(scope: "selection" | "document") {
                     showModalInfo("Greška", "Selektovan je samo prazan prostor (razmaci).");
                     return;
                 }
+
+                // ==========================================
+                // PREVIEW CACHE APPLY (selection)
+                // - primeni tačno ono što je prikazano u preview-u
+                // - samo ako se opcije nisu promenile
+                // ==========================================
+                if (previewConvertedOoxml && previewOoxmlOptsSnapJson) {
+                    const currentOpts = getOoxmlOptionsFromUi();
+                    const currentJson = JSON.stringify(currentOpts);
+
+                    if (currentJson === previewOoxmlOptsSnapJson) {
+                        setStatus("Primena pregleda (bez ponovne konverzije)...", "info");
+
+                        range.insertOoxml(previewConvertedOoxml, Word.InsertLocation.replace);
+                        await context.sync();
+
+                        setStatus("Završeno (primenjen preview).", "success");
+
+                        // (opciono) ažuriraj stats (nemamo timing jer nismo konvertovali sada)
+                        lastStatsTitle = `Statistika: ${previewTypeText || "Primena pregleda"}`;
+                        lastStatsText =
+                            `Opseg: Selekcija (primenjen preview)\n` +
+                            `Napomena: konverzija nije ponovo rađena (OOXML iz preview-a).`;
+
+                        refreshStats();
+                        return;
+                    }
+                }
+                // Ako cache nije validan -> nastavljamo na “fallback” (ponovna konverzija)
             } else {
                 // Whole document apply (iz preview-a)
 
@@ -707,6 +741,7 @@ async function applyFromPreview(scope: "selection" | "document") {
                 range = context.document.body.getRange("Whole");
             }
 
+            // Fallback put (selection bez validnog cache-a) ili document body
             setStatus("Obrada u toku...", "info");
 
             const ooxml = range.getOoxml();
@@ -751,29 +786,6 @@ function normalizeWeirdBreaks(s: string): string {
 
 function normalizeNewlines(s: string): string {
     return normalizeWeirdBreaks(s).replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-}
-
-function formatSerbianDates(text: string): string {
-    let out = text.replace(/\b(\d{1,2})\/(\d{1,2})\/(\d{4})\b/g, "$2.$1.$3.");
-    out = out.replace(/\b(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})\.?/g, "$1.$2.$3.");
-    out = out.replace(/\b(\d{1,2})\.\s*(\d{1,2})\.(?!\d)/g, "$1.$2.");
-    return out;
-}
-
-function toAscii(text: string): string {
-    const map: Record<string, string> = {
-        č: "c",
-        ć: "c",
-        š: "s",
-        đ: "dj",
-        ž: "z",
-        Č: "C",
-        Ć: "C",
-        Š: "S",
-        Đ: "Dj",
-        Ž: "Z",
-    };
-    return text.replace(/[čćšđžČĆŠĐŽ]/g, (m) => map[m]!);
 }
 
 function convertTextForPreviewPlain(input: string, s: UiSettings): { out: string; type: string } {
@@ -892,6 +904,11 @@ async function runPreview() {
                 const origText = extractTextFromWordOoxml(originalOoxml);
 
                 const converted = convertOoxml(originalOoxml, opts);
+
+                previewOriginalOoxml = originalOoxml;
+                previewConvertedOoxml = converted.xml;
+                previewOoxmlOptsSnapJson = JSON.stringify(opts);
+
                 const convText = extractTextFromWordOoxml(converted.xml);
 
                 const a = normalizeNewlines(origText);
@@ -1305,6 +1322,10 @@ function changeProfile(profile: ProfilePreset) {
     renderTags();
     saveSettings();
 
+    previewOriginalOoxml = null;
+    previewConvertedOoxml = null;
+    previewOoxmlOptsSnapJson = null;
+
     const displayName = PROFILE_NAMES[profile] || profile;
     setStatus(`Profil promenjen na: ${displayName}`, "info");
 
@@ -1336,6 +1357,10 @@ function setupInputListeners() {
         if (!el) return;
 
         el.onchange = () => {
+            previewOriginalOoxml = null;
+            previewConvertedOoxml = null;
+            previewOoxmlOptsSnapJson = null;
+
             if (!isApplyingProfile) switchToCustomIfManual();
             else saveSettings();
 
