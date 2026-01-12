@@ -7,6 +7,7 @@ import { convertPlainText, Direction } from "../core/textCore";
 import { removeMultipleSpaces } from "../core/utils";
 import { createInitialCodeState, transformTextRespectingCode } from "../shared/ooxml/code";
 import { formatSerbianDates, toAscii } from "../core/format";
+import { myersDiff, type DiffOp } from "../shared/diff";
 
 // --- TIPOVI ---
 
@@ -2038,8 +2039,6 @@ function resetModalButtons() {
    - NE OBELEŽAVA WHITESPACE-ONLY PROMENE
    ========================= */
 
-type DiffOp = { type: "equal" | "insert" | "delete"; value: string };
-
 function tokenizeForDiff(text: string): string[] {
     // isti split kao tvoj generateDiffHtml
     const splitRegex = /([^\s\w\u0400-\u04FF\u0100-\u017F]+|\s+)/;
@@ -2048,93 +2047,6 @@ function tokenizeForDiff(text: string): string[] {
 
 function isWhitespaceToken(s: string): boolean {
     return /^\s+$/u.test(s);
-}
-
-// Minimal Myers diff za niz tokena (string[])
-function myersDiff(a: string[], b: string[]): DiffOp[] {
-    const n = a.length;
-    const m = b.length;
-    const max = n + m;
-
-    // v[k] = x; k je pomeren za +max
-    const v: number[] = new Array(2 * max + 1).fill(0);
-    const trace: number[][] = [];
-
-    for (let d = 0; d <= max; d++) {
-        trace.push(v.slice());
-
-        for (let k = -d; k <= d; k += 2) {
-            const km = k + max;
-
-            let x: number;
-            if (k === -d || (k !== d && v[km - 1] < v[km + 1])) {
-                // insert (down)
-                x = v[km + 1];
-            } else {
-                // delete (right)
-                x = v[km - 1] + 1;
-            }
-
-            let y = x - k;
-
-            // snake
-            while (x < n && y < m && a[x] === b[y]) {
-                x++;
-                y++;
-            }
-
-            v[km] = x;
-
-            if (x >= n && y >= m) {
-                // reconstruct
-                const ops: DiffOp[] = [];
-                let curX = n;
-                let curY = m;
-
-                for (let dd = d; dd >= 0; dd--) {
-                    const vv = trace[dd]!;
-                    const kk = curX - curY;
-                    const kkm = kk + max;
-
-                    let prevK: number;
-                    if (kk === -dd || (kk !== dd && vv[kkm - 1] < vv[kkm + 1])) {
-                        prevK = kk + 1; // came from down => insert
-                    } else {
-                        prevK = kk - 1; // came from right => delete
-                    }
-
-                    const prevX = vv[prevK + max]!;
-                    const prevY = prevX - prevK;
-
-                    // snake (equal)
-                    while (curX > prevX && curY > prevY) {
-                        ops.push({ type: "equal", value: a[curX - 1]! });
-                        curX--;
-                        curY--;
-                    }
-
-                    if (dd === 0) break;
-
-                    // edit step
-                    if (curX === prevX) {
-                        // insert
-                        ops.push({ type: "insert", value: b[curY - 1]! });
-                        curY--;
-                    } else {
-                        // delete
-                        ops.push({ type: "delete", value: a[curX - 1]! });
-                        curX--;
-                    }
-                }
-
-                ops.reverse();
-                return ops;
-            }
-        }
-    }
-
-    // fallback (ne bi trebalo)
-    return [{ type: "equal", value: b.join("") }];
 }
 
 function renderSideBySideWithHighlights(oldText: string, newText: string): string {
