@@ -15,6 +15,9 @@ import { createInitialCodeState, createInitialCodeParseStats, transformTextRespe
 import { removeMultipleSpaces } from "../../core/utils";
 import { bridgeSpacesAcrossTextNodes } from "./bridge/bridgeSpaces";
 
+import { formatSerbianDates, toAscii } from "../../core/format";
+import { isTokenChar } from "./common";
+
 export interface OoxmlOptions extends CoreOptions {
     direction?: Direction | "auto" | "to-ascii";
     setProofingLanguage?: boolean;
@@ -53,22 +56,6 @@ function countMatches(text: string, re: RegExp): number {
     let c = 0;
     while (re.exec(text)) c++;
     return c;
-}
-
-function toAscii(text: string): string {
-    const map: Record<string, string> = {
-        č: "c",
-        ć: "c",
-        š: "s",
-        đ: "dj",
-        ž: "z",
-        Č: "C",
-        Ć: "C",
-        Š: "S",
-        Đ: "Dj",
-        Ž: "Z",
-    };
-    return text.replace(/[čćšđžČĆŠĐŽ]/g, (match) => map[match]!);
 }
 
 const ROMAN_REGEX_STRICT =
@@ -142,13 +129,6 @@ const ROMAN_I_PREFIXES = [
 
 const ROMAN_I_REGEX = new RegExp(`\\b(${ROMAN_I_PREFIXES.join("|")})\\s+I\\b`, "g");
 
-function formatSerbianDates(text: string): string {
-    let out = text.replace(/\b(\d{1,2})\/(\d{1,2})\/(\d{4})\b/g, "$2.$1.$3.");
-    out = out.replace(/\b(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})\.?/g, "$1.$2.$3.");
-    out = out.replace(/\b(\d{1,2})\.\s*(\d{1,2})\.(?!\d)/g, "$1.$2.");
-    return out;
-}
-
 /* =========================
    PROOFING LANGUAGE (per word, preserve unchanged)
    ========================= */
@@ -163,27 +143,6 @@ function findAncestor(el: Element, localName: string): Element | null {
         cur = cur.parentElement;
     }
     return null;
-}
-
-// “token chars” (slično kao u core-u / common.ts), da Node.js/iPhone ostanu jedna “reč”
-function isTokenChar(ch: string): boolean {
-    if (!ch) return false;
-    if (/\p{L}|\p{N}/u.test(ch)) return true;
-    return (
-        ch === "." ||
-        ch === "+" ||
-        ch === "#" ||
-        ch === "_" ||
-        ch === "/" ||
-        ch === "-" ||
-        ch === "‑" ||
-        ch === "‐" ||
-        ch === "‒" ||
-        ch === "–" ||
-        ch === "—" ||
-        ch === "'" ||
-        ch === "’"
-    );
 }
 
 type WordSpan = { startCp: number; endCp: number; text: string };

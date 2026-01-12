@@ -11,8 +11,7 @@ describe("removeMultipleSpaces", () => {
     it("ne dozvoljava više od 2 prazne linije", () => {
         expect(removeMultipleSpaces("a\n\n\n\nb")).toBe("a\n\nb");
     });
-    it("ne dira kod blokove (integracioni test u projektu)", () => {
-        // Ovaj test je više za integraciju, ali ovde pokazuje da ne dira backtick
+    it("normalizuje razmake čak i unutar backticks (removeMultipleSpaces ne poštuje code blocks)", () => {
         expect(removeMultipleSpaces("Kod: `console.log(  \"Test\"  )`")).toBe('Kod: `console.log( "Test" )`');
     });
 });
