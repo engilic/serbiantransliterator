@@ -93,6 +93,14 @@ export function collectProtectedRanges(text: string, opts: ProtectOptions): Rang
         ranges
     );
 
+    addRangesFromRegex(text, /\bsip:[^\s<>"')]+/giu, ranges);
+    addRangesFromRegex(text, /\bsms:[^\s<>"')]+/giu, ranges);
+    addRangesFromRegex(text, /\bgeo:[^\s<>"')]+/giu, ranges);
+    addRangesFromRegex(text, /\bskype:[^\s<>"')]+/giu, ranges);
+    addRangesFromRegex(text, /\bteams:[^\s<>"')]+/giu, ranges);
+    // opcionalno (ako ti treba):
+    addRangesFromRegex(text, /\bmsteams:[^\s<>"')]+/giu, ranges);
+
     // 3) Putanje (Windows/UNC/Unix)
     addRangesFromRegex(text, /\b[a-zA-Z0-9]+:\\[^\r\n<>:"|?*]+/g, ranges); // C:\..., Cert:\...
     addRangesFromRegex(text, /\\\\[a-zA-Z0-9.-]+\\[^\r\n<>:"|?*]+/g, ranges); // \\Server\Share

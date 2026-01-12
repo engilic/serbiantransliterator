@@ -15,6 +15,13 @@ const LINK_PATTERNS: RegExp[] = [
     // NEW:
     /^(mailto:[^\s<>"')]+)/iu,
     /^(tel:\+?[0-9][0-9().-]{5,}(?:;[a-z0-9-]+=[a-z0-9._+~:%-]+)*)/iu,
+
+    /^(sip:[^\s<>"')]+)/iu,
+    /^(sms:[^\s<>"')]+)/iu,
+    /^(geo:[^\s<>"')]+)/iu,
+    /^(skype:[^\s<>"')]+)/iu,
+    /^(teams:[^\s<>"')]+)/iu,
+    /^(msteams:[^\s<>"')]+)/iu,
 ];
 
 function trimLinkEnd(s: string): string {
@@ -108,7 +115,14 @@ export function bridgeLinksAcrossTextNodes(textNodes: Element[]): number {
             fragLower.startsWith("www.") ||
             fragLower.startsWith("mailto:") ||
             fragLower.startsWith("tel:") ||
+            fragLower.startsWith("sip:") ||
+            fragLower.startsWith("sms:") ||
+            fragLower.startsWith("geo:") ||
+            fragLower.startsWith("skype:") ||
+            fragLower.startsWith("teams:") ||
+            fragLower.startsWith("msteams:") ||
             fragLower.includes("@");
+
 
         if (!looksLikeStart) continue;
 
