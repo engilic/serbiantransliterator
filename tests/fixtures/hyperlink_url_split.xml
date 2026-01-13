@@ -1,0 +1,12 @@
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:p>
+      <w:r><w:t>Link: </w:t></w:r>
+      <w:hyperlink w:anchor="_Toc1">
+        <w:r><w:t>https://exa</w:t></w:r>
+        <w:r><w:t>mple.com/test</w:t></w:r>
+      </w:hyperlink>
+      <w:r><w:t> kraj</w:t></w:r>
+    </w:p>
+  </w:body>
+</w:document>
