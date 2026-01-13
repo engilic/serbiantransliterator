@@ -13,3 +13,8 @@ describe("shared/transliterator exports", () => {
     expect(r.xml).toContain("Здраво");
   });
 });
+
+it("module smoke: exporti postoje", async () => {
+    const mod = await import("../src/shared/transliterator");
+    expect(typeof mod.convertOoxml).toBe("function");
+});
