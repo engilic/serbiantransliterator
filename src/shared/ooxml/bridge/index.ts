@@ -10,6 +10,7 @@ export {
     type PhraseInfo
 } from "./lexical/phrases";
 export { bridgeDigraphsAcrossTextNodes } from "./lexical/digraphs";
+export { bridgeRomanContextAcrossTextNodes } from "./lexical/romansContext";
 
 // Structural bridges
 export { bridgeSpacesAcrossTextNodes } from "./structural/spaces";
