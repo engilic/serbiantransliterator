@@ -17,10 +17,14 @@ describe("phraseInfos + phrase bridging - coverage", () => {
       "Local   Storage",
     ]);
 
+    // empty/whitespace-only otpada => ostaju 2
     expect(infos.length).toBe(2);
+
+    // normalizacija whitespace
     expect(infos.some((x) => x.raw === "Save As")).toBe(true);
     expect(infos.some((x) => x.raw === "Local Storage")).toBe(true);
 
+    // sort: duža fraza prva
     expect(infos[0]!.raw).toBe("Local Storage");
     expect(infos[1]!.raw).toBe("Save As");
   });
