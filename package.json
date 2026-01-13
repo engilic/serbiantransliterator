@@ -19,7 +19,7 @@
         "test": "cross-env VITE_CJS_IGNORE_WARNING=1 vitest run",
         "test:watch": "cross-env VITE_CJS_IGNORE_WARNING=1 vitest",
         "test:coverage": "cross-env VITE_CJS_IGNORE_WARNING=1 vitest run --coverage",
-        "lint": "eslint src/**/*.ts",
+        "lint": "eslint src/**/*.ts --max-warnings 0",
         "lint:fix": "eslint src/**/*.ts --fix",
         "typecheck": "tsc --noEmit",
         "clean": "rimraf dist",
