@@ -1,16 +1,18 @@
 ﻿/**
- * Brand type za HTML koji je prošao sanitizaciju.
- * TypeScript sprečava da se obični string prosledi kao SafeHtml.
+ * Runtime-safe SafeHtml.
+ *
+ * Cilj:
+ * - TypeScript da spreči da običan string ide u innerHTML pipeline
+ * - Runtime marker (Symbol) da spreči “lažno trusted” stringove
  */
-export type SafeHtml = string & { readonly __brand: unique symbol };
 
-/**
- * Escape HTML special karaktera da spreči XSS.
- * 
- * @example
- * escapeHtml("<script>alert(1)</script>")
- * // Returns: "&lt;script&gt;alert(1)&lt;/script&gt;"
- */
+const SAFE_HTML = Symbol("SafeHtml");
+
+export type SafeHtml = {
+    readonly [SAFE_HTML]: true;
+    readonly html: string;
+};
+
 export function escapeHtml(unsafe: string): string {
     return (unsafe ?? "")
         .replace(/&/g, "&amp;")
@@ -20,58 +22,46 @@ export function escapeHtml(unsafe: string): string {
         .replace(/'/g, "&#039;");
 }
 
+function isSafeHtml(value: unknown): value is SafeHtml {
+    return (
+        typeof value === "object" &&
+        value !== null &&
+        (value as Record<string | symbol, unknown>)[SAFE_HTML] === true &&
+        typeof (value as { html?: unknown }).html === "string"
+    );
+}
+
 /**
  * Tagged template literal za kreiranje sanitizovanog HTML-a.
  * Svi interpolirani stringovi se automatski escape-uju.
- * 
- * @example
- * const userName = getUserInput(); // može biti "<script>alert(1)</script>"
- * const safe = html`Korisnik <b>${userName}</b> je ulogovan.`;
- * // Rezultat: "Korisnik <b>&lt;script&gt;alert(1)&lt;/script&gt;</b> je ulogovan."
  */
 export function html(strings: TemplateStringsArray, ...values: unknown[]): SafeHtml {
     let result = strings[0] ?? "";
 
     for (let i = 0; i < values.length; i++) {
-        const value = values[i];
+        const v = values[i];
 
-        // Ako je već SafeHtml, ne escape-uj
-        if (isSafeHtml(value)) {
-            result += value;
+        if (isSafeHtml(v)) {
+            result += v.html;
         } else {
-            // Sve ostalo (string, number, null, undefined) escape-uj
-            result += escapeHtml(String(value ?? ""));
+            result += escapeHtml(String(v ?? ""));
         }
 
         result += strings[i + 1] ?? "";
     }
 
-    return result as SafeHtml;
-}
-
-/**
- * Type guard za proveru da li je string već SafeHtml.
- */
-function isSafeHtml(value: unknown): value is SafeHtml {
-    // U runtime-u, SafeHtml je obični string, pa samo proveravamo da li je string
-    // TypeScript koristi strukturu za compile-time provere
-    return typeof value === "string";
+    return { [SAFE_HTML]: true, html: result };
 }
 
 /**
  * Wrapper za hardcoded HTML koji znamo da je bezbedan.
- * OPASNO: Koristi SAMO za statički HTML iz koda, NIKAD za user input!
- * 
- * @example
- * const safe = unsafeHtml("<b>Ovo je bezbedan statički HTML</b>");
+ * OPASNO: koristi SAMO za statički HTML iz koda, NIKAD za user input!
  */
 export function unsafeHtml(trustedHtml: string): SafeHtml {
-    return trustedHtml as SafeHtml;
+    return { [SAFE_HTML]: true, html: trustedHtml };
 }
 
-/**
- * Konvertuje SafeHtml nazad u običan string (za DOM operacije).
- */
+/** Konvertuje SafeHtml nazad u običan string (za DOM operacije). */
 export function unwrapHtml(safe: SafeHtml): string {
-    return safe as string;
+    return safe.html;
 }

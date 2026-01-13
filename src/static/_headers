@@ -2,7 +2,18 @@
   Access-Control-Allow-Origin: *
   X-Frame-Options: ALLOWALL
   X-Content-Type-Options: nosniff
-  Content-Security-Policy: frame-ancestors https://*.office.com https://*.officeapps.live.com https://*.microsoft.com https://*.sharepoint.com https://*.sharepoint-df.com;
+  Referrer-Policy: no-referrer
+  Permissions-Policy: clipboard-read=(self), clipboard-write=(self)
+
+  Content-Security-Policy: default-src 'self'; \
+    script-src 'self' https://appsforoffice.microsoft.com; \
+    style-src 'self' 'unsafe-inline'; \
+    img-src 'self' data:; \
+    font-src 'self'; \
+    connect-src 'self'; \
+    object-src 'none'; \
+    base-uri 'none'; \
+    frame-ancestors https://*.office.com https://*.officeapps.live.com https://*.microsoft.com https://*.sharepoint.com https://*.sharepoint-df.com;
 
 /assets/*
   Cache-Control: public, max-age=3600
