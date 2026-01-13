@@ -14,6 +14,7 @@ import {
     bridgePhrasesAcrossTextNodes,
     bridgeDigraphsAcrossTextNodes,
     bridgeSpacesAcrossTextNodes,
+    bridgeRomanContextAcrossTextNodes,
     markCyrAllCapsDigraphHints,
     LAT_ALLCAPS_HINT,
 } from "./bridge/index";
@@ -444,6 +445,10 @@ export function convertOoxml(
         bridges.digraphs = bridgeDigraphsAcrossTextNodes(textNodes);
 
         if (doProtectRomans) {
+            // NEW: spaja "V" + " vek" (i slične slučajeve) preko <w:t> granice,
+            // da core zaštita rimskih brojeva radi i kad je Word splitovao run-ove.
+            bridgeRomanContextAcrossTextNodes(textNodes);
+
             const strictMatches = fullText.match(ROMAN_REGEX_STRICT) || [];
             const uniqueStrict = [...new Set(strictMatches)];
             if (uniqueStrict.length > 0) {
