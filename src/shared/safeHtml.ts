@@ -24,7 +24,11 @@ export function escapeHtml(unsafe: string): string {
 }
 
 function isSafeHtml(value: unknown): value is SafeHtml {
-    return !!value && typeof value === "object" && "__html" in (value as any);
+    if (!value || typeof value !== "object") return false;
+
+    // eslint: nema `any`, koristimo unknown property
+    const v = value as { __html?: unknown };
+    return typeof v.__html === "string";
 }
 
 /**
