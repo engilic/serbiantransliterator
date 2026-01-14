@@ -6,10 +6,7 @@
         "sourceType": "module"
     },
     "plugins": [ "office-addins", "@typescript-eslint" ],
-    "extends": [
-        "plugin:office-addins/recommended",
-        "plugin:@typescript-eslint/recommended"
-    ],
+    "extends": [ "plugin:office-addins/recommended", "plugin:@typescript-eslint/recommended" ],
     "env": {
         "browser": true,
         "es2021": true,
@@ -31,7 +28,7 @@
     },
     "overrides": [
         {
-            "files": [ "src/taskpane/taskpane.ts" ],
+            "files": [ "src/taskpane/**/*.ts" ],
             "rules": {
                 "office-addins/load-object-before-read": "off",
                 "no-control-regex": "off",
