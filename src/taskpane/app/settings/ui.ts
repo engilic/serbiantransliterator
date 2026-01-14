@@ -7,281 +7,24 @@ import { state } from "../state";
 import { setStatus, refreshStats } from "../status";
 import { invalidatePreviewCache } from "../preview/cache";
 import { confirmInPanel } from "../modal/modal";
-import { unsafeHtml, escapeHtml } from "../../../shared/safeHtml";
+import { unsafeHtml } from "../../../shared/safeHtml";
 
 import { runWithUiLock } from "../uiLock";
 import { runSmart } from "../word/apply";
 import { runPreview } from "../preview/runPreview";
 
 import { getSettingsFromUi } from "./getters";
+import { loadSettingsFromStorage, saveSettingsToStorage } from "./store";
+import { DEFAULT_SETTINGS, PROFILE_NAMES, PRESETS, SETTINGS_KEY } from "./defaults";
 
-/* =========================
-   SETTINGS CONSTANTS
-   ========================= */
-
-const SETTINGS_KEY = "serbiantransliterator.settings.v2";
-
-const DEFAULT_SETTINGS: UiSettings = {
-    schemaVersion: 2,
-
-    profile: "custom",
-    userWordsCustom: [],
-
-    confirmWholeDoc: true,
-    includeHeadersFooters: false,
-    includeFootnotes: false,
-    includeEndnotes: false,
-
-    direction: "auto",
-
-    protectBrands: true,
-    preserveCodeBlocks: true,
-    protectRomans: true,
-
-    applySerbianQuotes: true,
-    fixDoubleSpaces: true,
-    formatDates: true,
-
-    setProofingLanguage: true,
-
-    showStats: false,
-};
-
-const PROFILE_NAMES: Record<string, string> = {
-    custom: "Ručno",
-    it: "IT / Tehnologija",
-    finance: "Finansije / Bankarstvo",
-    medical: "Medicina / Farmacija",
-    legal: "Pravo / Administracija",
-    marketing: "Marketing / Društvene mreže",
-    journalism: "Novinarstvo / Mediji",
-};
-
-const PRESETS: Record<string, Partial<UiSettings> & { userWords: string[] }> = {
-    it: {
-        direction: "auto",
-        protectBrands: true,
-        applySerbianQuotes: false,
-        preserveCodeBlocks: true,
-        setProofingLanguage: true,
-        protectRomans: true,
-        fixDoubleSpaces: false,
-        formatDates: true,
-        confirmWholeDoc: true,
-        userWords: [
-            "Git",
-            "GitHub",
-            "GitLab",
-            "Azure",
-            "AWS",
-            "GCP",
-            "DevOps",
-            "Docker",
-            "Kubernetes",
-            "CI/CD",
-            "YAML",
-            "REST",
-            "GraphQL",
-            "PowerShell",
-            "VS Code",
-            "Visual Studio",
-            "Windows Server",
-            "Linux",
-            "SerbianTransliterator",
-            "Python",
-            "JavaScript",
-            "Typescript",
-            "Node.js",
-            "React",
-            "Angular",
-            "Vue",
-            "Frontend",
-            "Backend",
-            "Fullstack",
-            "Database",
-            "Cache",
-            "Cookie",
-            "Token",
-            "API",
-            "Endpoint",
-        ],
-    },
-    finance: {
-        direction: "auto",
-        protectBrands: true,
-        applySerbianQuotes: true,
-        preserveCodeBlocks: true,
-        setProofingLanguage: true,
-        protectRomans: true,
-        fixDoubleSpaces: true,
-        formatDates: true,
-        confirmWholeDoc: true,
-        userWords: [
-            "SWIFT",
-            "IBAN",
-            "EUR",
-            "USD",
-            "RSD",
-            "CHF",
-            "GBP",
-            "MasterCard",
-            "Visa",
-            "PayPal",
-            "Intesa",
-            "Raiffeisen",
-            "OTP",
-            "NLB",
-            "AIK",
-            "Erste",
-            "UniCredit",
-            "Western Union",
-            "E-banking",
-            "M-banking",
-            "Leasing",
-            "Factoring",
-            "Equity",
-            "Forex",
-        ],
-    },
-    medical: {
-        direction: "auto",
-        protectBrands: true,
-        applySerbianQuotes: true,
-        preserveCodeBlocks: true,
-        setProofingLanguage: true,
-        protectRomans: true,
-        fixDoubleSpaces: false,
-        formatDates: true,
-        confirmWholeDoc: true,
-        userWords: [
-            "mg",
-            "ml",
-            "kg",
-            "Covid",
-            "SARS",
-            "Hemofarm",
-            "Galenika",
-            "Pfizer",
-            "Actavis",
-            "Alkaloid",
-            "Bayer",
-            "Roche",
-            "Stada",
-            "Anamnesis",
-            "Diagnosis",
-            "Therapia",
-            "CT",
-            "MRI",
-            "EKG",
-            "EEG",
-            "In vitro",
-            "In vivo",
-        ],
-    },
-    marketing: {
-        direction: "auto",
-        protectBrands: true,
-        applySerbianQuotes: true,
-        preserveCodeBlocks: true,
-        setProofingLanguage: true,
-        protectRomans: true,
-        fixDoubleSpaces: true,
-        formatDates: false,
-        confirmWholeDoc: true,
-        userWords: [
-            "Facebook",
-            "Instagram",
-            "LinkedIn",
-            "TikTok",
-            "Twitter",
-            "X",
-            "YouTube",
-            "Google",
-            "SEO",
-            "PR",
-            "Copywriter",
-            "Content",
-            "Ads",
-            "Influencer",
-            "Giveaway",
-            "Hashtag",
-            "Story",
-            "Reel",
-            "Post",
-            "Follow",
-            "Like",
-            "Share",
-            "Subscribe",
-            "Timeline",
-            "Feed",
-        ],
-    },
-    legal: {
-        direction: "auto",
-        protectBrands: true,
-        applySerbianQuotes: true,
-        preserveCodeBlocks: true,
-        setProofingLanguage: true,
-        protectRomans: true,
-        fixDoubleSpaces: true,
-        formatDates: true,
-        confirmWholeDoc: true,
-        userWords: [
-            "Ustav Republike Srbije",
-            "Zakon o obligacionim odnosima",
-            "Zakon o radu",
-            "Ministarstvo pravde",
-            "Privredni sud",
-            "Advokatska komora Srbije",
-            "Službeni glasnik",
-            "Bona fide",
-            "De facto",
-            "Ex officio",
-            "Copyright",
-            "Trademark",
-            "Disclaimer",
-            "Policy",
-            "Terms",
-            "Conditions",
-            "GDPR",
-        ],
-    },
-    journalism: {
-        direction: "auto",
-        protectBrands: true,
-        applySerbianQuotes: true,
-        preserveCodeBlocks: true,
-        setProofingLanguage: true,
-        protectRomans: true,
-        fixDoubleSpaces: true,
-        formatDates: true,
-        confirmWholeDoc: true,
-        userWords: [
-            "Reuters",
-            "Associated Press",
-            "BBC",
-            "CNN",
-            "Euronews",
-            "N1",
-            "RTS",
-            "Tanjug",
-            "NBA",
-            "UEFA",
-            "FIFA",
-            "FIBA",
-            "ATP",
-            "WTA",
-            "Olimpijske igre",
-        ],
-    },
-};
+import { renderTags, setupTagEvents } from "./tags";
 
 /* =========================
    Public: initUi()
    ========================= */
 
 export function initUi() {
-    const settings = loadSettings() || DEFAULT_SETTINGS;
+    const settings = loadSettingsFromStorage(SETTINGS_KEY, DEFAULT_SETTINGS) || DEFAULT_SETTINGS;
 
     state.customWordsSet = new Set(settings.userWordsCustom);
     state.presetWordsSet =
@@ -290,6 +33,14 @@ export function initUi() {
             : new Set();
 
     state.currentProfile = settings.profile;
+
+    // Tag events (callbacks) – mora pre korisničke interakcije
+    setupTagEvents({
+        invalidatePreviewCache,
+        switchToCustomIfManual,
+        saveSettings,
+        updateResetButtonState,
+    });
 
     state.isApplyingProfile = true;
     applySettingsToUi(settings);
@@ -315,7 +66,6 @@ export function initUi() {
         if (ok) resetSettings();
     };
 
-    setupTagEvents();
     setupInputListeners();
 
     (document.getElementById("profilePreset") as HTMLSelectElement).onchange = (e) => {
@@ -333,21 +83,8 @@ export function initUi() {
 
 function saveSettings() {
     const s = getSettingsFromUi();
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+    saveSettingsToStorage(SETTINGS_KEY, s);
     updateResetButtonState();
-}
-
-function loadSettings(): UiSettings | null {
-    const raw = localStorage.getItem(SETTINGS_KEY);
-    if (!raw) return null;
-
-    try {
-        const parsed = JSON.parse(raw);
-        const merged: UiSettings = { ...DEFAULT_SETTINGS, ...parsed, schemaVersion: 2 };
-        return merged.schemaVersion === 2 ? merged : null;
-    } catch {
-        return null;
-    }
 }
 
 function resetSettings() {
@@ -555,7 +292,7 @@ function handleFileImport(e: Event) {
             }
 
             const newSettings: UiSettings = { ...DEFAULT_SETTINGS, ...parsed, schemaVersion: 2 };
-            localStorage.setItem(SETTINGS_KEY, JSON.stringify(newSettings));
+            saveSettingsToStorage(SETTINGS_KEY, newSettings);
 
             initUi();
             invalidatePreviewCache();
@@ -566,122 +303,6 @@ function handleFileImport(e: Event) {
         input.value = "";
     };
     reader.readAsText(input.files[0]);
-}
-
-/* =========================
-   Tags UI
-   ========================= */
-
-function setupTagEvents() {
-    const input = document.getElementById("tagInput") as HTMLInputElement;
-    const addBtn = document.getElementById("addTagBtn") as HTMLButtonElement;
-    const container = document.getElementById("tagsContainer") as HTMLDivElement;
-    const tagsList = document.getElementById("tagsList") as HTMLDivElement;
-
-    addBtn.disabled = true;
-
-    container.onclick = (e) => {
-        if (e.target === container || e.target === tagsList) input.focus();
-    };
-
-    input.onkeydown = (e) => {
-        if (e.key === "Enter") {
-            e.preventDefault();
-            addTag();
-        }
-    };
-
-    addBtn.onclick = () => {
-        addTag();
-        input.focus();
-    };
-
-    input.oninput = () => {
-        const val = input.value.trim();
-        const exists = state.customWordsSet.has(val) || state.presetWordsSet.has(val);
-        addBtn.disabled = val.length === 0 || exists;
-    };
-
-    (document.getElementById("clearCustomBtn") as HTMLButtonElement).onclick = () => clearTags("custom");
-    (document.getElementById("clearPresetBtn") as HTMLButtonElement).onclick = () => clearTags("preset");
-    (document.getElementById("clearAllBtn") as HTMLButtonElement).onclick = () => clearTags("all");
-}
-
-function addTag() {
-    const input = document.getElementById("tagInput") as HTMLInputElement;
-    const addBtn = document.getElementById("addTagBtn") as HTMLButtonElement;
-    const val = input.value.trim();
-    if (!val) return;
-
-    if (state.presetWordsSet.has(val)) {
-        input.value = "";
-        addBtn.disabled = true;
-        return;
-    }
-
-    state.customWordsSet.add(val);
-    invalidatePreviewCache();
-    input.value = "";
-    addBtn.disabled = true;
-
-    renderTags();
-    switchToCustomIfManual();
-    updateTagsButtonsState();
-}
-
-function removeTag(word: string, type: "custom" | "preset") {
-    if (type === "custom") state.customWordsSet.delete(word);
-    else state.presetWordsSet.delete(word);
-
-    invalidatePreviewCache();
-
-    renderTags();
-    switchToCustomIfManual();
-    updateTagsButtonsState();
-}
-
-function clearTags(scope: "custom" | "preset" | "all") {
-    if (scope === "custom" || scope === "all") state.customWordsSet.clear();
-    if (scope === "preset" || scope === "all") state.presetWordsSet.clear();
-
-    invalidatePreviewCache();
-
-    renderTags();
-    switchToCustomIfManual();
-    updateTagsButtonsState();
-}
-
-function renderTags() {
-    const container = document.getElementById("tagsList") as HTMLDivElement;
-    container.innerHTML = "";
-
-    const customSorted = Array.from(state.customWordsSet).sort();
-    const presetSorted = Array.from(state.presetWordsSet).sort();
-
-    customSorted.forEach((word) => container.appendChild(createTagEl(word, "custom")));
-    presetSorted.forEach((word) => container.appendChild(createTagEl(word, "preset")));
-
-    updateTagsButtonsState();
-}
-
-function createTagEl(text: string, type: "custom" | "preset"): HTMLElement {
-    const div = document.createElement("div");
-    div.className = `tag ${type}`;
-    div.innerHTML = `<span>${escapeHtml(text)}</span><span class="tag-remove" title="Ukloni">&times;</span>`;
-
-    div.querySelector(".tag-remove")!.addEventListener("click", (e) => {
-        e.stopPropagation();
-        removeTag(text, type);
-    });
-
-    return div;
-}
-
-function updateTagsButtonsState() {
-    (document.getElementById("clearCustomBtn") as HTMLButtonElement).disabled = state.customWordsSet.size === 0;
-    (document.getElementById("clearPresetBtn") as HTMLButtonElement).disabled = state.presetWordsSet.size === 0;
-    (document.getElementById("clearAllBtn") as HTMLButtonElement).disabled =
-        state.customWordsSet.size === 0 && state.presetWordsSet.size === 0;
 }
 
 /* =========================

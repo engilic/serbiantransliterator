@@ -69,6 +69,7 @@ export async function runSmart() {
                 `Vreme: ${time}ms` +
                 `\nBridges:` +
                 `\n- links: ${result.stats.bridges.links}` +
+                `\n- placeholders: ${result.stats.bridges.placeholders}` +
                 `\n- brandPhrases: ${result.stats.bridges.brandPhrases}` +
                 `\n- brandTokens: ${result.stats.bridges.brandTokens}` +
                 `\n- ambiguousBrandSuffix: ${result.stats.bridges.ambiguousBrandSuffix}` +
@@ -149,13 +150,11 @@ export async function applyFromPreview(scope: "selection" | "document") {
                             return;
                         }
 
+                        // UX fix: bez modala (ne prekidaj flow)
                         invalidatePreviewCache();
-                        showModalInfo(
-                            "Cache je nevažeći",
-                            unsafeHtml(
-                                "Ne mogu da primenim sačuvani preview (selekcija je promenjena ili je cache istekao). " +
-                                "Moguće je da je promenjen tekst ili formatiranje selekcije. Pokrećem ponovnu konverziju."
-                            )
+                        setStatus(
+                            "Cache preview-a ne važi (selekcija/formatiranje promenjeni ili cache istekao). Radim ponovnu konverziju...",
+                            "info"
                         );
                     }
                 }
@@ -177,6 +176,7 @@ export async function applyFromPreview(scope: "selection" | "document") {
                     `Vreme: ${time}ms` +
                     `\nBridges:` +
                     `\n- links: ${result.stats.bridges.links}` +
+                    `\n- placeholders: ${result.stats.bridges.placeholders}` +
                     `\n- brandPhrases: ${result.stats.bridges.brandPhrases}` +
                     `\n- brandTokens: ${result.stats.bridges.brandTokens}` +
                     `\n- ambiguousBrandSuffix: ${result.stats.bridges.ambiguousBrandSuffix}` +
@@ -209,6 +209,7 @@ export async function applyFromPreview(scope: "selection" | "document") {
                 `Vreme: ${time}ms` +
                 `\nBridges:` +
                 `\n- links: ${result.stats.bridges.links}` +
+                `\n- placeholders: ${result.stats.bridges.placeholders}` +
                 `\n- brandPhrases: ${result.stats.bridges.brandPhrases}` +
                 `\n- brandTokens: ${result.stats.bridges.brandTokens}` +
                 `\n- ambiguousBrandSuffix: ${result.stats.bridges.ambiguousBrandSuffix}` +
