@@ -8,6 +8,48 @@ import {
 
 type TokenLowerCps = { s: string; cps: string[]; len: number };
 
+const TOKENS_CACHE_MAX = 120;
+const tokensCache = new Map<string, TokenLowerCps[]>();
+
+function tokensCacheKey(tokensSource: Set<string> | string[], caseSensitive: boolean): string {
+    const arr = Array.isArray(tokensSource) ? tokensSource : Array.from(tokensSource);
+
+    const norm = arr
+        .map((s) => (s ?? "").normalize("NFC"))
+        .filter((s) => s.length > 0)
+        .map((s) => (caseSensitive ? s : normKey(s)));
+
+    const uniqSorted = Array.from(new Set(norm)).sort();
+    return (caseSensitive ? "CS:" : "CI:") + uniqSorted.join("\n");
+}
+
+function getCachedTokenList(tokensSource: Set<string> | string[], caseSensitive: boolean): TokenLowerCps[] {
+    const key = tokensCacheKey(tokensSource, caseSensitive);
+    const hit = tokensCache.get(key);
+    if (hit) return hit;
+
+    const tokens: TokenLowerCps[] = (
+        Array.isArray(tokensSource) ? tokensSource : Array.from(tokensSource)
+    )
+        .map((s) => s.normalize("NFC"))
+        .filter((s) => s.length > 0)
+        .map((token) => {
+            const normalized = caseSensitive ? token : normKey(token);
+            const cps = Array.from(normalized);
+            return { s: normalized, cps, len: cps.length };
+        })
+        .sort((a, b) => b.len - a.len);
+
+    tokensCache.set(key, tokens);
+
+    if (tokensCache.size > TOKENS_CACHE_MAX) {
+        const firstKey = tokensCache.keys().next().value as string | undefined;
+        if (firstKey) tokensCache.delete(firstKey);
+    }
+
+    return tokens;
+}
+
 /**
  * Generički bridging funkcija za tokene (case-sensitive ili insensitive).
  */
@@ -16,18 +58,7 @@ function bridgeTokensAcrossTextNodes(
     tokensSource: Set<string> | string[],
     caseSensitive = false
 ): number {
-    const tokens: TokenLowerCps[] = (
-        Array.isArray(tokensSource)
-            ? tokensSource
-            : Array.from(tokensSource)
-    )
-        .map((s) => s.normalize("NFC"))
-        .filter((s) => s.length > 0)
-        .map((token) => {
-            const normalized = caseSensitive ? token : normKey(token);
-            return { s: normalized, cps: Array.from(normalized), len: Array.from(normalized).length };
-        })
-        .sort((a, b) => b.len - a.len);
+    const tokens = getCachedTokenList(tokensSource, caseSensitive);
 
     if (tokens.length === 0) return 0;
 
