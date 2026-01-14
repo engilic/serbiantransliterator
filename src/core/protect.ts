@@ -1,3 +1,5 @@
+import { EMAIL_RE_G, URL_RE_G } from "../shared/patterns/links";
+
 export type Range = [start: number, end: number];
 
 function escapeRegex(str: string): string {
@@ -79,11 +81,8 @@ export function collectProtectedRanges(text: string, opts: ProtectOptions): Rang
     addRangesFromRegex(text, /<\/?[a-zA-Z0-9]+[^>]*>/g, ranges);
 
     // 2) URL / Email (+ mailto/tel)
-    addRangesFromRegex(text, /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/giu, ranges);
-    addRangesFromRegex(text, /\bhttps?:\/\/[^\s<>"')]+/giu, ranges);
-    addRangesFromRegex(text, /\bftp:\/\/[^\s<>"')]+/giu, ranges);
-    addRangesFromRegex(text, /\bfile:\/\/[^\s<>"')]+/giu, ranges);
-    addRangesFromRegex(text, /\bwww\.[^\s<>"')]+/giu, ranges);
+    addRangesFromRegex(text, EMAIL_RE_G, ranges);
+    addRangesFromRegex(text, URL_RE_G, ranges);
 
     // NEW:
     addRangesFromRegex(text, /\bmailto:[^\s<>"')]+/giu, ranges);
