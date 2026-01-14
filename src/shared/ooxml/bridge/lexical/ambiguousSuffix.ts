@@ -1,6 +1,4 @@
-﻿// src/shared/ooxml/bridge/lexical/ambiguousSuffix.ts
-
-import {
+﻿import {
     findNextNodeWithText,
     trailingTokenFragment,
     isTokenChar,
@@ -13,39 +11,50 @@ import {
     ALWAYS_LATIN_TOKENS_AMBIGUOUS,
 } from "../../../../core/rules";
 
-/**
- * U Word OOXML-u često: <w:t>iPhone</w:t> + <w:t> Pro</w:t>
- * Pošto convertOoxml preslovljava po node-u, "Pro" bi izgubio kontekst.
- *
- * Ovaj bridge spaja " <AMBIG>" iz sledećeg node-a uz STRICT brend token u prethodnom node-u,
- * da bi core (textCore) mogao kontekstualno da zaštiti "Pro/Air/..." uz brend.
- */
-function takeLeadingSpaceAndAmbiguousToken(bRaw: string): { moved: string; remaining: string } | null {
-    const cps = getCpArray(bRaw);
+function isPureNumberToken(s: string): boolean {
+    return /^\d+$/u.test(s);
+}
 
-    // uzmi bar jedan whitespace na početku (normalno razdvajanje reči)
+function isAlphaNumModelToken(s: string): boolean {
+    return /\d/.test(s) && /\p{L}/u.test(s);
+}
+
+type PrefixTake = { moved: string; remaining: string; tokens: string[] };
+
+function takeLeadingWsAndTokenSequence(raw: string, maxTokens: number): PrefixTake | null {
+    const cps = getCpArray(raw);
+
     let i = 0;
     while (i < cps.length && /\s/u.test(cps[i] ?? "")) i++;
     if (i === 0) return null;
 
-    // sada uzmi token-charove kao “reč” (Pro/Air/...)
-    let j = i;
-    while (j < cps.length && isTokenChar(cps[j] ?? "")) j++;
-    if (j === i) return null;
+    const tokens: string[] = [];
+    let cur = i;
+    let movedEnd = 0;
 
-    const token = cps.slice(i, j).join("");
-    const tokenLower = normKey(token);
+    for (let t = 0; t < maxTokens; t++) {
+        const startTok = cur;
+        while (cur < cps.length && isTokenChar(cps[cur] ?? "")) cur++;
+        if (cur === startTok) break;
 
-    if (!ALWAYS_LATIN_TOKENS_AMBIGUOUS.has(tokenLower)) return null;
+        const tok = cps.slice(startTok, cur).join("");
 
-    // boundary posle tokena: sledeći char ne sme biti token-char
-    const nextChar = cps[j] ?? "";
-    if (nextChar && isTokenChar(nextChar)) return null;
+        const afterTok = cps[cur] ?? "";
+        if (afterTok && isTokenChar(afterTok)) return null;
 
-    const moved = cps.slice(0, j).join("");      // whitespace + token
-    const remaining = cps.slice(j).join("");     // ostatak teksta u bNode-u
+        tokens.push(tok);
+        movedEnd = cur;
 
-    return { moved, remaining };
+        const wsStart = cur;
+        while (cur < cps.length && /\s/u.test(cps[cur] ?? "")) cur++;
+        if (cur === wsStart) break;
+    }
+
+    if (tokens.length === 0) return null;
+
+    const moved = cps.slice(0, movedEnd).join("");
+    const remaining = cps.slice(movedEnd).join("");
+    return { moved, remaining, tokens };
 }
 
 export function bridgeAmbiguousBrandSuffixAcrossTextNodes(textNodes: Element[]): number {
@@ -57,39 +66,66 @@ export function bridgeAmbiguousBrandSuffixAcrossTextNodes(textNodes: Element[]):
 
         const aRaw = ((aNode.textContent ?? "")).normalize("NFC");
         if (!aRaw) continue;
-
-        // treba da se završava na token (ne whitespace)
         if (aRaw.trimEnd() !== aRaw) continue;
 
         const fragInfo = trailingTokenFragment(aRaw);
         if (!fragInfo) continue;
 
-        const { frag, startCpIndex } = fragInfo;
-
-        // boundary guard: pre strict tokena ne sme biti token-char (da ne hvatamo "xWindows")
-        const aCps = getCpArray(aRaw);
-        const prevChar = startCpIndex > 0 ? (aCps[startCpIndex - 1] ?? "") : "";
-        if (prevChar && isTokenChar(prevChar)) continue;
-
-        // strict brend na kraju node-a
+        const { frag } = fragInfo;
         const fragLower = normKey(frag);
+
         if (!ALWAYS_LATIN_TOKENS_STRICT.has(fragLower)) continue;
 
-        const j = findNextNodeWithText(textNodes, i + 1);
+        let j = findNextNodeWithText(textNodes, i + 1);
         if (j == null) continue;
 
-        const bNode = textNodes[j];
-        if (!bNode) continue;
+        let movedTotal = "";
+        let sawModel = false;
+        let sawAmbiguous = false;
 
-        const bRaw = ((bNode.textContent ?? "")).normalize("NFC");
-        if (!bRaw) continue;
+        while (j != null) {
+            const bNode = textNodes[j];
+            if (!bNode) break;
 
-        const movedInfo = takeLeadingSpaceAndAmbiguousToken(bRaw);
-        if (!movedInfo) continue;
+            const bRaw = ((bNode.textContent ?? "")).normalize("NFC");
+            if (!bRaw) {
+                j = findNextNodeWithText(textNodes, j + 1);
+                continue;
+            }
 
-        aNode.textContent = aRaw + movedInfo.moved;
-        bNode.textContent = movedInfo.remaining;
-        changed++;
+            const take = takeLeadingWsAndTokenSequence(bRaw, 3);
+            if (!take) break;
+
+            const t1 = take.tokens[0] ?? "";
+            const t1Lower = normKey(t1);
+
+            // Case 1: odmah ambiguous (" Pro", " Max", ...)
+            if (ALWAYS_LATIN_TOKENS_AMBIGUOUS.has(t1Lower)) {
+                movedTotal += take.moved;
+                bNode.textContent = take.remaining;
+                sawAmbiguous = true;
+                changed++;
+                j = findNextNodeWithText(textNodes, j + 1);
+                continue;
+            }
+
+            // Case 2: model token ("14" ili "S23") – uzmi ga samo jednom, pre ambiguous-a
+            const t1IsModel = isPureNumberToken(t1) || isAlphaNumModelToken(t1);
+            if (t1IsModel && !sawModel && !sawAmbiguous) {
+                movedTotal += take.moved;
+                bNode.textContent = take.remaining;
+                sawModel = true;
+                changed++;
+                j = findNextNodeWithText(textNodes, j + 1);
+                continue;
+            }
+
+            break;
+        }
+
+        if (!sawAmbiguous || !movedTotal) continue;
+
+        aNode.textContent = aRaw + movedTotal;
     }
 
     return changed;

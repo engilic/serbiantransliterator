@@ -1,6 +1,4 @@
-﻿// src/core/textCore.ts
-
-import {
+﻿import {
     ALWAYS_LATIN_PHRASES,
     ALWAYS_LATIN_TOKENS_STRICT,
     ALWAYS_LATIN_TOKENS_AMBIGUOUS,
@@ -34,36 +32,35 @@ const SR_ALLOWED = new Set(
 const STRONG_FOREIGN = /[QWXYqwxy]/;
 
 const ROMAN = /^[IVXLCDM]+$/;
-const RULERS = new Set(
-    [
-        "petar",
-        "aleksandar",
-        "nikola",
-        "milan",
-        "đorđe",
-        "jovan",
-        "uroš",
-        "stefan",
-        "lazar",
-        "luj",
-        "čarls",
-        "elizabeta",
-        "filip",
-        "papa",
-        "pavle",
-        "patrijarh",
-        "tom",
-        "grupa",
-        "zona",
-        "korpus",
-        "armija",
-        "deo",
-        "knjiga",
-        "stav",
-        "član",
-        "sprat",
-    ]
-);
+const RULERS = new Set([
+    "petar",
+    "aleksandar",
+    "nikola",
+    "milan",
+    "đorđe",
+    "jovan",
+    "uroš",
+    "stefan",
+    "lazar",
+    "luj",
+    "čarls",
+    "elizabeta",
+    "filip",
+    "papa",
+    "pavle",
+    "patrijarh",
+    "tom",
+    "grupa",
+    "zona",
+    "korpus",
+    "armija",
+    "deo",
+    "knjiga",
+    "stav",
+    "član",
+    "sprat",
+]);
+
 const CATEGORY_PREFIX = [
     "razred",
     "kategorij",
@@ -110,11 +107,8 @@ function tokenize(text: string): Tok[] {
     const push = (type: Tok["type"], value: string) => {
         if (!value) return;
         const last = out[out.length - 1];
-        if (last && last.type === type) {
-            last.value += value;
-        } else {
-            out.push({ type, value });
-        }
+        if (last && last.type === type) last.value += value;
+        else out.push({ type, value });
     };
 
     while (i < text.length) {
@@ -152,11 +146,8 @@ function tokenize(text: string): Tok[] {
                     ch === "’") &&
                     (isLetterOrDigit(prev) || isLetterOrDigit(next))));
 
-        if (isLetterOrDigit(ch) || joinerOk) {
-            push("word", ch);
-        } else {
-            push("other", ch);
-        }
+        if (isLetterOrDigit(ch) || joinerOk) push("word", ch);
+        else push("other", ch);
 
         i++;
     }
@@ -186,6 +177,40 @@ function prevNextWord(tokens: Tok[], idx: number): { prev?: string; next?: strin
     return { prev, next };
 }
 
+// PR3 helpers: radius-based neighbor lookup
+function getPrevWord(tokens: Tok[], idx: number, n: number): string | undefined {
+    let seen = 0;
+    for (let i = idx - 1; i >= 0; i--) {
+        const t = tokens[i];
+        if (t?.type === "word") {
+            seen++;
+            if (seen === n) return t.value;
+        }
+    }
+    return undefined;
+}
+
+function getNextWord(tokens: Tok[], idx: number, n: number): string | undefined {
+    let seen = 0;
+    for (let i = idx + 1; i < tokens.length; i++) {
+        const t = tokens[i];
+        if (t?.type === "word") {
+            seen++;
+            if (seen === n) return t.value;
+        }
+    }
+    return undefined;
+}
+
+function isAlphaNumModelToken(tok: string): boolean {
+    // “S23”, “A15”, “M3” (slovo+broj)
+    return /\d/.test(tok) && /\p{L}/u.test(tok);
+}
+
+function isPureNumberToken(tok: string): boolean {
+    return /^\d+$/u.test(tok);
+}
+
 function shouldProtectRomanToken(tokens: Tok[], idx: number): boolean {
     const t = tokens[idx];
     if (!t) return false;
@@ -206,6 +231,12 @@ function shouldProtectRomanToken(tokens: Tok[], idx: number): boolean {
     return false;
 }
 
+/**
+ * PR3: AMBIGUOUS tokeni (Pro/Max/...) se štite samo u "brend/model" kontekstu:
+ * - strict brend u radiusu 2 (iPhone 14 Pro, iPhone Pro Max)
+ * - ili neposredno pored alphanum model tokena (S23 Ultra)
+ * - broj (14) sam po sebi nije dovoljan bez brenda u radiusu 2
+ */
 function shouldProtectAmbiguousBrandToken(tokens: Tok[], idx: number): boolean {
     const t = tokens[idx];
     if (!t || t.type !== "word") return false;
@@ -213,16 +244,28 @@ function shouldProtectAmbiguousBrandToken(tokens: Tok[], idx: number): boolean {
     const tokLower = normKey(t.value);
     if (!ALWAYS_LATIN_TOKENS_AMBIGUOUS.has(tokLower)) return false;
 
-    const { prev, next } = prevNextWord(tokens, idx);
-    const prevKey = prev ? normKey(prev) : "";
-    const nextKey = next ? normKey(next) : "";
+    const prev1 = getPrevWord(tokens, idx, 1);
+    const prev2 = getPrevWord(tokens, idx, 2);
+    const next1 = getNextWord(tokens, idx, 1);
+    const next2 = getNextWord(tokens, idx, 2);
 
-    // Brend/model kontekst: pored “jakog” brend tokena
-    if (prevKey && ALWAYS_LATIN_TOKENS_STRICT.has(prevKey)) return true;
-    if (nextKey && ALWAYS_LATIN_TOKENS_STRICT.has(nextKey)) return true;
+    const p1 = prev1 ? normKey(prev1) : "";
+    const p2 = prev2 ? normKey(prev2) : "";
+    const n1 = next1 ? normKey(next1) : "";
+    const n2 = next2 ? normKey(next2) : "";
 
-    // Model kontekst: pored broja (npr. “14 Pro”, “S23 Ultra”)
-    if (/\d/.test(prev ?? "") || /\d/.test(next ?? "")) return true;
+    // 1) strict brend u radius 2
+    if (p1 && ALWAYS_LATIN_TOKENS_STRICT.has(p1)) return true;
+    if (p2 && ALWAYS_LATIN_TOKENS_STRICT.has(p2)) return true;
+    if (n1 && ALWAYS_LATIN_TOKENS_STRICT.has(n1)) return true;
+    if (n2 && ALWAYS_LATIN_TOKENS_STRICT.has(n2)) return true;
+
+    // 2) alphanum model token uz ambiguous (S23 Ultra)
+    if (prev1 && isAlphaNumModelToken(prev1)) return true;
+    if (next1 && isAlphaNumModelToken(next1)) return true;
+
+    // 3) čist broj uz ambiguous nije dovoljan bez brenda
+    if ((prev1 && isPureNumberToken(prev1)) || (next1 && isPureNumberToken(next1))) return false;
 
     return false;
 }
@@ -235,7 +278,6 @@ function convertUnprotectedSegment(segment: string, toCyrillic: boolean, options
     const userProtected = options?.userProtected ?? [];
     const protectBrands = options?.protectBrands !== false;
 
-    // Normalizujemo userProtected reči za lakše poređenje (lowercase)
     const userProtectedLower = new Set(userProtected.map((w) => normKey(w)));
 
     const toks = tokenize(segment);
@@ -253,55 +295,51 @@ function convertUnprotectedSegment(segment: string, toCyrillic: boolean, options
         const tok = t.value;
         const tokLower = normKey(tok);
 
-        // 1) User Protected tokeni (case-insensitive)
+        // 1) userProtected (case-insensitive)
         if (userProtectedLower.has(tokLower)) {
             out += tok;
             continue;
         }
 
-        // 2) Rimski brojevi (samo kad idemo u ćirilicu)
+        // 2) roman numerals (samo kad idemo u ćirilicu)
         if (toCyrillic && shouldProtectRomanToken(toks, i)) {
             out += tok;
             continue;
         }
 
-        // 3) Brendovi (STRICT) - uvek zaštiti
+        // 3) brendovi (STRICT)
         if (protectBrands && ALWAYS_LATIN_TOKENS_STRICT.has(tokLower)) {
             out += tok;
             continue;
         }
 
-        // 3b) Brendovi (AMBIGUOUS) - zaštiti samo uz kontekst
+        // 3b) brendovi (AMBIGUOUS, contextual)
         if (protectBrands && shouldProtectAmbiguousBrandToken(toks, i)) {
             out += tok;
             continue;
         }
 
-        // 4) Jaka strana slova (Q/W/X/Y) -> čuvaj ceo token
+        // 4) Q/W/X/Y -> čuvaj ceo token
         if (STRONG_FOREIGN.test(tok)) {
             out += tok;
             continue;
         }
 
-        // 5) Bilo koja strana slova van SR_ALLOWED -> ne diraj token
         if (hasForeignLetter(tok)) {
             out += tok;
             continue;
         }
 
-        // 6) CamelCase “brandy”
         if (isMixedCaseBrandy(tok)) {
             out += tok;
             continue;
         }
 
-        // 7) Hash-like / verzija-like tokeni
         if (isHashLike(tok)) {
             out += tok;
             continue;
         }
 
-        // 8) Transliteracija
         out += toCyrillic ? latinToCyrillic(tok) : cyrillicToLatin(tok);
     }
 
