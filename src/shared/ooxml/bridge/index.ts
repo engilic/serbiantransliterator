@@ -18,3 +18,4 @@ export {
     CYR_ALLCAPS_HINT,
     LAT_ALLCAPS_HINT
 } from "./structural/allCapsHints";
+export { bridgeAmbiguousBrandSuffixAcrossTextNodes } from "./lexical/ambiguousSuffix";
