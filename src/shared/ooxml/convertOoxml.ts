@@ -17,6 +17,7 @@ import {
     markCyrAllCapsDigraphHints,
     LAT_ALLCAPS_HINT,
 } from "./bridge/index";
+import { URL_RE_G, EMAIL_RE_G } from "../patterns/links";
 
 const ALWAYS_LATIN_PHRASE_INFOS = buildPhraseInfos(ALWAYS_LATIN_PHRASES);
 const PHRASE_INFOS_CACHE_MAX = 80;
@@ -443,11 +444,8 @@ export function convertOoxml(
     const doFixDates = options?.formatDates === true;
     const doProtectRomans = options?.protectRomans !== false;
 
-    const urlRe = /\b(?:https?:\/\/|ftp:\/\/|file:\/\/|www\.)[^\s<>"')]+/giu;
-    const emailRe = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/giu;
-
-    const detectedUrls = countMatches(fullText, urlRe);
-    const detectedEmails = countMatches(fullText, emailRe);
+    const detectedUrls = countMatches(fullText, URL_RE_G);
+    const detectedEmails = countMatches(fullText, EMAIL_RE_G);
 
     const userProtected = options?.userProtected ?? [];
     const userProtectedPhrases = userProtected.filter((x) => /\s/.test(x));
