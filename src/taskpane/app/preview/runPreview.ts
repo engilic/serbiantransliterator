@@ -158,8 +158,13 @@ export async function runPreview() {
                 const origText = extractTextFromWordOoxml(originalOoxml);
                 const converted = convertOoxml(originalOoxml, opts);
 
+                // cache za apply (samo za selekciju)
                 state.preview.convertedOoxml = converted.xml;
                 state.preview.ooxmlOptsSnapJson = JSON.stringify(opts);
+
+                // NEW: hash originalnog OOXML-a selekcije (hvata i formatiranje)
+                state.preview.selectionOoxmlHash = await sha256Hex((originalOoxml ?? "").normalize("NFC"));
+
                 state.preview.cacheTimestamp = Date.now();
 
                 const convText = extractTextFromWordOoxml(converted.xml);

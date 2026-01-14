@@ -6,6 +6,7 @@ export function invalidatePreviewCache() {
     state.preview.convertedOoxml = null;
     state.preview.ooxmlOptsSnapJson = null;
     state.preview.selectionTextHash = null;
+    state.preview.selectionOoxmlHash = null;
     state.preview.cacheTimestamp = null;
 }
 

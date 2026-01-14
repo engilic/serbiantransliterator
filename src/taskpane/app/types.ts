@@ -44,13 +44,16 @@ export interface PreviewState {
     shownCount: number;
     canLoadMore: boolean;
 
-    // IMPORTANT: koristi globalni setTimeout tip (da radi i sa DOM + @types/node)
     toastTimer: ReturnType<typeof setTimeout> | null;
 
     // Cache (selection preview apply)
     convertedOoxml: string | null;
     ooxmlOptsSnapJson: string | null;
     selectionTextHash: string | null;
+
+    // NEW: hash originalnog OOXML-a selekcije (hvata i formatiranje)
+    selectionOoxmlHash: string | null;
+
     cacheTimestamp: number | null;
 }
 
@@ -68,6 +71,6 @@ export function emptyExtrasSummary(): ExtrasSummary {
         footnotesProcessed: 0,
         endnotesProcessed: 0,
         footnotesSupported: true,
-        endnotesSupported: true
+        endnotesSupported: true,
     };
 }

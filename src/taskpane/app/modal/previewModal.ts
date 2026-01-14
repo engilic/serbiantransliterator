@@ -195,9 +195,36 @@ export function showPreviewToast(message: string, type: "success" | "error" | "i
 }
 
 async function copyToClipboard(text: string): Promise<boolean> {
+    // 1) Modern Clipboard API
     try {
         await navigator.clipboard.writeText(text);
         return true;
+    } catch {
+        // fallback below
+    }
+
+    // 2) Fallback: hidden textarea + execCommand('copy')
+    try {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.setAttribute("readonly", "true");
+        ta.style.position = "fixed";
+        ta.style.top = "0";
+        ta.style.left = "0";
+        ta.style.width = "1px";
+        ta.style.height = "1px";
+        ta.style.opacity = "0";
+        ta.style.pointerEvents = "none";
+
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+
+        const doc = document as unknown as { execCommand: (commandId: string) => boolean };
+        const ok = doc.execCommand("copy");
+        document.body.removeChild(ta);
+
+        return ok === true;
     } catch {
         return false;
     }
