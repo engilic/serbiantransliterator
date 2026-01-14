@@ -20,7 +20,7 @@ function tokensCacheKey(tokensSource: Set<string> | string[], caseSensitive: boo
         .map((s) => (caseSensitive ? s : normKey(s)));
 
     const uniqSorted = Array.from(new Set(norm)).sort();
-    return (caseSensitive ? "CS:" : "CI:") + uniqSorted.join("\n");
+    return (caseSensitive ? "CS:" : "CI:") + JSON.stringify(uniqSorted);
 }
 
 function getCachedTokenList(tokensSource: Set<string> | string[], caseSensitive: boolean): TokenLowerCps[] {
