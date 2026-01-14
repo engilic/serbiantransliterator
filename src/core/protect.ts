@@ -1,4 +1,11 @@
-import { EMAIL_RE_G, URL_RE_G } from "../shared/patterns/links";
+// src/core/protect.ts
+
+import {
+    EMAIL_RE_G,
+    URL_RE_G,
+    MAILTO_RE_G,
+    URI_SCHEMES_NO_TEL_MAILTO_RE_G,
+} from "../shared/patterns/links";
 
 export type Range = [start: number, end: number];
 
@@ -80,25 +87,22 @@ export function collectProtectedRanges(text: string, opts: ProtectOptions): Rang
     // 1) HTML tagovi
     addRangesFromRegex(text, /<\/?[a-zA-Z0-9]+[^>]*>/g, ranges);
 
-    // 2) URL / Email (+ mailto/tel)
+    // 2) URL / Email + URI schemes
     addRangesFromRegex(text, EMAIL_RE_G, ranges);
     addRangesFromRegex(text, URL_RE_G, ranges);
 
-    // NEW:
-    addRangesFromRegex(text, /\bmailto:[^\s<>"')]+/giu, ranges);
+    // mailto:
+    addRangesFromRegex(text, MAILTO_RE_G, ranges);
+
+    // tel: specifično (RFC3966 params)
     addRangesFromRegex(
         text,
         /\btel:\+?[0-9][0-9().-]{5,}(?:;[a-z0-9-]+=[a-z0-9._+~:%-]+)*/giu,
         ranges
     );
 
-    addRangesFromRegex(text, /\bsip:[^\s<>"')]+/giu, ranges);
-    addRangesFromRegex(text, /\bsms:[^\s<>"')]+/giu, ranges);
-    addRangesFromRegex(text, /\bgeo:[^\s<>"')]+/giu, ranges);
-    addRangesFromRegex(text, /\bskype:[^\s<>"')]+/giu, ranges);
-    addRangesFromRegex(text, /\bteams:[^\s<>"')]+/giu, ranges);
-    // opcionalno (ako ti treba):
-    addRangesFromRegex(text, /\bmsteams:[^\s<>"')]+/giu, ranges);
+    // ostali schemes: sip/sms/geo/skype/teams/msteams (bez tel/mailto)
+    addRangesFromRegex(text, URI_SCHEMES_NO_TEL_MAILTO_RE_G, ranges);
 
     // 3) Putanje (Windows/UNC/Unix)
     addRangesFromRegex(text, /\b[a-zA-Z0-9]+:\\[^\r\n<>:"|?*]+/g, ranges); // C:\..., Cert:\...

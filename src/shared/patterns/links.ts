@@ -1,18 +1,27 @@
 ﻿// src/shared/patterns/links.ts
 
-// Global (za protect/statistiku)
+// =========================
+// Global regex (protect/statistics)
+// =========================
+
 export const EMAIL_RE_G =
     /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/giu;
 
-// Konzervativno kao kod tebe (isti karakteri kao u protect/links)
 export const URL_RE_G =
     /\b(?:https?:\/\/|ftp:\/\/|file:\/\/|www\.)[^\s<>"')]+/giu;
 
-// URI schemes (mailto/tel/sip/...)
-export const URI_SCHEMES_RE_G =
-    /\b(?:mailto|tel|sip|sms|geo|skype|teams|msteams):[^\s<>"')]+/giu;
+// mailto: (posebno, da ne dupliramo sa URI schemes)
+export const MAILTO_RE_G =
+    /\bmailto:[^\s<>"')]+/giu;
 
-// Anchored (za bridging - mora da krene od početka “combined” stringa)
+// URI schemes bez tel/mailto (sip/sms/geo/skype/teams/msteams)
+export const URI_SCHEMES_NO_TEL_MAILTO_RE_G =
+    /\b(?:sip|sms|geo|skype|teams|msteams):[^\s<>"')]+/giu;
+
+// =========================
+// Anchored patterns (OOXML bridging)
+// =========================
+
 export const LINK_PATTERNS_ANCHORED: RegExp[] = [
     /^(https?:\/\/[^\s<>"')]+)/iu,
     /^(ftp:\/\/[^\s<>"')]+)/iu,
@@ -21,6 +30,7 @@ export const LINK_PATTERNS_ANCHORED: RegExp[] = [
     /^([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})/iu,
 
     /^(mailto:[^\s<>"')]+)/iu,
+
     // tel RFC3966 (+ params)
     /^(tel:\+?[0-9][0-9().-]{5,}(?:;[a-z0-9-]+=[a-z0-9._+~:%-]+)*)/iu,
 
