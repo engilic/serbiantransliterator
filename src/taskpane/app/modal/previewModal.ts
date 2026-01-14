@@ -7,16 +7,16 @@ import { applyFromPreview } from "../word/apply";
 import { closeModal, resetModalButtons, clearModalResolver } from "./modal";
 
 import { escapeHtml } from "../../../shared/safeHtml";
-import { myersDiff } from "../../../shared/diff";
-
 import { convertPlainText, type Direction } from "../../../core/textCore";
 import { removeMultipleSpaces } from "../../../core/utils";
 import { createInitialCodeState, transformTextRespectingCode } from "../../../shared/ooxml/code";
 import { formatSerbianDates, toAscii } from "../../../core/format";
 import { normalizeNewlines } from "../selection";
+
 import type { UiSettings } from "../types";
 
-const PREVIEW_BATCH = 20;
+import { PREVIEW_BATCH, DIFF_MAX_TOKENS } from "../preview/constants";
+import { renderDiffHtml, renderSideBySideWithHighlights } from "../preview/diffRenderer";
 
 /* =========================
    Local: plain preview conversion (self-contained)
@@ -65,117 +65,6 @@ function convertTextForPreviewPlain(input: string, s: UiSettings): { out: string
 }
 
 /* =========================
-   Diff helpers
-   ========================= */
-
-function tokenizeForDiff(text: string): string[] {
-    const splitRegex = /([^\s\w\u0400-\u04FF\u0100-\u017F]+|\s+)/;
-    return normalizeNewlines(text).split(splitRegex).filter(Boolean);
-}
-
-function isWhitespaceToken(s: string): boolean {
-    return /^\s+$/u.test(s);
-}
-
-function renderSideBySideWithHighlights(oldText: string, newText: string): string {
-    const oldN = normalizeNewlines(oldText);
-    const newN = normalizeNewlines(newText);
-
-    const a = tokenizeForDiff(oldN);
-    const b = tokenizeForDiff(newN);
-
-    const MAX_TOKENS = 8000;
-    if (a.length + b.length > MAX_TOKENS) {
-        return `
-      <div class="preview-grid">
-        <div class="preview-pane">
-          <div class="preview-pane-title">Pre</div>
-          <div class="preview-text-pane preview-pane-body">${escapeHtml(oldN)}</div>
-        </div>
-        <div class="preview-pane">
-          <div class="preview-pane-title">Posle</div>
-          <div class="preview-text-pane preview-pane-body">${escapeHtml(newN)}</div>
-        </div>
-      </div>
-    `;
-    }
-
-    const ops = myersDiff(a, b);
-
-    let left = "";
-    let right = "";
-
-    for (const op of ops) {
-        const v = op.value;
-
-        if (op.type === "equal") {
-            left += escapeHtml(v);
-            right += escapeHtml(v);
-            continue;
-        }
-
-        const wrap = !isWhitespaceToken(v);
-
-        if (op.type === "delete") {
-            left += wrap ? `<span class="diff-removed">${escapeHtml(v)}</span>` : escapeHtml(v);
-            continue;
-        }
-
-        right += wrap ? `<span class="diff-added">${escapeHtml(v)}</span>` : escapeHtml(v);
-    }
-
-    return `
-    <div class="preview-grid">
-      <div class="preview-pane">
-        <div class="preview-pane-title">Pre</div>
-        <div class="preview-text-pane preview-pane-body">${left}</div>
-      </div>
-      <div class="preview-pane">
-        <div class="preview-pane-title">Posle</div>
-        <div class="preview-text-pane preview-pane-body">${right}</div>
-      </div>
-    </div>
-  `;
-}
-
-function generateDiffHtml(oldText: string, newText: string): string {
-    const oldN = normalizeNewlines(oldText);
-    const newN = normalizeNewlines(newText);
-
-    if (oldN === newN) {
-        return `<div class="preview-text-pane preview-single-pane preview-no-changes">Nema izmena u tekstu.</div>`;
-    }
-
-    const a = tokenizeForDiff(oldN);
-    const b = tokenizeForDiff(newN);
-
-    const MAX_TOKENS = 8000;
-    if (a.length + b.length > MAX_TOKENS) {
-        return `<div class="preview-text-pane preview-single-pane">${escapeHtml(newN)}</div>`;
-    }
-
-    const ops = myersDiff(a, b);
-
-    let html = "";
-
-    for (const op of ops) {
-        const v = op.value;
-
-        if (op.type === "equal") {
-            html += escapeHtml(v);
-            continue;
-        }
-
-        if (op.type === "delete") continue;
-
-        if (isWhitespaceToken(v)) html += escapeHtml(v);
-        else html += `<span class="diff-changed">${escapeHtml(v)}</span>`;
-    }
-
-    return `<div class="preview-text-pane preview-single-pane">${html}</div>`;
-}
-
-/* =========================
    Toast + clipboard
    ========================= */
 
@@ -203,7 +92,7 @@ async function copyToClipboard(text: string): Promise<boolean> {
         // fallback below
     }
 
-    // 2) Fallback: hidden textarea + execCommand('copy')
+    // 2) Fallback: hidden textarea + execCommand('copy') (avoid deprecated signature warning)
     try {
         const ta = document.createElement("textarea");
         ta.value = text;
@@ -222,6 +111,7 @@ async function copyToClipboard(text: string): Promise<boolean> {
 
         const doc = document as unknown as { execCommand: (commandId: string) => boolean };
         const ok = doc.execCommand("copy");
+
         document.body.removeChild(ta);
 
         return ok === true;
@@ -244,9 +134,9 @@ export function renderPreviewMode() {
     if (state.preview.mode === "plain") {
         holder.innerHTML = `<div class="preview-text-pane preview-single-pane">${escapeHtml(conv)}</div>`;
     } else if (state.preview.mode === "side") {
-        holder.innerHTML = renderSideBySideWithHighlights(orig, conv);
+        holder.innerHTML = renderSideBySideWithHighlights(orig, conv, DIFF_MAX_TOKENS);
     } else {
-        holder.innerHTML = generateDiffHtml(orig, conv);
+        holder.innerHTML = renderDiffHtml(orig, conv, DIFF_MAX_TOKENS);
     }
 
     const btnDiff = document.getElementById("previewBtnDiff") as HTMLButtonElement | null;
