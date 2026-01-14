@@ -3,97 +3,159 @@ import { findNextNodeWithText } from "../../common";
 const ROMAN_RE = /^[IVXLCDM]{1,8}$/;
 
 const CATEGORY_PREFIX = [
-  "razred", "kategorij", "grupa", "zona", "korpus", "armija", "deo", "tom", "knjiga",
-  "stav", "član", "svetski", "sprat", "vek", "rat",
+    "razred", "kategorij", "grupa", "zona", "korpus", "armija", "deo", "tom", "knjiga",
+    "stav", "član", "svetski", "sprat", "vek", "rat",
 ];
 
 function normKey(s: string): string {
-  return (s ?? "").normalize("NFC").toLowerCase();
+    return (s ?? "").normalize("NFC").toLowerCase();
 }
 
 function findAncestor(el: Element, localName: string): Element | null {
-  let cur: Element | null = el;
-  while (cur) {
-    if (cur.localName === localName) return cur;
-    cur = cur.parentElement;
-  }
-  return null;
+    let cur: Element | null = el;
+    while (cur) {
+        if (cur.localName === localName) return cur;
+        cur = cur.parentElement;
+    }
+    return null;
 }
 
 function sameParagraph(a: Element, b: Element): boolean {
-  const ap = findAncestor(a, "p");
-  const bp = findAncestor(b, "p");
-  return !!ap && ap === bp;
+    const ap = findAncestor(a, "p");
+    const bp = findAncestor(b, "p");
+    return !!ap && ap === bp;
 }
 
-function matchTrailingRomanToken(text: string): string | null {
-  const raw = text.normalize("NFC");
-  if (raw.trimEnd() !== raw) return null;
+/**
+ * Trailing roman na kraju node-a, ali DOZVOLI trailing whitespace posle rimskog broja:
+ * npr. "V" ili "V " ili "(V)  "
+ */
+function matchTrailingRomanTokenAllowSpaces(text: string): { roman: string; trailingSpaces: string } | null {
+    const raw = text.normalize("NFC");
 
-  const m = /(^|[^\p{L}\p{N}])([IVXLCDM]{1,8})$/u.exec(raw);
-  if (!m) return null;
+    // boundary + roman + spaces to end
+    const m = /(^|[^\p{L}\p{N}])([IVXLCDM]{1,8})(\s*)$/u.exec(raw);
+    if (!m) return null;
 
-  const roman = m[2] ?? "";
-  if (!ROMAN_RE.test(roman) || roman !== roman.toUpperCase()) return null;
-  return roman;
-}
+    const roman = m[2] ?? "";
+    const trailingSpaces = m[3] ?? "";
 
-function matchLeadingWsAndWord(text: string): { moved: string; word: string } | null {
-  const raw = text.normalize("NFC");
-  const m = /^(\s*)(\p{L}+)(?=$|[^\p{L}\p{N}])/u.exec(raw);
-  if (!m) return null;
-
-  const moved = (m[1] ?? "") + (m[2] ?? "");
-  const word = m[2] ?? "";
-  return { moved, word };
+    if (!ROMAN_RE.test(roman) || roman !== roman.toUpperCase()) return null;
+    return { roman, trailingSpaces };
 }
 
 function startsWithAnyPrefix(word: string): boolean {
-  const w = normKey(word);
-  return CATEGORY_PREFIX.some((p) => w.startsWith(p));
+    const w = normKey(word);
+    return CATEGORY_PREFIX.some((p) => w.startsWith(p));
+}
+
+type PlanStep = { nodeIndex: number; cps: string[] };
+
+/**
+ * Build lookahead across multiple next nodes (including whitespace-only nodes),
+ * within same paragraph. We only need a small prefix.
+ */
+function buildLookaheadPlan(textNodes: Element[], startIndex: number, maxCp: number) {
+    const plan: PlanStep[] = [];
+    let out = "";
+    let remaining = maxCp;
+
+    let j: number | null = startIndex;
+    while (remaining > 0 && j != null && j < textNodes.length) {
+        const node = textNodes[j];
+        if (!node) break;
+
+        const raw = (node.textContent ?? "").normalize("NFC");
+        if (raw === "") {
+            j = findNextNodeWithText(textNodes, j + 1);
+            continue;
+        }
+
+        const cps = Array.from(raw);
+        const take = Math.min(remaining, cps.length);
+
+        plan.push({ nodeIndex: j, cps });
+        out += cps.slice(0, take).join("");
+        remaining -= take;
+
+        j = findNextNodeWithText(textNodes, j + 1);
+    }
+
+    return { out, plan };
+}
+
+function consumeFromPlan(textNodes: Element[], plan: PlanStep[], needCp: number): string {
+    let remaining = needCp;
+    let moved = "";
+
+    for (const step of plan) {
+        if (remaining <= 0) break;
+
+        const take = Math.min(remaining, step.cps.length);
+        moved += step.cps.slice(0, take).join("");
+
+        const node = textNodes[step.nodeIndex];
+        if (node) node.textContent = step.cps.slice(take).join("");
+
+        remaining -= take;
+    }
+
+    return moved;
 }
 
 /**
  * Spaja rimski broj + sledeću “kontekst” reč (npr. "V" + " vek")
- * u isti <w:t>, da bi core zaštita rimskih brojeva radila i kad su run-ovi splitovani.
+ * i radi i kad je whitespace splitovan u zaseban <w:t>:
+ * - "V " | "vek"
+ * - "V" | " " | "vek"
  */
 export function bridgeRomanContextAcrossTextNodes(textNodes: Element[]): number {
-  let changed = 0;
+    let changed = 0;
+    const MAX_LOOKAHEAD_CP = 40;
 
-  for (let i = 0; i < textNodes.length - 1; i++) {
-    const aNode = textNodes[i];
-    if (!aNode) continue;
+    for (let i = 0; i < textNodes.length - 1; i++) {
+        const aNode = textNodes[i];
+        if (!aNode) continue;
 
-    const aRaw = (aNode.textContent ?? "").normalize("NFC");
-    if (!aRaw) continue;
+        const aRaw = (aNode.textContent ?? "").normalize("NFC");
+        if (!aRaw) continue;
 
-    const j = findNextNodeWithText(textNodes, i + 1);
-    if (j == null) continue;
+        // nađi sledeći node sa bilo kakvim tekstom
+        const j0 = findNextNodeWithText(textNodes, i + 1);
+        if (j0 == null) continue;
 
-    const bNode = textNodes[j];
-    if (!bNode) continue;
+        const bNode0 = textNodes[j0];
+        if (!bNode0) continue;
 
-    const bRaw = (bNode.textContent ?? "").normalize("NFC");
-    if (!bRaw) continue;
+        // nemoj preko paragraf granice
+        if (!sameParagraph(aNode, bNode0)) continue;
 
-    // Nemoj preko paragraf granice
-    if (!sameParagraph(aNode, bNode)) continue;
+        // a završava rimskim brojem (dozvoli trailing spaces)
+        const tRoman = matchTrailingRomanTokenAllowSpaces(aRaw);
+        if (!tRoman) continue;
 
-    // a završava rimskim brojem?
-    const roman = matchTrailingRomanToken(aRaw);
-    if (!roman) continue;
+        // lookahead across multiple nodes (da uhvati i whitespace-only node-ove)
+        const { out: lookahead, plan } = buildLookaheadPlan(textNodes, j0, MAX_LOOKAHEAD_CP);
+        if (!lookahead) continue;
 
-    // b počinje whitespace + reč (kontekst)?
-    const lead = matchLeadingWsAndWord(bRaw);
-    if (!lead) continue;
+        // očekujemo: optional spaces + letters word + boundary
+        const m = /^(\s*)(\p{L}+)(?=$|[^\p{L}\p{N}])/u.exec(lookahead);
+        if (!m) continue;
 
-    if (!startsWithAnyPrefix(lead.word)) continue;
+        const word = m[2] ?? "";
+        if (!word) continue;
+        if (!startsWithAnyPrefix(word)) continue;
 
-    // prebaci " vek" u aNode
-    aNode.textContent = aRaw + lead.moved;
-    bNode.textContent = bRaw.slice(lead.moved.length);
-    changed++;
-  }
+        const movedStr = (m[1] ?? "") + word;
+        const needCp = Array.from(movedStr).length;
+        if (needCp <= 0) continue;
 
-  return changed;
+        const moved = consumeFromPlan(textNodes, plan, needCp);
+        if (moved.length === 0) continue;
+
+        aNode.textContent = aRaw + moved;
+        changed++;
+    }
+
+    return changed;
 }
