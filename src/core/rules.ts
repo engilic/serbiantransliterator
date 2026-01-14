@@ -1,4 +1,6 @@
-﻿export const ALWAYS_LATIN = [
+﻿// src/core/rules.ts
+
+export const ALWAYS_LATIN = [
     // --- BRENDOVI I TEHNOLOGIJE ---
     "iPhone", "iPad", "iMac", "iOS", "macOS", "MacBook", "Android",
     "YouTube", "Facebook", "Twitter", "LinkedIn", "WhatsApp", "Viber", "TikTok", "Instagram",
@@ -28,7 +30,12 @@
     "km/h", "m/s", "kWh",
     "E-mail", "e-mail", "Email", "email",
     "X-Ray", "X Ray", "Blue-Ray", "Blu-ray",
+
+    // ⚠️ Ovi su AMBIGUOUS (ne želimo da budu “uvek latinica” bez konteksta),
+    // ali ih i dalje držimo u ALWAYS_LATIN listi radi backward kompatibilnosti sa postojećim sadržajem.
+    // Pravo ponašanje kontrolišemo ispod kroz AMBIGUOUS_LATIN.
     "Pro", "Air", "Mini", "Ultra", "Plus", "Max", "Lite",
+
     "°C", "°F",
 
     // --- STRANE FRAZE I IMENA ---
@@ -42,12 +49,29 @@
     "void", "int", "string", "bool", "boolean", "float", "double", "char",
 ];
 
+// Tokeni koji su često “obične reči” u srpskom i ne treba da budu UVEK zaštićeni.
+// Štitimo ih samo kad imaju brend/model kontekst (npr. iPhone Pro, MacBook Air).
+export const AMBIGUOUS_LATIN = ["Pro", "Air", "Mini", "Ultra", "Plus", "Max", "Lite"];
+
 const normKey = (s: string) => s.normalize("NFC").toLowerCase();
 
-// Tokeni bez razmaka (npr. iPhone, C++, Node.js, Pro...)
-export const ALWAYS_LATIN_TOKENS = new Set(
-    ALWAYS_LATIN.filter((x) => !/\s/.test(x)).map(normKey)
+const AMBIGUOUS_LATIN_SET = new Set(AMBIGUOUS_LATIN.map(normKey));
+
+export const ALWAYS_LATIN_TOKENS_AMBIGUOUS = new Set(AMBIGUOUS_LATIN.map(normKey));
+
+// STRICT tokeni (uvek zaštiti): svi tokeni iz ALWAYS_LATIN bez razmaka, osim ambiguous
+export const ALWAYS_LATIN_TOKENS_STRICT = new Set(
+    ALWAYS_LATIN
+        .filter((x) => !/\s/.test(x))
+        .map(normKey)
+        .filter((k) => !AMBIGUOUS_LATIN_SET.has(k))
 );
+
+// BRIDGE tokeni: sve što želimo da OOXML bridging spaja preko run-ova pre konverzije
+export const ALWAYS_LATIN_TOKENS_BRIDGE = new Set<string>([
+    ...Array.from(ALWAYS_LATIN_TOKENS_STRICT),
+    ...Array.from(ALWAYS_LATIN_TOKENS_AMBIGUOUS),
+]);
 
 // Fraze sa razmakom (npr. "Save As", "Made in Serbia")
 export const ALWAYS_LATIN_PHRASES = ALWAYS_LATIN.filter((x) => /\s/.test(x));

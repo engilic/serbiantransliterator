@@ -1,4 +1,10 @@
-﻿import { ALWAYS_LATIN_PHRASES, ALWAYS_LATIN_TOKENS } from "./rules";
+﻿// src/core/textCore.ts
+
+import {
+    ALWAYS_LATIN_PHRASES,
+    ALWAYS_LATIN_TOKENS_STRICT,
+    ALWAYS_LATIN_TOKENS_AMBIGUOUS,
+} from "./rules";
 import { applyPreCorrectionsLatToCyr } from "./corrections";
 import { fixSerbianQuotes } from "./quotes";
 import { collectProtectedRanges, splitByRanges } from "./protect";
@@ -30,12 +36,50 @@ const STRONG_FOREIGN = /[QWXYqwxy]/;
 const ROMAN = /^[IVXLCDM]+$/;
 const RULERS = new Set(
     [
-        "petar", "aleksandar", "nikola", "milan", "đorđe", "jovan", "uroš", "stefan", "lazar", "luj", "čarls", "elizabeta", "filip",
-        "papa", "pavle", "patrijarh", "tom", "grupa", "zona", "korpus", "armija", "deo", "knjiga", "stav", "član", "sprat"
+        "petar",
+        "aleksandar",
+        "nikola",
+        "milan",
+        "đorđe",
+        "jovan",
+        "uroš",
+        "stefan",
+        "lazar",
+        "luj",
+        "čarls",
+        "elizabeta",
+        "filip",
+        "papa",
+        "pavle",
+        "patrijarh",
+        "tom",
+        "grupa",
+        "zona",
+        "korpus",
+        "armija",
+        "deo",
+        "knjiga",
+        "stav",
+        "član",
+        "sprat",
     ]
 );
 const CATEGORY_PREFIX = [
-    "razred", "kategorij", "grupa", "zona", "korpus", "armija", "deo", "tom", "knjiga", "stav", "član", "svetski", "sprat", "vek", "rat"
+    "razred",
+    "kategorij",
+    "grupa",
+    "zona",
+    "korpus",
+    "armija",
+    "deo",
+    "tom",
+    "knjiga",
+    "stav",
+    "član",
+    "svetski",
+    "sprat",
+    "vek",
+    "rat",
 ];
 
 function hasForeignLetter(token: string): boolean {
@@ -81,19 +125,32 @@ function tokenize(text: string): Tok[] {
 
         const isJoiner =
             ch === "-" ||
-            ch === "‑" || ch === "‐" || ch === "‒" || ch === "–" || ch === "—" ||
-            ch === "'" || ch === "’" ||
-            ch === "." || ch === "+" || ch === "#" || ch === "/";
+            ch === "‑" ||
+            ch === "‐" ||
+            ch === "‒" ||
+            ch === "–" ||
+            ch === "—" ||
+            ch === "'" ||
+            ch === "’" ||
+            ch === "." ||
+            ch === "+" ||
+            ch === "#" ||
+            ch === "/";
 
         const joinerOk =
             isJoiner &&
-            (
-                (ch === "." && (isLetterOrDigit(next) || (isLetterOrDigit(prev) && isLetterOrDigit(next)))) ||
+            ((ch === "." && (isLetterOrDigit(next) || (isLetterOrDigit(prev) && isLetterOrDigit(next)))) ||
                 ((ch === "+" || ch === "#") && (isLetterOrDigit(prev) || isLetterOrDigit(next))) ||
                 (ch === "/" && isLetterOrDigit(prev) && isLetterOrDigit(next)) ||
-                ((ch === "-" || ch === "‑" || ch === "‐" || ch === "‒" || ch === "–" || ch === "—" || ch === "'" || ch === "’") &&
-                    (isLetterOrDigit(prev) || isLetterOrDigit(next)))
-            );
+                ((ch === "-" ||
+                    ch === "‑" ||
+                    ch === "‐" ||
+                    ch === "‒" ||
+                    ch === "–" ||
+                    ch === "—" ||
+                    ch === "'" ||
+                    ch === "’") &&
+                    (isLetterOrDigit(prev) || isLetterOrDigit(next))));
 
         if (isLetterOrDigit(ch) || joinerOk) {
             push("word", ch);
@@ -113,11 +170,17 @@ function prevNextWord(tokens: Tok[], idx: number): { prev?: string; next?: strin
 
     for (let i = idx - 1; i >= 0; i--) {
         const tok = tokens[i];
-        if (tok && tok.type === "word") { prev = tok.value; break; }
+        if (tok && tok.type === "word") {
+            prev = tok.value;
+            break;
+        }
     }
     for (let i = idx + 1; i < tokens.length; i++) {
         const tok = tokens[i];
-        if (tok && tok.type === "word") { next = tok.value; break; }
+        if (tok && tok.type === "word") {
+            next = tok.value;
+            break;
+        }
     }
 
     return { prev, next };
@@ -143,20 +206,37 @@ function shouldProtectRomanToken(tokens: Tok[], idx: number): boolean {
     return false;
 }
 
+function shouldProtectAmbiguousBrandToken(tokens: Tok[], idx: number): boolean {
+    const t = tokens[idx];
+    if (!t || t.type !== "word") return false;
+
+    const tokLower = normKey(t.value);
+    if (!ALWAYS_LATIN_TOKENS_AMBIGUOUS.has(tokLower)) return false;
+
+    const { prev, next } = prevNextWord(tokens, idx);
+    const prevKey = prev ? normKey(prev) : "";
+    const nextKey = next ? normKey(next) : "";
+
+    // Brend/model kontekst: pored “jakog” brend tokena
+    if (prevKey && ALWAYS_LATIN_TOKENS_STRICT.has(prevKey)) return true;
+    if (nextKey && ALWAYS_LATIN_TOKENS_STRICT.has(nextKey)) return true;
+
+    // Model kontekst: pored broja (npr. “14 Pro”, “S23 Ultra”)
+    if (/\d/.test(prev ?? "") || /\d/.test(next ?? "")) return true;
+
+    return false;
+}
+
 export function detectScript(text: string): "latin" | "cyrillic" {
     return detectMajorityScript(text);
 }
 
-function convertUnprotectedSegment(
-    segment: string,
-    toCyrillic: boolean,
-    options?: CoreOptions
-): string {
+function convertUnprotectedSegment(segment: string, toCyrillic: boolean, options?: CoreOptions): string {
     const userProtected = options?.userProtected ?? [];
     const protectBrands = options?.protectBrands !== false;
 
     // Normalizujemo userProtected reči za lakše poređenje (lowercase)
-    const userProtectedLower = new Set(userProtected.map(w => normKey(w)));
+    const userProtectedLower = new Set(userProtected.map((w) => normKey(w)));
 
     const toks = tokenize(segment);
     let out = "";
@@ -164,6 +244,7 @@ function convertUnprotectedSegment(
     for (let i = 0; i < toks.length; i++) {
         const t = toks[i];
         if (!t) continue;
+
         if (t.type !== "word") {
             out += t.value;
             continue;
@@ -172,45 +253,55 @@ function convertUnprotectedSegment(
         const tok = t.value;
         const tokLower = normKey(tok);
 
-        // 1. Provera User Protected reči (Case Insensitive)
+        // 1) User Protected tokeni (case-insensitive)
         if (userProtectedLower.has(tokLower)) {
             out += tok;
             continue;
         }
 
-        // 2. Provera Rimskih brojeva
+        // 2) Rimski brojevi (samo kad idemo u ćirilicu)
         if (toCyrillic && shouldProtectRomanToken(toks, i)) {
             out += tok;
             continue;
         }
 
-        // 3. Provera Brendova (Windows, iPhone...) - KLJUČNA PROMENA
-        if (protectBrands && ALWAYS_LATIN_TOKENS.has(tokLower)) {
+        // 3) Brendovi (STRICT) - uvek zaštiti
+        if (protectBrands && ALWAYS_LATIN_TOKENS_STRICT.has(tokLower)) {
             out += tok;
             continue;
         }
 
-        // 4. Jaka strana slova (Q, W, X, Y) - Windows ima W, pa bi ovo trebalo da ga uhvati ako pravilo 3 omane
+        // 3b) Brendovi (AMBIGUOUS) - zaštiti samo uz kontekst
+        if (protectBrands && shouldProtectAmbiguousBrandToken(toks, i)) {
+            out += tok;
+            continue;
+        }
+
+        // 4) Jaka strana slova (Q/W/X/Y) -> čuvaj ceo token
         if (STRONG_FOREIGN.test(tok)) {
             out += tok;
             continue;
         }
 
+        // 5) Bilo koja strana slova van SR_ALLOWED -> ne diraj token
         if (hasForeignLetter(tok)) {
             out += tok;
             continue;
         }
 
+        // 6) CamelCase “brandy”
         if (isMixedCaseBrandy(tok)) {
             out += tok;
             continue;
         }
 
+        // 7) Hash-like / verzija-like tokeni
         if (isHashLike(tok)) {
             out += tok;
             continue;
         }
 
+        // 8) Transliteracija
         out += toCyrillic ? latinToCyrillic(tok) : cyrillicToLatin(tok);
     }
 
