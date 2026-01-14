@@ -23,4 +23,31 @@ describe("convertOoxml - roman context across <w:t>", () => {
         const r = convertOoxml(OOXML, { direction: "lat-to-cyr", protectRomans: true });
         expect(extractAllTText(r.xml)).toBe("V век");
     });
+
+    it("V<space> | vek => V век (space je u prvom node-u)", () => {
+        const OOXML = `
+<w:document xmlns:w="${W_NS}">
+  <w:body><w:p>
+    <w:r><w:t>V </w:t></w:r>
+    <w:r><w:t>vek</w:t></w:r>
+  </w:p></w:body>
+</w:document>`;
+
+        const r = convertOoxml(OOXML, { direction: "lat-to-cyr", protectRomans: true });
+        expect(extractAllTText(r.xml)).toBe("V век");
+    });
+
+    it("V | <space> | vek => V век (space je u posebnom node-u)", () => {
+        const OOXML = `
+<w:document xmlns:w="${W_NS}">
+  <w:body><w:p>
+    <w:r><w:t>V</w:t></w:r>
+    <w:r><w:t> </w:t></w:r>
+    <w:r><w:t>vek</w:t></w:r>
+  </w:p></w:body>
+</w:document>`;
+
+        const r = convertOoxml(OOXML, { direction: "lat-to-cyr", protectRomans: true });
+        expect(extractAllTText(r.xml)).toBe("V век");
+    });
 });
