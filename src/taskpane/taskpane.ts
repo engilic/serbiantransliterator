@@ -843,6 +843,16 @@ async function runSmart() {
                 `Opseg: ${scope === "selection" ? "Selekcija" : "Ceo dokument"}\n` +
                 `Promenjeno čvorova: ${result.stats.textNodes}\n` +
                 `Vreme: ${time}ms` +
+                `\nBridges:` +
+                `\n- links: ${result.stats.bridges.links}` +
+                `\n- brandPhrases: ${result.stats.bridges.brandPhrases}` +
+                `\n- brandTokens: ${result.stats.bridges.brandTokens}` +
+                `\n- ambiguousBrandSuffix: ${result.stats.bridges.ambiguousBrandSuffix}` +
+                `\n- digraphs: ${result.stats.bridges.digraphs}` +
+                `\n- userPhrases: ${result.stats.bridges.userPhrases}` +
+                `\n- userTokens: ${result.stats.bridges.userTokens}` +
+                `\n- allCapsHints: ${result.stats.bridges.allCapsHints}` +
+                `\n- spaces: ${result.stats.bridges.spaces}` +
                 (scope === "document"
                     ? `\nHeader/Footer: ${extras.headersFootersProcessed}\nFusnote: ${extras.footnotesProcessed}\nEndnote: ${extras.endnotesProcessed}`
                     : "");
@@ -937,7 +947,17 @@ async function applyFromPreview(scope: "selection" | "document") {
                 lastStatsText =
                     `Opseg: Selekcija\n` +
                     `Promenjeno čvorova: ${result.stats.textNodes}\n` +
-                    `Vreme: ${time}ms`;
+                    `Vreme: ${time}ms` +
+                    `\nBridges:` +
+                    `\n- links: ${result.stats.bridges.links}` +
+                    `\n- brandPhrases: ${result.stats.bridges.brandPhrases}` +
+                    `\n- brandTokens: ${result.stats.bridges.brandTokens}` +
+                    `\n- ambiguousBrandSuffix: ${result.stats.bridges.ambiguousBrandSuffix}` +
+                    `\n- digraphs: ${result.stats.bridges.digraphs}` +
+                    `\n- userPhrases: ${result.stats.bridges.userPhrases}` +
+                    `\n- userTokens: ${result.stats.bridges.userTokens}` +
+                    `\n- allCapsHints: ${result.stats.bridges.allCapsHints}` +
+                    `\n- spaces: ${result.stats.bridges.spaces}`;
 
                 refreshStats();
                 return;
@@ -963,8 +983,18 @@ async function applyFromPreview(scope: "selection" | "document") {
             lastStatsText =
                 `Opseg: Ceo dokument\n` +
                 `Promenjeno čvorova: ${result.stats.textNodes}\n` +
-                `Vreme: ${time}ms\n` +
-                `Header/Footer: ${extras.headersFootersProcessed}\n` +
+                `Vreme: ${time}ms` +
+                `\nBridges:` +
+                `\n- links: ${result.stats.bridges.links}` +
+                `\n- brandPhrases: ${result.stats.bridges.brandPhrases}` +
+                `\n- brandTokens: ${result.stats.bridges.brandTokens}` +
+                `\n- ambiguousBrandSuffix: ${result.stats.bridges.ambiguousBrandSuffix}` +
+                `\n- digraphs: ${result.stats.bridges.digraphs}` +
+                `\n- userPhrases: ${result.stats.bridges.userPhrases}` +
+                `\n- userTokens: ${result.stats.bridges.userTokens}` +
+                `\n- allCapsHints: ${result.stats.bridges.allCapsHints}` +
+                `\n- spaces: ${result.stats.bridges.spaces}` +
+                `\nHeader/Footer: ${extras.headersFootersProcessed}\nFusnote: ${extras.footnotesProcessed}\nEndnote: ${extras.endnotesProcessed}`;
                 `Fusnote: ${extras.footnotesProcessed}\n` +
                 `Endnote: ${extras.endnotesProcessed}`;
 
