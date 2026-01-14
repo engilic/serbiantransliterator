@@ -9,12 +9,12 @@ import { isTokenChar } from "./common";
 import {
     bridgeLinksAcrossTextNodes,
     bridgeAlwaysLatinTokensAcrossTextNodes,
-    bridgeAmbiguousBrandSuffixAcrossTextNodes,
     bridgeExactTokensAcrossTextNodes,
     buildPhraseInfos,
     bridgePhrasesAcrossTextNodes,
     bridgeDigraphsAcrossTextNodes,
     bridgeSpacesAcrossTextNodes,
+    bridgeAmbiguousBrandSuffixAcrossTextNodes,
     markCyrAllCapsDigraphHints,
     LAT_ALLCAPS_HINT,
 } from "./bridge/index";
@@ -31,12 +31,11 @@ function normalizePhraseForKey(p: string): string {
 function phrasesCacheKey(phrases: string[]): string {
     const norm = phrases.map(normalizePhraseForKey).filter(Boolean);
     const uniqSorted = Array.from(new Set(norm)).sort(); // order-insensitive + dedupe
-    return uniqSorted.join("\n");
+    return JSON.stringify(uniqSorted);
 }
 
 function getCachedPhraseInfos(phrases: string[]) {
     const key = phrasesCacheKey(phrases);
-    if (!key) return [];
 
     const hit = phraseInfosCache.get(key);
     if (hit) return hit;
@@ -44,7 +43,6 @@ function getCachedPhraseInfos(phrases: string[]) {
     const infos = buildPhraseInfos(phrases);
     phraseInfosCache.set(key, infos);
 
-    // jednostavna evikcija (FIFO)
     if (phraseInfosCache.size > PHRASE_INFOS_CACHE_MAX) {
         const firstKey = phraseInfosCache.keys().next().value as string | undefined;
         if (firstKey) phraseInfosCache.delete(firstKey);
@@ -54,7 +52,7 @@ function getCachedPhraseInfos(phrases: string[]) {
 }
 
 export interface OoxmlOptions extends CoreOptions {
-    direction?: Direction | "auto" | "to-ascii";
+    direction?: Direction | "to-ascii";
     setProofingLanguage?: boolean;
     protectRomans?: boolean;
     fixDoubleSpaces?: boolean;
@@ -82,11 +80,13 @@ export type ConvertStats = {
         userTokens: number;
         allCapsHints: number;
         spaces: number;
+        ambiguousBrandSuffix: number;
     };
     timingMs: number;
 };
 
 function countMatches(text: string, re: RegExp): number {
+    if (!re.global) return re.test(text) ? 1 : 0;
     re.lastIndex = 0;
     let c = 0;
     while (re.exec(text)) c++;
@@ -411,6 +411,9 @@ export function convertOoxml(
                     userTokens: 0,
                     allCapsHints: 0,
                     spaces: 0,
+
+                    // NEW (PR3):
+                    ambiguousBrandSuffix: 0,
                 },
                 timingMs: 0,
             },
@@ -433,6 +436,7 @@ export function convertOoxml(
     else if (direction === "to-ascii") label = "Ošišana latinica";
 
     const preserveCodeBlocks = options?.preserveCodeBlocks !== false;
+    const protectBrands = options?.protectBrands !== false;
 
     /**
      * BITNO: proofing language je sada OPT-IN:
@@ -457,6 +461,7 @@ export function convertOoxml(
         links: 0,
         brandPhrases: 0,
         brandTokens: 0,
+        ambiguousBrandSuffix: 0,
         digraphs: 0,
         userPhrases: 0,
         userTokens: 0,
@@ -474,13 +479,14 @@ export function convertOoxml(
 
     if (direction === "lat-to-cyr") {
         bridges.links = bridgeLinksAcrossTextNodes(textNodes);
-        bridges.brandPhrases = bridgePhrasesAcrossTextNodes(textNodes, ALWAYS_LATIN_PHRASE_INFOS);
-        bridges.brandTokens = bridgeAlwaysLatinTokensAcrossTextNodes(textNodes);
-        bridges.digraphs = bridgeDigraphsAcrossTextNodes(textNodes);
 
-        if (options?.protectBrands !== false) {
-            bridgeAmbiguousBrandSuffixAcrossTextNodes(textNodes);
+        if (protectBrands) {
+            bridges.brandPhrases = bridgePhrasesAcrossTextNodes(textNodes, ALWAYS_LATIN_PHRASE_INFOS);
+            bridges.brandTokens = bridgeAlwaysLatinTokensAcrossTextNodes(textNodes);
+            bridges.ambiguousBrandSuffix = bridgeAmbiguousBrandSuffixAcrossTextNodes(textNodes);
         }
+
+        bridges.digraphs = bridgeDigraphsAcrossTextNodes(textNodes);
 
         if (doProtectRomans) {
             const strictMatches = fullText.match(ROMAN_REGEX_STRICT) || [];
