@@ -1,5 +1,5 @@
 ﻿// src/taskpane/app/word/apply.ts
-/* global Word, document, console */
+/* global Word, console */
 
 import type { OoxmlOptions } from "../../../shared/ooxml/convertOoxml";
 import { convertOoxml } from "../../../shared/ooxml/convertOoxml";
@@ -368,6 +368,7 @@ export async function applyFromPreview(scope: "selection" | "document") {
             // =========================
             if (scope === "selection") {
                 const range = context.document.getSelection();
+                const ooxml = range.getOoxml(); // NEW: hvata i formatiranje
                 range.load("text");
                 await context.sync();
 
@@ -388,11 +389,22 @@ export async function applyFromPreview(scope: "selection" | "document") {
                 const normApply = normalizeForSelectionHash(rawText);
                 const currentSelectionHash = await sha256Hex(normApply);
 
-                if (state.preview.convertedOoxml && state.preview.ooxmlOptsSnapJson && state.preview.selectionTextHash) {
+                const currentOoxml = ooxml.value ?? "";
+                const currentOoxmlHash = await sha256Hex(currentOoxml.normalize("NFC"));
+
+                if (
+                    state.preview.convertedOoxml &&
+                    state.preview.ooxmlOptsSnapJson &&
+                    state.preview.selectionTextHash &&
+                    state.preview.selectionOoxmlHash
+                ) {
                     const currentJson = JSON.stringify(opts);
 
                     if (currentJson === state.preview.ooxmlOptsSnapJson && isPreviewCacheValid()) {
-                        if (currentSelectionHash === state.preview.selectionTextHash) {
+                        const sameText = currentSelectionHash === state.preview.selectionTextHash;
+                        const sameOoxml = currentOoxmlHash === state.preview.selectionOoxmlHash;
+
+                        if (sameText && sameOoxml) {
                             setStatus("Primena pregleda (bez ponovne konverzije)...", "info");
 
                             range.insertOoxml(state.preview.convertedOoxml, Word.InsertLocation.replace);
@@ -415,12 +427,13 @@ export async function applyFromPreview(scope: "selection" | "document") {
                             "Cache je nevažeći",
                             unsafeHtml(
                                 "Ne mogu da primenim sačuvani preview (selekcija je promenjena ili je cache istekao). " +
-                                "Pokrećem ponovnu konverziju."
+                                "Moguće je da je promenjen tekst ili formatiranje selekcije. Pokrećem ponovnu konverziju."
                             )
                         );
                     }
                 }
 
+                // fallback: ponovna konverzija selekcije
                 const { result } = await applyPipeline(context, "selection", ui, opts);
 
                 if (!result) {

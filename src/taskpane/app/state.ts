@@ -23,6 +23,7 @@ const preview: PreviewState = {
     convertedOoxml: null,
     ooxmlOptsSnapJson: null,
     selectionTextHash: null,
+    selectionOoxmlHash: null,
     cacheTimestamp: null,
 };
 
