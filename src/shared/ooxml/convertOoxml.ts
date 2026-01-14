@@ -18,6 +18,39 @@ import {
     LAT_ALLCAPS_HINT,
 } from "./bridge/index";
 
+const ALWAYS_LATIN_PHRASE_INFOS = buildPhraseInfos(ALWAYS_LATIN_PHRASES);
+const PHRASE_INFOS_CACHE_MAX = 80;
+const phraseInfosCache = new Map<string, ReturnType<typeof buildPhraseInfos>>();
+
+function normalizePhraseForKey(p: string): string {
+    return p.normalize("NFC").replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+function phrasesCacheKey(phrases: string[]): string {
+    const norm = phrases.map(normalizePhraseForKey).filter(Boolean);
+    const uniqSorted = Array.from(new Set(norm)).sort(); // order-insensitive + dedupe
+    return uniqSorted.join("\n");
+}
+
+function getCachedPhraseInfos(phrases: string[]) {
+    const key = phrasesCacheKey(phrases);
+    if (!key) return [];
+
+    const hit = phraseInfosCache.get(key);
+    if (hit) return hit;
+
+    const infos = buildPhraseInfos(phrases);
+    phraseInfosCache.set(key, infos);
+
+    // jednostavna evikcija (FIFO)
+    if (phraseInfosCache.size > PHRASE_INFOS_CACHE_MAX) {
+        const firstKey = phraseInfosCache.keys().next().value as string | undefined;
+        if (firstKey) phraseInfosCache.delete(firstKey);
+    }
+
+    return infos;
+}
+
 export interface OoxmlOptions extends CoreOptions {
     direction?: Direction | "auto" | "to-ascii";
     setProofingLanguage?: boolean;
@@ -434,12 +467,15 @@ export function convertOoxml(
 
     bridges.spaces = bridgeSpacesAcrossTextNodes(textNodes);
 
-    if (userProtectedPhrases.length) bridges.userPhrases = bridgePhrasesAcrossTextNodes(textNodes, buildPhraseInfos(userProtectedPhrases));
+    if (userProtectedPhrases.length) {
+        const infos = getCachedPhraseInfos(userProtectedPhrases);
+        bridges.userPhrases = bridgePhrasesAcrossTextNodes(textNodes, infos);
+    }
     if (userProtectedTokens.length) bridges.userTokens = bridgeExactTokensAcrossTextNodes(textNodes, userProtectedTokens);
 
     if (direction === "lat-to-cyr") {
         bridges.links = bridgeLinksAcrossTextNodes(textNodes);
-        bridges.brandPhrases = bridgePhrasesAcrossTextNodes(textNodes, buildPhraseInfos(ALWAYS_LATIN_PHRASES));
+        bridges.brandPhrases = bridgePhrasesAcrossTextNodes(textNodes, ALWAYS_LATIN_PHRASE_INFOS);
         bridges.brandTokens = bridgeAlwaysLatinTokensAcrossTextNodes(textNodes);
         bridges.digraphs = bridgeDigraphsAcrossTextNodes(textNodes);
 
