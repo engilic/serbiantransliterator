@@ -23,7 +23,10 @@ export const DEFAULT_SETTINGS: UiSettings = {
 
     applySerbianQuotes: true,
     fixDoubleSpaces: true,
-    formatDates: true,
+
+    // BITNO: formatiranje datuma menja sadržaj (nije samo preslovljavanje),
+    // pa je bezbednije da bude opt-in.
+    formatDates: false,
 
     setProofingLanguage: true,
 

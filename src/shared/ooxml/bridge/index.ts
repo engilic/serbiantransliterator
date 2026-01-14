@@ -13,6 +13,9 @@ export { bridgeDigraphsAcrossTextNodes } from "./lexical/digraphs";
 // PR2/PR3:
 export { bridgeAmbiguousBrandSuffixAcrossTextNodes } from "./lexical/ambiguousSuffix";
 
+// NEW: placeholders "{...}" across runs
+export { bridgeBracedPlaceholdersAcrossTextNodes } from "./lexical/placeholders";
+
 // Structural bridges
 export { bridgeSpacesAcrossTextNodes } from "./structural/spaces";
 export {

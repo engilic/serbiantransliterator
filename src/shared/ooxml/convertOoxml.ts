@@ -15,6 +15,7 @@ import {
     bridgeDigraphsAcrossTextNodes,
     bridgeSpacesAcrossTextNodes,
     bridgeAmbiguousBrandSuffixAcrossTextNodes,
+    bridgeBracedPlaceholdersAcrossTextNodes,
     markCyrAllCapsDigraphHints,
     LAT_ALLCAPS_HINT,
 } from "./bridge/index";
@@ -73,6 +74,7 @@ export type ConvertStats = {
     };
     bridges: {
         links: number;
+        placeholders: number;
         brandPhrases: number;
         brandTokens: number;
         digraphs: number;
@@ -411,9 +413,8 @@ export function convertOoxml(
                     userTokens: 0,
                     allCapsHints: 0,
                     spaces: 0,
-
-                    // NEW (PR3):
                     ambiguousBrandSuffix: 0,
+                    placeholders: 0,
                 },
                 timingMs: 0,
             },
@@ -459,6 +460,7 @@ export function convertOoxml(
 
     const bridges = {
         links: 0,
+        placeholders: 0,
         brandPhrases: 0,
         brandTokens: 0,
         ambiguousBrandSuffix: 0,
@@ -470,6 +472,9 @@ export function convertOoxml(
     };
 
     bridges.spaces = bridgeSpacesAcrossTextNodes(textNodes);
+
+    // NEW: placeholder bridging (radi u oba smera)
+    bridges.placeholders = bridgeBracedPlaceholdersAcrossTextNodes(textNodes);
 
     if (userProtectedPhrases.length) {
         const infos = getCachedPhraseInfos(userProtectedPhrases);
