@@ -1,3 +1,5 @@
+// src/shared/ooxml/bridge/lexical/links.ts
+
 import {
     findNextNodeWithText,
     trailingLinkFragment,
@@ -5,33 +7,11 @@ import {
     normKey,
 } from "../../common";
 
-const LINK_PATTERNS: RegExp[] = [
-    /^(https?:\/\/[^\s<>"')]+)/iu,
-    /^(ftp:\/\/[^\s<>"')]+)/iu,
-    /^(file:\/\/[^\s<>"')]+)/iu,
-    /^(www\.[^\s<>"')]+)/iu,
-    /^([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})/iu,
-
-    // NEW:
-    /^(mailto:[^\s<>"')]+)/iu,
-    /^(tel:\+?[0-9][0-9().-]{5,}(?:;[a-z0-9-]+=[a-z0-9._+~:%-]+)*)/iu,
-
-    /^(sip:[^\s<>"')]+)/iu,
-    /^(sms:[^\s<>"')]+)/iu,
-    /^(geo:[^\s<>"')]+)/iu,
-    /^(skype:[^\s<>"')]+)/iu,
-    /^(teams:[^\s<>"')]+)/iu,
-    /^(msteams:[^\s<>"')]+)/iu,
-];
-
-function trimLinkEnd(s: string): string {
-    // Skida završnu interpunkciju koja često "nalepe" URL/email u tekstu.
-    // Uključuje: , . ; : ! ? ) } ]
-    // NOTE:
-    // - ']' mora biti escaped kao \]
-    // - '}' NE treba escapovati u char class (no-useless-escape)
-    return s.replace(/[,.;:!?)}\]]+$/g, "");
-}
+import {
+    LINK_PATTERNS_ANCHORED,
+    trimLinkEnd,
+    looksLikeLinkStart,
+} from "../../../patterns/links";
 
 function buildLookahead(textNodes: Element[], startIndex: number, maxCp: number) {
     const plan: Array<{ nodeIndex: number; takeCp: number; cps: string[] }> = [];
@@ -50,6 +30,7 @@ function buildLookahead(textNodes: Element[], startIndex: number, maxCp: number)
             continue;
         }
 
+        // ako sledeći node počinje whitespace-om, ne bridguj link preko te granice
         if (raw.trimStart() !== raw) break;
 
         const cps = Array.from(raw);
@@ -99,6 +80,7 @@ export function bridgeLinksAcrossTextNodes(textNodes: Element[]): number {
         const aRaw = ((aNode.textContent ?? "")).normalize("NFC");
         if (!aRaw) continue;
 
+        // ako a završava whitespace-om, ne bridguj
         if (aRaw.trimEnd() !== aRaw) continue;
 
         const fragInfo = trailingLinkFragment(aRaw);
@@ -106,28 +88,13 @@ export function bridgeLinksAcrossTextNodes(textNodes: Element[]): number {
 
         const { frag, startCpIndex } = fragInfo;
 
+        // boundary guard: pre fragmenta ne sme biti link-char
         const aCps = Array.from(aRaw);
         const prevChar = startCpIndex > 0 ? (aCps[startCpIndex - 1] ?? "") : "";
         if (prevChar && isLinkChar(prevChar)) continue;
 
         const fragLower = normKey(frag);
-        const looksLikeStart =
-            fragLower.startsWith("http") ||
-            fragLower.startsWith("ftp") ||
-            fragLower.startsWith("file") ||
-            fragLower.startsWith("www.") ||
-            fragLower.startsWith("mailto:") ||
-            fragLower.startsWith("tel:") ||
-            fragLower.startsWith("sip:") ||
-            fragLower.startsWith("sms:") ||
-            fragLower.startsWith("geo:") ||
-            fragLower.startsWith("skype:") ||
-            fragLower.startsWith("teams:") ||
-            fragLower.startsWith("msteams:") ||
-            fragLower.includes("@");
-
-
-        if (!looksLikeStart) continue;
+        if (!looksLikeLinkStart(fragLower)) continue;
 
         const j0 = findNextNodeWithText(textNodes, i + 1);
         if (j0 == null) continue;
@@ -138,10 +105,12 @@ export function bridgeLinksAcrossTextNodes(textNodes: Element[]): number {
         const combined = frag + lookahead;
 
         let best = "";
-        for (const re of LINK_PATTERNS) {
+        for (const re of LINK_PATTERNS_ANCHORED) {
             const m = re.exec(combined);
             if (!m) continue;
-            const candidate = trimLinkEnd(m[1] ?? m[0] ?? "");
+
+            // NOTE: u patterns modulu regex-i imaju jednu capturing grupu za “glavni match”
+            const candidate = trimLinkEnd((m[1] ?? m[0] ?? "") as string);
             if (candidate.length > best.length) best = candidate;
         }
 
