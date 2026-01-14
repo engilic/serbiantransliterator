@@ -19,6 +19,16 @@ Koristimo SemVer za `package.json`, i 4-part verziju za Office manifest.
 
 Napomena: manifest verzija je važna jer Word/Office kešira add-in. Kad imaš “release”, bump manifest verzije pomaže da se nova verzija pouzdano učita.
 
+## Manifest bump (OBAVEZNO zbog Office cache-a)
+
+Word/Office često kešira add-in. Zbog toga je pri svakom produkcionom deploy-u preporučeno (a praktično obavezno) da bumpuješ verziju u `manifest.prod.xml`, čak i ako `package.json` ostaje na istoj verziji.
+
+Minimalna praksa:
+- Pre svakog deploy-a na Cloudflare Pages, bumpuj `<Version>` u `manifest.prod.xml`.
+- Npr. `1.0.0.0` → `1.0.1.0` → `1.0.2.0` ...
+
+Ovo obezbeđuje da Word pouzdano povuče novu verziju add-in-a.
+
 ## 1) Pre-release checks
 
 Pokreni sve lokalno:
