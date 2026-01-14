@@ -2,78 +2,96 @@ import { describe, it, expect } from "vitest";
 import { convertPlainText } from "../src/core/textCore";
 
 describe("Opcije core engine-a (protectBrands, applySerbianQuotes, direction)", () => {
-  it("protectBrands: kada je uključen, 'Pro' ostaje latinicom", () => {
-    const input = "Pro";
+    it("protectBrands: AMBIGUOUS token 'Pro' se prevodi bez brend konteksta", () => {
+        const input = "Pro";
 
-    const { text, type } = convertPlainText(input, "lat-to-cyr", {
-      protectBrands: true,
+        const { text, type } = convertPlainText(input, "lat-to-cyr", {
+            protectBrands: true,
+        });
+
+        expect(type).toBe("Lat → Ćir");
+        // Novo ponašanje: "Pro" bez konteksta treba da se preslovi
+        expect(text).toBe("Про");
     });
 
-    // Smer je forsiran Lat → Ćir
-    expect(type).toBe("Lat → Ćir");
-    // "Pro" je u ALWAYS_LATIN i kada je protectBrands = true, mora ostati latinicom
-    expect(text).toBe("Pro");
-  });
+    it("protectBrands: 'iPhone Pro' ostaje latinicom (brend + model)", () => {
+        const input = "Kupio sam iPhone Pro";
 
-  it("protectBrands: kada je isključen, 'Pro' se preslovljava u 'Про'", () => {
-    const input = "Pro";
+        const { text, type } = convertPlainText(input, "lat-to-cyr", {
+            protectBrands: true,
+        });
 
-    const { text, type } = convertPlainText(input, "lat-to-cyr", {
-      protectBrands: false,
+        expect(type).toBe("Lat → Ćir");
+        expect(text).toContain("Купио сам");
+        expect(text).toContain("iPhone Pro");
+        // Ne sme da postane "иPhone Про"
+        expect(text).not.toContain("иPhone");
+        expect(text).not.toContain("Про"); // u ovom inputu "Pro" treba da ostane "Pro"
     });
 
-    expect(type).toBe("Lat → Ćir");
-    // Sada se "Pro" ne štiti preko ALWAYS_LATIN i prevodi se
-    expect(text).toBe("Про");
-  });
+    it("protectBrands: 'MacBook Air' ostaje latinicom (brend + model)", () => {
+        const input = "MacBook Air je brz";
 
-  it('applySerbianQuotes: kada je uključen, "Test" postaje „Тест”', () => {
-    const input = `"Test"`;
+        const { text, type } = convertPlainText(input, "lat-to-cyr", {
+            protectBrands: true,
+        });
 
-    const { text, type } = convertPlainText(input, "lat-to-cyr", {
-      applySerbianQuotes: true,
+        expect(type).toBe("Lat → Ćir");
+        expect(text).toContain("MacBook Air");
+        expect(text).toContain("је брз");
     });
 
-    expect(type).toBe("Lat → Ćir");
-    // Očekujemo srpske navodnike oko ćiriličnog teksta
-    expect(text).toBe("„Тест”");
-  });
+    it("protectBrands: kada je isključen, 'Pro' se preslovljava u 'Про'", () => {
+        const input = "Pro";
 
-  it('applySerbianQuotes: kada je isključen, "Test" ostaje sa ASCII navodnicima', () => {
-    const input = `"Test"`;
+        const { text, type } = convertPlainText(input, "lat-to-cyr", {
+            protectBrands: false,
+        });
 
-    const { text, type } = convertPlainText(input, "lat-to-cyr", {
-      applySerbianQuotes: false,
+        expect(type).toBe("Lat → Ćir");
+        expect(text).toBe("Про");
     });
 
-    expect(type).toBe("Lat → Ćir");
+    it('applySerbianQuotes: kada je uključen, "Test" postaje „Тест”', () => {
+        const input = `"Test"`;
 
-    // Tekst treba da bude u ćirilici, ali navodnici ostaju ASCII "
-    // Zavisi od trenutne implementacije fixQuotes – ovde proveravamo da NEMA srpskih navodnika
-    expect(text).not.toContain("„");
-    expect(text).not.toContain("”");
-    expect(text).toContain("Тест");
-  });
+        const { text, type } = convertPlainText(input, "lat-to-cyr", {
+            applySerbianQuotes: true,
+        });
 
-  it("direction override: 'Zdravo' uz direction='cyr-to-lat' se NE SME promeniti (jer nije ćirilica)", () => {
-    const input = "Zdravo";
+        expect(type).toBe("Lat → Ćir");
+        expect(text).toBe("„Тест”");
+    });
 
-    const { text, type } = convertPlainText(input, "cyr-to-lat");
+    it('applySerbianQuotes: kada je isključen, "Test" ostaje sa ASCII navodnicima', () => {
+        const input = `"Test"`;
 
-    // Forsiran je smer Ćir → Lat, ali ulaz je već latinica,
-    // tako da se transliteracija neće promeniti tekst (mapiranje latinice na latinicu ne radi ništa).
-    expect(type).toBe("Ćir → Lat");
-    expect(text).toBe("Zdravo");
-  });
+        const { text, type } = convertPlainText(input, "lat-to-cyr", {
+            applySerbianQuotes: false,
+        });
 
-  it("direction override: 'Здраво' uz direction='lat-to-cyr' se NE SME promeniti (jer već jeste ćirilica)", () => {
-    const input = "Здраво";
+        expect(type).toBe("Lat → Ćir");
 
-    const { text, type } = convertPlainText(input, "lat-to-cyr");
+        expect(text).not.toContain("„");
+        expect(text).not.toContain("”");
+        expect(text).toContain("Тест");
+    });
 
-    // Forsiran je smer Lat → Ćir, ali ulaz je već ćirilica.
-    // Mape rade karakter-po-karakter, ali ćirilična slova ne mapiraju na ništa drugo u ovom smeru.
-    expect(type).toBe("Lat → Ćir");
-    expect(text).toBe("Здраво");
-  });
+    it("direction override: 'Zdravo' uz direction='cyr-to-lat' se NE SME promeniti (jer nije ćirilica)", () => {
+        const input = "Zdravo";
+
+        const { text, type } = convertPlainText(input, "cyr-to-lat");
+
+        expect(type).toBe("Ćir → Lat");
+        expect(text).toBe("Zdravo");
+    });
+
+    it("direction override: 'Здраво' uz direction='lat-to-cyr' se NE SME promeniti (jer već jeste ćirilica)", () => {
+        const input = "Здраво";
+
+        const { text, type } = convertPlainText(input, "lat-to-cyr");
+
+        expect(type).toBe("Lat → Ćir");
+        expect(text).toBe("Здраво");
+    });
 });

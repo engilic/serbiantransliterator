@@ -1,4 +1,4 @@
-﻿import { ALWAYS_LATIN_TOKENS } from "../../../../core/rules";
+﻿import { ALWAYS_LATIN_TOKENS_BRIDGE } from "../../../../core/rules";
 import {
     findNextNodeWithText,
     trailingTokenFragment,
@@ -180,9 +180,10 @@ function bridgeTokensAcrossTextNodes(
 
 /**
  * Bridge ALWAYS_LATIN tokens (case-insensitive).
+ * NOTE: uključuje i "ambiguous" tokene (Pro/Max/...) da se ne desi parcijalna transliteracija kad su splitovani.
  */
 export function bridgeAlwaysLatinTokensAcrossTextNodes(textNodes: Element[]): number {
-    return bridgeTokensAcrossTextNodes(textNodes, ALWAYS_LATIN_TOKENS, false);
+    return bridgeTokensAcrossTextNodes(textNodes, ALWAYS_LATIN_TOKENS_BRIDGE, false);
 }
 
 /**

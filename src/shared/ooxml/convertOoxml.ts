@@ -9,6 +9,7 @@ import { isTokenChar } from "./common";
 import {
     bridgeLinksAcrossTextNodes,
     bridgeAlwaysLatinTokensAcrossTextNodes,
+    bridgeAmbiguousBrandSuffixAcrossTextNodes,
     bridgeExactTokensAcrossTextNodes,
     buildPhraseInfos,
     bridgePhrasesAcrossTextNodes,
@@ -476,6 +477,10 @@ export function convertOoxml(
         bridges.brandPhrases = bridgePhrasesAcrossTextNodes(textNodes, ALWAYS_LATIN_PHRASE_INFOS);
         bridges.brandTokens = bridgeAlwaysLatinTokensAcrossTextNodes(textNodes);
         bridges.digraphs = bridgeDigraphsAcrossTextNodes(textNodes);
+
+        if (options?.protectBrands !== false) {
+            bridgeAmbiguousBrandSuffixAcrossTextNodes(textNodes);
+        }
 
         if (doProtectRomans) {
             const strictMatches = fullText.match(ROMAN_REGEX_STRICT) || [];
