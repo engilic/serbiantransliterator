@@ -1,204 +1,222 @@
 <!DOCTYPE html>
 <html lang="sr">
 <head>
-  <meta charset="UTF-8" />
-  <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <title>Serbian Transliterator</title>
+    <title>Serbian Transliterator</title>
 
-  <!-- Office.js -->
-  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+    <!-- Office.js -->
+    <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
 
-  <!-- CSS se bundluje iz taskpane.ts (import "./taskpane.css") i HtmlWebpackPlugin će ubaciti <link> -->
+    <!-- CSS se bundluje iz taskpane.ts (import "./taskpane.css") i HtmlWebpackPlugin će ubaciti <link> -->
 </head>
 
 <body>
-  <header>
-    <div class="header-content">
-      <h1>Serbian Transliterator</h1>
-      <div class="version">v<%= appVersion %></div>
-    </div>
-  </header>
-
-  <main>
-    <div class="section">
-      <div class="button-group">
-        <button id="runBtn">PRESLOVI<br><span class="btn-subtitle">ceo dokument</span></button>
-        <button id="previewBtn">PREGLED<br><span class="btn-subtitle">ceo dokument</span></button>
-      </div>
-
-      <div class="settings-row">
-        <div class="section-title">PODEŠAVANJA</div>
-        <div class="settings-actions">
-          <button id="exportBtn" class="mini-btn" title="Izvezi podešavanja">
-            <svg viewBox="0 0 24 24">
-              <path d="M4 10l8-8 8 8h-5v10h-6v-10z" />
-              <path d="M0 0h24v24H0z" fill="none" />
-            </svg>
-            <span>Izvezi</span>
-          </button>
-
-          <button id="importBtn" class="mini-btn" title="Uvezi podešavanja">
-            <svg viewBox="0 0 24 24">
-              <path d="M20 14l-8 8-8-8h5v-10h6v10z" />
-              <path d="M0 0h24v24H0z" fill="none" />
-            </svg>
-            <span>Uvezi</span>
-          </button>
+    <header>
+        <div class="header-content">
+            <h1>Serbian Transliterator</h1>
+            <div class="version">v<%= appVersion %></div>
         </div>
-      </div>
+    </header>
 
-      <input type="file" id="fileInput" accept=".json" style="display:none" />
-    </div>
+    <main>
+        <div class="section">
+            <div class="button-group">
+                <button id="runBtn">PRESLOVI<br><span class="btn-subtitle">ceo dokument</span></button>
+                <button id="previewBtn">PREGLED<br><span class="btn-subtitle">ceo dokument</span></button>
+            </div>
 
-    <div class="section">
-      <div class="section-header">
-        <div class="section-title">PROFIL</div>
+            <div class="settings-row">
+                <div class="section-title">PODEŠAVANJA</div>
+                <div class="settings-actions">
+                    <button id="exportBtn" class="mini-btn" title="Izvezi podešavanja">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M4 10l8-8 8 8h-5v10h-6v-10z" />
+                            <path d="M0 0h24v24H0z" fill="none" />
+                        </svg>
+                        <span>Izvezi</span>
+                    </button>
 
-        <button id="resetBtn" class="mini-btn" disabled>
-          <svg viewBox="0 0 24 24">
-            <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
-            <path d="M0 0h24v24H0z" fill="none" />
-          </svg>
-          Fabrička podešavanja
-        </button>
-      </div>
+                    <button id="importBtn" class="mini-btn" title="Uvezi podešavanja">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M20 14l-8 8-8-8h5v-10h6v10z" />
+                            <path d="M0 0h24v24H0z" fill="none" />
+                        </svg>
+                        <span>Uvezi</span>
+                    </button>
+                </div>
+            </div>
 
-      <select id="profilePreset">
-        <option value="custom">Ručno</option>
-        <option value="it">IT / Tehnologija</option>
-        <option value="finance">Finansije / Bankarstvo</option>
-        <option value="medical">Medicina / Farmacija</option>
-        <option value="legal">Pravo / Administracija</option>
-        <option value="marketing">Marketing / Društvene mreže</option>
-        <option value="journalism">Novinarstvo / Mediji</option>
-      </select>
-    </div>
+            <input type="file" id="fileInput" accept=".json" style="display:none" />
+        </div>
 
-    <div class="section">
-      <div class="section-header">
-        <div class="section-title">SMER</div>
-      </div>
+        <div class="section">
+            <div class="section-header">
+                <div class="section-title">PROFIL</div>
 
-      <div class="direction-row">
-        <label><input type="radio" id="dirAuto" name="direction" value="auto" checked /> Auto</label>
-        <label><input type="radio" id="dirToAscii" name="direction" value="to-ascii" /> Ošišana latinica</label>
-        <label><input type="radio" id="dirLatToCyr" name="direction" value="lat-to-cyr" /> Lat → Ćir</label>
-        <label><input type="radio" id="dirCyrToLat" name="direction" value="cyr-to-lat" /> Ćir → Lat</label>
-      </div>
-    </div>
+                <button id="resetBtn" class="mini-btn" disabled>
+                    <svg viewBox="0 0 24 24">
+                        <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
+                        <path d="M0 0h24v24H0z" fill="none" />
+                    </svg>
+                    Fabrička podešavanja
+                </button>
+            </div>
 
-    <div class="section">
-        <div class="section-title">OPCIJE</div>
-
-        <label><input type="checkbox" id="optConfirmWholeDoc" checked /> Potvrdi preslovljavanje celog dokumenta</label>
-        <label><input type="checkbox" id="optIncludeHeadersFooters" /> Uključi zaglavlja/podnožja (header/footer)</label>
-        <label><input type="checkbox" id="optIncludeFootnotes" /> Uključi fusnote (footnotes)</label>
-        <label><input type="checkbox" id="optIncludeEndnotes" /> Uključi endnote (endnotes)</label>
-        <label><input type="checkbox" id="optProtectBrands" checked /> Zaštiti brendove (Windows, ...)</label>
-        <label><input type="checkbox" id="optSerbianQuotes" checked /> Pametni navodnici ( „ … “ )</label>
-        <label><input type="checkbox" id="optPreserveCodeBlocks" checked /> Zaštiti kod (<code>inline</code> / <code>blok</code>)</label>
-        <div class="field-row">
-            <div class="field-label">Zaštita <code>{...}</code> blokova</div>
-            <select id="optCurlyProtection">
-                <option value="placeholders">Samo placeholder-i (npr. {USER_NAME})</option>
-                <option value="all">Sve u {...} (legacy)</option>
-                <option value="none">Ne štiti {...}</option>
+            <select id="profilePreset">
+                <option value="custom">Ručno</option>
+                <option value="it">IT / Tehnologija</option>
+                <option value="finance">Finansije / Bankarstvo</option>
+                <option value="medical">Medicina / Farmacija</option>
+                <option value="legal">Pravo / Administracija</option>
+                <option value="marketing">Marketing / Društvene mreže</option>
+                <option value="journalism">Novinarstvo / Mediji</option>
             </select>
-            <div class="hint">Kontroliše da li se sadržaj u vitičastim zagradama preslovljava.</div>
         </div>
-        <label><input type="checkbox" id="optProtectRomans" checked /> Zaštiti rimske brojeve (IV, XIV)</label>
-        <label><input type="checkbox" id="optSetProofingLanguage" checked /> Postavi jezik provere (sr-Cyrl / sr-Latn)</label>
-        <label><input type="checkbox" id="optShowStats" /> Prikaži detaljnu statistiku</label>
-    </div>
 
-    <div class="section">
-      <div class="section-title">KOREKCIJA</div>
-      <label><input type="checkbox" id="optFixDoubleSpaces" checked /> Ukloni višak razmaka</label>
-      <label><input type="checkbox" id="optFormatDates" /> Formatiraj datume (npr. 21.10.2023.)</label>
-    </div>
+        <div class="section">
+            <div class="section-header">
+                <div class="section-title">SMER</div>
+            </div>
 
-    <div class="section">
-      <div class="section-header">
-        <div class="section-title">ZAŠTIĆENO</div>
-
-        <div class="header-actions">
-          <button id="addTagBtn" class="icon-btn btn-add" title="Dodaj reč" disabled>
-            <svg viewBox="0 0 24 24">
-              <path d="M18 10h-4V6c0-1.1-.9-2-2-2s-2 .9-2 2v4H6c-1.1 0-2 .9-2 2s.9 2 2 2h4v4c0 1.1.9 2 2 2s2-.9 2-2v-4h4c1.1 0 2-.9 2-2s-.9-2-2-2z" />
-              <path d="M0 0h24v24H0z" fill="none" />
-            </svg>
-          </button>
-
-          <!-- FIX: dodato '>' -->
-          <button id="clearCustomBtn" class="mini-btn" title="Obriši moje tagove (unos u polju ostaje)">
-            <svg viewBox="0 0 24 24">
-              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-              <path d="M0 0h24v24H0z" fill="none" />
-            </svg>
-            <span>Moje</span>
-          </button>
-
-          <!-- FIX: dodato '>' -->
-          <button id="clearPresetBtn" class="mini-btn" title="Obriši sve tagove i očisti polje za unos">
-            <svg viewBox="0 0 24 24">
-              <path d="M0 0h24v24H0z" fill="none" />
-              <path d="M14 6V4h-4v2h4zM4 8v11h16V8H4zm10-2V4h-4v2h4z" opacity=".3" />
-              <path d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-2 .89-2 2v11c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zM10 4h4v2h-4V4zm10 15H4V8h16v11z" />
-            </svg>
-            <span>Profil</span>
-          </button>
-
-          <button id="clearAllBtn" class="mini-btn" title="Obriši sve reči" disabled>
-            <svg viewBox="0 0 24 24">
-              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-              <path d="M0 0h24v24H0z" fill="none" />
-            </svg>
-            <span>Sve</span>
-          </button>
+            <div class="direction-row">
+                <label><input type="radio" id="dirAuto" name="direction" value="auto" checked /> Auto</label>
+                <label><input type="radio" id="dirToAscii" name="direction" value="to-ascii" /> Ošišana latinica</label>
+                <label><input type="radio" id="dirLatToCyr" name="direction" value="lat-to-cyr" /> Lat → Ćir</label>
+                <label><input type="radio" id="dirCyrToLat" name="direction" value="cyr-to-lat" /> Ćir → Lat</label>
+            </div>
         </div>
-      </div>
 
-      <div class="tags-container" id="tagsContainer">
-        <div class="tags-list" id="tagsList"></div>
-        <input type="text" id="tagInput" class="tag-input" placeholder="Upiši reč ili frazu..." autocomplete="off" />
-      </div>
+        <div class="section">
+            <div class="section-title">OPCIJE</div>
 
-      <textarea id="userWordsCustom" style="display:none;"></textarea>
-      <textarea id="userWordsPreset" style="display:none;"></textarea>
+            <label><input type="checkbox" id="optConfirmWholeDoc" checked /> Potvrdi preslovljavanje celog dokumenta</label>
+            <label><input type="checkbox" id="optIncludeHeadersFooters" /> Uključi zaglavlja/podnožja (header/footer)</label>
+            <label><input type="checkbox" id="optIncludeFootnotes" /> Uključi fusnote (footnotes)</label>
+            <label><input type="checkbox" id="optIncludeEndnotes" /> Uključi endnote (endnotes)</label>
+            <label><input type="checkbox" id="optProtectBrands" checked /> Zaštiti brendove (Windows, ...)</label>
+            <label><input type="checkbox" id="optSerbianQuotes" checked /> Pametni navodnici ( „ … “ )</label>
+            <label><input type="checkbox" id="optPreserveCodeBlocks" checked /> Zaštiti kod (<code>inline</code> / <code>blok</code>)</label>
+            <label><input type="checkbox" id="optProtectRomans" checked /> Zaštiti rimske brojeve (IV, XIV)</label>
+            <label><input type="checkbox" id="optSetProofingLanguage" checked /> Postavi jezik provere (sr-Cyrl / sr-Latn)</label>
+            <label><input type="checkbox" id="optShowStats" /> Prikaži detaljnu statistiku</label>
+        </div>
 
-      <div class="hint">Reči ovde ostaju u originalnom pismu.</div>
+        <div class="section">
+            <div class="section-title">KOREKCIJA</div>
+            <label><input type="checkbox" id="optFixDoubleSpaces" checked /> Ukloni višak razmaka</label>
+            <label><input type="checkbox" id="optFormatDates" /> Formatiraj datume (npr. 21.10.2023.)</label>
+        </div>
+
+        <!-- NEW: Advanced (collapsible) -->
+        <div class="section">
+            <div class="section-header">
+                <div class="section-title">NAPREDNO</div>
+
+                <div class="header-actions">
+                    <button id="toggleAdvancedBtn"
+                            class="mini-btn"
+                            type="button"
+                            aria-expanded="false"
+                            title="Prikaži/sakrij napredna podešavanja">
+                        Napredno
+                    </button>
+                </div>
+            </div>
+
+            <div id="advancedSettings" class="advanced-settings">
+                <div class="field-row">
+                    <div class="field-label">Zaštita <code>{...}</code> blokova</div>
+                    <select id="optCurlyProtection">
+                        <option value="placeholders">Samo placeholder-i (npr. {USER_NAME})</option>
+                        <option value="all">Sve u {...} (legacy)</option>
+                        <option value="none">Ne štiti {...}</option>
+                    </select>
+                    <div class="hint">Kontroliše da li se sadržaj u vitičastim zagradama preslovljava.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-header">
+                <div class="section-title">ZAŠTIĆENO</div>
+
+                <div class="header-actions">
+                    <button id="addTagBtn" class="icon-btn btn-add" title="Dodaj reč" disabled>
+                        <svg viewBox="0 0 24 24">
+                            <path d="M18 10h-4V6c0-1.1-.9-2-2-2s-2 .9-2 2v4H6c-1.1 0-2 .9-2 2s.9 2 2 2h4v4c0 1.1.9 2 2 2s2-.9 2-2v-4h4c1.1 0 2-.9 2-2s-.9-2-2-2z" />
+                            <path d="M0 0h24v24H0z" fill="none" />
+                        </svg>
+                    </button>
+
+                    <button id="clearCustomBtn" class="mini-btn" title="Obriši moje tagove (unos u polju ostaje)">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                            <path d="M0 0h24v24H0z" fill="none" />
+                        </svg>
+                        <span>Moje</span>
+                    </button>
+
+                    <button id="clearPresetBtn" class="mini-btn" title="Obriši sve tagove i očisti polje za unos">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M0 0h24v24H0z" fill="none" />
+                            <path d="M14 6V4h-4v2h4zM4 8v11h16V8H4zm10-2V4h-4v2h4z" opacity=".3" />
+                            <path d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-2 .89-2 2v11c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zM10 4h4v2h-4V4zm10 15H4V8h16v11z" />
+                        </svg>
+                        <span>Profil</span>
+                    </button>
+
+                    <button id="clearAllBtn" class="mini-btn" title="Obriši sve reči" disabled>
+                        <svg viewBox="0 0 24 24">
+                            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                            <path d="M0 0h24v24H0z" fill="none" />
+                        </svg>
+                        <span>Sve</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="tags-container" id="tagsContainer">
+                <div class="tags-list" id="tagsList"></div>
+                <input type="text" id="tagInput" class="tag-input" placeholder="Upiši reč ili frazu..." autocomplete="off" />
+            </div>
+
+            <textarea id="userWordsCustom" style="display:none;"></textarea>
+            <textarea id="userWordsPreset" style="display:none;"></textarea>
+
+            <div class="hint">Reči ovde ostaju u originalnom pismu.</div>
+        </div>
+
+        <div id="msg">Spreman za rad.</div>
+
+        <div id="statsBox">
+            <div id="statsTitle">Statistika poslednje akcije:</div>
+            <pre id="statsText"></pre>
+        </div>
+    </main>
+
+    <footer>
+        <a href="support.html" target="_blank">Pomoć</a> •
+        <a href="privacy.html" target="_blank">Privatnost</a> •
+        <span class="copyright">© 2026</span>
+    </footer>
+
+    <div id="modalOverlay" class="modal-overlay" role="dialog" aria-modal="true">
+        <div id="modal" class="modal">
+            <h3 id="modalTitle">Potvrda</h3>
+
+            <div class="modal-content">
+                <div id="modalText">Tekst poruke...</div>
+                <textarea id="modalInput" rows="5"></textarea>
+            </div>
+
+            <div class="modal-actions">
+                <button id="modalCancel">Otkaži</button>
+                <button id="modalOk" class="btn-primary">OK</button>
+            </div>
+        </div>
     </div>
-
-    <div id="msg">Spreman za rad.</div>
-
-    <div id="statsBox">
-      <div id="statsTitle">Statistika poslednje akcije:</div>
-      <pre id="statsText"></pre>
-    </div>
-  </main>
-
-  <footer>
-    <a href="support.html" target="_blank">Pomoć</a> •
-    <a href="privacy.html" target="_blank">Privatnost</a> •
-    <span class="copyright">© 2026</span>
-  </footer>
-
-  <div id="modalOverlay" class="modal-overlay" role="dialog" aria-modal="true">
-    <div id="modal" class="modal">
-      <h3 id="modalTitle">Potvrda</h3>
-
-      <div class="modal-content">
-        <div id="modalText">Tekst poruke...</div>
-        <textarea id="modalInput" rows="5"></textarea>
-      </div>
-
-      <div class="modal-actions">
-        <button id="modalCancel">Otkaži</button>
-        <button id="modalOk" class="btn-primary">OK</button>
-      </div>
-    </div>
-  </div>
 </body>
 </html>

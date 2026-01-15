@@ -20,6 +20,8 @@ import { DEFAULT_SETTINGS, PROFILE_NAMES, PRESETS, SETTINGS_KEY } from "./defaul
 
 import { renderTags, setupTagEvents } from "./tags";
 
+import { initAdvancedSettingsToggle } from "./advanced";
+
 /* =========================
    Public: initUi()
    ========================= */
@@ -46,6 +48,7 @@ export function initUi() {
     state.isApplyingProfile = true;
     applySettingsToUi(settings);
     state.isApplyingProfile = false;
+    initAdvancedSettingsToggle();
 
     renderTags();
     updateResetButtonState();
