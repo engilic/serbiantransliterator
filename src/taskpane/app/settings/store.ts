@@ -1,10 +1,11 @@
 // src/taskpane/app/settings/store.ts
-/* global localStorage */
+/* global */
 
 import type { UiSettings } from "../types";
+import { safeGetItem, safeSetItem } from "../../../shared/storage/safeLocalStorage";
 
 export function loadSettingsFromStorage(key: string, defaults: UiSettings): UiSettings | null {
-    const raw = localStorage.getItem(key);
+    const raw = safeGetItem(key);
     if (!raw) return null;
 
     try {
@@ -17,5 +18,5 @@ export function loadSettingsFromStorage(key: string, defaults: UiSettings): UiSe
 }
 
 export function saveSettingsToStorage(key: string, settings: UiSettings) {
-    localStorage.setItem(key, JSON.stringify(settings));
+    safeSetItem(key, JSON.stringify(settings));
 }
