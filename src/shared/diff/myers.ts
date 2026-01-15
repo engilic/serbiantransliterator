@@ -1,6 +1,6 @@
 ﻿/**
  * Myers Diff Algorithm
- * 
+ *
  * Implementacija minimalnog Myers diff algoritma za poređenje stringova.
  * Koristi se za preview režim "diff" i "side-by-side" prikaze.
  */

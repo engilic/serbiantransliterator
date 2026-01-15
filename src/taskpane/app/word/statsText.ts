@@ -22,11 +22,7 @@ export function buildApplyStatsTitle(result: ResultLike): string {
     return `Statistika: ${result.type}`;
 }
 
-export function buildApplyStatsText(
-    result: ResultLike,
-    scope: ApplyScope,
-    extras?: ExtrasSummary
-): string {
+export function buildApplyStatsText(result: ResultLike, scope: ApplyScope, extras?: ExtrasSummary): string {
     const time = ms0(result.stats.timingMs);
 
     const bridges = result.stats.bridges;
@@ -86,8 +82,6 @@ export function buildApplyStatsText(
 export function buildPreviewAppliedStats(): { title: string; text: string } {
     return {
         title: "Statistika: primenjen preview",
-        text:
-            `Opseg: Selekcija\n` +
-            `Napomena: primenjen je OOXML iz pregleda (bez ponovne konverzije).`,
+        text: `Opseg: Selekcija\n` + `Napomena: primenjen je OOXML iz pregleda (bez ponovne konverzije).`,
     };
 }

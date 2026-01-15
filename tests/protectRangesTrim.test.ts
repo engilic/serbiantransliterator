@@ -11,7 +11,11 @@ function opts(): ProtectOptions {
     };
 }
 
-function findRangeContaining(text: string, ranges: Array<[number, number]>, needle: string): [number, number] | null {
+function findRangeContaining(
+    text: string,
+    ranges: Array<[number, number]>,
+    needle: string
+): [number, number] | null {
     for (const [s, e] of ranges) {
         if (text.slice(s, e).includes(needle)) return [s, e];
     }

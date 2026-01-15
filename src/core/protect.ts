@@ -14,12 +14,7 @@ function escapeRegex(str: string): string {
     return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function addRangesFromRegex(
-    text: string,
-    re: RegExp,
-    ranges: Range[],
-    groupIndex: number | null = null
-) {
+function addRangesFromRegex(text: string, re: RegExp, ranges: Range[], groupIndex: number | null = null) {
     re.lastIndex = 0;
     let m: RegExpExecArray | null;
     while ((m = re.exec(text)) !== null) {
@@ -152,12 +147,7 @@ export function collectProtectedRanges(text: string, opts: ProtectOptions): Rang
      * što liči na "/segment/segment" i path regex bi progutao trailing '.' i onda mergeRanges
      * proširi URL range nazad na tačku.
      */
-    addRangesFromRegex(
-        text,
-        /(^|[^:/])(\/[a-zA-Z0-9._-]+\/[a-zA-Z0-9._\-/]+)/g,
-        ranges,
-        2
-    );
+    addRangesFromRegex(text, /(^|[^:/])(\/[a-zA-Z0-9._-]+\/[a-zA-Z0-9._\-/]+)/g, ranges, 2);
 
     // 4) Ekstenzije fajlova
     addRangesFromRegex(
@@ -171,11 +161,7 @@ export function collectProtectedRanges(text: string, opts: ProtectOptions): Rang
     addRangesFromRegex(text, /\b(Ctrl|Alt|Shift|Cmd)\s*\+\s*[A-Z0-9]\b/giu, ranges);
 
     // 6) GUID
-    addRangesFromRegex(
-        text,
-        /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/giu,
-        ranges
-    );
+    addRangesFromRegex(text, /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/giu, ranges);
 
     // 7) Kod/placeholder blokovi
     if (opts.curlyProtection === "all") {

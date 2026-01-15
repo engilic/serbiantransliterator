@@ -1,10 +1,4 @@
-import {
-    findNextNodeWithText,
-    firstCp,
-    lastCp,
-    dropFirstCp,
-    latinLetterSr,
-} from "../../common";
+import { findNextNodeWithText, firstCp, lastCp, dropFirstCp, latinLetterSr } from "../../common";
 
 export function bridgeDigraphsAcrossTextNodes(textNodes: Element[]): number {
     let changed = 0;
@@ -12,7 +6,7 @@ export function bridgeDigraphsAcrossTextNodes(textNodes: Element[]): number {
     for (let i = 0; i < textNodes.length - 1; i++) {
         const aNode = textNodes[i];
         if (!aNode) continue;
-        const aRaw = ((aNode.textContent ?? "")).normalize("NFC");
+        const aRaw = (aNode.textContent ?? "").normalize("NFC");
         if (!aRaw) continue;
 
         const j = findNextNodeWithText(textNodes, i + 1);
@@ -20,7 +14,7 @@ export function bridgeDigraphsAcrossTextNodes(textNodes: Element[]): number {
 
         const bNode = textNodes[j];
         if (!bNode) continue;
-        const bRaw = ((bNode.textContent ?? "")).normalize("NFC");
+        const bRaw = (bNode.textContent ?? "").normalize("NFC");
         if (!bRaw) continue;
 
         if (/\s$/.test(aRaw)) continue;

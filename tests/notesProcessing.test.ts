@@ -2,7 +2,11 @@
 
 // mock convertOoxml used inside notes.ts
 vi.mock("../src/shared/ooxml/convertOoxml", () => ({
-    convertOoxml: vi.fn((_xmlIn: string) => ({ xml: "<out/>", type: "Lat → Ćir", stats: { timingMs: 1, textNodes: 1 } })),
+    convertOoxml: vi.fn((_xmlIn: string) => ({
+        xml: "<out/>",
+        type: "Lat → Ćir",
+        stats: { timingMs: 1, textNodes: 1 },
+    })),
 }));
 
 import { processNotes } from "../src/taskpane/app/word/notes";

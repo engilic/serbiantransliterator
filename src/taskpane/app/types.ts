@@ -18,10 +18,10 @@ export interface UiSettings {
     protectRomans: boolean;
 
     /**
-     * Kako štitimo {...} u plain tekstu / Word tekstu.
-     * - placeholders: štiti samo placeholder-like (default)
-     * - all: legacy ponašanje (štiti bilo šta u {...})
-     * - none: ne štiti {...}
+     * Kako ï¿½titimo {...} u plain tekstu / Word tekstu.
+     * - placeholders: ï¿½titi samo placeholder-like (default)
+     * - all: legacy ponaï¿½anje (ï¿½titi bilo ï¿½ta u {...})
+     * - none: ne ï¿½titi {...}
      */
     curlyProtection: CurlyProtectionUi;
 

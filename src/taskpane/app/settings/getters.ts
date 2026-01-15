@@ -27,7 +27,15 @@ export function getSelectValue(id: string): string {
 
 function asProfilePreset(v: string | null | undefined): ProfilePreset {
     const s = (v ?? "") as ProfilePreset;
-    const allowed: ProfilePreset[] = ["custom", "it", "finance", "medical", "legal", "journalism", "marketing"];
+    const allowed: ProfilePreset[] = [
+        "custom",
+        "it",
+        "finance",
+        "medical",
+        "legal",
+        "journalism",
+        "marketing",
+    ];
     return allowed.includes(s) ? s : "custom";
 }
 

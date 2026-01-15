@@ -15,16 +15,13 @@ export function onSelectionChange() {
 
 export function getSelectedTextAsync(): Promise<string> {
     return new Promise((resolve, reject) => {
-        Office.context.document.getSelectedDataAsync(
-            Office.CoercionType.Text,
-            (result) => {
-                if (result.status === Office.AsyncResultStatus.Succeeded) {
-                    resolve(String(result.value ?? ""));
-                } else {
-                    reject(result.error);
-                }
+        Office.context.document.getSelectedDataAsync(Office.CoercionType.Text, (result) => {
+            if (result.status === Office.AsyncResultStatus.Succeeded) {
+                resolve(String(result.value ?? ""));
+            } else {
+                reject(result.error);
             }
-        );
+        });
     });
 }
 
@@ -90,7 +87,9 @@ export async function sha256Hex(str: string): Promise<string> {
         const enc = new TextEncoder();
         const buf = await cryptoAny.subtle.digest("SHA-256", enc.encode(str));
         const bytes = new Uint8Array(buf);
-        return Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
+        return Array.from(bytes)
+            .map((b) => b.toString(16).padStart(2, "0"))
+            .join("");
     } catch {
         return fnv1a32(str);
     }

@@ -1,10 +1,5 @@
 ﻿import { ALWAYS_LATIN_TOKENS_BRIDGE } from "../../../../core/rules";
-import {
-    findNextNodeWithText,
-    trailingTokenFragment,
-    isTokenChar,
-    normKey,
-} from "../../common";
+import { findNextNodeWithText, trailingTokenFragment, isTokenChar, normKey } from "../../common";
 
 type TokenLowerCps = { s: string; cps: string[]; len: number };
 
@@ -28,9 +23,7 @@ function getCachedTokenList(tokensSource: Set<string> | string[], caseSensitive:
     const hit = tokensCache.get(key);
     if (hit) return hit;
 
-    const tokens: TokenLowerCps[] = (
-        Array.isArray(tokensSource) ? tokensSource : Array.from(tokensSource)
-    )
+    const tokens: TokenLowerCps[] = (Array.isArray(tokensSource) ? tokensSource : Array.from(tokensSource))
         .map((s) => s.normalize("NFC"))
         .filter((s) => s.length > 0)
         .map((token) => {
@@ -67,7 +60,7 @@ function bridgeTokensAcrossTextNodes(
     for (let i = 0; i < textNodes.length - 1; i++) {
         const aNode = textNodes[i];
         if (!aNode) continue;
-        const aRaw = ((aNode.textContent ?? "")).normalize("NFC");
+        const aRaw = (aNode.textContent ?? "").normalize("NFC");
         if (!aRaw || aRaw.trimEnd() !== aRaw) continue;
 
         const fragInfo = trailingTokenFragment(aRaw);
@@ -105,7 +98,7 @@ function bridgeTokensAcrossTextNodes(
 
                 const bNode = textNodes[j];
                 if (!bNode) break;
-                const bRaw = ((bNode.textContent ?? "")).normalize("NFC");
+                const bRaw = (bNode.textContent ?? "").normalize("NFC");
                 if (!bRaw) {
                     j = findNextNodeWithText(textNodes, j + 1);
                     continue;
@@ -155,7 +148,7 @@ function bridgeTokensAcrossTextNodes(
             for (const step of consumePlan) {
                 const bNode = textNodes[step.nodeIndex];
                 if (!bNode) continue;
-                const bRaw = ((bNode.textContent ?? "")).normalize("NFC");
+                const bRaw = (bNode.textContent ?? "").normalize("NFC");
                 const bCps = Array.from(bRaw);
                 moved += bCps.slice(0, step.takeCount).join("");
             }
@@ -165,7 +158,7 @@ function bridgeTokensAcrossTextNodes(
             for (const step of consumePlan) {
                 const bNode = textNodes[step.nodeIndex];
                 if (!bNode) continue;
-                const bRaw = ((bNode.textContent ?? "")).normalize("NFC");
+                const bRaw = (bNode.textContent ?? "").normalize("NFC");
                 const bCps = Array.from(bRaw);
                 bNode.textContent = bCps.slice(step.takeCount).join("");
             }

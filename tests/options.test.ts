@@ -9,7 +9,9 @@ describe("Opcije core engine-a (protectBrands, applySerbianQuotes, direction)", 
     });
 
     it("protectBrands: 'iPhone Pro' ostaje latinicom (brend + model)", () => {
-        const { text, type } = convertPlainText("Kupio sam iPhone Pro", "lat-to-cyr", { protectBrands: true });
+        const { text, type } = convertPlainText("Kupio sam iPhone Pro", "lat-to-cyr", {
+            protectBrands: true,
+        });
         expect(type).toBe("Lat → Ćir");
         expect(text).toContain("Купио сам");
         expect(text).toContain("iPhone Pro");
@@ -17,7 +19,9 @@ describe("Opcije core engine-a (protectBrands, applySerbianQuotes, direction)", 
     });
 
     it("PR3: protectBrands: 'iPhone 14 Pro' ostaje latinicom (brend + broj + model)", () => {
-        const { text, type } = convertPlainText("Kupio sam iPhone 14 Pro", "lat-to-cyr", { protectBrands: true });
+        const { text, type } = convertPlainText("Kupio sam iPhone 14 Pro", "lat-to-cyr", {
+            protectBrands: true,
+        });
         expect(type).toBe("Lat → Ćir");
         expect(text).toContain("Купио сам");
         expect(text).toContain("iPhone 14 Pro");
@@ -25,7 +29,9 @@ describe("Opcije core engine-a (protectBrands, applySerbianQuotes, direction)", 
     });
 
     it("PR3: protectBrands: 'iPhone Pro Max' ostaje latinicom (AMBIGUOUS chain)", () => {
-        const { text, type } = convertPlainText("Kupio sam iPhone Pro Max", "lat-to-cyr", { protectBrands: true });
+        const { text, type } = convertPlainText("Kupio sam iPhone Pro Max", "lat-to-cyr", {
+            protectBrands: true,
+        });
         expect(type).toBe("Lat → Ćir");
         expect(text).toContain("Купио сам");
         expect(text).toContain("iPhone Pro Max");

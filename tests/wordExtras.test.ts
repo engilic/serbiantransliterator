@@ -24,10 +24,12 @@ beforeEach(() => {
 
     // restore default mock impls after reset
     (processHeadersFooters as any).mockImplementation(async () => 3);
-    (processNotes as any).mockImplementation(async (_ctx: any, _opts: any, kind: "footnotes" | "endnotes") => {
-        if (kind === "footnotes") return { processed: 5, supported: true };
-        return { processed: 2, supported: false };
-    });
+    (processNotes as any).mockImplementation(
+        async (_ctx: any, _opts: any, kind: "footnotes" | "endnotes") => {
+            if (kind === "footnotes") return { processed: 5, supported: true };
+            return { processed: 2, supported: false };
+        }
+    );
 });
 
 describe("word/extras.applyExtrasIfEnabled (stubbed processors)", () => {
@@ -76,7 +78,7 @@ describe("word/extras.applyExtrasIfEnabled (stubbed processors)", () => {
 
     it("does not throw if a processor throws (best-effort) and does not spam console.warn", async () => {
         // Silence expected warnings in CI output for this test only
-        const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => { });
+        const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
         (processHeadersFooters as any).mockRejectedValueOnce(new Error("boom"));
 

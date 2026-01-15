@@ -112,7 +112,10 @@ async function loadMorePreviewParagraphs() {
     if (!state.preview.allParagraphs.length) return;
     if (!state.preview.canLoadMore) return;
 
-    state.preview.shownCount = Math.min(state.preview.allParagraphs.length, state.preview.shownCount + PREVIEW_BATCH);
+    state.preview.shownCount = Math.min(
+        state.preview.allParagraphs.length,
+        state.preview.shownCount + PREVIEW_BATCH
+    );
     state.preview.canLoadMore = state.preview.shownCount < state.preview.allParagraphs.length;
 
     state.preview.titleText = `Prvih ${state.preview.shownCount} paragrafa (${state.preview.typeText})`;
@@ -120,10 +123,7 @@ async function loadMorePreviewParagraphs() {
     const newOriginal = state.preview.allParagraphs.slice(0, state.preview.shownCount).join("\n");
     state.preview.original = newOriginal;
 
-    const protectedWords = [
-        ...Array.from(state.customWordsSet),
-        ...Array.from(state.presetWordsSet),
-    ];
+    const protectedWords = [...Array.from(state.customWordsSet), ...Array.from(state.presetWordsSet)];
 
     const { out } = convertTextForPreviewPlain(newOriginal, snap, protectedWords);
     state.preview.converted = out;
@@ -239,7 +239,7 @@ export function showPreviewModal() {
         };
     } else {
         setLoadMoreButtonState(okBtn, false, "Dostupno samo kada pregledate ceo dokument");
-        okBtn.onclick = () => { };
+        okBtn.onclick = () => {};
     }
 
     applyBtn.style.display = "inline-flex";

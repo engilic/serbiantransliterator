@@ -10,12 +10,7 @@ import { showModalInfo } from "../modal/modal";
 import { showPreviewModal } from "../modal/previewModal";
 
 import { invalidatePreviewCache } from "./cache";
-import {
-    normalizeWeirdBreaks,
-    normalizeNewlines,
-    normalizeForSelectionHash,
-    sha256Hex,
-} from "../selection";
+import { normalizeWeirdBreaks, normalizeNewlines, normalizeForSelectionHash, sha256Hex } from "../selection";
 
 import { unsafeHtml } from "../../../shared/safeHtml";
 import { getSettingsFromUi, getOoxmlOptionsFromUi } from "../settings/getters";
@@ -124,7 +119,10 @@ export async function runPreview() {
                 }
 
                 if (a === b) {
-                    showModalInfo("Nema izmena", unsafeHtml("Tekst je već u traženom pismu ili nema šta da se menja."));
+                    showModalInfo(
+                        "Nema izmena",
+                        unsafeHtml("Tekst je već u traženom pismu ili nema šta da se menja.")
+                    );
                     setStatus("Nema izmena.", "neutral");
                     return;
                 }
@@ -169,12 +167,13 @@ export async function runPreview() {
                 return;
             }
 
-            const protectedWords = [
-                ...Array.from(state.customWordsSet),
-                ...Array.from(state.presetWordsSet),
-            ];
+            const protectedWords = [...Array.from(state.customWordsSet), ...Array.from(state.presetWordsSet)];
 
-            const { out: finalText, type } = convertTextForPreviewPlain(textToPreview, state.preview.settingsSnap!, protectedWords);
+            const { out: finalText, type } = convertTextForPreviewPlain(
+                textToPreview,
+                state.preview.settingsSnap!,
+                protectedWords
+            );
 
             const a = normalizeNewlines(textToPreview);
             const b = normalizeNewlines(finalText);
@@ -186,7 +185,10 @@ export async function runPreview() {
             }
 
             if (a === b) {
-                showModalInfo("Nema izmena", unsafeHtml("Tekst je već u traženom pismu ili nema šta da se menja."));
+                showModalInfo(
+                    "Nema izmena",
+                    unsafeHtml("Tekst je već u traženom pismu ili nema šta da se menja.")
+                );
                 setStatus("Nema izmena.", "neutral");
                 return;
             }

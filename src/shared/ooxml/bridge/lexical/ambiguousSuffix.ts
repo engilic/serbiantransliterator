@@ -1,15 +1,6 @@
-﻿import {
-    findNextNodeWithText,
-    trailingTokenFragment,
-    isTokenChar,
-    normKey,
-    getCpArray,
-} from "../../common";
+﻿import { findNextNodeWithText, trailingTokenFragment, isTokenChar, normKey, getCpArray } from "../../common";
 
-import {
-    ALWAYS_LATIN_TOKENS_STRICT,
-    ALWAYS_LATIN_TOKENS_AMBIGUOUS,
-} from "../../../../core/rules";
+import { ALWAYS_LATIN_TOKENS_STRICT, ALWAYS_LATIN_TOKENS_AMBIGUOUS } from "../../../../core/rules";
 
 function isPureNumberToken(s: string): boolean {
     return /^\d+$/u.test(s);
@@ -64,7 +55,7 @@ export function bridgeAmbiguousBrandSuffixAcrossTextNodes(textNodes: Element[]):
         const aNode = textNodes[i];
         if (!aNode) continue;
 
-        const aRaw = ((aNode.textContent ?? "")).normalize("NFC");
+        const aRaw = (aNode.textContent ?? "").normalize("NFC");
         if (!aRaw) continue;
         if (aRaw.trimEnd() !== aRaw) continue;
 
@@ -87,7 +78,7 @@ export function bridgeAmbiguousBrandSuffixAcrossTextNodes(textNodes: Element[]):
             const bNode = textNodes[j];
             if (!bNode) break;
 
-            const bRaw = ((bNode.textContent ?? "")).normalize("NFC");
+            const bRaw = (bNode.textContent ?? "").normalize("NFC");
             if (!bRaw) {
                 j = findNextNodeWithText(textNodes, j + 1);
                 continue;

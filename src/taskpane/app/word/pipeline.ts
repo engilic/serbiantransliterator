@@ -46,11 +46,11 @@ export async function applyPipeline(
         const info = analyzeSelectionText(range.text);
 
         if (!info.hasText) {
-            showModalInfo("Greška", unsafeHtml("Nema selekcije za preslovljavanje."));
+            showModalInfo("Greï¿½ka", unsafeHtml("Nema selekcije za preslovljavanje."));
             return { result: null, extras: emptyExtrasSummary() };
         }
         if (info.isJustWhitespace) {
-            showModalInfo("Greška", unsafeHtml("Selektovan je samo prazan prostor (razmaci)."));
+            showModalInfo("Greï¿½ka", unsafeHtml("Selektovan je samo prazan prostor (razmaci)."));
             return { result: null, extras: emptyExtrasSummary() };
         }
 

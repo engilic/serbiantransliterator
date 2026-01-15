@@ -17,7 +17,7 @@ export async function applyExtrasIfEnabled(
 
     if (ui.includeHeadersFooters) {
         try {
-            setStatus("Obrada: zaglavlja/podnožja...", "info");
+            setStatus("Obrada: zaglavlja/podnoï¿½ja...", "info");
             summary.headersFootersProcessed = await processHeadersFooters(context, opts);
         } catch (e) {
             console.warn("Header/Footer obrada nije uspela:", e);

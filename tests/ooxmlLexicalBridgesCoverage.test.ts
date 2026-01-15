@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
-  bridgeExactTokensAcrossTextNodes,
-  bridgePhrasesAcrossTextNodes,
-  buildPhraseInfos,
+    bridgeExactTokensAcrossTextNodes,
+    bridgePhrasesAcrossTextNodes,
+    buildPhraseInfos,
 } from "../src/shared/ooxml/bridge";
 
 const W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
@@ -13,8 +13,8 @@ function parseTextNodes(xml: string): Element[] {
 }
 
 describe("OOXML lexical bridges - coverage", () => {
-  it("tokens: NE bridguje ako sledeci node ima leading whitespace (trimStart guard)", () => {
-    const xml = `
+    it("tokens: NE bridguje ako sledeci node ima leading whitespace (trimStart guard)", () => {
+        const xml = `
 <w:document xmlns:w="${W_NS}">
   <w:body>
     <w:p>
@@ -23,16 +23,16 @@ describe("OOXML lexical bridges - coverage", () => {
     </w:p>
   </w:body>
 </w:document>`;
-    const nodes = parseTextNodes(xml);
+        const nodes = parseTextNodes(xml);
 
-    const changed = bridgeExactTokensAcrossTextNodes(nodes, ["iPhone"]);
-    expect(changed).toBe(0);
-    expect(nodes[0]!.textContent).toBe("i");
-    expect(nodes[1]!.textContent).toBe(" Phone");
-  });
+        const changed = bridgeExactTokensAcrossTextNodes(nodes, ["iPhone"]);
+        expect(changed).toBe(0);
+        expect(nodes[0]!.textContent).toBe("i");
+        expect(nodes[1]!.textContent).toBe(" Phone");
+    });
 
-  it("tokens: NE bridguje kad posle match-a sledi token-char (boundary check: jsX)", () => {
-    const xml = `
+    it("tokens: NE bridguje kad posle match-a sledi token-char (boundary check: jsX)", () => {
+        const xml = `
 <w:document xmlns:w="${W_NS}">
   <w:body>
     <w:p>
@@ -41,16 +41,16 @@ describe("OOXML lexical bridges - coverage", () => {
     </w:p>
   </w:body>
 </w:document>`;
-    const nodes = parseTextNodes(xml);
+        const nodes = parseTextNodes(xml);
 
-    const changed = bridgeExactTokensAcrossTextNodes(nodes, ["Node.js"]);
-    expect(changed).toBe(0);
-    expect(nodes[0]!.textContent).toBe("Node.");
-    expect(nodes[1]!.textContent).toBe("jsX");
-  });
+        const changed = bridgeExactTokensAcrossTextNodes(nodes, ["Node.js"]);
+        expect(changed).toBe(0);
+        expect(nodes[0]!.textContent).toBe("Node.");
+        expect(nodes[1]!.textContent).toBe("jsX");
+    });
 
-  it("phrases: bridguje 'Save' + '\\tAs' (space u frazi matchuje bilo koji whitespace)", () => {
-    const xml = `
+    it("phrases: bridguje 'Save' + '\\tAs' (space u frazi matchuje bilo koji whitespace)", () => {
+        const xml = `
 <w:document xmlns:w="${W_NS}">
   <w:body>
     <w:p>
@@ -59,18 +59,18 @@ describe("OOXML lexical bridges - coverage", () => {
     </w:p>
   </w:body>
 </w:document>`;
-    const nodes = parseTextNodes(xml);
+        const nodes = parseTextNodes(xml);
 
-    const infos = buildPhraseInfos(["Save As"]);
-    const changed = bridgePhrasesAcrossTextNodes(nodes, infos);
+        const infos = buildPhraseInfos(["Save As"]);
+        const changed = bridgePhrasesAcrossTextNodes(nodes, infos);
 
-    expect(changed).toBe(1);
-    expect(nodes[0]!.textContent).toBe("Save\tAs");
-    expect(nodes[1]!.textContent).toBe("!");
-  });
+        expect(changed).toBe(1);
+        expect(nodes[0]!.textContent).toBe("Save\tAs");
+        expect(nodes[1]!.textContent).toBe("!");
+    });
 
-  it("phrases: NE bridguje ako posle fraze nije boundary (AsX)", () => {
-    const xml = `
+    it("phrases: NE bridguje ako posle fraze nije boundary (AsX)", () => {
+        const xml = `
 <w:document xmlns:w="${W_NS}">
   <w:body>
     <w:p>
@@ -79,13 +79,13 @@ describe("OOXML lexical bridges - coverage", () => {
     </w:p>
   </w:body>
 </w:document>`;
-    const nodes = parseTextNodes(xml);
+        const nodes = parseTextNodes(xml);
 
-    const infos = buildPhraseInfos(["Save As"]);
-    const changed = bridgePhrasesAcrossTextNodes(nodes, infos);
+        const infos = buildPhraseInfos(["Save As"]);
+        const changed = bridgePhrasesAcrossTextNodes(nodes, infos);
 
-    expect(changed).toBe(0);
-    expect(nodes[0]!.textContent).toBe("Save");
-    expect(nodes[1]!.textContent).toBe("\tAsX");
-  });
+        expect(changed).toBe(0);
+        expect(nodes[0]!.textContent).toBe("Save");
+        expect(nodes[1]!.textContent).toBe("\tAsX");
+    });
 });

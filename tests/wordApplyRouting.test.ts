@@ -78,7 +78,13 @@ beforeEach(() => {
     // default pipeline result
     (applyPipeline as unknown as { mockResolvedValue: (v: any) => void }).mockResolvedValue({
         result: { type: "Lat → Ćir", stats: { timingMs: 12.3 } },
-        extras: { headersFootersProcessed: 0, footnotesProcessed: 0, endnotesProcessed: 0, footnotesSupported: true, endnotesSupported: true },
+        extras: {
+            headersFootersProcessed: 0,
+            footnotesProcessed: 0,
+            endnotesProcessed: 0,
+            footnotesSupported: true,
+            endnotesSupported: true,
+        },
     });
 });
 

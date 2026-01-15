@@ -92,10 +92,10 @@ module.exports = async (env, options) => {
                 templateParameters: { appVersion: pkg.version },
                 minify: !dev
                     ? {
-                        collapseWhitespace: true,
-                        removeComments: true,
-                        removeRedundantAttributes: true,
-                    }
+                          collapseWhitespace: true,
+                          removeComments: true,
+                          removeRedundantAttributes: true,
+                      }
                     : false,
             }),
 
@@ -105,10 +105,10 @@ module.exports = async (env, options) => {
                 chunks: ["polyfill", "commands"],
                 minify: !dev
                     ? {
-                        collapseWhitespace: true,
-                        removeComments: true,
-                        removeRedundantAttributes: true,
-                    }
+                          collapseWhitespace: true,
+                          removeComments: true,
+                          removeRedundantAttributes: true,
+                      }
                     : false,
             }),
 

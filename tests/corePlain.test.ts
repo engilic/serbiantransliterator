@@ -68,20 +68,20 @@ describe("convertPlainText - osnovni slučajevi i izuzeci", () => {
         expect(text).toContain("ради посао");
     });
     it("Dž digraf: 'Džak' → 'Џак'", () => {
-      const { text, type } = convertPlainText("Džak");
-      expect(type).toBe("Lat → Ćir");
-      expect(text).toBe("Џак");
+        const { text, type } = convertPlainText("Džak");
+        expect(type).toBe("Lat → Ćir");
+        expect(text).toBe("Џак");
     });
 
     it("dž digraf: 'džez' → 'џез'", () => {
-      const { text, type } = convertPlainText("džez");
-      expect(type).toBe("Lat → Ćir");
-      expect(text).toBe("џез");
+        const { text, type } = convertPlainText("džez");
+        expect(type).toBe("Lat → Ćir");
+        expect(text).toBe("џез");
     });
 
     it("Ćir→Lat: 'Џез' → 'Džez'", () => {
-      const { text, type } = convertPlainText("Џез");
-      expect(type).toBe("Ćir → Lat");
-      expect(text).toBe("Džez");
+        const { text, type } = convertPlainText("Џез");
+        expect(type).toBe("Ćir → Lat");
+        expect(text).toBe("Džez");
     });
 });

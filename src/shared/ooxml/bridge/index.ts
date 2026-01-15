@@ -1,13 +1,6 @@
 export { bridgeLinksAcrossTextNodes } from "./lexical/links";
-export {
-    bridgeAlwaysLatinTokensAcrossTextNodes,
-    bridgeExactTokensAcrossTextNodes
-} from "./lexical/tokens";
-export {
-    buildPhraseInfos,
-    bridgePhrasesAcrossTextNodes,
-    type PhraseInfo
-} from "./lexical/phrases";
+export { bridgeAlwaysLatinTokensAcrossTextNodes, bridgeExactTokensAcrossTextNodes } from "./lexical/tokens";
+export { buildPhraseInfos, bridgePhrasesAcrossTextNodes, type PhraseInfo } from "./lexical/phrases";
 export { bridgeDigraphsAcrossTextNodes } from "./lexical/digraphs";
 
 // PR2/PR3:
@@ -18,8 +11,4 @@ export { bridgeBracedPlaceholdersAcrossTextNodes } from "./lexical/placeholders"
 
 // Structural bridges
 export { bridgeSpacesAcrossTextNodes } from "./structural/spaces";
-export {
-    markCyrAllCapsDigraphHints,
-    CYR_ALLCAPS_HINT,
-    LAT_ALLCAPS_HINT
-} from "./structural/allCapsHints";
+export { markCyrAllCapsDigraphHints, CYR_ALLCAPS_HINT, LAT_ALLCAPS_HINT } from "./structural/allCapsHints";

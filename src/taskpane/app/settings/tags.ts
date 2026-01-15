@@ -14,8 +14,10 @@ export type TagsCallbacks = {
 let cbRef: TagsCallbacks | null = null;
 
 function updateTagsButtonsState() {
-    (document.getElementById("clearCustomBtn") as HTMLButtonElement).disabled = state.customWordsSet.size === 0;
-    (document.getElementById("clearPresetBtn") as HTMLButtonElement).disabled = state.presetWordsSet.size === 0;
+    (document.getElementById("clearCustomBtn") as HTMLButtonElement).disabled =
+        state.customWordsSet.size === 0;
+    (document.getElementById("clearPresetBtn") as HTMLButtonElement).disabled =
+        state.presetWordsSet.size === 0;
     (document.getElementById("clearAllBtn") as HTMLButtonElement).disabled =
         state.customWordsSet.size === 0 && state.presetWordsSet.size === 0;
 }
