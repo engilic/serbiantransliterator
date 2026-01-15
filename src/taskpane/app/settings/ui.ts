@@ -3,6 +3,7 @@
 
 import type { UiSettings, ProfilePreset } from "../types";
 import { state } from "../state";
+import { asCurlyProtectionUi } from "../word/curlyProtection";
 
 import { setStatus, refreshStats } from "../status";
 import { invalidatePreviewCache } from "../preview/cache";
@@ -122,6 +123,10 @@ function applySettingsToUi(s: UiSettings) {
     setCheckValue("optProtectRomans", s.protectRomans);
     setCheckValue("optSetProofingLanguage", s.setProofingLanguage);
 
+    // NEW:
+    const curlySel = document.getElementById("optCurlyProtection") as HTMLSelectElement | null;
+    if (curlySel) curlySel.value = s.curlyProtection;
+
     setCheckValue("optShowStats", s.showStats);
     setCheckValue("optFixDoubleSpaces", s.fixDoubleSpaces);
     setCheckValue("optFormatDates", s.formatDates);
@@ -151,6 +156,10 @@ function updateResetButtonState() {
         "preserveCodeBlocks",
         "protectRomans",
         "setProofingLanguage",
+
+        // NEW:
+        "curlyProtection",
+
         "fixDoubleSpaces",
         "formatDates",
         "showStats",
@@ -204,6 +213,12 @@ function changeProfile(profile: ProfilePreset) {
             if (data.fixDoubleSpaces !== undefined) setCheckValue("optFixDoubleSpaces", data.fixDoubleSpaces);
             if (data.formatDates !== undefined) setCheckValue("optFormatDates", data.formatDates);
             if (data.confirmWholeDoc !== undefined) setCheckValue("optConfirmWholeDoc", data.confirmWholeDoc);
+
+            // NEW: uvek postavi curlyProtection na preset ili default
+            const curlySel = document.getElementById("optCurlyProtection") as HTMLSelectElement | null;
+            if (curlySel) {
+                curlySel.value = asCurlyProtectionUi(data.curlyProtection ?? DEFAULT_SETTINGS.curlyProtection);
+            }
         }
     }
 
@@ -229,6 +244,10 @@ function setupInputListeners() {
         "optPreserveCodeBlocks",
         "optProtectRomans",
         "optSetProofingLanguage",
+
+        // NEW (select):
+        "optCurlyProtection",
+
         "optShowStats",
         "optFixDoubleSpaces",
         "optFormatDates",
@@ -242,7 +261,7 @@ function setupInputListeners() {
     ];
 
     ids.forEach((id) => {
-        const el = document.getElementById(id) as HTMLInputElement | null;
+        const el = document.getElementById(id) as (HTMLInputElement | HTMLSelectElement | null);
         if (!el) return;
 
         el.onchange = () => {

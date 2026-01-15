@@ -1,9 +1,10 @@
-// src/taskpane/app/settings/getters.ts
+﻿// src/taskpane/app/settings/getters.ts
 /* global document */
 
 import type { UiSettings, DirectionUi, ProfilePreset } from "../types";
 import type { OoxmlOptions } from "../../../shared/ooxml/convertOoxml";
 import { state } from "../state";
+import { asCurlyProtectionUi } from "../word/curlyProtection";
 
 export function getCheckValue(id: string): boolean {
     const el = document.getElementById(id) as HTMLInputElement | null;
@@ -17,6 +18,11 @@ export function getRadioValue(name: string): string {
         if (el.checked) return el.value;
     }
     return "";
+}
+
+export function getSelectValue(id: string): string {
+    const el = document.getElementById(id) as HTMLSelectElement | null;
+    return String(el?.value ?? "");
 }
 
 function asProfilePreset(v: string | null | undefined): ProfilePreset {
@@ -38,6 +44,9 @@ export function getSettingsFromUi(): UiSettings {
     const dirRaw = getRadioValue("direction");
     const direction = asDirectionUi(dirRaw);
 
+    const curlyRaw = getSelectValue("optCurlyProtection");
+    const curlyProtection = asCurlyProtectionUi(curlyRaw);
+
     return {
         schemaVersion: 2,
 
@@ -49,6 +58,9 @@ export function getSettingsFromUi(): UiSettings {
         preserveCodeBlocks: getCheckValue("optPreserveCodeBlocks"),
         setProofingLanguage: getCheckValue("optSetProofingLanguage"),
         protectRomans: getCheckValue("optProtectRomans"),
+
+        // NEW:
+        curlyProtection,
 
         fixDoubleSpaces: getCheckValue("optFixDoubleSpaces"),
         formatDates: getCheckValue("optFormatDates"),
@@ -80,6 +92,10 @@ export function getOoxmlOptionsFromUi(): OoxmlOptions {
         fixDoubleSpaces: s.fixDoubleSpaces,
         formatDates: s.formatDates,
         protectRomans: s.protectRomans,
+
+        // NEW: prosleđuje se do convertPlainText unutar convertOoxml
+        curlyProtection: s.curlyProtection,
+
         userProtected: [...Array.from(state.customWordsSet), ...Array.from(state.presetWordsSet)],
     };
 }

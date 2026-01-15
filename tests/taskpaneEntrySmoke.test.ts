@@ -28,6 +28,13 @@ function setupDomForTaskpane() {
     <input type="radio" id="dirLatToCyr" name="direction" value="lat-to-cyr" />
     <input type="radio" id="dirCyrToLat" name="direction" value="cyr-to-lat" />
 
+    <!-- NEW: curlyProtection select -->
+    <select id="optCurlyProtection">
+      <option value="placeholders">placeholders</option>
+      <option value="all">all</option>
+      <option value="none">none</option>
+    </select>
+
     <!-- checkboxes used by getters/settings -->
     <input type="checkbox" id="optConfirmWholeDoc" checked />
     <input type="checkbox" id="optIncludeHeadersFooters" />
@@ -123,5 +130,8 @@ describe("taskpane entrypoint smoke", () => {
 
         expect(document.getElementById("runBtn")).toBeTruthy();
         expect(document.getElementById("previewBtn")).toBeTruthy();
+
+        // NEW: curlyProtection select exists
+        expect(document.getElementById("optCurlyProtection")).toBeTruthy();
     });
 });

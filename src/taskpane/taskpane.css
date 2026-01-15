@@ -829,3 +829,15 @@ code {
     text-align: center;
     padding: 20px;
 }
+
+/* Field rows (select + label) */
+.field-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 6px 0;
+}
+
+.field-label {
+    font-weight: 600;
+}

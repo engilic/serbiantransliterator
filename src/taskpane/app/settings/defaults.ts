@@ -28,6 +28,9 @@ export const DEFAULT_SETTINGS: UiSettings = {
     // pa je bezbednije da bude opt-in.
     formatDates: false,
 
+    // NEW:
+    curlyProtection: "placeholders",
+
     setProofingLanguage: true,
 
     showStats: false,
@@ -54,6 +57,9 @@ export const PRESETS: Record<string, Partial<UiSettings> & { userWords: string[]
         fixDoubleSpaces: false,
         formatDates: true,
         confirmWholeDoc: true,
+
+        curlyProtection: "placeholders",
+
         userWords: [
             "Git", "GitHub", "GitLab", "Azure", "AWS", "GCP", "DevOps", "Docker", "Kubernetes", "CI/CD", "YAML",
             "REST", "GraphQL", "PowerShell", "VS Code", "Visual Studio", "Windows Server", "Linux",
@@ -71,6 +77,9 @@ export const PRESETS: Record<string, Partial<UiSettings> & { userWords: string[]
         fixDoubleSpaces: true,
         formatDates: true,
         confirmWholeDoc: true,
+
+        curlyProtection: "placeholders",
+
         userWords: [
             "SWIFT", "IBAN", "EUR", "USD", "RSD", "CHF", "GBP", "MasterCard", "Visa", "PayPal",
             "Intesa", "Raiffeisen", "OTP", "NLB", "AIK", "Erste", "UniCredit", "Western Union",
@@ -87,6 +96,9 @@ export const PRESETS: Record<string, Partial<UiSettings> & { userWords: string[]
         fixDoubleSpaces: false,
         formatDates: true,
         confirmWholeDoc: true,
+
+        curlyProtection: "placeholders",
+
         userWords: [
             "mg", "ml", "kg", "Covid", "SARS", "Hemofarm", "Galenika", "Pfizer", "Actavis",
             "Alkaloid", "Bayer", "Roche", "Stada", "Anamnesis", "Diagnosis", "Therapia",
@@ -103,6 +115,9 @@ export const PRESETS: Record<string, Partial<UiSettings> & { userWords: string[]
         fixDoubleSpaces: true,
         formatDates: false,
         confirmWholeDoc: true,
+
+        curlyProtection: "placeholders",
+
         userWords: [
             "Facebook", "Instagram", "LinkedIn", "TikTok", "Twitter", "X", "YouTube", "Google",
             "SEO", "PR", "Copywriter", "Content", "Ads", "Influencer", "Giveaway", "Hashtag",
@@ -119,6 +134,9 @@ export const PRESETS: Record<string, Partial<UiSettings> & { userWords: string[]
         fixDoubleSpaces: true,
         formatDates: true,
         confirmWholeDoc: true,
+
+        curlyProtection: "placeholders",
+
         userWords: [
             "Ustav Republike Srbije", "Zakon o obligacionim odnosima", "Zakon o radu",
             "Ministarstvo pravde", "Privredni sud", "Advokatska komora Srbije", "Službeni glasnik",
@@ -136,6 +154,9 @@ export const PRESETS: Record<string, Partial<UiSettings> & { userWords: string[]
         fixDoubleSpaces: true,
         formatDates: true,
         confirmWholeDoc: true,
+
+        curlyProtection: "placeholders",
+
         userWords: [
             "Reuters", "Associated Press", "BBC", "CNN", "Euronews", "N1", "RTS", "Tanjug",
             "NBA", "UEFA", "FIFA", "FIBA", "ATP", "WTA", "Olimpijske igre",

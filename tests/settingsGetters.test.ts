@@ -1,7 +1,6 @@
 ﻿import { describe, it, expect, beforeEach } from "vitest";
 import { state } from "../src/taskpane/app/state";
 
-// OVO testira canonical getters
 import { getSettingsFromUi, getOoxmlOptionsFromUi } from "../src/taskpane/app/settings/getters";
 
 function setupDomForGetters() {
@@ -21,6 +20,13 @@ function setupDomForGetters() {
     <input type="radio" id="dirToAscii" name="direction" value="to-ascii" />
     <input type="radio" id="dirLatToCyr" name="direction" value="lat-to-cyr" />
     <input type="radio" id="dirCyrToLat" name="direction" value="cyr-to-lat" />
+
+    <!-- NEW: curlyProtection select -->
+    <select id="optCurlyProtection">
+      <option value="placeholders">placeholders</option>
+      <option value="all">all</option>
+      <option value="none">none</option>
+    </select>
 
     <!-- checkboxes used by getters -->
     <input type="checkbox" id="optConfirmWholeDoc" />
@@ -44,7 +50,6 @@ function check(id: string, v: boolean) {
 }
 
 beforeEach(() => {
-    // reset state sets (shared module state)
     state.customWordsSet.clear();
     state.presetWordsSet.clear();
     setupDomForGetters();
@@ -54,6 +59,8 @@ describe("settings/getters.ts", () => {
     it("reads checkboxes + direction mapping (happy path)", () => {
         (document.getElementById("profilePreset") as HTMLSelectElement).value = "it";
         (document.getElementById("dirLatToCyr") as HTMLInputElement).checked = true;
+
+        (document.getElementById("optCurlyProtection") as HTMLSelectElement).value = "all";
 
         check("optProtectBrands", true);
         check("optSerbianQuotes", true);
@@ -70,16 +77,15 @@ describe("settings/getters.ts", () => {
         expect(s.protectBrands).toBe(true);
         expect(s.applySerbianQuotes).toBe(true);
         expect(s.preserveCodeBlocks).toBe(true);
+        expect(s.curlyProtection).toBe("all");
     });
 
     it("fallback: if no radio is selected, direction falls back to 'auto'", () => {
-        // namerno: nijedan radio nije checked
         const s = getSettingsFromUi();
         expect(s.direction).toBe("auto");
     });
 
     it("fallback: invalid profile value falls back to 'custom'", () => {
-        // namerno ubacimo invalid value (simulira “ručno menjanje DOM-a” ili bug)
         const sel = document.getElementById("profilePreset") as HTMLSelectElement;
         sel.value = "NEPOSTOJI" as any;
 
@@ -87,16 +93,23 @@ describe("settings/getters.ts", () => {
         expect(s.profile).toBe("custom");
     });
 
-    it("getOoxmlOptionsFromUi maps direction and merges userProtected from state sets", () => {
+    it("fallback: invalid curlyProtection falls back to 'placeholders'", () => {
+        (document.getElementById("optCurlyProtection") as HTMLSelectElement).value = "BOGUS";
+        const s = getSettingsFromUi();
+        expect(s.curlyProtection).toBe("placeholders");
+    });
+
+    it("getOoxmlOptionsFromUi maps direction and merges userProtected from state sets + passes curlyProtection", () => {
         state.customWordsSet.add("MojaFirma");
         state.presetWordsSet.add("iPhone");
 
-        // set direction to "to-ascii"
         (document.getElementById("dirToAscii") as HTMLInputElement).checked = true;
+        (document.getElementById("optCurlyProtection") as HTMLSelectElement).value = "none";
 
         const o = getOoxmlOptionsFromUi();
 
         expect(o.direction).toBe("to-ascii");
+        expect(o.curlyProtection).toBe("none");
         expect(o.userProtected).toContain("MojaFirma");
         expect(o.userProtected).toContain("iPhone");
     });

@@ -1,5 +1,7 @@
 // src/taskpane/app/types.ts
 
+import type { CurlyProtectionUi } from "./word/curlyProtection";
+
 export type DirectionUi = "auto" | "lat-to-cyr" | "cyr-to-lat" | "to-ascii";
 export type ProfilePreset = "custom" | "it" | "finance" | "medical" | "legal" | "journalism" | "marketing";
 
@@ -14,6 +16,14 @@ export interface UiSettings {
     preserveCodeBlocks: boolean;
     setProofingLanguage: boolean;
     protectRomans: boolean;
+
+    /**
+     * Kako štitimo {...} u plain tekstu / Word tekstu.
+     * - placeholders: štiti samo placeholder-like (default)
+     * - all: legacy ponašanje (štiti bilo šta u {...})
+     * - none: ne štiti {...}
+     */
+    curlyProtection: CurlyProtectionUi;
 
     fixDoubleSpaces: boolean;
     formatDates: boolean;
