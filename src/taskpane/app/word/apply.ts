@@ -12,6 +12,7 @@ import { normalizeForSelectionHash, sha256Hex } from "../selection";
 import { getSettingsFromUi, getOoxmlOptionsFromUi } from "../settings/getters";
 import { applyPipeline } from "./pipeline";
 import { analyzeSelectionText } from "./selectionText";
+import { buildApplyStatsText, buildApplyStatsTitle, buildPreviewAppliedStats } from "./statsText";
 
 export async function runSmart() {
     try {
@@ -61,25 +62,8 @@ export async function runSmart() {
 
             setStatus(`Završeno: ${result.type} (${time}ms)${hfInfo}`, "success");
 
-            state.lastStatsTitle = `Statistika: ${result.type}`;
-            state.lastStatsText =
-                `Opseg: ${scope === "selection" ? "Selekcija" : "Ceo dokument"}\n` +
-                `Promenjeno čvorova: ${result.stats.textNodes}\n` +
-                `Vreme: ${time}ms` +
-                `\nBridges:` +
-                `\n- links: ${result.stats.bridges.links}` +
-                `\n- placeholders: ${result.stats.bridges.placeholders}` +
-                `\n- brandPhrases: ${result.stats.bridges.brandPhrases}` +
-                `\n- brandTokens: ${result.stats.bridges.brandTokens}` +
-                `\n- ambiguousBrandSuffix: ${result.stats.bridges.ambiguousBrandSuffix}` +
-                `\n- digraphs: ${result.stats.bridges.digraphs}` +
-                `\n- userPhrases: ${result.stats.bridges.userPhrases}` +
-                `\n- userTokens: ${result.stats.bridges.userTokens}` +
-                `\n- allCapsHints: ${result.stats.bridges.allCapsHints}` +
-                `\n- spaces: ${result.stats.bridges.spaces}` +
-                (scope === "document"
-                    ? `\nHeader/Footer: ${extras.headersFootersProcessed}\nFusnote: ${extras.footnotesProcessed}\nEndnote: ${extras.endnotesProcessed}`
-                    : "");
+            state.lastStatsTitle = buildApplyStatsTitle(result);
+            state.lastStatsText = buildApplyStatsText(result, scope, extras);
 
             refreshStats();
         });
@@ -138,10 +122,9 @@ export async function applyFromPreview(scope: "selection" | "document") {
 
                             setStatus("Završeno (primenjen preview).", "success");
 
-                            state.lastStatsTitle = "Statistika: primenjen preview";
-                            state.lastStatsText =
-                                `Opseg: Selekcija\n` +
-                                `Napomena: primenjen je OOXML iz pregleda (bez ponovne konverzije).`;
+                            const s = buildPreviewAppliedStats();
+                            state.lastStatsTitle = s.title;
+                            state.lastStatsText = s.text;
 
                             refreshStats();
                             return;
@@ -166,22 +149,8 @@ export async function applyFromPreview(scope: "selection" | "document") {
                 const time = result.stats.timingMs.toFixed(0);
                 setStatus(`Završeno: ${result.type} (${time}ms)`, "success");
 
-                state.lastStatsTitle = `Statistika: ${result.type}`;
-                state.lastStatsText =
-                    `Opseg: Selekcija\n` +
-                    `Promenjeno čvorova: ${result.stats.textNodes}\n` +
-                    `Vreme: ${time}ms` +
-                    `\nBridges:` +
-                    `\n- links: ${result.stats.bridges.links}` +
-                    `\n- placeholders: ${result.stats.bridges.placeholders}` +
-                    `\n- brandPhrases: ${result.stats.bridges.brandPhrases}` +
-                    `\n- brandTokens: ${result.stats.bridges.brandTokens}` +
-                    `\n- ambiguousBrandSuffix: ${result.stats.bridges.ambiguousBrandSuffix}` +
-                    `\n- digraphs: ${result.stats.bridges.digraphs}` +
-                    `\n- userPhrases: ${result.stats.bridges.userPhrases}` +
-                    `\n- userTokens: ${result.stats.bridges.userTokens}` +
-                    `\n- allCapsHints: ${result.stats.bridges.allCapsHints}` +
-                    `\n- spaces: ${result.stats.bridges.spaces}`;
+                state.lastStatsTitle = buildApplyStatsTitle(result);
+                state.lastStatsText = buildApplyStatsText(result, "selection");
 
                 refreshStats();
                 return;
@@ -199,25 +168,8 @@ export async function applyFromPreview(scope: "selection" | "document") {
 
             setStatus(`Završeno: ${result.type} (${time}ms)${hfInfo}`, "success");
 
-            state.lastStatsTitle = `Statistika: ${result.type}`;
-            state.lastStatsText =
-                `Opseg: Ceo dokument\n` +
-                `Promenjeno čvorova: ${result.stats.textNodes}\n` +
-                `Vreme: ${time}ms` +
-                `\nBridges:` +
-                `\n- links: ${result.stats.bridges.links}` +
-                `\n- placeholders: ${result.stats.bridges.placeholders}` +
-                `\n- brandPhrases: ${result.stats.bridges.brandPhrases}` +
-                `\n- brandTokens: ${result.stats.bridges.brandTokens}` +
-                `\n- ambiguousBrandSuffix: ${result.stats.bridges.ambiguousBrandSuffix}` +
-                `\n- digraphs: ${result.stats.bridges.digraphs}` +
-                `\n- userPhrases: ${result.stats.bridges.userPhrases}` +
-                `\n- userTokens: ${result.stats.bridges.userTokens}` +
-                `\n- allCapsHints: ${result.stats.bridges.allCapsHints}` +
-                `\n- spaces: ${result.stats.bridges.spaces}` +
-                `\nHeader/Footer: ${extras.headersFootersProcessed}` +
-                `\nFusnote: ${extras.footnotesProcessed}` +
-                `\nEndnote: ${extras.endnotesProcessed}`;
+            state.lastStatsTitle = buildApplyStatsTitle(result);
+            state.lastStatsText = buildApplyStatsText(result, "document", extras);
 
             refreshStats();
         });
