@@ -99,18 +99,15 @@
             <label><input type="checkbox" id="optProtectBrands" checked /> Zaštiti brendove (Windows, ...)</label>
             <label><input type="checkbox" id="optSerbianQuotes" checked /> Pametni navodnici ( „ … “ )</label>
             <label><input type="checkbox" id="optPreserveCodeBlocks" checked /> Zaštiti kod (<code>inline</code> / <code>blok</code>)</label>
-            <label><input type="checkbox" id="optProtectRomans" checked /> Zaštiti rimske brojeve (IV, XIV)</label>
-            <label><input type="checkbox" id="optSetProofingLanguage" checked /> Postavi jezik provere (sr-Cyrl / sr-Latn)</label>
             <label><input type="checkbox" id="optShowStats" /> Prikaži detaljnu statistiku</label>
         </div>
 
         <div class="section">
             <div class="section-title">KOREKCIJA</div>
             <label><input type="checkbox" id="optFixDoubleSpaces" checked /> Ukloni višak razmaka</label>
-            <label><input type="checkbox" id="optFormatDates" /> Formatiraj datume (npr. 21.10.2023.)</label>
         </div>
 
-        <!-- NEW: Advanced (collapsible) -->
+        <!-- Advanced (collapsible) -->
         <div class="section">
             <div class="section-header">
                 <div class="section-title">NAPREDNO</div>
@@ -136,6 +133,14 @@
                     </select>
                     <div class="hint">Kontroliše da li se sadržaj u vitičastim zagradama preslovljava.</div>
                 </div>
+
+                <!-- moved here from OPCIJE -->
+                <label><input type="checkbox" id="optProtectRomans" checked /> Zaštiti rimske brojeve (IV, XIV)</label>
+                <label><input type="checkbox" id="optSetProofingLanguage" checked /> Postavi jezik provere (sr-Cyrl / sr-Latn)</label>
+
+                <!-- moved here from KOREKCIJA -->
+                <label><input type="checkbox" id="optFormatDates" /> Formatiraj datume (npr. 21.10.2023.)</label>
+                <div class="hint">Ova opcija menja sadržaj (nije samo preslovljavanje).</div>
             </div>
         </div>
 
