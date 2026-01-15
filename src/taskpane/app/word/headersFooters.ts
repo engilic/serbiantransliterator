@@ -4,7 +4,10 @@
 import type { OoxmlOptions } from "../../../shared/ooxml/convertOoxml";
 import { convertOoxml } from "../../../shared/ooxml/convertOoxml";
 
-export async function processHeadersFooters(context: Word.RequestContext, opts: OoxmlOptions): Promise<number> {
+export async function processHeadersFooters(
+    context: Word.RequestContext,
+    opts: OoxmlOptions
+): Promise<number> {
     let processed = 0;
 
     const sections = context.document.sections;

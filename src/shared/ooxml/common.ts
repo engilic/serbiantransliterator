@@ -71,7 +71,7 @@ export function isTokenChar(ch: string): boolean {
         ch === "\u2013" || // en dash
         ch === "\u2014" || // em dash
         ch === "'" ||
-        ch === "\u2019"    // right single quotation mark
+        ch === "\u2019" // right single quotation mark
     );
 }
 

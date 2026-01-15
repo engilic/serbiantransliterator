@@ -1,16 +1,16 @@
 {
-  "compilerOptions": {
-    "target": "es2018",
-    "lib": ["es2018", "dom"],
-    "allowJs": true,
-    "baseUrl": ".",
-    "esModuleInterop": true,
-    "noEmitOnError": true,
-    "outDir": "dist",
-    "sourceMap": true,
+    "compilerOptions": {
+        "target": "es2018",
+        "lib": ["es2018", "dom"],
+        "allowJs": true,
+        "baseUrl": ".",
+        "esModuleInterop": true,
+        "noEmitOnError": true,
+        "outDir": "dist",
+        "sourceMap": true,
 
-    "module": "ESNext",
-    "moduleResolution": "bundler"
-  },
-  "exclude": ["node_modules", "dist"]
+        "module": "ESNext",
+        "moduleResolution": "bundler"
+    },
+    "exclude": ["node_modules", "dist"]
 }

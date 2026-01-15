@@ -1,8 +1,4 @@
-﻿import {
-    ALWAYS_LATIN_PHRASES,
-    ALWAYS_LATIN_TOKENS_STRICT,
-    ALWAYS_LATIN_TOKENS_AMBIGUOUS,
-} from "./rules";
+﻿import { ALWAYS_LATIN_PHRASES, ALWAYS_LATIN_TOKENS_STRICT, ALWAYS_LATIN_TOKENS_AMBIGUOUS } from "./rules";
 import { applyPreCorrectionsLatToCyr } from "./corrections";
 import { fixSerbianQuotes } from "./quotes";
 import { collectProtectedRanges, splitByRanges, type CurlyProtection } from "./protect";

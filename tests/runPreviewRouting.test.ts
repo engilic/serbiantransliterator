@@ -80,11 +80,7 @@ import { showModalInfo } from "../src/taskpane/app/modal/modal";
 import { showPreviewModal } from "../src/taskpane/app/modal/previewModal";
 import { getSettingsFromUi, getOoxmlOptionsFromUi } from "../src/taskpane/app/settings/getters";
 
-function makeWordStub(params: {
-    selectionText: string;
-    selectionOoxml?: string;
-    bodyText?: string;
-}) {
+function makeWordStub(params: { selectionText: string; selectionOoxml?: string; bodyText?: string }) {
     const selectionRange = {
         text: params.selectionText,
         load: vi.fn(),

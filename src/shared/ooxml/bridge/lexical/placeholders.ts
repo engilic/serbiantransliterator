@@ -12,7 +12,7 @@ function buildLookahead(textNodes: Element[], startIndex: number, maxCp: number)
         const node = textNodes[j];
         if (!node) break;
 
-        const raw = ((node.textContent ?? "")).normalize("NFC");
+        const raw = (node.textContent ?? "").normalize("NFC");
         if (!raw) {
             j = findNextNodeWithText(textNodes, j + 1);
             continue;
@@ -69,7 +69,7 @@ export function bridgeBracedPlaceholdersAcrossTextNodes(textNodes: Element[]): n
         const aNode = textNodes[i];
         if (!aNode) continue;
 
-        const aRaw = ((aNode.textContent ?? "")).normalize("NFC");
+        const aRaw = (aNode.textContent ?? "").normalize("NFC");
         if (!aRaw) continue;
 
         const openIdx = aRaw.lastIndexOf("{");
@@ -90,7 +90,7 @@ export function bridgeBracedPlaceholdersAcrossTextNodes(textNodes: Element[]): n
         const endIdx = combined.indexOf("}");
         if (endIdx < 0) continue;
 
-        const neededLen = (endIdx + 1) - frag.length;
+        const neededLen = endIdx + 1 - frag.length;
         if (neededLen <= 0) continue;
 
         const moved = consumeFromPlan(textNodes, plan, neededLen);

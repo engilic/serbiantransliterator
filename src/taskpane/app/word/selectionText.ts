@@ -9,7 +9,7 @@ export type SelectionTextAnalysis = {
 };
 
 /**
- * Jedno mesto za logiku “da li selekcija ima tekst / da li je samo whitespace”.
+ * Jedno mesto za logiku ï¿½da li selekcija ima tekst / da li je samo whitespaceï¿½.
  * Ovo se koristi i u runSmart() i u applyPipeline() i u applyFromPreview().
  *
  * Bitno: pure funkcija (bez Word/Office), tako da je testabilna u jsdom-u.

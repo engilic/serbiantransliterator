@@ -10,8 +10,8 @@ function parseTextNodes(xml: string): Element[] {
 }
 
 describe("OOXML structural bridges - coverage", () => {
-  it("spaces: ako je middle node samo razmaci, postaje prazan (pokrij 23-25 u spaces.ts)", () => {
-    const OOXML = `
+    it("spaces: ako je middle node samo razmaci, postaje prazan (pokrij 23-25 u spaces.ts)", () => {
+        const OOXML = `
 <w:document xmlns:w="${W_NS}">
   <w:body>
     <w:p>
@@ -22,16 +22,16 @@ describe("OOXML structural bridges - coverage", () => {
   </w:body>
 </w:document>`;
 
-    const r = convertOoxml(OOXML, { direction: "lat-to-cyr" });
+        const r = convertOoxml(OOXML, { direction: "lat-to-cyr" });
 
-    // A->А, B->Б, i middle node mora da bude prazan <w:t></w:t>
-    expect(r.xml).toMatch(/<w:t\b[^>]*>А <\/w:t>/);
-    expect(r.xml).toMatch(/<w:t\b[^>]*\/>|<w:t\b[^>]*><\/w:t>/);
-    expect(r.xml).toMatch(/<w:t\b[^>]*>Б<\/w:t>/);
-  });
+        // A->А, B->Б, i middle node mora da bude prazan <w:t></w:t>
+        expect(r.xml).toMatch(/<w:t\b[^>]*>А <\/w:t>/);
+        expect(r.xml).toMatch(/<w:t\b[^>]*\/>|<w:t\b[^>]*><\/w:t>/);
+        expect(r.xml).toMatch(/<w:t\b[^>]*>Б<\/w:t>/);
+    });
 
-  it("allCapsHints: skipExactTokens sprečava hintovanje (pokrij skip granu)", () => {
-    const OOXML = `
+    it("allCapsHints: skipExactTokens sprečava hintovanje (pokrij skip granu)", () => {
+        const OOXML = `
 <w:document xmlns:w="${W_NS}">
   <w:body>
     <w:p>
@@ -41,13 +41,13 @@ describe("OOXML structural bridges - coverage", () => {
   </w:body>
 </w:document>`;
 
-    const nodes = parseTextNodes(OOXML);
+        const nodes = parseTextNodes(OOXML);
 
-    // Ako u skip set stavimo tačno sadržaj prvog node-a ("Љ"), hint ne sme da se doda.
-    const skip = new Set<string>(["Љ"]);
-    const res = markCyrAllCapsDigraphHints(nodes, skip);
+        // Ako u skip set stavimo tačno sadržaj prvog node-a ("Љ"), hint ne sme da se doda.
+        const skip = new Set<string>(["Љ"]);
+        const res = markCyrAllCapsDigraphHints(nodes, skip);
 
-    expect(res.count).toBe(0);
-    expect(nodes[0]!.textContent).toBe("Љ");
-  });
+        expect(res.count).toBe(0);
+        expect(nodes[0]!.textContent).toBe("Љ");
+    });
 });

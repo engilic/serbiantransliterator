@@ -1,9 +1,4 @@
-import {
-    findNextNodeWithText,
-    firstCp,
-    lastCp,
-    isUpperCyrillicLetter,
-} from "../../common";
+import { findNextNodeWithText, firstCp, lastCp, isUpperCyrillicLetter } from "../../common";
 
 export const CYR_ALLCAPS_HINT = "А";
 export const LAT_ALLCAPS_HINT = "A";
@@ -18,7 +13,7 @@ export function markCyrAllCapsDigraphHints(
     for (let i = 0; i < textNodes.length - 1; i++) {
         const aNode = textNodes[i];
         if (!aNode) continue;
-        const aRaw = ((aNode.textContent ?? "")).normalize("NFC");
+        const aRaw = (aNode.textContent ?? "").normalize("NFC");
         if (!aRaw) continue;
 
         if (skipExactTokens?.has(aRaw)) continue;
@@ -32,7 +27,7 @@ export function markCyrAllCapsDigraphHints(
 
         const bNode = textNodes[j];
         if (!bNode) continue;
-        const bRaw = ((bNode.textContent ?? "")).normalize("NFC");
+        const bRaw = (bNode.textContent ?? "").normalize("NFC");
         if (!bRaw) continue;
 
         if (bRaw.trimStart() !== bRaw) continue;

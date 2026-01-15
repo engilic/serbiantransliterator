@@ -94,12 +94,12 @@ header {
     gap: 12px;
 }
 
-    .header-content h1 {
-        margin: 0;
-        font-size: 18px;
-        font-weight: 600;
-        color: var(--primary-color);
-    }
+.header-content h1 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--primary-color);
+}
 
 .version {
     font-size: 11px;
@@ -196,12 +196,12 @@ select {
     color: var(--text-color);
 }
 
-    select:focus {
-        outline: none;
-        border-color: var(--focus-border);
-        border-bottom-width: 2px;
-        padding-bottom: 7px;
-    }
+select:focus {
+    outline: none;
+    border-color: var(--focus-border);
+    border-bottom-width: 2px;
+    padding-bottom: 7px;
+}
 
 .hint {
     font-size: 11px;
@@ -243,9 +243,9 @@ button {
     color: var(--primary-text);
 }
 
-    #runBtn:hover {
-        background-color: var(--primary-hover);
-    }
+#runBtn:hover {
+    background-color: var(--primary-hover);
+}
 
 #previewBtn {
     background-color: var(--bg-color);
@@ -253,18 +253,18 @@ button {
     border: 1px solid var(--input-border);
 }
 
-    #previewBtn:hover {
-        background-color: var(--neutral-lighter);
-    }
+#previewBtn:hover {
+    background-color: var(--neutral-lighter);
+}
 
-    #runBtn:disabled,
-    #previewBtn:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-        background-color: var(--neutral-lighter);
-        color: var(--disabled-text);
-        border-color: var(--border-color);
-    }
+#runBtn:disabled,
+#previewBtn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background-color: var(--neutral-lighter);
+    color: var(--disabled-text);
+    border-color: var(--border-color);
+}
 
 #runBtn .btn-subtitle {
     font-size: 11px;
@@ -299,30 +299,30 @@ button {
     height: 24px;
 }
 
-    .mini-btn:hover:not(:disabled) {
-        background-color: #e0f2ff;
-        color: var(--primary-hover);
-        border-color: var(--primary-hover);
-    }
+.mini-btn:hover:not(:disabled) {
+    background-color: #e0f2ff;
+    color: var(--primary-hover);
+    border-color: var(--primary-hover);
+}
 
-    .mini-btn:disabled {
-        background-color: var(--neutral-lighter);
-        color: var(--disabled-text);
-        border-color: var(--border-color);
-        cursor: default;
-        opacity: 0.6;
-    }
+.mini-btn:disabled {
+    background-color: var(--neutral-lighter);
+    color: var(--disabled-text);
+    border-color: var(--border-color);
+    cursor: default;
+    opacity: 0.6;
+}
 
-    .mini-btn svg {
-        width: 13px;
-        height: 13px;
-        fill: currentColor;
-    }
+.mini-btn svg {
+    width: 13px;
+    height: 13px;
+    fill: currentColor;
+}
 
-    .mini-btn span {
-        font-weight: 600;
-        font-size: 11px;
-    }
+.mini-btn span {
+    font-weight: 600;
+    font-size: 11px;
+}
 
 #resetBtn {
     margin-top: 0;
@@ -338,11 +338,11 @@ button {
     gap: 4px;
 }
 
-    #resetBtn svg {
-        width: 12px;
-        height: 12px;
-        fill: currentColor;
-    }
+#resetBtn svg {
+    width: 12px;
+    height: 12px;
+    fill: currentColor;
+}
 
 .icon-btn {
     background: none;
@@ -358,21 +358,21 @@ button {
     transition: all 0.2s;
 }
 
-    .icon-btn:hover:not(:disabled) {
-        background-color: var(--neutral-lighter);
-        opacity: 1;
-    }
+.icon-btn:hover:not(:disabled) {
+    background-color: var(--neutral-lighter);
+    opacity: 1;
+}
 
-    .icon-btn:disabled {
-        opacity: 0.2;
-        cursor: default;
-    }
+.icon-btn:disabled {
+    opacity: 0.2;
+    cursor: default;
+}
 
-    .icon-btn svg {
-        width: 16px;
-        height: 16px;
-        fill: currentColor;
-    }
+.icon-btn svg {
+    width: 16px;
+    height: 16px;
+    fill: currentColor;
+}
 
 .btn-add:hover:not(:disabled) {
     color: var(--success-color);
@@ -424,15 +424,15 @@ footer {
     opacity: 0.8;
 }
 
-    footer a {
-        color: var(--link-color);
-        text-decoration: none;
-        margin: 0 5px;
-    }
+footer a {
+    color: var(--link-color);
+    text-decoration: none;
+    margin: 0 5px;
+}
 
-        footer a:hover {
-            text-decoration: underline;
-        }
+footer a:hover {
+    text-decoration: underline;
+}
 
 .copyright {
     margin-left: 8px;
@@ -452,11 +452,11 @@ footer {
     align-items: center;
 }
 
-    .tags-container:focus-within {
-        border-color: var(--focus-border);
-        border-bottom-width: 2px;
-        padding-bottom: 3px;
-    }
+.tags-container:focus-within {
+    border-color: var(--focus-border);
+    border-bottom-width: 2px;
+    padding-bottom: 3px;
+}
 
 .tags-list {
     display: contents;
@@ -473,17 +473,17 @@ footer {
     border: 1px solid transparent;
 }
 
-    .tag.custom {
-        background-color: var(--tag-custom-bg);
-        border-color: var(--tag-custom-border);
-        color: var(--tag-custom-text);
-    }
+.tag.custom {
+    background-color: var(--tag-custom-bg);
+    border-color: var(--tag-custom-border);
+    color: var(--tag-custom-text);
+}
 
-    .tag.preset {
-        background-color: var(--tag-preset-bg);
-        border-color: var(--tag-preset-border);
-        color: var(--tag-preset-text);
-    }
+.tag.preset {
+    background-color: var(--tag-preset-bg);
+    border-color: var(--tag-preset-border);
+    color: var(--tag-preset-text);
+}
 
 .tag-remove {
     cursor: pointer;
@@ -493,9 +493,9 @@ footer {
     opacity: 0.6;
 }
 
-    .tag-remove:hover {
-        opacity: 1;
-    }
+.tag-remove:hover {
+    opacity: 1;
+}
 
 .tag-input {
     border: none;
@@ -548,20 +548,20 @@ code {
     flex-direction: column;
 }
 
-    .modal.wide {
-        max-width: 700px;
-        width: 95%;
-        height: 75vh;
-    }
+.modal.wide {
+    max-width: 700px;
+    width: 95%;
+    height: 75vh;
+}
 
-    .modal h3 {
-        margin-top: 0;
-        color: var(--text-color);
-        font-size: 16px;
-        border-bottom: 1px solid var(--border-color);
-        padding-bottom: 10px;
-        margin-bottom: 10px;
-    }
+.modal h3 {
+    margin-top: 0;
+    color: var(--text-color);
+    font-size: 16px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+}
 
 .modal-content {
     overflow-y: auto;
@@ -644,27 +644,27 @@ code {
     color: var(--text-color);
 }
 
-    .preview-toast.show {
-        display: block;
-    }
+.preview-toast.show {
+    display: block;
+}
 
-    .preview-toast.success {
-        border-color: rgba(16, 124, 16, 0.35);
-        background: rgba(16, 124, 16, 0.12);
-        color: var(--success-color);
-    }
+.preview-toast.success {
+    border-color: rgba(16, 124, 16, 0.35);
+    background: rgba(16, 124, 16, 0.12);
+    color: var(--success-color);
+}
 
-    .preview-toast.error {
-        border-color: rgba(209, 52, 56, 0.35);
-        background: rgba(209, 52, 56, 0.12);
-        color: var(--error-color);
-    }
+.preview-toast.error {
+    border-color: rgba(209, 52, 56, 0.35);
+    background: rgba(209, 52, 56, 0.12);
+    color: var(--error-color);
+}
 
-    .preview-toast.info {
-        border-color: rgba(15, 108, 189, 0.35);
-        background: rgba(15, 108, 189, 0.12);
-        color: var(--primary-color);
-    }
+.preview-toast.info {
+    border-color: rgba(15, 108, 189, 0.35);
+    background: rgba(15, 108, 189, 0.12);
+    color: var(--primary-color);
+}
 
 /* Side-by-side preview */
 .preview-grid {
@@ -735,42 +735,42 @@ code {
     padding: 2px;
 }
 
-    /* hover kao .mini-btn (plavi hover) */
-    #addTagBtn:hover:not(:disabled) {
-        background-color: #e0f2ff;
-        border-color: var(--primary-hover);
-        color: var(--primary-hover);
-    }
+/* hover kao .mini-btn (plavi hover) */
+#addTagBtn:hover:not(:disabled) {
+    background-color: #e0f2ff;
+    border-color: var(--primary-hover);
+    color: var(--primary-hover);
+}
 
-    /* disabled isto kao ostala dugmad */
-    #addTagBtn:disabled {
-        background-color: var(--neutral-lighter);
-        color: var(--disabled-text);
-        border-color: var(--border-color);
-        opacity: 0.6;
-    }
+/* disabled isto kao ostala dugmad */
+#addTagBtn:disabled {
+    background-color: var(--neutral-lighter);
+    color: var(--disabled-text);
+    border-color: var(--border-color);
+    opacity: 0.6;
+}
 
 /* Dugme "Sve" (tekst + ikonica) crveno */
 #clearAllBtn {
     color: var(--error-color);
 }
 
-    #clearAllBtn svg {
-        fill: currentColor; /* prati boju teksta */
-    }
+#clearAllBtn svg {
+    fill: currentColor; /* prati boju teksta */
+}
 
-    /* "Sve" je crveno samo kad je enabled; kad je disabled – sivo */
-    #clearAllBtn:disabled {
-        color: var(--disabled-text);
-        background-color: var(--neutral-lighter);
-        border-color: var(--border-color);
-        opacity: 0.6;
-        cursor: default;
-    }
+/* "Sve" je crveno samo kad je enabled; kad je disabled – sivo */
+#clearAllBtn:disabled {
+    color: var(--disabled-text);
+    background-color: var(--neutral-lighter);
+    border-color: var(--border-color);
+    opacity: 0.6;
+    cursor: default;
+}
 
-        #clearAllBtn:disabled svg {
-            fill: currentColor;
-        }
+#clearAllBtn:disabled svg {
+    fill: currentColor;
+}
 
 /* =========================
    Preview modal header (moved from inline styles)

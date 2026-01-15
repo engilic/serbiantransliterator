@@ -31,10 +31,9 @@ export function initTaskpane() {
 function cleanupEventHandlers() {
     if (state.selectionChangeHandler) {
         try {
-            Office.context.document.removeHandlerAsync(
-                Office.EventType.DocumentSelectionChanged,
-                { handler: state.selectionChangeHandler }
-            );
+            Office.context.document.removeHandlerAsync(Office.EventType.DocumentSelectionChanged, {
+                handler: state.selectionChangeHandler,
+            });
         } catch {
             // best-effort
         }

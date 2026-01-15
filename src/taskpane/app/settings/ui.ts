@@ -209,10 +209,13 @@ function changeProfile(profile: ProfilePreset) {
 
             if (data.direction) setRadioValue("direction", data.direction);
             if (data.protectBrands !== undefined) setCheckValue("optProtectBrands", data.protectBrands);
-            if (data.applySerbianQuotes !== undefined) setCheckValue("optSerbianQuotes", data.applySerbianQuotes);
-            if (data.preserveCodeBlocks !== undefined) setCheckValue("optPreserveCodeBlocks", data.preserveCodeBlocks);
+            if (data.applySerbianQuotes !== undefined)
+                setCheckValue("optSerbianQuotes", data.applySerbianQuotes);
+            if (data.preserveCodeBlocks !== undefined)
+                setCheckValue("optPreserveCodeBlocks", data.preserveCodeBlocks);
             if (data.protectRomans !== undefined) setCheckValue("optProtectRomans", data.protectRomans);
-            if (data.setProofingLanguage !== undefined) setCheckValue("optSetProofingLanguage", data.setProofingLanguage);
+            if (data.setProofingLanguage !== undefined)
+                setCheckValue("optSetProofingLanguage", data.setProofingLanguage);
             if (data.fixDoubleSpaces !== undefined) setCheckValue("optFixDoubleSpaces", data.fixDoubleSpaces);
             if (data.formatDates !== undefined) setCheckValue("optFormatDates", data.formatDates);
             if (data.confirmWholeDoc !== undefined) setCheckValue("optConfirmWholeDoc", data.confirmWholeDoc);
@@ -220,7 +223,9 @@ function changeProfile(profile: ProfilePreset) {
             // NEW: uvek postavi curlyProtection na preset ili default
             const curlySel = document.getElementById("optCurlyProtection") as HTMLSelectElement | null;
             if (curlySel) {
-                curlySel.value = asCurlyProtectionUi(data.curlyProtection ?? DEFAULT_SETTINGS.curlyProtection);
+                curlySel.value = asCurlyProtectionUi(
+                    data.curlyProtection ?? DEFAULT_SETTINGS.curlyProtection
+                );
             }
         }
     }
@@ -264,7 +269,7 @@ function setupInputListeners() {
     ];
 
     ids.forEach((id) => {
-        const el = document.getElementById(id) as (HTMLInputElement | HTMLSelectElement | null);
+        const el = document.getElementById(id) as HTMLInputElement | HTMLSelectElement | null;
         if (!el) return;
 
         el.onchange = () => {

@@ -67,7 +67,7 @@ export async function runSmart() {
                     "Greška",
                     unsafeHtml(
                         "Selektovan je samo prazan prostor (razmaci).<br>" +
-                        "Molimo selektujte tekst ili ne selektujte ništa za ceo dokument."
+                            "Molimo selektujte tekst ili ne selektujte ništa za ceo dokument."
                     )
                 );
                 setStatus("Greška: Prazna selekcija.", "error");

@@ -1,17 +1,8 @@
 // src/shared/ooxml/bridge/lexical/links.ts
 
-import {
-    findNextNodeWithText,
-    trailingLinkFragment,
-    isLinkChar,
-    normKey,
-} from "../../common";
+import { findNextNodeWithText, trailingLinkFragment, isLinkChar, normKey } from "../../common";
 
-import {
-    LINK_PATTERNS_ANCHORED,
-    trimLinkEnd,
-    looksLikeLinkStart,
-} from "../../../patterns/links";
+import { LINK_PATTERNS_ANCHORED, trimLinkEnd, looksLikeLinkStart } from "../../../patterns/links";
 
 function buildLookahead(textNodes: Element[], startIndex: number, maxCp: number) {
     const plan: Array<{ nodeIndex: number; takeCp: number; cps: string[] }> = [];
@@ -24,7 +15,7 @@ function buildLookahead(textNodes: Element[], startIndex: number, maxCp: number)
 
         const node = textNodes[j];
         if (!node) break;
-        const raw = ((node.textContent ?? "")).normalize("NFC");
+        const raw = (node.textContent ?? "").normalize("NFC");
         if (!raw) {
             j = findNextNodeWithText(textNodes, j + 1);
             continue;
@@ -77,7 +68,7 @@ export function bridgeLinksAcrossTextNodes(textNodes: Element[]): number {
     for (let i = 0; i < textNodes.length - 1; i++) {
         const aNode = textNodes[i];
         if (!aNode) continue;
-        const aRaw = ((aNode.textContent ?? "")).normalize("NFC");
+        const aRaw = (aNode.textContent ?? "").normalize("NFC");
         if (!aRaw) continue;
 
         // ako a završava whitespace-om, ne bridguj

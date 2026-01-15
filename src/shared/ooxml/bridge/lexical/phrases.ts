@@ -1,8 +1,4 @@
-import {
-    findNextNodeWithText,
-    isBoundaryChar,
-    normKey,
-} from "../../common";
+import { findNextNodeWithText, isBoundaryChar, normKey } from "../../common";
 
 export type PhraseInfo = { raw: string; lowerCps: string[]; len: number };
 
@@ -39,7 +35,7 @@ function takePrefixAcrossNodes(
 
         const node = textNodes[j];
         if (!node) return null;
-        const raw = ((node.textContent ?? "")).normalize("NFC");
+        const raw = (node.textContent ?? "").normalize("NFC");
         if (!raw) {
             j = findNextNodeWithText(textNodes, j + 1);
             continue;
@@ -64,7 +60,7 @@ function peekCharAfterPlan(textNodes: Element[], plan: Array<{ nodeIndex: number
     if (!last) return "";
     const node = textNodes[last.nodeIndex];
     if (!node) return "";
-    const raw = ((node.textContent ?? "")).normalize("NFC");
+    const raw = (node.textContent ?? "").normalize("NFC");
     const cps = Array.from(raw);
     const idx = last.takeCp;
 
@@ -73,7 +69,7 @@ function peekCharAfterPlan(textNodes: Element[], plan: Array<{ nodeIndex: number
     if (j == null) return "";
     const nextNode = textNodes[j];
     if (!nextNode) return "";
-    const nextRaw = ((nextNode.textContent ?? "")).normalize("NFC");
+    const nextRaw = (nextNode.textContent ?? "").normalize("NFC");
     const nextCps = Array.from(nextRaw);
     return nextCps[0] ?? "";
 }
@@ -82,7 +78,7 @@ function applyConsumePlan(textNodes: Element[], plan: Array<{ nodeIndex: number;
     for (const step of plan) {
         const node = textNodes[step.nodeIndex];
         if (!node) continue;
-        const raw = ((node.textContent ?? "")).normalize("NFC");
+        const raw = (node.textContent ?? "").normalize("NFC");
         const cps = Array.from(raw);
         node.textContent = cps.slice(step.takeCp).join("");
     }
@@ -96,7 +92,7 @@ export function bridgePhrasesAcrossTextNodes(textNodes: Element[], phraseInfos: 
     for (let i = 0; i < textNodes.length - 1; i++) {
         const aNode = textNodes[i];
         if (!aNode) continue;
-        const aRaw = ((aNode.textContent ?? "")).normalize("NFC");
+        const aRaw = (aNode.textContent ?? "").normalize("NFC");
         if (!aRaw) continue;
 
         const aCps = Array.from(aRaw);

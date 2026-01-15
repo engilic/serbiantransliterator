@@ -2,8 +2,8 @@ import { describe, it, expect } from "vitest";
 import { convertOoxml } from "../src/shared/transliterator";
 
 describe("convertOoxml - URL/email preko više <w:t>", () => {
-  it("https URL split: https://exa | mple.com/test mora ostati ASCII", () => {
-    const OOXML = `
+    it("https URL split: https://exa | mple.com/test mora ostati ASCII", () => {
+        const OOXML = `
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
   <w:body>
     <w:p>
@@ -14,17 +14,17 @@ describe("convertOoxml - URL/email preko više <w:t>", () => {
 </w:document>
 `;
 
-    const result = convertOoxml(OOXML, { direction: "lat-to-cyr" });
+        const result = convertOoxml(OOXML, { direction: "lat-to-cyr" });
 
-    expect(result.type).toBe("Lat → Ćir");
-    expect(result.xml).toContain("https://example.com/test");
+        expect(result.type).toBe("Lat → Ćir");
+        expect(result.xml).toContain("https://example.com/test");
 
-    // ako se ne zaštiti, "https" bi se preslovilo u ćirilicu
-    expect(result.xml).not.toContain("хттп");
-  });
+        // ako se ne zaštiti, "https" bi se preslovilo u ćirilicu
+        expect(result.xml).not.toContain("хттп");
+    });
 
-  it("email split: test@exa | mple.com mora ostati ASCII", () => {
-    const OOXML = `
+    it("email split: test@exa | mple.com mora ostati ASCII", () => {
+        const OOXML = `
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
   <w:body>
     <w:p>
@@ -35,9 +35,9 @@ describe("convertOoxml - URL/email preko više <w:t>", () => {
 </w:document>
 `;
 
-    const result = convertOoxml(OOXML, { direction: "lat-to-cyr" });
+        const result = convertOoxml(OOXML, { direction: "lat-to-cyr" });
 
-    expect(result.xml).toContain("test@example.com");
-    expect(result.xml).not.toContain("тест@");
-  });
+        expect(result.xml).toContain("test@example.com");
+        expect(result.xml).not.toContain("тест@");
+    });
 });

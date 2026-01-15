@@ -4,19 +4,15 @@
 // Global regex (protect/statistics)
 // =========================
 
-export const EMAIL_RE_G =
-    /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/giu;
+export const EMAIL_RE_G = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/giu;
 
-export const URL_RE_G =
-    /\b(?:https?:\/\/|ftp:\/\/|file:\/\/|www\.)[^\s<>"')]+/giu;
+export const URL_RE_G = /\b(?:https?:\/\/|ftp:\/\/|file:\/\/|www\.)[^\s<>"')]+/giu;
 
 // mailto: (posebno, da ne dupliramo sa URI schemes)
-export const MAILTO_RE_G =
-    /\bmailto:[^\s<>"')]+/giu;
+export const MAILTO_RE_G = /\bmailto:[^\s<>"')]+/giu;
 
 // URI schemes bez tel/mailto (sip/sms/geo/skype/teams/msteams)
-export const URI_SCHEMES_NO_TEL_MAILTO_RE_G =
-    /\b(?:sip|sms|geo|skype|teams|msteams):[^\s<>"')]+/giu;
+export const URI_SCHEMES_NO_TEL_MAILTO_RE_G = /\b(?:sip|sms|geo|skype|teams|msteams):[^\s<>"')]+/giu;
 
 // =========================
 // Anchored patterns (OOXML bridging)

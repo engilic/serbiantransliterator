@@ -234,7 +234,7 @@ function getDirectChild(run: Element, localName: string): Element | null {
 function getRunTextFromTChildren(run: Element): string {
     let out = "";
     for (const ch of Array.from(run.children)) {
-        if (ch.localName === "t") out += (ch.textContent ?? "");
+        if (ch.localName === "t") out += ch.textContent ?? "";
     }
     return out;
 }

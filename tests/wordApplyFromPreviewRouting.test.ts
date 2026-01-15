@@ -98,7 +98,13 @@ beforeEach(() => {
     // default pipeline fallback result
     (applyPipeline as any).mockResolvedValue({
         result: { type: "Lat → Ćir", stats: { timingMs: 12.3, bridges: {} } },
-        extras: { headersFootersProcessed: 0, footnotesProcessed: 0, endnotesProcessed: 0, footnotesSupported: true, endnotesSupported: true },
+        extras: {
+            headersFootersProcessed: 0,
+            footnotesProcessed: 0,
+            endnotesProcessed: 0,
+            footnotesSupported: true,
+            endnotesSupported: true,
+        },
     });
 });
 
@@ -114,7 +120,8 @@ describe("word/apply.applyFromPreview(selection) - cache routing", () => {
 
         const { range } = makeWordStub(selectionText, selectionOoxml);
 
-        const opts = (getOoxmlOptionsFromUi as any).mock.results[0]?.value ?? (getOoxmlOptionsFromUi as any)();
+        const opts =
+            (getOoxmlOptionsFromUi as any).mock.results[0]?.value ?? (getOoxmlOptionsFromUi as any)();
         const optsJson = JSON.stringify(opts);
 
         // hashes must match our mocked sha256Hex("H:"+input)
@@ -142,7 +149,8 @@ describe("word/apply.applyFromPreview(selection) - cache routing", () => {
 
         const { range } = makeWordStub(selectionText, selectionOoxml);
 
-        const opts = (getOoxmlOptionsFromUi as any).mock.results[0]?.value ?? (getOoxmlOptionsFromUi as any)();
+        const opts =
+            (getOoxmlOptionsFromUi as any).mock.results[0]?.value ?? (getOoxmlOptionsFromUi as any)();
         const optsJson = JSON.stringify(opts);
 
         state.preview.convertedOoxml = "<ooxml>converted</ooxml>";

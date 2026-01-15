@@ -2,51 +2,51 @@
 name: CI
 
 on:
-  push:
-    branches: ["master"]
-  pull_request:
-    branches: ["master"]
-  workflow_dispatch:
+    push:
+        branches: ["master"]
+    pull_request:
+        branches: ["master"]
+    workflow_dispatch:
 
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+    group: ci-${{ github.ref }}
+    cancel-in-progress: true
 
 jobs:
-  test-build-validate:
-    name: test-build-validate
-    runs-on: ubuntu-latest
+    test-build-validate:
+        name: test-build-validate
+        runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "20"
+                  cache: "npm"
 
-      - name: Install deps (npm ci)
-        run: npm ci
+            - name: Install deps (npm ci)
+              run: npm ci
 
-      - name: Format check (Prettier)
-        run: npm run format:check
+            - name: Format check (Prettier)
+              run: npm run format:check
 
-      - name: Typecheck (tsc --noEmit)
-        run: npm run typecheck
+            - name: Typecheck (tsc --noEmit)
+              run: npm run typecheck
 
-      - name: Lint (eslint)
-        run: npm run lint
+            - name: Lint (eslint)
+              run: npm run lint
 
-      - name: Unit tests
-        run: npm test
+            - name: Unit tests
+              run: npm test
 
-      - name: Build (production)
-        run: npm run build
+            - name: Build (production)
+              run: npm run build
 
-      - name: Validate Office manifest (dev)
-        run: npm run validate
+            - name: Validate Office manifest (dev)
+              run: npm run validate
 
-      - name: Validate Office manifest (prod)
-        run: npm run validate:prod
+            - name: Validate Office manifest (prod)
+              run: npm run validate:prod

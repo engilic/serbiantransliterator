@@ -24,13 +24,13 @@ const OOXML_TWO_TOKENS = `
 `;
 
 describe("convertOoxml - OOXML specifični slučajevi", () => {
-  it('treba da očuva razbijanje na dva <w:t> za "Zdravo " i "svet"', () => {
-    const result = convertOoxml(OOXML_TWO_TOKENS);
+    it('treba da očuva razbijanje na dva <w:t> za "Zdravo " i "svet"', () => {
+        const result = convertOoxml(OOXML_TWO_TOKENS);
 
-    expect(result.type).toBe("Lat → Ćir");
+        expect(result.type).toBe("Lat → Ćir");
 
-    // Dozvoli atribute na <w:t> (npr. xml:space="preserve")
-    expect(result.xml).toMatch(/<w:t\b[^>]*>Здраво <\/w:t>/);
-    expect(result.xml).toMatch(/<w:t\b[^>]*>свет<\/w:t>/);
-  });
+        // Dozvoli atribute na <w:t> (npr. xml:space="preserve")
+        expect(result.xml).toMatch(/<w:t\b[^>]*>Здраво <\/w:t>/);
+        expect(result.xml).toMatch(/<w:t\b[^>]*>свет<\/w:t>/);
+    });
 });

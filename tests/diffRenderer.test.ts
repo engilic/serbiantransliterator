@@ -1,8 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-    renderDiffHtml,
-    renderSideBySideWithHighlights,
-} from "../src/taskpane/app/preview/diffRenderer";
+import { renderDiffHtml, renderSideBySideWithHighlights } from "../src/taskpane/app/preview/diffRenderer";
 
 describe("preview/diffRenderer", () => {
     it("renderDiffHtml highlights inserted tokens", () => {
@@ -20,6 +17,6 @@ describe("preview/diffRenderer", () => {
         const html = renderSideBySideWithHighlights(oldText, newText, 10_000);
 
         expect(html).toContain("diff-removed"); // "b" should be removed on left
-        expect(html).toContain("diff-added");   // "x" and/or "c" should be added on right
+        expect(html).toContain("diff-added"); // "x" and/or "c" should be added on right
     });
 });

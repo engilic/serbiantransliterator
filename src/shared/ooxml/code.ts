@@ -1,13 +1,13 @@
 import { QUOTE_VARIANTS_RE, OPEN_QUOTE, CLOSE_QUOTE } from "./quoteConstants";
 
 export type CodeState = {
-    inFence: boolean;  // ``` ... ```
+    inFence: boolean; // ``` ... ```
     inInline: boolean; // ` ... `
 };
 
 export type CodeParseStats = {
-    fenceMarkersSeen: number;  // koliko puta je viđeno ```
-    inlineTicksSeen: number;   // koliko puta je viđeno `
+    fenceMarkersSeen: number; // koliko puta je viđeno ```
+    inlineTicksSeen: number; // koliko puta je viđeno `
 };
 
 export function createInitialCodeState(): CodeState {
