@@ -14,6 +14,7 @@ import { applyPipeline } from "./pipeline";
 import { analyzeSelectionText } from "./selectionText";
 import { buildApplyStatsText, buildApplyStatsTitle, buildPreviewAppliedStats } from "./statsText";
 import { decidePreviewCacheReuse, type PreviewCacheDecisionReason } from "./previewCacheDecision";
+import type { UiSettings, ExtrasSummary } from "../types";
 
 function reasonToSerbian(reason: PreviewCacheDecisionReason): string {
     switch (reason) {
@@ -32,6 +33,24 @@ function reasonToSerbian(reason: PreviewCacheDecisionReason): string {
         default:
             return "nepoznat razlog";
     }
+}
+
+function buildDocumentExtraStatus(ui: UiSettings, extras: ExtrasSummary): string {
+    const parts: string[] = [];
+
+    if (ui.includeHeadersFooters && extras.headersFootersProcessed > 0) {
+        parts.push(`H/F: ${extras.headersFootersProcessed}`);
+    }
+
+    // If user enabled notes but API isn't supported in this host/context
+    if (ui.includeFootnotes && extras.footnotesSupported === false) {
+        parts.push("Fusnote: N/A");
+    }
+    if (ui.includeEndnotes && extras.endnotesSupported === false) {
+        parts.push("Endnote: N/A");
+    }
+
+    return parts.length ? " | " + parts.join(" | ") : "";
 }
 
 export async function runSmart() {
@@ -77,13 +96,13 @@ export async function runSmart() {
             }
 
             const time = result.stats.timingMs.toFixed(0);
-            const hfInfo =
-                scope === "document" && extras.headersFootersProcessed > 0 ? ` | H/F: ${extras.headersFootersProcessed}` : "";
+            const extraInfo = scope === "document" ? buildDocumentExtraStatus(ui, extras) : "";
 
-            setStatus(`Završeno: ${result.type} (${time}ms)${hfInfo}`, "success");
+            setStatus(`Završeno: ${result.type} (${time}ms)${extraInfo}`, "success");
 
             state.lastStatsTitle = buildApplyStatsTitle(result);
             state.lastStatsText = buildApplyStatsText(result, scope, extras);
+
             refreshStats();
         });
     } catch (e) {
@@ -177,10 +196,12 @@ export async function applyFromPreview(scope: "selection" | "document") {
 
                 state.lastStatsTitle = buildApplyStatsTitle(result);
                 state.lastStatsText = buildApplyStatsText(result, "selection");
+
                 refreshStats();
                 return;
             }
 
+            // scope === "document"
             const { result, extras } = await applyPipeline(context, "document", ui, opts);
 
             if (!result) {
@@ -189,12 +210,13 @@ export async function applyFromPreview(scope: "selection" | "document") {
             }
 
             const time = result.stats.timingMs.toFixed(0);
-            const hfInfo = extras.headersFootersProcessed > 0 ? ` | H/F: ${extras.headersFootersProcessed}` : "";
+            const extraInfo = buildDocumentExtraStatus(ui, extras);
 
-            setStatus(`Završeno: ${result.type} (${time}ms)${hfInfo}`, "success");
+            setStatus(`Završeno: ${result.type} (${time}ms)${extraInfo}`, "success");
 
             state.lastStatsTitle = buildApplyStatsTitle(result);
             state.lastStatsText = buildApplyStatsText(result, "document", extras);
+
             refreshStats();
         });
     } catch (e) {
