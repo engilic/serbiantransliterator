@@ -11,6 +11,7 @@ import { invalidatePreviewCache, isPreviewCacheValid } from "../preview/cache";
 import { normalizeForSelectionHash, sha256Hex } from "../selection";
 import { getSettingsFromUi, getOoxmlOptionsFromUi } from "../settings/getters";
 import { applyPipeline } from "./pipeline";
+import { analyzeSelectionText } from "./selectionText";
 
 export async function runSmart() {
     try {
@@ -19,11 +20,9 @@ export async function runSmart() {
             sel.load("text");
             await context.sync();
 
-            const selectionText = sel.text ?? "";
-            const hasSelectionText = selectionText.trim().length > 0;
-            const isJustWhitespace = selectionText.length > 0 && !hasSelectionText;
+            const selInfo = analyzeSelectionText(sel.text);
 
-            if (isJustWhitespace) {
+            if (selInfo.isJustWhitespace) {
                 showModalInfo(
                     "Greška",
                     unsafeHtml(
@@ -37,7 +36,7 @@ export async function runSmart() {
 
             const ui = getSettingsFromUi();
             const opts = getOoxmlOptionsFromUi();
-            const scope: "selection" | "document" = hasSelectionText ? "selection" : "document";
+            const scope: "selection" | "document" = selInfo.hasText ? "selection" : "document";
 
             if (scope === "document" && ui.confirmWholeDoc) {
                 const ok = await confirmInPanel(
@@ -102,20 +101,18 @@ export async function applyFromPreview(scope: "selection" | "document") {
                 range.load("text");
                 await context.sync();
 
-                const rawText = range.text ?? "";
-                const hasText = rawText.trim().length > 0;
-                const isJustWhitespace = rawText.length > 0 && !hasText;
+                const info = analyzeSelectionText(range.text);
 
-                if (!hasText) {
+                if (!info.hasText) {
                     showModalInfo("Greška", unsafeHtml("Nema selekcije za preslovljavanje."));
                     return;
                 }
-                if (isJustWhitespace) {
+                if (info.isJustWhitespace) {
                     showModalInfo("Greška", unsafeHtml("Selektovan je samo prazan prostor (razmaci)."));
                     return;
                 }
 
-                const normApply = normalizeForSelectionHash(rawText);
+                const normApply = normalizeForSelectionHash(info.raw);
                 const currentSelectionHash = await sha256Hex(normApply);
 
                 const currentOoxml = ooxml.value ?? "";

@@ -9,6 +9,7 @@ import { showModalInfo } from "../modal/modal";
 import { unsafeHtml } from "../../../shared/safeHtml";
 import { applyExtrasIfEnabled } from "./extras";
 import { setStatus } from "../status";
+import { analyzeSelectionText } from "./selectionText";
 
 export type OoxmlConvertResult = ReturnType<typeof convertOoxml>;
 
@@ -42,15 +43,13 @@ export async function applyPipeline(
         range.load("text");
         await context.sync();
 
-        const rawText = range.text ?? "";
-        const hasText = rawText.trim().length > 0;
-        const isJustWhitespace = rawText.length > 0 && !hasText;
+        const info = analyzeSelectionText(range.text);
 
-        if (!hasText) {
+        if (!info.hasText) {
             showModalInfo("Greška", unsafeHtml("Nema selekcije za preslovljavanje."));
             return { result: null, extras: emptyExtrasSummary() };
         }
-        if (isJustWhitespace) {
+        if (info.isJustWhitespace) {
             showModalInfo("Greška", unsafeHtml("Selektovan je samo prazan prostor (razmaci)."));
             return { result: null, extras: emptyExtrasSummary() };
         }
