@@ -8,10 +8,6 @@ import { normalizeWeirdBreaks } from "../selection";
 
 import type { UiSettings } from "../types";
 
-/**
- * Shared helper: konverzija plain-text preview-a (document preview).
- * Namerno: identičan pipeline na jednom mestu da ne dupliramo logiku.
- */
 export function convertTextForPreviewPlain(
     input: string,
     s: UiSettings,
@@ -43,6 +39,9 @@ export function convertTextForPreviewPlain(
         protectBrands: s.protectBrands,
         applySerbianQuotes: s.applySerbianQuotes,
         preserveCodeBlocks: s.preserveCodeBlocks,
+
+        // NEW:
+        curlyProtection: s.curlyProtection,
     };
 
     if (s.direction === "to-ascii") {

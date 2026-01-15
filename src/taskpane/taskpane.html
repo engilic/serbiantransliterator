@@ -90,18 +90,27 @@
     </div>
 
     <div class="section">
-      <div class="section-title">OPCIJE</div>
+        <div class="section-title">OPCIJE</div>
 
-      <label><input type="checkbox" id="optConfirmWholeDoc" checked /> Potvrdi preslovljavanje celog dokumenta</label>
-      <label><input type="checkbox" id="optIncludeHeadersFooters" /> Uključi zaglavlja/podnožja (header/footer)</label>
-      <label><input type="checkbox" id="optIncludeFootnotes" /> Uključi fusnote (footnotes)</label>
-      <label><input type="checkbox" id="optIncludeEndnotes" /> Uključi endnote (endnotes)</label>
-      <label><input type="checkbox" id="optProtectBrands" checked /> Zaštiti brendove (Windows, ...)</label>
-      <label><input type="checkbox" id="optSerbianQuotes" checked /> Pametni navodnici ( „ … “ )</label>
-      <label><input type="checkbox" id="optPreserveCodeBlocks" checked /> Zaštiti kod (<code>inline</code> / <code>blok</code>)</label>
-      <label><input type="checkbox" id="optProtectRomans" checked /> Zaštiti rimske brojeve (IV, XIV)</label>
-      <label><input type="checkbox" id="optSetProofingLanguage" checked /> Postavi jezik provere (sr-Cyrl / sr-Latn)</label>
-      <label><input type="checkbox" id="optShowStats" /> Prikaži detaljnu statistiku</label>
+        <label><input type="checkbox" id="optConfirmWholeDoc" checked /> Potvrdi preslovljavanje celog dokumenta</label>
+        <label><input type="checkbox" id="optIncludeHeadersFooters" /> Uključi zaglavlja/podnožja (header/footer)</label>
+        <label><input type="checkbox" id="optIncludeFootnotes" /> Uključi fusnote (footnotes)</label>
+        <label><input type="checkbox" id="optIncludeEndnotes" /> Uključi endnote (endnotes)</label>
+        <label><input type="checkbox" id="optProtectBrands" checked /> Zaštiti brendove (Windows, ...)</label>
+        <label><input type="checkbox" id="optSerbianQuotes" checked /> Pametni navodnici ( „ … “ )</label>
+        <label><input type="checkbox" id="optPreserveCodeBlocks" checked /> Zaštiti kod (<code>inline</code> / <code>blok</code>)</label>
+        <div class="field-row">
+            <div class="field-label">Zaštita <code>{...}</code> blokova</div>
+            <select id="optCurlyProtection">
+                <option value="placeholders">Samo placeholder-i (npr. {USER_NAME})</option>
+                <option value="all">Sve u {...} (legacy)</option>
+                <option value="none">Ne štiti {...}</option>
+            </select>
+            <div class="hint">Kontroliše da li se sadržaj u vitičastim zagradama preslovljava.</div>
+        </div>
+        <label><input type="checkbox" id="optProtectRomans" checked /> Zaštiti rimske brojeve (IV, XIV)</label>
+        <label><input type="checkbox" id="optSetProofingLanguage" checked /> Postavi jezik provere (sr-Cyrl / sr-Latn)</label>
+        <label><input type="checkbox" id="optShowStats" /> Prikaži detaljnu statistiku</label>
     </div>
 
     <div class="section">
