@@ -1,4 +1,6 @@
-import { convertPlainText, detectScript, Direction, CoreOptions } from "../../core/textCore";
+// src/shared/ooxml/convertOoxml.ts
+
+import { convertPlainText, detectScript, type Direction, type CoreOptions } from "../../core/textCore";
 import { ALWAYS_LATIN_PHRASES } from "../../core/rules";
 import { XML_NS, WORD_NS, collectTextNodes, getFullText, needsXmlSpacePreserve } from "./dom";
 import { applySerbianQuotesAcrossNodes } from "./quotes";
@@ -200,9 +202,9 @@ function extractLetterWordSpans(text: string): WordSpan[] {
         let hasLetter = false;
 
         while (i < cps.length) {
-            const cp = cps[i];
-            if (!cp || !isTokenChar(cp)) break;
-            if (/\p{L}/u.test(cp)) hasLetter = true;
+            const cp2 = cps[i];
+            if (!cp2 || !isTokenChar(cp2)) break;
+            if (/\p{L}/u.test(cp2)) hasLetter = true;
             i++;
         }
 
@@ -473,14 +475,16 @@ export function convertOoxml(
 
     bridges.spaces = bridgeSpacesAcrossTextNodes(textNodes);
 
-    // NEW: placeholder bridging (radi u oba smera)
+    // placeholders bridging (radi u oba smera)
     bridges.placeholders = bridgeBracedPlaceholdersAcrossTextNodes(textNodes);
 
     if (userProtectedPhrases.length) {
         const infos = getCachedPhraseInfos(userProtectedPhrases);
         bridges.userPhrases = bridgePhrasesAcrossTextNodes(textNodes, infos);
     }
-    if (userProtectedTokens.length) bridges.userTokens = bridgeExactTokensAcrossTextNodes(textNodes, userProtectedTokens);
+    if (userProtectedTokens.length) {
+        bridges.userTokens = bridgeExactTokensAcrossTextNodes(textNodes, userProtectedTokens);
+    }
 
     if (direction === "lat-to-cyr") {
         bridges.links = bridgeLinksAcrossTextNodes(textNodes);
@@ -509,9 +513,10 @@ export function convertOoxml(
         }
     }
 
-    // original run text (posle bridging-a, pre konverzije)
-    const originalRunText = new Map<Element, string>();
-    {
+    // PERF: original run text pravimo samo ako je proofing language uključen
+    let originalRunText: Map<Element, string> | null = null;
+    if (shouldSetLang) {
+        originalRunText = new Map<Element, string>();
         const seenRuns = new WeakSet<Element>();
         for (const t of textNodes) {
             const run = findAncestor(t, "r");
@@ -587,7 +592,7 @@ export function convertOoxml(
         applySerbianQuotesAcrossNodes(textNodes, preserveCodeBlocks);
     }
 
-    if (shouldSetLang) {
+    if (shouldSetLang && originalRunText) {
         applyProofingLanguagePreserveUnchanged(doc, textNodes, originalRunText, direction);
     }
 

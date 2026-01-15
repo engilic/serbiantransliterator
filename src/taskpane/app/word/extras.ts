@@ -21,6 +21,7 @@ export async function applyExtrasIfEnabled(
             summary.headersFootersProcessed = await processHeadersFooters(context, opts);
         } catch (e) {
             console.warn("Header/Footer obrada nije uspela:", e);
+            // best-effort: leave processed = 0
         }
     }
 
@@ -32,6 +33,8 @@ export async function applyExtrasIfEnabled(
             summary.footnotesSupported = r.supported;
         } catch (e) {
             console.warn("Footnotes obrada nije uspela:", e);
+            summary.footnotesProcessed = 0;
+            summary.footnotesSupported = false;
         }
     }
 
@@ -43,6 +46,8 @@ export async function applyExtrasIfEnabled(
             summary.endnotesSupported = r.supported;
         } catch (e) {
             console.warn("Endnotes obrada nije uspela:", e);
+            summary.endnotesProcessed = 0;
+            summary.endnotesSupported = false;
         }
     }
 

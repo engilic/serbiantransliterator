@@ -52,6 +52,13 @@ export function buildApplyStatsText(
             `\nHeader/Footer: ${extras.headersFootersProcessed}` +
             `\nFusnote: ${extras.footnotesProcessed}` +
             `\nEndnote: ${extras.endnotesProcessed}`;
+
+        if (extras.footnotesSupported === false) {
+            out += `\nFusnote podržane: NE`;
+        }
+        if (extras.endnotesSupported === false) {
+            out += `\nEndnote podržane: NE`;
+        }
     }
 
     return out;
