@@ -1,8 +1,9 @@
-﻿// src/taskpane/app/word/apply.ts
+// src/taskpane/app/word/apply.ts
 /* global Word, console */
 
 import { unsafeHtml } from "../../../shared/safeHtml";
 import type { OoxmlOptions } from "../../../shared/ooxml/convertOoxml";
+import { t } from "../../../shared/i18n";
 
 import { state, PREVIEW_CACHE_TTL_MS } from "../state";
 import { setStatus, refreshStats } from "../status";
@@ -16,40 +17,38 @@ import { buildApplyStatsText, buildApplyStatsTitle, buildPreviewAppliedStats } f
 import { decidePreviewCacheReuse, type PreviewCacheDecisionReason } from "./previewCacheDecision";
 import type { UiSettings, ExtrasSummary } from "../types";
 
+// Telemetry helper
+function logTelemetrySkippedRuns(skippedByReason: Record<string, number>) {
+    if (Object.keys(skippedByReason).length === 0) return;
+    // U produkciji ovo bi bio poziv ka Azure AppInsights ili slično
+    console.warn("[Telemetry] Skipped runs detected:", skippedByReason);
+}
+
 function reasonToSerbian(reason: PreviewCacheDecisionReason): string {
+    const key = `reason_${reason === "ok" ? "unknown" : reason}` as any;
+    // Mapped: optsChanged -> reason_opts_changed, etc.
+    // Manual mapping for safety:
     switch (reason) {
-        case "optsChanged":
-            return "podešavanja su promenjena";
-        case "expired":
-            return "cache je istekao";
-        case "selectionTextChanged":
-            return "selekcija je promenjena";
-        case "selectionOoxmlChanged":
-            return "formatiranje/selekcija (OOXML) su promenjeni";
-        case "missing":
-            return "cache nije kompletan";
-        case "ok":
-            return "OK";
-        default:
-            return "nepoznat razlog";
+        case "optsChanged": return t("reason_opts_changed");
+        case "expired": return t("reason_expired");
+        case "selectionTextChanged": return t("reason_selection_changed");
+        case "selectionOoxmlChanged": return t("reason_formatting_changed");
+        case "missing": return t("reason_missing");
+        default: return t("reason_unknown");
     }
 }
 
 function buildDocumentExtraStatus(ui: UiSettings, extras: ExtrasSummary): string {
     const parts: string[] = [];
-
     if (ui.includeHeadersFooters && extras.headersFootersProcessed > 0) {
         parts.push(`H/F: ${extras.headersFootersProcessed}`);
     }
-
-    // If user enabled notes but API isn't supported in this host/context
     if (ui.includeFootnotes && extras.footnotesSupported === false) {
         parts.push("Fusnote: N/A");
     }
     if (ui.includeEndnotes && extras.endnotesSupported === false) {
         parts.push("Endnote: N/A");
     }
-
     return parts.length ? " | " + parts.join(" | ") : "";
 }
 
@@ -63,14 +62,8 @@ export async function runSmart() {
             const selInfo = analyzeSelectionText(sel.text);
 
             if (selInfo.isJustWhitespace) {
-                showModalInfo(
-                    "Greška",
-                    unsafeHtml(
-                        "Selektovan je samo prazan prostor (razmaci).<br>" +
-                            "Molimo selektujte tekst ili ne selektujte ništa za ceo dokument."
-                    )
-                );
-                setStatus("Greška: Prazna selekcija.", "error");
+                showModalInfo(t("modal_title_error"), unsafeHtml(t("msg_empty_selection")));
+                setStatus(t("status_error_prefix", t("msg_empty_selection").split("<")[0]), "error");
                 return;
             }
 
@@ -79,11 +72,9 @@ export async function runSmart() {
             const scope: "selection" | "document" = selInfo.hasText ? "selection" : "document";
 
             if (scope === "document" && ui.confirmWholeDoc) {
-                const ok = await confirmInPanel(
-                    unsafeHtml("Nije selektovan tekst.<br/>Da li želite da preslovite <b>CEO dokument</b>?")
-                );
+                const ok = await confirmInPanel(unsafeHtml(t("msg_confirm_whole_doc")));
                 if (!ok) {
-                    setStatus("Otkazano.", "neutral");
+                    setStatus(t("status_cancelled"), "neutral");
                     return;
                 }
             }
@@ -95,10 +86,15 @@ export async function runSmart() {
                 return;
             }
 
+            // TELEMETRY LOG
+            if (result.stats.proofing?.skippedByReason) {
+                logTelemetrySkippedRuns(result.stats.proofing.skippedByReason);
+            }
+
             const time = result.stats.timingMs.toFixed(0);
             const extraInfo = scope === "document" ? buildDocumentExtraStatus(ui, extras) : "";
 
-            setStatus(`Završeno: ${result.type} (${time}ms)${extraInfo}`, "success");
+            setStatus(t("status_done_document", result.type, time, extraInfo), "success");
 
             state.lastStatsTitle = buildApplyStatsTitle(result);
             state.lastStatsText = buildApplyStatsText(result, scope, extras);
@@ -107,7 +103,7 @@ export async function runSmart() {
         });
     } catch (e) {
         console.error(e);
-        setStatus("Greška: " + (e as Error).message, "error");
+        setStatus(t("status_error_prefix", (e as Error).message), "error");
     }
 }
 
@@ -126,20 +122,18 @@ export async function applyFromPreview(scope: "selection" | "document") {
                 const info = analyzeSelectionText(range.text);
 
                 if (!info.hasText) {
-                    showModalInfo("Greška", unsafeHtml("Nema selekcije za preslovljavanje."));
+                    showModalInfo(t("modal_title_error"), unsafeHtml(t("msg_no_selection")));
                     return;
                 }
                 if (info.isJustWhitespace) {
-                    showModalInfo("Greška", unsafeHtml("Selektovan je samo prazan prostor (razmaci)."));
+                    showModalInfo(t("modal_title_error"), unsafeHtml(t("msg_empty_selection")));
                     return;
                 }
 
                 const normApply = normalizeForSelectionHash(info.raw);
                 const currentSelectionHash = await sha256Hex(normApply);
-
                 const currentOoxml = ooxml.value ?? "";
                 const currentOoxmlHash = await sha256Hex(currentOoxml.normalize("NFC"));
-
                 const currentJson = JSON.stringify(opts);
 
                 const decision = decidePreviewCacheReuse({
@@ -161,27 +155,20 @@ export async function applyFromPreview(scope: "selection" | "document") {
 
                 if (decision.ok) {
                     setStatus("Primena pregleda (bez ponovne konverzije)...", "info");
-
                     range.insertOoxml(state.preview.convertedOoxml!, Word.InsertLocation.replace);
                     await context.sync();
-
-                    setStatus("Završeno (primenjen preview).", "success");
+                    setStatus(t("status_preview_applied"), "success");
 
                     const s = buildPreviewAppliedStats();
                     state.lastStatsTitle = s.title;
                     state.lastStatsText = s.text;
-
                     refreshStats();
                     return;
                 }
 
-                // UX: bez modala (ne prekidaj flow)
                 if (decision.reason !== "missing") {
                     invalidatePreviewCache();
-                    setStatus(
-                        `Cache preview-a ne važi (${reasonToSerbian(decision.reason)}). Radim ponovnu konverziju...`,
-                        "info"
-                    );
+                    setStatus(`Cache pregleda ne važi (${reasonToSerbian(decision.reason)}). Radim ponovnu konverziju...`, "info");
                 }
 
                 const { result } = await applyPipeline(context, "selection", ui, opts);
@@ -191,17 +178,20 @@ export async function applyFromPreview(scope: "selection" | "document") {
                     return;
                 }
 
+                // TELEMETRY
+                if (result.stats.proofing?.skippedByReason) {
+                    logTelemetrySkippedRuns(result.stats.proofing.skippedByReason);
+                }
+
                 const time = result.stats.timingMs.toFixed(0);
-                setStatus(`Završeno: ${result.type} (${time}ms)`, "success");
+                setStatus(t("status_done_selection", result.type, time), "success");
 
                 state.lastStatsTitle = buildApplyStatsTitle(result);
                 state.lastStatsText = buildApplyStatsText(result, "selection");
-
                 refreshStats();
                 return;
             }
 
-            // scope === "document"
             const { result, extras } = await applyPipeline(context, "document", ui, opts);
 
             if (!result) {
@@ -209,18 +199,22 @@ export async function applyFromPreview(scope: "selection" | "document") {
                 return;
             }
 
+            // TELEMETRY
+            if (result.stats.proofing?.skippedByReason) {
+                logTelemetrySkippedRuns(result.stats.proofing.skippedByReason);
+            }
+
             const time = result.stats.timingMs.toFixed(0);
             const extraInfo = buildDocumentExtraStatus(ui, extras);
 
-            setStatus(`Završeno: ${result.type} (${time}ms)${extraInfo}`, "success");
+            setStatus(t("status_done_document", result.type, time, extraInfo), "success");
 
             state.lastStatsTitle = buildApplyStatsTitle(result);
             state.lastStatsText = buildApplyStatsText(result, "document", extras);
-
             refreshStats();
         });
     } catch (e) {
         console.error(e);
-        setStatus("Greška: " + (e as Error).message, "error");
+        setStatus(t("status_error_prefix", (e as Error).message), "error");
     }
 }

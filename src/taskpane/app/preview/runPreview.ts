@@ -1,65 +1,48 @@
-﻿// src/taskpane/app/preview/runPreview.ts
+// src/taskpane/app/preview/runPreview.ts
 /* global Word, console, DOMParser */
 
 import type { OoxmlOptions } from "../../../shared/ooxml/convertOoxml";
 import { convertOoxml } from "../../../shared/ooxml/convertOoxml";
-
 import { state } from "../state";
 import { setStatus } from "../status";
 import { showModalInfo } from "../modal/modal";
 import { showPreviewModal } from "../modal/previewModal";
-
 import { invalidatePreviewCache } from "./cache";
 import { normalizeWeirdBreaks, normalizeNewlines, normalizeForSelectionHash, sha256Hex } from "../selection";
-
 import { unsafeHtml } from "../../../shared/safeHtml";
 import { getSettingsFromUi, getOoxmlOptionsFromUi } from "../settings/getters";
-
 import { PREVIEW_BATCH } from "./constants";
 import { convertTextForPreviewPlain } from "./convertPreviewPlain";
-
-/* =========================
-   OOXML -> text extraction (selection preview)
-   ========================= */
+import { t } from "../../../shared/i18n";
 
 function extractTextFromWordOoxml(xml: string): string {
     const W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
     const doc = new DOMParser().parseFromString(xml, "application/xml");
-
     const paras = Array.from(doc.getElementsByTagNameNS(W_NS, "p"));
-    const hasParas = paras.length > 0;
 
-    const walk = (node: Node): string => {
-        if (node.nodeType === Node.TEXT_NODE) return "";
-        const el = node as Element;
-        if (!el || !el.localName) return "";
-
-        if (el.localName === "t") return el.textContent ?? "";
-        if (el.localName === "tab") return "\t";
-        if (el.localName === "br" || el.localName === "cr") return "\n";
-
-        let out = "";
-        for (const ch of Array.from(el.childNodes)) out += walk(ch);
-        return out;
-    };
-
-    if (!hasParas) {
+    if (paras.length === 0) {
         return Array.from(doc.getElementsByTagNameNS(W_NS, "t"))
             .map((n) => n.textContent ?? "")
             .join("");
     }
 
-    const out: string[] = [];
-    for (const p of paras) out.push(walk(p));
-    return out.join("\n");
+    const walk = (node: Node): string => {
+        if (node.nodeType === Node.TEXT_NODE) return "";
+        const el = node as Element;
+        if (!el || !el.localName) return "";
+        if (el.localName === "t") return el.textContent ?? "";
+        if (el.localName === "tab") return "\t";
+        if (el.localName === "br" || el.localName === "cr") return "\n";
+        let out = "";
+        for (const ch of Array.from(el.childNodes)) out += walk(ch);
+        return out;
+    };
+
+    return paras.map(walk).join("\n");
 }
 
-/* =========================
-   Public API: runPreview
-   ========================= */
-
 export async function runPreview() {
-    setStatus("Generišem pregled...", "info");
+    setStatus(t("status_generating_preview"), "info");
 
     try {
         await Word.run(async (context) => {
@@ -72,24 +55,19 @@ export async function runPreview() {
             const isJustWhitespace = selectionText.length > 0 && !hasSelectionText;
 
             if (isJustWhitespace) {
-                showModalInfo("Greška", unsafeHtml("Selektovan je samo prazan prostor."));
-                setStatus("Greška: Prazna selekcija.", "error");
+                showModalInfo(t("modal_title_error"), unsafeHtml(t("msg_empty_selection")));
+                setStatus(t("status_error_prefix", t("msg_empty_selection").split("<")[0]), "error");
                 return;
             }
 
             const settings = getSettingsFromUi();
             state.preview.settingsSnap = JSON.parse(JSON.stringify(settings)) as typeof settings;
-
             state.preview.allParagraphs = [];
             state.preview.shownCount = 0;
             state.preview.canLoadMore = false;
 
-            // =========================
-            // PREVIEW: SELECTION (OOXML)
-            // =========================
             if (hasSelectionText) {
                 state.preview.scope = "selection";
-
                 const normPreview = normalizeForSelectionHash(selectionText);
                 state.preview.selectionTextHash = await sha256Hex(normPreview);
 
@@ -98,7 +76,6 @@ export async function runPreview() {
 
                 const originalOoxml = ooxml.value;
                 const opts: OoxmlOptions = getOoxmlOptionsFromUi();
-
                 const origText = extractTextFromWordOoxml(originalOoxml);
                 const converted = convertOoxml(originalOoxml, opts);
 
@@ -108,28 +85,24 @@ export async function runPreview() {
                 state.preview.cacheTimestamp = Date.now();
 
                 const convText = extractTextFromWordOoxml(converted.xml);
-
                 const a = normalizeNewlines(origText);
                 const b = normalizeNewlines(convText);
 
                 if (!b.trim()) {
-                    showModalInfo("Greška", unsafeHtml("Pregled nije uspeo: rezultat je prazan tekst."));
-                    setStatus("Greška: Prazan rezultat pregleda.", "error");
+                    showModalInfo(t("modal_title_error"), unsafeHtml(t("msg_preview_empty")));
+                    setStatus(t("status_error_prefix", t("msg_preview_empty")), "error");
                     return;
                 }
 
                 if (a === b) {
-                    showModalInfo(
-                        "Nema izmena",
-                        unsafeHtml("Tekst je već u traženom pismu ili nema šta da se menja.")
-                    );
-                    setStatus("Nema izmena.", "neutral");
+                    showModalInfo(t("modal_title_info"), unsafeHtml(t("msg_preview_no_changes")));
+                    setStatus(t("status_no_changes"), "neutral");
                     return;
                 }
 
                 state.preview.mode = "diff";
                 state.preview.typeText = converted.type;
-                state.preview.titleText = `Selektovani tekst (${converted.type})`;
+                state.preview.titleText = t("preview_title_selection", converted.type);
                 state.preview.original = origText;
                 state.preview.converted = convText;
 
@@ -138,11 +111,7 @@ export async function runPreview() {
                 return;
             }
 
-            // =========================
-            // PREVIEW: WHOLE DOC (plain text, first N paragraphs)
-            // =========================
             state.preview.scope = "document";
-
             invalidatePreviewCache();
 
             const body = context.document.body;
@@ -150,7 +119,6 @@ export async function runPreview() {
             await context.sync();
 
             const full = normalizeWeirdBreaks(body.text ?? "");
-
             let paragraphs = full.split(/\r/);
             if (paragraphs.length === 1) paragraphs = full.split(/\n/);
             if (paragraphs.length === 1) paragraphs = [full];
@@ -163,12 +131,11 @@ export async function runPreview() {
 
             const textToPreview = paragraphs.slice(0, state.preview.shownCount).join("\n");
             if (!textToPreview.trim()) {
-                setStatus("Dokument je prazan.", "neutral");
+                setStatus(t("status_empty_doc"), "neutral");
                 return;
             }
 
             const protectedWords = [...Array.from(state.customWordsSet), ...Array.from(state.presetWordsSet)];
-
             const { out: finalText, type } = convertTextForPreviewPlain(
                 textToPreview,
                 state.preview.settingsSnap!,
@@ -179,23 +146,20 @@ export async function runPreview() {
             const b = normalizeNewlines(finalText);
 
             if (!b.trim()) {
-                showModalInfo("Greška", unsafeHtml("Pregled nije uspeo: rezultat je prazan tekst."));
-                setStatus("Greška: Prazan rezultat pregleda.", "error");
+                showModalInfo(t("modal_title_error"), unsafeHtml(t("msg_preview_empty")));
+                setStatus(t("status_error_prefix", t("msg_preview_empty")), "error");
                 return;
             }
 
             if (a === b) {
-                showModalInfo(
-                    "Nema izmena",
-                    unsafeHtml("Tekst je već u traženom pismu ili nema šta da se menja.")
-                );
-                setStatus("Nema izmena.", "neutral");
+                showModalInfo(t("modal_title_info"), unsafeHtml(t("msg_preview_no_changes")));
+                setStatus(t("status_no_changes"), "neutral");
                 return;
             }
 
             state.preview.mode = "diff";
             state.preview.typeText = type;
-            state.preview.titleText = `Prvih ${state.preview.shownCount} paragrafa (${type})`;
+            state.preview.titleText = t("preview_title_doc", state.preview.shownCount, type);
             state.preview.original = textToPreview;
             state.preview.converted = finalText;
 
@@ -204,6 +168,6 @@ export async function runPreview() {
         });
     } catch (e) {
         console.error(e);
-        setStatus("Greška pri pregledu: " + (e as Error).message, "error");
+        setStatus(t("status_error_prefix", (e as Error).message), "error");
     }
 }

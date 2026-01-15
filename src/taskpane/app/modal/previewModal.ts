@@ -1,23 +1,17 @@
-﻿// src/taskpane/app/modal/previewModal.ts
+// src/taskpane/app/modal/previewModal.ts
 /* global document, navigator */
 
 import { state } from "../state";
 import { runWithUiLock } from "../uiLock";
 import { applyFromPreview } from "../word/apply";
 import { closeModal, resetModalButtons, clearModalResolver } from "./modal";
-
 import { escapeHtml } from "../../../shared/safeHtml";
 import { normalizeNewlines } from "../selection";
-
-import type { UiSettings } from "../types";
+import { t } from "../../../shared/i18n";
 
 import { PREVIEW_BATCH, DIFF_MAX_TOKENS } from "../preview/constants";
 import { renderDiffHtml, renderSideBySideWithHighlights } from "../preview/diffRenderer";
 import { convertTextForPreviewPlain } from "../preview/convertPreviewPlain";
-
-/* =========================
-   Toast + clipboard
-   ========================= */
 
 export function showPreviewToast(message: string, type: "success" | "error" | "info" = "info", ms = 1600) {
     const el = document.getElementById("previewToast") as HTMLDivElement | null;
@@ -35,15 +29,12 @@ export function showPreviewToast(message: string, type: "success" | "error" | "i
 }
 
 async function copyToClipboard(text: string): Promise<boolean> {
-    // 1) Modern Clipboard API
     try {
         await navigator.clipboard.writeText(text);
         return true;
     } catch {
-        // fallback below
+        // fallback
     }
-
-    // 2) Fallback: hidden textarea + execCommand('copy') (avoid deprecated signature warning)
     try {
         const ta = document.createElement("textarea");
         ta.value = text;
@@ -55,25 +46,17 @@ async function copyToClipboard(text: string): Promise<boolean> {
         ta.style.height = "1px";
         ta.style.opacity = "0";
         ta.style.pointerEvents = "none";
-
         document.body.appendChild(ta);
         ta.focus();
         ta.select();
-
         const doc = document as unknown as { execCommand: (commandId: string) => boolean };
         const ok = doc.execCommand("copy");
-
         document.body.removeChild(ta);
-
         return ok === true;
     } catch {
         return false;
     }
 }
-
-/* =========================
-   Preview rendering
-   ========================= */
 
 export function renderPreviewMode() {
     const holder = document.getElementById("previewHolder");
@@ -118,13 +101,12 @@ async function loadMorePreviewParagraphs() {
     );
     state.preview.canLoadMore = state.preview.shownCount < state.preview.allParagraphs.length;
 
-    state.preview.titleText = `Prvih ${state.preview.shownCount} paragrafa (${state.preview.typeText})`;
+    state.preview.titleText = t("preview_title_doc", state.preview.shownCount, state.preview.typeText);
 
     const newOriginal = state.preview.allParagraphs.slice(0, state.preview.shownCount).join("\n");
     state.preview.original = newOriginal;
 
     const protectedWords = [...Array.from(state.customWordsSet), ...Array.from(state.presetWordsSet)];
-
     const { out } = convertTextForPreviewPlain(newOriginal, snap, protectedWords);
     state.preview.converted = out;
 
@@ -160,8 +142,8 @@ export function showPreviewModal() {
     const text = document.getElementById("modalText") as HTMLDivElement;
     const input = document.getElementById("modalInput") as HTMLTextAreaElement;
 
-    const okBtn = document.getElementById("modalOk") as HTMLButtonElement; // "Učitaj još"
-    const cancelBtn = document.getElementById("modalCancel") as HTMLButtonElement; // sakrivamo
+    const okBtn = document.getElementById("modalOk") as HTMLButtonElement;
+    const cancelBtn = document.getElementById("modalCancel") as HTMLButtonElement;
     const applyBtn = ensureModalApplyButton();
 
     title.style.display = "none";
@@ -176,14 +158,8 @@ export function showPreviewModal() {
         </div>
 
         <div class="preview-header-right">
-          <button id="previewCloseBtn"
-                  class="icon-btn preview-close-btn"
-                  type="button"
-                  aria-label="Zatvori"
-                  title="Zatvori">×</button>
-
-          <div id="previewToast" class="preview-toast" role="status" aria-live="polite"></div>
-
+          <button id="previewCloseBtn" class="icon-btn preview-close-btn" type="button">×</button>
+          <div id="previewToast" class="preview-toast" role="status"></div>
           <div class="preview-header-buttons">
             <button id="previewBtnDiff" class="mini-btn" type="button">Razlike</button>
             <button id="previewBtnPlain" class="mini-btn" type="button">Rezultat</button>
@@ -193,7 +169,6 @@ export function showPreviewModal() {
         </div>
       </div>
     </div>
-
     <div id="previewHolder"></div>
   `;
 
@@ -214,8 +189,8 @@ export function showPreviewModal() {
 
     (document.getElementById("previewBtnCopy") as HTMLButtonElement).onclick = async () => {
         const ok = await copyToClipboard(state.preview.converted ?? "");
-        if (ok) showPreviewToast("Kopirano", "success");
-        else showPreviewToast("Ne mogu da kopiram", "error", 2200);
+        if (ok) showPreviewToast(t("preview_toast_copied"), "success");
+        else showPreviewToast(t("preview_toast_copy_fail"), "error", 2200);
     };
 
     if (state.preview.mode !== "diff" && state.preview.mode !== "plain" && state.preview.mode !== "side") {
@@ -223,7 +198,6 @@ export function showPreviewModal() {
     }
     renderPreviewMode();
 
-    // Dole: PRESLOVI + Učitaj još. "Zatvori" sakriven jer postoji X gore.
     cancelBtn.style.display = "none";
 
     okBtn.style.display = "inline-flex";
@@ -238,22 +212,19 @@ export function showPreviewModal() {
             await loadMorePreviewParagraphs();
         };
     } else {
-        setLoadMoreButtonState(okBtn, false, "Dostupno samo kada pregledate ceo dokument");
-        okBtn.onclick = () => {};
+        setLoadMoreButtonState(okBtn, false, t("msg_preview_scope_doc"));
+        okBtn.onclick = () => { };
     }
 
     applyBtn.style.display = "inline-flex";
     applyBtn.onclick = async () => {
         overlay.style.display = "none";
         resetModalButtons();
-
         await runWithUiLock(async () => {
             await applyFromPreview(state.preview.scope);
         });
     };
 
     overlay.style.display = "flex";
-
-    // preview modal nije confirm modal
     clearModalResolver();
 }
