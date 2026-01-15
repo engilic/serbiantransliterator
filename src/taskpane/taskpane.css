@@ -838,6 +838,16 @@ code {
     margin: 6px 0;
 }
 
+/* Advanced settings (collapsible) */
+.advanced-settings {
+    display: none;
+    padding-top: 6px;
+}
+
+.advanced-settings.open {
+    display: block;
+}
+
 .field-label {
     font-weight: 600;
 }

@@ -28,13 +28,6 @@ function setupDomForTaskpane() {
     <input type="radio" id="dirLatToCyr" name="direction" value="lat-to-cyr" />
     <input type="radio" id="dirCyrToLat" name="direction" value="cyr-to-lat" />
 
-    <!-- NEW: curlyProtection select -->
-    <select id="optCurlyProtection">
-      <option value="placeholders">placeholders</option>
-      <option value="all">all</option>
-      <option value="none">none</option>
-    </select>
-
     <!-- checkboxes used by getters/settings -->
     <input type="checkbox" id="optConfirmWholeDoc" checked />
     <input type="checkbox" id="optIncludeHeadersFooters" />
@@ -48,6 +41,16 @@ function setupDomForTaskpane() {
     <input type="checkbox" id="optShowStats" />
     <input type="checkbox" id="optFixDoubleSpaces" checked />
     <input type="checkbox" id="optFormatDates" />
+
+    <!-- advanced toggle + panel -->
+    <button id="toggleAdvancedBtn"></button>
+    <div id="advancedSettings" class="advanced-settings">
+      <select id="optCurlyProtection">
+        <option value="placeholders">placeholders</option>
+        <option value="all">all</option>
+        <option value="none">none</option>
+      </select>
+    </div>
 
     <!-- tags -->
     <div id="tagsContainer"></div>
@@ -115,11 +118,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-    // Clean up global stubs
     delete (globalThis as any).Office;
     delete (globalThis as any).Word;
-
-    // Clean up DOM
     document.body.innerHTML = "";
 });
 
@@ -131,7 +131,9 @@ describe("taskpane entrypoint smoke", () => {
         expect(document.getElementById("runBtn")).toBeTruthy();
         expect(document.getElementById("previewBtn")).toBeTruthy();
 
-        // NEW: curlyProtection select exists
+        // advanced UI exists
+        expect(document.getElementById("toggleAdvancedBtn")).toBeTruthy();
+        expect(document.getElementById("advancedSettings")).toBeTruthy();
         expect(document.getElementById("optCurlyProtection")).toBeTruthy();
     });
 });
