@@ -3,14 +3,8 @@
 
 import type { OoxmlOptions } from "../../../shared/ooxml/convertOoxml";
 import { convertOoxml } from "../../../shared/ooxml/convertOoxml";
-import { convertPlainText, type Direction } from "../../../core/textCore";
-import { removeMultipleSpaces } from "../../../core/utils";
-import { createInitialCodeState, transformTextRespectingCode } from "../../../shared/ooxml/code";
-import { formatSerbianDates, toAscii } from "../../../core/format";
 
 import { state } from "../state";
-import type { UiSettings } from "../types";
-
 import { setStatus } from "../status";
 import { showModalInfo } from "../modal/modal";
 import { showPreviewModal } from "../modal/previewModal";
@@ -27,52 +21,7 @@ import { unsafeHtml } from "../../../shared/safeHtml";
 import { getSettingsFromUi, getOoxmlOptionsFromUi } from "../settings/getters";
 
 import { PREVIEW_BATCH } from "./constants";
-
-/* =========================
-   Plain-text preview conversion (document preview)
-   ========================= */
-
-function convertTextForPreviewPlain(input: string, s: UiSettings): { out: string; type: string } {
-    let temp = normalizeWeirdBreaks(input);
-
-    const applyFixesOutsideCode = (txt: string) => {
-        let t = txt;
-        if (s.fixDoubleSpaces) t = removeMultipleSpaces(t);
-        if (s.formatDates) t = formatSerbianDates(t);
-        return t;
-    };
-
-    if (s.preserveCodeBlocks) {
-        const cs = createInitialCodeState();
-        temp = transformTextRespectingCode(
-            temp,
-            cs,
-            (nonCode) => applyFixesOutsideCode(nonCode),
-            (code) => code
-        );
-    } else {
-        temp = applyFixesOutsideCode(temp);
-    }
-
-    const coreOpts = {
-        userProtected: [...Array.from(state.customWordsSet), ...Array.from(state.presetWordsSet)],
-        protectBrands: s.protectBrands,
-        applySerbianQuotes: s.applySerbianQuotes,
-        preserveCodeBlocks: s.preserveCodeBlocks,
-    };
-
-    if (s.direction === "to-ascii") {
-        const { text: lat } = convertPlainText(temp, "cyr-to-lat", {
-            ...coreOpts,
-            applySerbianQuotes: false,
-        });
-        return { out: toAscii(lat), type: "Ošišana latinica" };
-    }
-
-    const dir: Direction = s.direction === "auto" ? "auto" : (s.direction as Direction);
-    const { text, type } = convertPlainText(temp, dir, coreOpts);
-    return { out: text, type };
-}
+import { convertTextForPreviewPlain } from "./convertPreviewPlain";
 
 /* =========================
    OOXML -> text extraction (selection preview)
@@ -134,7 +83,7 @@ export async function runPreview() {
             }
 
             const settings = getSettingsFromUi();
-            state.preview.settingsSnap = JSON.parse(JSON.stringify(settings)) as UiSettings;
+            state.preview.settingsSnap = JSON.parse(JSON.stringify(settings)) as typeof settings;
 
             state.preview.allParagraphs = [];
             state.preview.shownCount = 0;
@@ -220,7 +169,12 @@ export async function runPreview() {
                 return;
             }
 
-            const { out: finalText, type } = convertTextForPreviewPlain(textToPreview, state.preview.settingsSnap);
+            const protectedWords = [
+                ...Array.from(state.customWordsSet),
+                ...Array.from(state.presetWordsSet),
+            ];
+
+            const { out: finalText, type } = convertTextForPreviewPlain(textToPreview, state.preview.settingsSnap!, protectedWords);
 
             const a = normalizeNewlines(textToPreview);
             const b = normalizeNewlines(finalText);
