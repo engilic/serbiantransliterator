@@ -16,21 +16,16 @@
         "stop": "office-addin-debugging stop manifest.xml",
         "validate": "office-addin-manifest validate manifest.xml",
         "validate:prod": "npx office-addin-manifest validate manifest.prod.xml",
-
         "test": "cross-env VITE_CJS_IGNORE_WARNING=1 vitest run",
         "test:watch": "cross-env VITE_CJS_IGNORE_WARNING=1 vitest",
         "test:coverage": "cross-env VITE_CJS_IGNORE_WARNING=1 vitest run --coverage",
-
         "format": "prettier . --write",
         "format:check": "prettier . --check",
-
         "lint": "eslint src/**/*.ts --max-warnings 0",
         "lint:fix": "eslint src/**/*.ts --fix",
         "typecheck": "tsc --noEmit",
-
         "test:e2e": "playwright test",
         "serve:dist": "http-server dist -p 4173 -c-1",
-
         "clean": "rimraf dist",
         "deploy": "npm run build && wrangler pages deploy dist --project-name=serbiantransliterator"
     },
