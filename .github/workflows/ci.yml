@@ -39,8 +39,8 @@ jobs:
             - name: Lint (eslint)
               run: npm run lint
 
-            - name: Unit tests
-              run: npm test
+            - name: Unit tests (with coverage thresholds)
+              run: npm run test:coverage
 
             - name: Build (production)
               run: npm run build
