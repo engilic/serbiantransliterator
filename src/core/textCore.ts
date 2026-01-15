@@ -5,7 +5,7 @@
 } from "./rules";
 import { applyPreCorrectionsLatToCyr } from "./corrections";
 import { fixSerbianQuotes } from "./quotes";
-import { collectProtectedRanges, splitByRanges } from "./protect";
+import { collectProtectedRanges, splitByRanges, type CurlyProtection } from "./protect";
 import { cyrillicToLatin, detectMajorityScript, latinToCyrillic } from "./serbian";
 
 export type Direction = "auto" | "lat-to-cyr" | "cyr-to-lat";
@@ -15,6 +15,12 @@ export interface CoreOptions {
     protectBrands?: boolean;
     applySerbianQuotes?: boolean;
     preserveCodeBlocks?: boolean;
+
+    /**
+     * Kako štitimo {...} blokove u plain tekstu.
+     * Default: "placeholders" (štiti npr. {USER_NAME}, ali ne i "{nešto sa razmacima}").
+     */
+    curlyProtection?: CurlyProtection;
 }
 
 const normKey = (s: string) => s.normalize("NFC").toLowerCase();
@@ -356,6 +362,7 @@ export function convertPlainText(
     const protectBrands = options?.protectBrands !== false;
     const preserveCodeBlocks = options?.preserveCodeBlocks !== false;
     const userProtected = options?.userProtected ?? [];
+    const curlyProtection: CurlyProtection = options?.curlyProtection ?? "placeholders";
 
     let toCyr: boolean;
     let label: string;
@@ -379,6 +386,7 @@ export function convertPlainText(
         brandPhrases: protectBrands ? ALWAYS_LATIN_PHRASES : [],
         userProtectedPhrases,
         preserveCodeBlocks,
+        curlyProtection,
     });
 
     const parts = splitByRanges(text, protectedRanges);

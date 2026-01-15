@@ -67,11 +67,21 @@ export function splitByRanges(text: string, ranges: Range[]): Array<{ text: stri
     return out;
 }
 
+export type CurlyProtection = "placeholders" | "all" | "none";
+
 export interface ProtectOptions {
     protectBrands: boolean;
     brandPhrases: string[];
     userProtectedPhrases: string[];
     preserveCodeBlocks: boolean;
+
+    /**
+     * Kako štitimo {...} blokove u plain tekstu:
+     * - "placeholders" (default): štiti samo placeholder-like: {USER_NAME}, {Order-Id}, {x_y}, {A:1}
+     * - "all": legacy ponašanje (štiti bilo šta između { ... } čak i sa razmacima)
+     * - "none": ne štiti {...} uopšte
+     */
+    curlyProtection: CurlyProtection;
 }
 
 export function collectProtectedRanges(text: string, opts: ProtectOptions): Range[] {
@@ -128,7 +138,15 @@ export function collectProtectedRanges(text: string, opts: ProtectOptions): Rang
     );
 
     // 7) Kod/placeholder blokovi
-    addRangesFromRegex(text, /\{[\s\S]*?\}/g, ranges);
+    if (opts.curlyProtection === "all") {
+        // legacy: štiti bilo šta u { ... } (i sa razmacima)
+        addRangesFromRegex(text, /\{[\s\S]*?\}/g, ranges);
+    } else if (opts.curlyProtection === "placeholders") {
+        // placeholder-like: bez whitespace, limitirana dužina, “sigurni” charovi
+        // eslint-friendly: '-' na kraju (nema escape)
+        addRangesFromRegex(text, /\{[A-Za-z][A-Za-z0-9_:-]{0,120}\}/g, ranges);
+    }
+
     addRangesFromRegex(text, /<[a-zA-Z0-9_]+>/g, ranges);
 
     // 8) Fraze (brend + userProtected) - bez lookbehind
