@@ -62,6 +62,14 @@ export interface OoxmlOptions extends CoreOptions {
     formatDates?: boolean;
 }
 
+export type ProofingStats = {
+    enabled: boolean;
+    targetLang: "sr-Cyrl-RS" | "sr-Latn-RS" | null;
+    changedRuns: number;
+    skippedRuns: number;
+    skippedByReason: Record<string, number>;
+};
+
 export type ConvertStats = {
     direction: Direction | "to-ascii";
     textNodes: number;
@@ -86,6 +94,7 @@ export type ConvertStats = {
         spaces: number;
         ambiguousBrandSuffix: number;
     };
+    proofing: ProofingStats;
     timingMs: number;
 };
 
@@ -259,6 +268,11 @@ function wasWordTransliterated(orig: string, fin: string, direction: Direction |
         return RE_CYR.test(orig) && RE_LAT.test(fin);
     }
 
+    if (direction === "auto") {
+        // auto nije očekivan ovde, ali neka bude konzervativno
+        return (RE_LAT.test(orig) && RE_CYR.test(fin)) || (RE_CYR.test(orig) && RE_LAT.test(fin));
+    }
+
     return false;
 }
 
@@ -268,14 +282,22 @@ function targetLangForDirection(direction: Direction | "to-ascii"): "sr-Cyrl-RS"
     return null;
 }
 
+type ProofingApplyResult = {
+    changedRuns: number;
+    skippedRuns: number;
+    skippedByReason: Record<string, number>;
+};
+
 function applyProofingLanguagePreserveUnchanged(
     doc: Document,
     textNodes: Element[],
     originalRunText: Map<Element, string>,
     direction: Direction | "to-ascii"
-): number {
+): ProofingApplyResult {
     const target = targetLangForDirection(direction);
-    if (!target) return 0;
+    if (!target) {
+        return { changedRuns: 0, skippedRuns: 0, skippedByReason: {} };
+    }
 
     const runs: Element[] = [];
     const seen = new WeakSet<Element>();
@@ -288,20 +310,39 @@ function applyProofingLanguagePreserveUnchanged(
     }
 
     let changedRuns = 0;
+    let skippedRuns = 0;
+    const skippedByReason: Record<string, number> = {};
+
+    const skip = (reason: string) => {
+        skippedRuns++;
+        skippedByReason[reason] = (skippedByReason[reason] ?? 0) + 1;
+    };
 
     for (const run of runs) {
-        if (!isSimpleRun(run)) continue;
+        if (!isSimpleRun(run)) {
+            skip("notSimpleRun");
+            continue;
+        }
 
         const orig = originalRunText.get(run);
-        if (orig == null) continue;
+        if (orig == null) {
+            skip("missingOriginal");
+            continue;
+        }
 
         const fin = getRunTextFromTChildren(run);
 
         const origWords = extractLetterWordSpans(orig);
         const finWords = extractLetterWordSpans(fin);
 
-        if (origWords.length === 0 || finWords.length === 0) continue;
-        if (origWords.length !== finWords.length) continue;
+        if (origWords.length === 0 || finWords.length === 0) {
+            skip("noWordSpans");
+            continue;
+        }
+        if (origWords.length !== finWords.length) {
+            skip("wordSpanCountMismatch");
+            continue;
+        }
 
         const changedWord: boolean[] = new Array(finWords.length).fill(false);
         let anyChanged = false;
@@ -315,10 +356,17 @@ function applyProofingLanguagePreserveUnchanged(
             if (isChanged) anyChanged = true;
         }
 
-        if (!anyChanged) continue;
+        if (!anyChanged) {
+            // Expected in many cases: brands/tokens unchanged.
+            skip("noChangedWords");
+            continue;
+        }
 
         const parent = run.parentNode;
-        if (!parent) continue;
+        if (!parent) {
+            skip("missingParent");
+            continue;
+        }
 
         const baseRPr = getDirectChild(run, "rPr");
         const finCps = Array.from(fin.normalize("NFC"));
@@ -376,7 +424,7 @@ function applyProofingLanguagePreserveUnchanged(
         changedRuns++;
     }
 
-    return changedRuns;
+    return { changedRuns, skippedRuns, skippedByReason };
 }
 
 /* =========================
@@ -394,6 +442,14 @@ export function convertOoxml(
 
     const textNodes = collectTextNodes(doc);
     const fullText = getFullText(textNodes);
+
+    const emptyProofing: ProofingStats = {
+        enabled: false,
+        targetLang: null,
+        changedRuns: 0,
+        skippedRuns: 0,
+        skippedByReason: {},
+    };
 
     if (!fullText.trim()) {
         return {
@@ -418,6 +474,7 @@ export function convertOoxml(
                     ambiguousBrandSuffix: 0,
                     placeholders: 0,
                 },
+                proofing: emptyProofing,
                 timingMs: 0,
             },
         };
@@ -447,6 +504,9 @@ export function convertOoxml(
      * - testovi ne prosleđuju tu opciju => nema splitovanja run-ova => testovi ostaju validni
      */
     const shouldSetLang = options?.setProofingLanguage === true;
+
+    // Keep proofing stats in ConvertStats even when disabled (better observability)
+    let proofing: ProofingStats = { ...emptyProofing };
 
     const doFixSpaces = options?.fixDoubleSpaces === true;
     const doFixDates = options?.formatDates === true;
@@ -516,6 +576,9 @@ export function convertOoxml(
     // PERF: original run text pravimo samo ako je proofing language uključen
     let originalRunText: Map<Element, string> | null = null;
     if (shouldSetLang) {
+        proofing.enabled = true;
+        proofing.targetLang = targetLangForDirection(direction);
+
         originalRunText = new Map<Element, string>();
         const seenRuns = new WeakSet<Element>();
         for (const t of textNodes) {
@@ -593,7 +656,13 @@ export function convertOoxml(
     }
 
     if (shouldSetLang && originalRunText) {
-        applyProofingLanguagePreserveUnchanged(doc, textNodes, originalRunText, direction);
+        const target = targetLangForDirection(direction);
+        if (target) {
+            const r = applyProofingLanguagePreserveUnchanged(doc, textNodes, originalRunText, direction);
+            proofing = { enabled: true, targetLang: target, ...r };
+        } else {
+            proofing = { ...emptyProofing, enabled: false, targetLang: null };
+        }
     }
 
     let charsAfter = 0;
@@ -619,6 +688,7 @@ export function convertOoxml(
             endedInInline: codeState.inInline,
         },
         bridges,
+        proofing,
         timingMs: Math.max(0, t1 - t0),
     };
 

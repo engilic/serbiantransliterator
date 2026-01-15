@@ -27,6 +27,13 @@ function makeStats(): ConvertStats {
             allCapsHints: 9,
             spaces: 10,
         },
+        proofing: {
+            enabled: true,
+            targetLang: "sr-Cyrl-RS",
+            changedRuns: 2,
+            skippedRuns: 3,
+            skippedByReason: { noChangedWords: 2, notSimpleRun: 1 },
+        },
         timingMs: 123.4,
     };
 }

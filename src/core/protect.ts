@@ -5,6 +5,7 @@ import {
     URL_RE_G,
     MAILTO_RE_G,
     URI_SCHEMES_NO_TEL_MAILTO_RE_G,
+    trimLinkEnd,
 } from "../shared/patterns/links";
 
 export type Range = [start: number, end: number];
@@ -33,6 +34,35 @@ function addRangesFromRegex(
             const start = m.index + prefixLen;
             ranges.push([start, start + g.length]);
         }
+
+        if (re.lastIndex === m.index) re.lastIndex++;
+    }
+}
+
+/**
+ * Varijanta addRangesFromRegex koja "trimuje" trailing interpunkciju sa match-a.
+ * Svrha: u plain-text protect sloju štitimo samo link/email, a ne i završnu interpunkciju.
+ */
+function addRangesFromRegexTrimEnd(
+    text: string,
+    re: RegExp,
+    ranges: Range[],
+    trimEndFn: (s: string) => string
+) {
+    re.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(text)) !== null) {
+        if (m.index === undefined) continue;
+
+        const raw = m[0] ?? "";
+        const trimmed = trimEndFn(raw);
+
+        if (!trimmed) continue;
+
+        const len = Math.max(0, trimmed.length);
+        if (len === 0) continue;
+
+        ranges.push([m.index, m.index + len]);
 
         if (re.lastIndex === m.index) re.lastIndex++;
     }
@@ -88,7 +118,6 @@ export function collectProtectedRanges(text: string, opts: ProtectOptions): Rang
     const ranges: Range[] = [];
 
     // 0) Code blocks (Markdown): ```...``` i `...`
-    // Ovo štiti i navodnike i preslovljavanje unutar koda.
     if (opts.preserveCodeBlocks) {
         addRangesFromRegex(text, /```[\s\S]*?```/g, ranges);
         addRangesFromRegex(text, /`[^`\r\n]*`/g, ranges);
@@ -97,27 +126,38 @@ export function collectProtectedRanges(text: string, opts: ProtectOptions): Rang
     // 1) HTML tagovi
     addRangesFromRegex(text, /<\/?[a-zA-Z0-9]+[^>]*>/g, ranges);
 
-    // 2) URL / Email + URI schemes
-    addRangesFromRegex(text, EMAIL_RE_G, ranges);
-    addRangesFromRegex(text, URL_RE_G, ranges);
+    // 2) URL / Email + URI schemes (trim trailing punctuation)
+    addRangesFromRegexTrimEnd(text, EMAIL_RE_G, ranges, trimLinkEnd);
+    addRangesFromRegexTrimEnd(text, URL_RE_G, ranges, trimLinkEnd);
+    addRangesFromRegexTrimEnd(text, MAILTO_RE_G, ranges, trimLinkEnd);
 
-    // mailto:
-    addRangesFromRegex(text, MAILTO_RE_G, ranges);
-
-    // tel: specifično (RFC3966 params)
-    addRangesFromRegex(
+    addRangesFromRegexTrimEnd(
         text,
         /\btel:\+?[0-9][0-9().-]{5,}(?:;[a-z0-9-]+=[a-z0-9._+~:%-]+)*/giu,
-        ranges
+        ranges,
+        trimLinkEnd
     );
 
-    // ostali schemes: sip/sms/geo/skype/teams/msteams (bez tel/mailto)
-    addRangesFromRegex(text, URI_SCHEMES_NO_TEL_MAILTO_RE_G, ranges);
+    addRangesFromRegexTrimEnd(text, URI_SCHEMES_NO_TEL_MAILTO_RE_G, ranges, trimLinkEnd);
 
     // 3) Putanje (Windows/UNC/Unix)
     addRangesFromRegex(text, /\b[a-zA-Z0-9]+:\\[^\r\n<>:"|?*]+/g, ranges); // C:\..., Cert:\...
     addRangesFromRegex(text, /\\\\[a-zA-Z0-9.-]+\\[^\r\n<>:"|?*]+/g, ranges); // \\Server\Share
-    addRangesFromRegex(text, /\/[a-zA-Z0-9._-]+\/[a-zA-Z0-9._\-/]+/g, ranges); // /var/log/...
+
+    /**
+     * Unix paths:
+     * Guard da ne matchuje unutar URL-a.
+     *
+     * Bez ovoga, "https://example.com/test." sadrži "//example.com/test."
+     * što liči na "/segment/segment" i path regex bi progutao trailing '.' i onda mergeRanges
+     * proširi URL range nazad na tačku.
+     */
+    addRangesFromRegex(
+        text,
+        /(^|[^:/])(\/[a-zA-Z0-9._-]+\/[a-zA-Z0-9._\-/]+)/g,
+        ranges,
+        2
+    );
 
     // 4) Ekstenzije fajlova
     addRangesFromRegex(
@@ -139,11 +179,8 @@ export function collectProtectedRanges(text: string, opts: ProtectOptions): Rang
 
     // 7) Kod/placeholder blokovi
     if (opts.curlyProtection === "all") {
-        // legacy: štiti bilo šta u { ... } (i sa razmacima)
         addRangesFromRegex(text, /\{[\s\S]*?\}/g, ranges);
     } else if (opts.curlyProtection === "placeholders") {
-        // placeholder-like: bez whitespace, limitirana dužina, “sigurni” charovi
-        // eslint-friendly: '-' na kraju (nema escape)
         addRangesFromRegex(text, /\{[A-Za-z][A-Za-z0-9_:-]{0,120}\}/g, ranges);
     }
 

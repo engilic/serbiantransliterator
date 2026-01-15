@@ -1,23 +1,9 @@
 // src/taskpane/app/settings/advanced.ts
-/* global document, localStorage */
+/* global document */
+
+import { safeGetItem, safeSetItem } from "../../../shared/storage/safeLocalStorage";
 
 const ADVANCED_OPEN_KEY = "serbiantransliterator.ui.advanced.open";
-
-function safeGetItem(key: string): string | null {
-    try {
-        return localStorage.getItem(key);
-    } catch {
-        return null;
-    }
-}
-
-function safeSetItem(key: string, value: string) {
-    try {
-        localStorage.setItem(key, value);
-    } catch {
-        // ignore (private mode / blocked storage)
-    }
-}
 
 function setOpenState(btn: HTMLButtonElement, panel: HTMLDivElement, open: boolean) {
     btn.setAttribute("aria-expanded", open ? "true" : "false");
@@ -36,7 +22,7 @@ export function initAdvancedSettingsToggle() {
     const btn = document.getElementById("toggleAdvancedBtn") as HTMLButtonElement | null;
     const panel = document.getElementById("advancedSettings") as HTMLDivElement | null;
 
-    // Defensive: tests/smoke DOM možda ne sadrži ove elemente
+    // Defensive: tests/smoke DOM mo da ne sadr i ove elemente
     if (!btn || !panel) return;
 
     // Initial state from storage (default closed)

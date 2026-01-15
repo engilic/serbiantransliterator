@@ -47,6 +47,25 @@ export function buildApplyStatsText(
         `\n- allCapsHints: ${bridges.allCapsHints}` +
         `\n- spaces: ${bridges.spaces}`;
 
+    const proof = result.stats.proofing;
+    if (proof?.enabled) {
+        out +=
+            `\nProofing language:` +
+            `\n- target: ${proof.targetLang ?? "N/A"}` +
+            `\n- changedRuns: ${proof.changedRuns}` +
+            `\n- skippedRuns: ${proof.skippedRuns}`;
+
+        const reasons = Object.entries(proof.skippedByReason ?? {})
+            .sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0))
+            .filter(([, n]) => (n ?? 0) > 0)
+            .slice(0, 6);
+
+        if (reasons.length) {
+            out += `\n- skippedByReason:`;
+            for (const [k, n] of reasons) out += `\n  - ${k}: ${n}`;
+        }
+    }
+
     if (scope === "document" && extras) {
         out +=
             `\nHeader/Footer: ${extras.headersFootersProcessed}` +
