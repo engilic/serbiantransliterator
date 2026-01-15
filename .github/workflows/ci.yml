@@ -1,4 +1,3 @@
-# .github/workflows/ci.yml
 name: CI
 
 on:
@@ -39,7 +38,7 @@ jobs:
             - name: Lint (eslint)
               run: npm run lint
 
-            - name: Unit tests (with coverage thresholds)
+            - name: Unit tests (with coverage)
               run: npm run test:coverage
 
             - name: Build (production)
@@ -50,3 +49,9 @@ jobs:
 
             - name: Validate Office manifest (prod)
               run: npm run validate:prod
+
+            - name: Install Playwright (Chromium)
+              run: npx playwright install chromium --with-deps
+
+            - name: E2E smoke (Playwright)
+              run: npm run test:e2e
