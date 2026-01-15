@@ -4,15 +4,35 @@
 import { unsafeHtml } from "../../../shared/safeHtml";
 import type { OoxmlOptions } from "../../../shared/ooxml/convertOoxml";
 
-import { state } from "../state";
+import { state, PREVIEW_CACHE_TTL_MS } from "../state";
 import { setStatus, refreshStats } from "../status";
 import { confirmInPanel, showModalInfo } from "../modal/modal";
-import { invalidatePreviewCache, isPreviewCacheValid } from "../preview/cache";
+import { invalidatePreviewCache } from "../preview/cache";
 import { normalizeForSelectionHash, sha256Hex } from "../selection";
 import { getSettingsFromUi, getOoxmlOptionsFromUi } from "../settings/getters";
 import { applyPipeline } from "./pipeline";
 import { analyzeSelectionText } from "./selectionText";
 import { buildApplyStatsText, buildApplyStatsTitle, buildPreviewAppliedStats } from "./statsText";
+import { decidePreviewCacheReuse, type PreviewCacheDecisionReason } from "./previewCacheDecision";
+
+function reasonToSerbian(reason: PreviewCacheDecisionReason): string {
+    switch (reason) {
+        case "optsChanged":
+            return "podešavanja su promenjena";
+        case "expired":
+            return "cache je istekao";
+        case "selectionTextChanged":
+            return "selekcija je promenjena";
+        case "selectionOoxmlChanged":
+            return "formatiranje/selekcija (OOXML) su promenjeni";
+        case "missing":
+            return "cache nije kompletan";
+        case "ok":
+            return "OK";
+        default:
+            return "nepoznat razlog";
+    }
+}
 
 export async function runSmart() {
     try {
@@ -64,7 +84,6 @@ export async function runSmart() {
 
             state.lastStatsTitle = buildApplyStatsTitle(result);
             state.lastStatsText = buildApplyStatsText(result, scope, extras);
-
             refreshStats();
         });
     } catch (e) {
@@ -102,41 +121,48 @@ export async function applyFromPreview(scope: "selection" | "document") {
                 const currentOoxml = ooxml.value ?? "";
                 const currentOoxmlHash = await sha256Hex(currentOoxml.normalize("NFC"));
 
-                if (
-                    state.preview.convertedOoxml &&
-                    state.preview.ooxmlOptsSnapJson &&
-                    state.preview.selectionTextHash &&
-                    state.preview.selectionOoxmlHash
-                ) {
-                    const currentJson = JSON.stringify(opts);
+                const currentJson = JSON.stringify(opts);
 
-                    if (currentJson === state.preview.ooxmlOptsSnapJson && isPreviewCacheValid()) {
-                        const sameText = currentSelectionHash === state.preview.selectionTextHash;
-                        const sameOoxml = currentOoxmlHash === state.preview.selectionOoxmlHash;
+                const decision = decidePreviewCacheReuse({
+                    snapshot: {
+                        convertedOoxml: state.preview.convertedOoxml,
+                        ooxmlOptsSnapJson: state.preview.ooxmlOptsSnapJson,
+                        selectionTextHash: state.preview.selectionTextHash,
+                        selectionOoxmlHash: state.preview.selectionOoxmlHash,
+                        cacheTimestamp: state.preview.cacheTimestamp,
+                    },
+                    current: {
+                        currentOptsJson: currentJson,
+                        currentSelectionTextHash: currentSelectionHash,
+                        currentSelectionOoxmlHash: currentOoxmlHash,
+                    },
+                    nowMs: Date.now(),
+                    ttlMs: PREVIEW_CACHE_TTL_MS,
+                });
 
-                        if (sameText && sameOoxml) {
-                            setStatus("Primena pregleda (bez ponovne konverzije)...", "info");
+                if (decision.ok) {
+                    setStatus("Primena pregleda (bez ponovne konverzije)...", "info");
 
-                            range.insertOoxml(state.preview.convertedOoxml, Word.InsertLocation.replace);
-                            await context.sync();
+                    range.insertOoxml(state.preview.convertedOoxml!, Word.InsertLocation.replace);
+                    await context.sync();
 
-                            setStatus("Završeno (primenjen preview).", "success");
+                    setStatus("Završeno (primenjen preview).", "success");
 
-                            const s = buildPreviewAppliedStats();
-                            state.lastStatsTitle = s.title;
-                            state.lastStatsText = s.text;
+                    const s = buildPreviewAppliedStats();
+                    state.lastStatsTitle = s.title;
+                    state.lastStatsText = s.text;
 
-                            refreshStats();
-                            return;
-                        }
+                    refreshStats();
+                    return;
+                }
 
-                        // UX fix: bez modala (ne prekidaj flow)
-                        invalidatePreviewCache();
-                        setStatus(
-                            "Cache preview-a ne važi (selekcija/formatiranje promenjeni ili cache istekao). Radim ponovnu konverziju...",
-                            "info"
-                        );
-                    }
+                // UX: bez modala (ne prekidaj flow)
+                if (decision.reason !== "missing") {
+                    invalidatePreviewCache();
+                    setStatus(
+                        `Cache preview-a ne važi (${reasonToSerbian(decision.reason)}). Radim ponovnu konverziju...`,
+                        "info"
+                    );
                 }
 
                 const { result } = await applyPipeline(context, "selection", ui, opts);
@@ -151,7 +177,6 @@ export async function applyFromPreview(scope: "selection" | "document") {
 
                 state.lastStatsTitle = buildApplyStatsTitle(result);
                 state.lastStatsText = buildApplyStatsText(result, "selection");
-
                 refreshStats();
                 return;
             }
@@ -170,7 +195,6 @@ export async function applyFromPreview(scope: "selection" | "document") {
 
             state.lastStatsTitle = buildApplyStatsTitle(result);
             state.lastStatsText = buildApplyStatsText(result, "document", extras);
-
             refreshStats();
         });
     } catch (e) {
