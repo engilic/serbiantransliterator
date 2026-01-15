@@ -22,10 +22,12 @@ const SR_RS = {
     modal_title_error: "Greška",
     modal_title_info: "Nema izmena",
 
-    msg_empty_selection: "Selektovan je samo prazan prostor (razmaci).<br>Molimo selektujte tekst ili ne selektujte ništa za ceo dokument.",
+    msg_empty_selection:
+        "Selektovan je samo prazan prostor (razmaci).<br>Molimo selektujte tekst ili ne selektujte ništa za ceo dokument.",
     msg_no_selection: "Nema selekcije za preslovljavanje.",
     msg_confirm_whole_doc: "Nije selektovan tekst.<br/>Da li želite da preslovite <b>CEO dokument</b>?",
-    msg_reset_confirm: "Ovo će vratiti opcije na fabričke vrednosti.<br><br>Vaše zaštićene reči <b>neće</b> biti obrisane.<br><br>Da li želite da nastavite?",
+    msg_reset_confirm:
+        "Ovo će vratiti opcije na fabričke vrednosti.<br><br>Vaše zaštićene reči <b>neće</b> biti obrisane.<br><br>Da li želite da nastavite?",
     msg_preview_empty: "Pregled nije uspeo: rezultat je prazan tekst.",
     msg_preview_no_changes: "Tekst je već u traženom pismu ili nema šta da se menja.",
     msg_preview_scope_doc: "Dostupno samo kada pregledate ceo dokument",

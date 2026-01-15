@@ -213,7 +213,7 @@ export function showPreviewModal() {
         };
     } else {
         setLoadMoreButtonState(okBtn, false, t("msg_preview_scope_doc"));
-        okBtn.onclick = () => { };
+        okBtn.onclick = () => {};
     }
 
     applyBtn.style.display = "inline-flex";

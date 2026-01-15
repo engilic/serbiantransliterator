@@ -132,10 +132,21 @@ function applySettingsToUi(s: UiSettings) {
 function updateResetButtonState() {
     const current = getSettingsFromUi();
     const keys: Array<keyof UiSettings> = [
-        "profile", "direction", "confirmWholeDoc", "includeHeadersFooters",
-        "includeFootnotes", "includeEndnotes", "protectBrands", "applySerbianQuotes",
-        "preserveCodeBlocks", "protectRomans", "setProofingLanguage", "curlyProtection",
-        "fixDoubleSpaces", "formatDates", "showStats",
+        "profile",
+        "direction",
+        "confirmWholeDoc",
+        "includeHeadersFooters",
+        "includeFootnotes",
+        "includeEndnotes",
+        "protectBrands",
+        "applySerbianQuotes",
+        "preserveCodeBlocks",
+        "protectRomans",
+        "setProofingLanguage",
+        "curlyProtection",
+        "fixDoubleSpaces",
+        "formatDates",
+        "showStats",
     ];
 
     const mismatches = keys.filter((k) => current[k] !== DEFAULT_SETTINGS[k]);
@@ -168,17 +179,22 @@ function changeProfile(profile: ProfilePreset) {
             state.presetWordsSet = new Set(data.userWords);
             if (data.direction) setRadioValue("direction", data.direction);
             if (data.protectBrands !== undefined) setCheckValue("optProtectBrands", data.protectBrands);
-            if (data.applySerbianQuotes !== undefined) setCheckValue("optSerbianQuotes", data.applySerbianQuotes);
-            if (data.preserveCodeBlocks !== undefined) setCheckValue("optPreserveCodeBlocks", data.preserveCodeBlocks);
+            if (data.applySerbianQuotes !== undefined)
+                setCheckValue("optSerbianQuotes", data.applySerbianQuotes);
+            if (data.preserveCodeBlocks !== undefined)
+                setCheckValue("optPreserveCodeBlocks", data.preserveCodeBlocks);
             if (data.protectRomans !== undefined) setCheckValue("optProtectRomans", data.protectRomans);
-            if (data.setProofingLanguage !== undefined) setCheckValue("optSetProofingLanguage", data.setProofingLanguage);
+            if (data.setProofingLanguage !== undefined)
+                setCheckValue("optSetProofingLanguage", data.setProofingLanguage);
             if (data.fixDoubleSpaces !== undefined) setCheckValue("optFixDoubleSpaces", data.fixDoubleSpaces);
             if (data.formatDates !== undefined) setCheckValue("optFormatDates", data.formatDates);
             if (data.confirmWholeDoc !== undefined) setCheckValue("optConfirmWholeDoc", data.confirmWholeDoc);
 
             const curlySel = document.getElementById("optCurlyProtection") as HTMLSelectElement | null;
             if (curlySel) {
-                curlySel.value = asCurlyProtectionUi(data.curlyProtection ?? DEFAULT_SETTINGS.curlyProtection);
+                curlySel.value = asCurlyProtectionUi(
+                    data.curlyProtection ?? DEFAULT_SETTINGS.curlyProtection
+                );
             }
         }
     }
@@ -197,10 +213,23 @@ function changeProfile(profile: ProfilePreset) {
 
 function setupInputListeners() {
     const ids = [
-        "optConfirmWholeDoc", "optProtectBrands", "optSerbianQuotes", "optPreserveCodeBlocks",
-        "optProtectRomans", "optSetProofingLanguage", "optCurlyProtection", "optShowStats",
-        "optFixDoubleSpaces", "optFormatDates", "optIncludeHeadersFooters", "optIncludeFootnotes",
-        "optIncludeEndnotes", "dirAuto", "dirLatToCyr", "dirCyrToLat", "dirToAscii",
+        "optConfirmWholeDoc",
+        "optProtectBrands",
+        "optSerbianQuotes",
+        "optPreserveCodeBlocks",
+        "optProtectRomans",
+        "optSetProofingLanguage",
+        "optCurlyProtection",
+        "optShowStats",
+        "optFixDoubleSpaces",
+        "optFormatDates",
+        "optIncludeHeadersFooters",
+        "optIncludeFootnotes",
+        "optIncludeEndnotes",
+        "dirAuto",
+        "dirLatToCyr",
+        "dirCyrToLat",
+        "dirToAscii",
     ];
 
     ids.forEach((id) => {
@@ -238,7 +267,8 @@ function handleFileImport(e: Event) {
         try {
             const json = reader.result as string;
             const parsed = JSON.parse(json);
-            if (typeof parsed.profile !== "string" || !Array.isArray(parsed.userWordsCustom)) throw new Error();
+            if (typeof parsed.profile !== "string" || !Array.isArray(parsed.userWordsCustom))
+                throw new Error();
             const newSettings: UiSettings = { ...DEFAULT_SETTINGS, ...parsed, schemaVersion: 2 };
             saveSettingsToStorage(SETTINGS_KEY, newSettings);
             initUi();

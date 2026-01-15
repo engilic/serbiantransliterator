@@ -29,12 +29,18 @@ function reasonToSerbian(reason: PreviewCacheDecisionReason): string {
     // Mapped: optsChanged -> reason_opts_changed, etc.
     // Manual mapping for safety:
     switch (reason) {
-        case "optsChanged": return t("reason_opts_changed");
-        case "expired": return t("reason_expired");
-        case "selectionTextChanged": return t("reason_selection_changed");
-        case "selectionOoxmlChanged": return t("reason_formatting_changed");
-        case "missing": return t("reason_missing");
-        default: return t("reason_unknown");
+        case "optsChanged":
+            return t("reason_opts_changed");
+        case "expired":
+            return t("reason_expired");
+        case "selectionTextChanged":
+            return t("reason_selection_changed");
+        case "selectionOoxmlChanged":
+            return t("reason_formatting_changed");
+        case "missing":
+            return t("reason_missing");
+        default:
+            return t("reason_unknown");
     }
 }
 
@@ -168,7 +174,10 @@ export async function applyFromPreview(scope: "selection" | "document") {
 
                 if (decision.reason !== "missing") {
                     invalidatePreviewCache();
-                    setStatus(`Cache pregleda ne važi (${reasonToSerbian(decision.reason)}). Radim ponovnu konverziju...`, "info");
+                    setStatus(
+                        `Cache pregleda ne važi (${reasonToSerbian(decision.reason)}). Radim ponovnu konverziju...`,
+                        "info"
+                    );
                 }
 
                 const { result } = await applyPipeline(context, "selection", ui, opts);
