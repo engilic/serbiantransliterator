@@ -1,5 +1,18 @@
 ﻿import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
+const W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+
+function makeWordOoxml(text: string) {
+    return `
+<w:document xmlns:w="${W_NS}">
+  <w:body>
+    <w:p>
+      <w:r><w:t>${text}</w:t></w:r>
+    </w:p>
+  </w:body>
+</w:document>`;
+}
+
 // ---- mocks (must come before import of module under test) ----
 vi.mock("../src/taskpane/app/status", () => ({
     setStatus: vi.fn(),
@@ -30,10 +43,10 @@ vi.mock("../src/taskpane/app/selection", () => ({
     sha256Hex: vi.fn(async (s: string) => `H:${String(s ?? "")}`),
 }));
 
-// keep convertOoxml simple/deterministic
+// IMPORTANT: convertOoxml must return VALID Word OOXML with <w:t> so extractTextFromWordOoxml works.
 vi.mock("../src/shared/ooxml/convertOoxml", () => ({
     convertOoxml: vi.fn((_xml: string) => ({
-        xml: "<converted/>",
+        xml: makeWordOoxml("Здраво"), // converted text differs from original
         type: "Lat → Ćir",
         stats: {
             timingMs: 1,
@@ -75,7 +88,7 @@ function makeWordStub(params: {
     const selectionRange = {
         text: params.selectionText,
         load: vi.fn(),
-        getOoxml: vi.fn(() => ({ value: params.selectionOoxml ?? "<orig/>" })),
+        getOoxml: vi.fn(() => ({ value: params.selectionOoxml ?? makeWordOoxml("Zdravo") })),
     };
 
     const body = {
@@ -171,7 +184,7 @@ describe("preview/runPreview routing (stubbed Word.run)", () => {
     });
 
     it("selection with text => selection preview path: sets cache and opens preview modal", async () => {
-        makeWordStub({ selectionText: "Zdravo", selectionOoxml: "<orig/>" });
+        makeWordStub({ selectionText: "Zdravo", selectionOoxml: makeWordOoxml("Zdravo") });
 
         await runPreview();
 
