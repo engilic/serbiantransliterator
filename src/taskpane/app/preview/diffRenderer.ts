@@ -2,6 +2,7 @@
 
 import { myersDiff } from "../../../shared/diff";
 import { escapeHtml } from "../../../shared/safeHtml";
+import { t } from "../../../shared/i18n";
 
 export function tokenizeForDiff(text: string): string[] {
     const splitRegex = /([^\s\w\u0400-\u04FF\u0100-\u017F]+|\s+)/;
@@ -16,16 +17,17 @@ export function renderSideBySideWithHighlights(oldText: string, newText: string,
     const a = tokenizeForDiff(oldText);
     const b = tokenizeForDiff(newText);
 
+    // Optimization: If text is massive, skip diff calculation to avoid UI freeze
     if (a.length + b.length > maxTokens) {
         return `
       <div class="preview-grid">
         <div class="preview-pane">
-          <div class="preview-pane-title">Pre</div>
-          <div class="preview-text-pane preview-pane-body">${escapeHtml(oldText)}</div>
+          <div class="preview-pane-title">Pre (Prevelik fajl za detaljan diff)</div>
+          <div class="preview-text-pane preview-pane-body">${escapeHtml(oldText.slice(0, 50000))}...</div>
         </div>
         <div class="preview-pane">
-          <div class="preview-pane-title">Posle</div>
-          <div class="preview-text-pane preview-pane-body">${escapeHtml(newText)}</div>
+          <div class="preview-pane-title">Posle (Prevelik fajl za detaljan diff)</div>
+          <div class="preview-text-pane preview-pane-body">${escapeHtml(newText.slice(0, 50000))}...</div>
         </div>
       </div>
     `;
@@ -71,14 +73,14 @@ export function renderSideBySideWithHighlights(oldText: string, newText: string,
 
 export function renderDiffHtml(oldText: string, newText: string, maxTokens: number): string {
     if (oldText === newText) {
-        return `<div class="preview-text-pane preview-single-pane preview-no-changes">Nema izmena u tekstu.</div>`;
+        return `<div class="preview-text-pane preview-single-pane preview-no-changes">${t("preview_diff_no_changes")}</div>`;
     }
 
     const a = tokenizeForDiff(oldText);
     const b = tokenizeForDiff(newText);
 
     if (a.length + b.length > maxTokens) {
-        return `<div class="preview-text-pane preview-single-pane">${escapeHtml(newText)}</div>`;
+        return `<div class="preview-text-pane preview-single-pane">${escapeHtml(newText.slice(0, 50000))}... (Prikaz skraćen zbog performansi)</div>`;
     }
 
     const ops = myersDiff(a, b);

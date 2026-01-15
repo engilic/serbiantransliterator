@@ -1,4 +1,4 @@
-﻿// src/taskpane/app/settings/defaults.ts
+// src/taskpane/app/settings/defaults.ts
 
 import type { UiSettings } from "../types";
 
@@ -6,36 +6,26 @@ export const SETTINGS_KEY = "serbiantransliterator.settings.v2";
 
 export const DEFAULT_SETTINGS: UiSettings = {
     schemaVersion: 2,
-
     profile: "custom",
     userWordsCustom: [],
-
     confirmWholeDoc: true,
     includeHeadersFooters: false,
     includeFootnotes: false,
     includeEndnotes: false,
-
     direction: "auto",
-
     protectBrands: true,
     preserveCodeBlocks: true,
     protectRomans: true,
-
     applySerbianQuotes: true,
     fixDoubleSpaces: true,
-
-    // BITNO: formatiranje datuma menja sadržaj (nije samo preslovljavanje),
-    // pa je bezbednije da bude opt-in.
     formatDates: false,
-
-    // NEW:
     curlyProtection: "placeholders",
-
     setProofingLanguage: true,
-
     showStats: false,
 };
 
+// Imena profila su sada ključevi u i18n.ts, ovaj objekat se može ukloniti ako se ne koristi direktno.
+// Ali ako ga koristiš za fallback, ostavi ga. U ui.ts smo prebacili logiku na t("profile_...").
 export const PROFILE_NAMES: Record<string, string> = {
     custom: "Ručno",
     it: "IT / Tehnologija",
@@ -57,9 +47,7 @@ export const PRESETS: Record<string, Partial<UiSettings> & { userWords: string[]
         fixDoubleSpaces: false,
         formatDates: true,
         confirmWholeDoc: true,
-
         curlyProtection: "placeholders",
-
         userWords: [
             "Git",
             "GitHub",
@@ -108,9 +96,7 @@ export const PRESETS: Record<string, Partial<UiSettings> & { userWords: string[]
         fixDoubleSpaces: true,
         formatDates: true,
         confirmWholeDoc: true,
-
         curlyProtection: "placeholders",
-
         userWords: [
             "SWIFT",
             "IBAN",
@@ -148,9 +134,7 @@ export const PRESETS: Record<string, Partial<UiSettings> & { userWords: string[]
         fixDoubleSpaces: false,
         formatDates: true,
         confirmWholeDoc: true,
-
         curlyProtection: "placeholders",
-
         userWords: [
             "mg",
             "ml",
@@ -186,9 +170,7 @@ export const PRESETS: Record<string, Partial<UiSettings> & { userWords: string[]
         fixDoubleSpaces: true,
         formatDates: false,
         confirmWholeDoc: true,
-
         curlyProtection: "placeholders",
-
         userWords: [
             "Facebook",
             "Instagram",
@@ -227,9 +209,7 @@ export const PRESETS: Record<string, Partial<UiSettings> & { userWords: string[]
         fixDoubleSpaces: true,
         formatDates: true,
         confirmWholeDoc: true,
-
         curlyProtection: "placeholders",
-
         userWords: [
             "Ustav Republike Srbije",
             "Zakon o obligacionim odnosima",
@@ -260,9 +240,7 @@ export const PRESETS: Record<string, Partial<UiSettings> & { userWords: string[]
         fixDoubleSpaces: true,
         formatDates: true,
         confirmWholeDoc: true,
-
         curlyProtection: "placeholders",
-
         userWords: [
             "Reuters",
             "Associated Press",

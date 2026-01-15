@@ -1,7 +1,8 @@
-﻿// src/taskpane/app/word/statsText.ts
+// src/taskpane/app/word/statsText.ts
 
 import type { ConvertStats } from "../../../shared/ooxml/convertOoxml";
 import type { ExtrasSummary } from "../types";
+import { t } from "../../../shared/i18n";
 
 export type ApplyScope = "selection" | "document";
 
@@ -11,7 +12,7 @@ export type ResultLike = {
 };
 
 function scopeLabel(scope: ApplyScope): string {
-    return scope === "selection" ? "Selekcija" : "Ceo dokument";
+    return scope === "selection" ? t("stats_scope_selection") : t("stats_scope_document");
 }
 
 function ms0(n: number): string {
@@ -19,12 +20,11 @@ function ms0(n: number): string {
 }
 
 export function buildApplyStatsTitle(result: ResultLike): string {
-    return `Statistika: ${result.type}`;
+    return t("stats_header_apply", result.type);
 }
 
 export function buildApplyStatsText(result: ResultLike, scope: ApplyScope, extras?: ExtrasSummary): string {
     const time = ms0(result.stats.timingMs);
-
     const bridges = result.stats.bridges;
 
     let out =
@@ -69,10 +69,10 @@ export function buildApplyStatsText(result: ResultLike, scope: ApplyScope, extra
             `\nEndnote: ${extras.endnotesProcessed}`;
 
         if (extras.footnotesSupported === false) {
-            out += `\nFusnote podržane: NE`;
+            out += `\n${t("stats_footnotes_na")}`;
         }
         if (extras.endnotesSupported === false) {
-            out += `\nEndnote podržane: NE`;
+            out += `\n${t("stats_endnotes_na")}`;
         }
     }
 
@@ -81,7 +81,7 @@ export function buildApplyStatsText(result: ResultLike, scope: ApplyScope, extra
 
 export function buildPreviewAppliedStats(): { title: string; text: string } {
     return {
-        title: "Statistika: primenjen preview",
-        text: `Opseg: Selekcija\n` + `Napomena: primenjen je OOXML iz pregleda (bez ponovne konverzije).`,
+        title: t("stats_header_preview"),
+        text: `Opseg: ${t("stats_scope_selection")}\n${t("stats_note_preview")}`,
     };
 }
