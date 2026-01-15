@@ -16,16 +16,23 @@
         "stop": "office-addin-debugging stop manifest.xml",
         "validate": "office-addin-manifest validate manifest.xml",
         "validate:prod": "npx office-addin-manifest validate manifest.prod.xml",
+
         "test": "cross-env VITE_CJS_IGNORE_WARNING=1 vitest run",
         "test:watch": "cross-env VITE_CJS_IGNORE_WARNING=1 vitest",
         "test:coverage": "cross-env VITE_CJS_IGNORE_WARNING=1 vitest run --coverage",
+
+        "format": "prettier . --write",
+        "format:check": "prettier . --check",
+
         "lint": "eslint src/**/*.ts --max-warnings 0",
         "lint:fix": "eslint src/**/*.ts --fix",
         "typecheck": "tsc --noEmit",
+
+        "test:e2e": "playwright test",
+        "serve:dist": "http-server dist -p 4173 -c-1",
+
         "clean": "rimraf dist",
-        "deploy": "npm run build && wrangler pages deploy dist --project-name=serbiantransliterator",
-        "format": "prettier . --write",
-        "format:check": "prettier . --check"
+        "deploy": "npm run build && wrangler pages deploy dist --project-name=serbiantransliterator"
     },
     "dependencies": {
         "core-js": "^3.36.0",
@@ -35,6 +42,7 @@
         "@babel/core": "^7.24.0",
         "@babel/preset-env": "^7.25.4",
         "@babel/preset-typescript": "^7.23.3",
+        "@playwright/test": "^1.50.0",
         "@types/node": "^25.0.3",
         "@types/office-js": "^1.0.377",
         "@vitest/coverage-v8": "^4.0.17",
@@ -47,12 +55,14 @@
         "eslint-plugin-office-addins": "^3.0.3",
         "html-loader": "^5.0.0",
         "html-webpack-plugin": "^5.6.0",
+        "http-server": "^14.1.1",
         "jsdom": "^27.4.0",
         "mini-css-extract-plugin": "^2.9.4",
         "office-addin-debugging": "^6.0.6",
         "office-addin-dev-certs": "^2.0.3",
         "office-addin-dev-settings": "^3.0.6",
         "office-addin-manifest": "^2.0.3",
+        "prettier": "^3.3.3",
         "rimraf": "^6.1.2",
         "terser-webpack-plugin": "^5.3.10",
         "typescript": "5.5.4",
@@ -60,8 +70,7 @@
         "wait-on": "^7.2.0",
         "webpack": "^5.95.0",
         "webpack-cli": "^5.1.4",
-        "webpack-dev-server": "^5.2.2",
-        "prettier": "^3.3.3"
+        "webpack-dev-server": "^5.2.2"
     },
     "overrides": {
         "esbuild": "0.27.2",

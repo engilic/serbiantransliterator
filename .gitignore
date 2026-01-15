@@ -28,3 +28,7 @@ Thumbs.db
 
 # ===== Office Add-in certs (ako ih ikad praviš lokalno) =====
 *.pfx
+
+# ===== Playwright =====
+playwright-report/
+test-results/
