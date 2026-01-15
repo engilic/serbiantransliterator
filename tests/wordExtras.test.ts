@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("../src/taskpane/app/status", () => ({
     setStatus: vi.fn(),
@@ -21,10 +21,13 @@ import { processNotes } from "../src/taskpane/app/word/notes";
 
 beforeEach(() => {
     vi.resetAllMocks();
-});
 
-afterEach(() => {
-    // no-op
+    // restore default mock impls after reset
+    (processHeadersFooters as any).mockImplementation(async () => 3);
+    (processNotes as any).mockImplementation(async (_ctx: any, _opts: any, kind: "footnotes" | "endnotes") => {
+        if (kind === "footnotes") return { processed: 5, supported: true };
+        return { processed: 2, supported: false };
+    });
 });
 
 describe("word/extras.applyExtrasIfEnabled (stubbed processors)", () => {
@@ -71,7 +74,10 @@ describe("word/extras.applyExtrasIfEnabled (stubbed processors)", () => {
         expect(res.endnotesProcessed).toBe(0);
     });
 
-    it("does not throw if a processor throws (best-effort)", async () => {
+    it("does not throw if a processor throws (best-effort) and does not spam console.warn", async () => {
+        // Silence expected warnings in CI output for this test only
+        const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => { });
+
         (processHeadersFooters as any).mockRejectedValueOnce(new Error("boom"));
 
         const ui: any = {
@@ -87,5 +93,7 @@ describe("word/extras.applyExtrasIfEnabled (stubbed processors)", () => {
 
         // should not throw; summary stays 0 for the failed part
         expect(res.headersFootersProcessed).toBe(0);
+
+        warnSpy.mockRestore();
     });
 });
