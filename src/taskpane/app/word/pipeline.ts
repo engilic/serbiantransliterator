@@ -31,7 +31,7 @@ export async function applyRangeWithOoxmlConversion(
 
     if (rawXml.length > MAX_OOXML_SIZE) {
         showModalInfo(t("modal_title_error"), unsafeHtml(t("msg_doc_too_large")));
-        setStatus(t("status_error_prefix", "Dokument prevelik (limit 5MB)"), "error");
+        setStatus(t("status_error_prefix", t("status_doc_too_large_short")), "error"); // PR6
         return null;
     }
 

@@ -40,6 +40,9 @@ const SR_RS = {
     status_extra_footnotes_na: "Fusnote: N/A",
     status_extra_endnotes_na: "Endnote: N/A",
 
+    // PR6: short error strings (for status line)
+    status_doc_too_large_short: "Dokument prevelik (limit 5MB)",
+
     // Modali & Obaveštenja
     modal_title_confirm: "Potvrda",
     modal_title_error: "Greška",
@@ -60,6 +63,9 @@ const SR_RS = {
     ui_sub_preview_selection: "selekcije",
     ui_sub_run_document: "ceo dokument",
     ui_sub_preview_document: "celog dokumenta",
+
+    // PR6: tags
+    ui_tag_remove: "Ukloni",
 
     // Preview tabovi
     preview_btn_diff: "Razlike",
@@ -107,7 +113,7 @@ const SR_RS = {
     reason_missing: "cache nije kompletan",
     reason_unknown: "nepoznat razlog",
 
-    // Stats
+    // Stats (postojeće)
     stats_scope_selection: "Selekcija",
     stats_scope_document: "Ceo dokument",
     stats_header_apply: "Statistika: {0}",
@@ -115,6 +121,25 @@ const SR_RS = {
     stats_note_preview: "Napomena: primenjen je OOXML iz pregleda (bez ponovne konverzije).",
     stats_footnotes_na: "Fusnote podržane: NE",
     stats_endnotes_na: "Endnote podržane: NE",
+
+    // PR6: stats lines/sections (da nema hardcode u statsText.ts)
+    stats_line_scope: "Opseg: {0}",
+    stats_line_nodes_changed: "Promenjeno čvorova: {0}",
+    stats_line_time_ms: "Vreme: {0}ms",
+
+    stats_section_bridges: "Bridges:",
+    stats_bridge_line: "- {0}: {1}",
+
+    stats_section_proofing: "Proofing language:",
+    stats_proof_target: "- target: {0}",
+    stats_proof_changed_runs: "- changedRuns: {0}",
+    stats_proof_skipped_runs: "- skippedRuns: {0}",
+    stats_proof_skipped_by_reason: "- skippedByReason:",
+    stats_proof_reason_line: "  - {0}: {1}",
+
+    stats_line_headers_footers: "Header/Footer: {0}",
+    stats_line_footnotes: "Fusnote: {0}",
+    stats_line_endnotes: "Endnote: {0}",
 
     // Profil imena
     profile_custom: "Ručno",
@@ -160,6 +185,9 @@ const EN_US: Record<TranslationKey, string> = {
     status_extra_footnotes_na: "Footnotes: N/A",
     status_extra_endnotes_na: "Endnotes: N/A",
 
+    // PR6
+    status_doc_too_large_short: "Document too large (5MB limit)",
+
     // Modals & Messages
     modal_title_confirm: "Confirmation",
     modal_title_error: "Error",
@@ -180,6 +208,9 @@ const EN_US: Record<TranslationKey, string> = {
     ui_sub_preview_selection: "selection",
     ui_sub_run_document: "whole document",
     ui_sub_preview_document: "whole document",
+
+    // PR6: tags
+    ui_tag_remove: "Remove",
 
     // Preview tabs
     preview_btn_diff: "Diff",
@@ -226,7 +257,7 @@ const EN_US: Record<TranslationKey, string> = {
     reason_missing: "cache incomplete",
     reason_unknown: "unknown reason",
 
-    // Stats
+    // Stats (postojeće)
     stats_scope_selection: "Selection",
     stats_scope_document: "Whole document",
     stats_header_apply: "Stats: {0}",
@@ -234,6 +265,25 @@ const EN_US: Record<TranslationKey, string> = {
     stats_note_preview: "Note: applied OOXML from preview (no re-conversion).",
     stats_footnotes_na: "Footnotes supported: NO",
     stats_endnotes_na: "Endnotes supported: NO",
+
+    // PR6: stats lines/sections
+    stats_line_scope: "Scope: {0}",
+    stats_line_nodes_changed: "Nodes changed: {0}",
+    stats_line_time_ms: "Time: {0}ms",
+
+    stats_section_bridges: "Bridges:",
+    stats_bridge_line: "- {0}: {1}",
+
+    stats_section_proofing: "Proofing language:",
+    stats_proof_target: "- target: {0}",
+    stats_proof_changed_runs: "- changedRuns: {0}",
+    stats_proof_skipped_runs: "- skippedRuns: {0}",
+    stats_proof_skipped_by_reason: "- skippedByReason:",
+    stats_proof_reason_line: "  - {0}: {1}",
+
+    stats_line_headers_footers: "Header/Footer: {0}",
+    stats_line_footnotes: "Footnotes: {0}",
+    stats_line_endnotes: "Endnotes: {0}",
 
     // Profile names
     profile_custom: "Custom",
