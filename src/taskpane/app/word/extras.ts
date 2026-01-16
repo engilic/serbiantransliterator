@@ -7,6 +7,7 @@ import { emptyExtrasSummary } from "../types";
 import { setStatus } from "../status";
 import { processHeadersFooters } from "./headersFooters";
 import { processNotes } from "./notes";
+import { t } from "../../../shared/i18n";
 
 export async function applyExtrasIfEnabled(
     context: Word.RequestContext,
@@ -17,17 +18,16 @@ export async function applyExtrasIfEnabled(
 
     if (ui.includeHeadersFooters) {
         try {
-            setStatus("Obrada: zaglavlja/podno�ja...", "info");
+            setStatus(t("status_processing_headers_footers"), "info");
             summary.headersFootersProcessed = await processHeadersFooters(context, opts);
         } catch (e) {
             console.warn("Header/Footer obrada nije uspela:", e);
-            // best-effort: leave processed = 0
         }
     }
 
     if (ui.includeFootnotes) {
         try {
-            setStatus("Obrada: fusnote...", "info");
+            setStatus(t("status_processing_footnotes"), "info");
             const r = await processNotes(context, opts, "footnotes");
             summary.footnotesProcessed = r.processed;
             summary.footnotesSupported = r.supported;
@@ -40,7 +40,7 @@ export async function applyExtrasIfEnabled(
 
     if (ui.includeEndnotes) {
         try {
-            setStatus("Obrada: endnote...", "info");
+            setStatus(t("status_processing_endnotes"), "info");
             const r = await processNotes(context, opts, "endnotes");
             summary.endnotesProcessed = r.processed;
             summary.endnotesSupported = r.supported;

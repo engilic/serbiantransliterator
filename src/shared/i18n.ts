@@ -24,6 +24,14 @@ const SR_RS = {
     status_preview_applied: "Završeno (primenjen preview).",
     status_error_prefix: "Greška: {0}",
 
+    // NEW (PR2): dodatni status stringovi
+    status_no_text_found: "Nije pronađen tekst za obradu.",
+    status_processing_headers_footers: "Obrada: zaglavlja/podnožja...",
+    status_processing_footnotes: "Obrada: fusnote...",
+    status_processing_endnotes: "Obrada: endnote...",
+    status_applying_preview: "Primena pregleda (bez ponovne konverzije)...",
+    status_preview_cache_invalid: "Cache pregleda ne važi ({0}). Radim ponovnu konverziju...",
+
     // Modali & Obaveštenja
     modal_title_confirm: "Potvrda",
     modal_title_error: "Greška",
@@ -41,6 +49,10 @@ const SR_RS = {
     preview_btn_plain: "Rezultat",
     preview_btn_side: "Pre/Posle",
     preview_btn_copy: "Kopiraj",
+
+    // NEW (PR2): tooltip / fallback za "load more"
+    preview_load_more_title: "Učitaj sledeće paragrafe",
+    preview_load_more_none: "Nema više paragrafa za učitavanje",
 
     msg_empty_selection:
         "Selektovan je samo prazan prostor (razmaci).<br>Molimo selektujte tekst ili ne selektujte ništa za ceo dokument.",
@@ -108,6 +120,14 @@ const EN_US: Record<TranslationKey, string> = {
     status_preview_applied: "Done (applied from preview).",
     status_error_prefix: "Error: {0}",
 
+    // NEW (PR2)
+    status_no_text_found: "No text found to process.",
+    status_processing_headers_footers: "Processing: headers/footers...",
+    status_processing_footnotes: "Processing: footnotes...",
+    status_processing_endnotes: "Processing: endnotes...",
+    status_applying_preview: "Applying preview (no re-conversion)...",
+    status_preview_cache_invalid: "Preview cache invalid ({0}). Re-converting...",
+
     // Modals & Messages
     modal_title_confirm: "Confirmation",
     modal_title_error: "Error",
@@ -125,6 +145,10 @@ const EN_US: Record<TranslationKey, string> = {
     preview_btn_plain: "Result",
     preview_btn_side: "Before/After",
     preview_btn_copy: "Copy",
+
+    // NEW (PR2): tooltip / fallback for "load more"
+    preview_load_more_title: "Load next paragraphs",
+    preview_load_more_none: "No more paragraphs to load",
 
     msg_empty_selection:
         "Only whitespace is selected.<br>Please select some text or select nothing for the whole document.",
