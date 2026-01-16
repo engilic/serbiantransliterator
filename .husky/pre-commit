@@ -4,5 +4,8 @@
 # Fail fast ako postoje merge conflict markeri bilo gde u repo-u
 npm run check:conflicts
 
-# Format staged fajlova (prettier) + ostalo što si već imao
+# i18n guard: zabrani hardcoded user-facing stringove (setStatus/showModalInfo/status_error_prefix arg)
+npm run check:i18n
+
+# Format staged fajlova (prettier) + ostalo
 npx lint-staged
