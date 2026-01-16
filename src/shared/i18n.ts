@@ -33,7 +33,8 @@ const SR_RS = {
     msg_preview_scope_doc: "Dostupno samo kada pregledate ceo dokument",
 
     // NEW: Zaštita od velikih dokumenata
-    msg_doc_too_large: "Dokument je prevelik za automatsku obradu (limit 5MB).<br>Molimo podelite ga na manje delove.",
+    msg_doc_too_large:
+        "Dokument je prevelik za automatsku obradu (limit 5MB).<br>Molimo podelite ga na manje delove.",
 
     // Preview
     preview_title_selection: "Selektovani tekst ({0})",
