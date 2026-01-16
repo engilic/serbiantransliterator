@@ -68,7 +68,7 @@ export function renderPreviewMode() {
     const conv = normalizeNewlines(state.preview.converted);
 
     if (state.preview.mode === "plain") {
-        holder.innerHTML = `<div class="preview-text-pane preview-single-pane">${escapeHtml(conv)}</div>`;
+        holder.innerHTML = `<div class="preview-text-pane preview-single-pane preview-single-pane">${escapeHtml(conv)}</div>`;
     } else if (state.preview.mode === "side") {
         holder.innerHTML = renderSideBySideWithHighlights(orig, conv, DIFF_MAX_TOKENS);
     } else {
@@ -84,11 +84,12 @@ export function renderPreviewMode() {
     if (btnSide) btnSide.disabled = state.preview.mode === "side";
 }
 
+// PR2: i18n tooltip stringovi
 function setLoadMoreButtonState(btn: HTMLButtonElement, canLoadMore: boolean, reason?: string) {
     btn.disabled = !canLoadMore;
     btn.style.opacity = canLoadMore ? "1" : "0.45";
     btn.style.cursor = canLoadMore ? "pointer" : "not-allowed";
-    btn.title = canLoadMore ? "Učitaj sledeće paragrafe" : (reason ?? "Nema više paragrafa za učitavanje");
+    btn.title = canLoadMore ? t("preview_load_more_title") : (reason ?? t("preview_load_more_none"));
 }
 
 function getPreviewTitleEl(): HTMLElement | null {

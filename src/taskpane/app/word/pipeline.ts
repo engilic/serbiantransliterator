@@ -10,7 +10,7 @@ import { unsafeHtml } from "../../../shared/safeHtml";
 import { applyExtrasIfEnabled } from "./extras";
 import { setStatus } from "../status";
 import { analyzeSelectionText } from "./selectionText";
-import { t } from "../../../shared/i18n"; // Import i18n for error message
+import { t } from "../../../shared/i18n";
 
 // Limit: 5MB XML-a (zaštita od out-of-memory na slikama/ogromnim fajlovima)
 const MAX_OOXML_SIZE = 5 * 1024 * 1024;
@@ -22,7 +22,7 @@ export async function applyRangeWithOoxmlConversion(
     range: Word.Range,
     opts: OoxmlOptions
 ): Promise<OoxmlConvertResult | null> {
-    setStatus("Obrada u toku...", "info");
+    setStatus(t("status_processing"), "info");
 
     const ooxml = range.getOoxml();
     await context.sync();
@@ -58,11 +58,11 @@ export async function applyPipeline(
         const info = analyzeSelectionText(range.text);
 
         if (!info.hasText) {
-            showModalInfo("Greška", unsafeHtml("Nema selekcije za preslovljavanje."));
+            showModalInfo(t("modal_title_error"), unsafeHtml(t("msg_no_selection")));
             return { result: null, extras: emptyExtrasSummary() };
         }
         if (info.isJustWhitespace) {
-            showModalInfo("Greška", unsafeHtml("Selektovan je samo prazan prostor (razmaci)."));
+            showModalInfo(t("modal_title_error"), unsafeHtml(t("msg_empty_selection")));
             return { result: null, extras: emptyExtrasSummary() };
         }
 

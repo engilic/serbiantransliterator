@@ -89,7 +89,7 @@ export async function runSmart() {
             const { result, extras } = await applyPipeline(context, scope, ui, opts);
 
             if (!result) {
-                setStatus("Nije pronađen tekst za obradu.", "neutral");
+                setStatus(t("status_no_text_found"), "neutral"); // PR2: i18n
                 return;
             }
 
@@ -166,7 +166,7 @@ export async function applyFromPreview(scope: "selection" | "document") {
                 });
 
                 if (decision.ok) {
-                    setStatus("Primena pregleda (bez ponovne konverzije)...", "info");
+                    setStatus(t("status_applying_preview"), "info"); // PR2: i18n
                     range.insertOoxml(state.preview.convertedOoxml!, Word.InsertLocation.replace);
                     await context.sync();
                     setStatus(t("status_preview_applied"), "success");
@@ -180,16 +180,13 @@ export async function applyFromPreview(scope: "selection" | "document") {
 
                 if (decision.reason !== "missing") {
                     invalidatePreviewCache();
-                    setStatus(
-                        `Cache pregleda ne važi (${reasonToSerbian(decision.reason)}). Radim ponovnu konverziju...`,
-                        "info"
-                    );
+                    setStatus(t("status_preview_cache_invalid", reasonToSerbian(decision.reason)), "info"); // PR2: i18n
                 }
 
                 const { result } = await applyPipeline(context, "selection", ui, opts);
 
                 if (!result) {
-                    setStatus("Nije pronađen tekst za obradu.", "neutral");
+                    setStatus(t("status_no_text_found"), "neutral"); // PR2: i18n
                     return;
                 }
 
@@ -210,7 +207,7 @@ export async function applyFromPreview(scope: "selection" | "document") {
             const { result, extras } = await applyPipeline(context, "document", ui, opts);
 
             if (!result) {
-                setStatus("Nije pronađen tekst za obradu.", "neutral");
+                setStatus(t("status_no_text_found"), "neutral"); // PR2: i18n
                 return;
             }
 
