@@ -1,4 +1,6 @@
-﻿// src/shared/patterns/links.ts
+// src/shared/patterns/links.ts
+
+import { PUNCTUATION_END_REGEX } from "./common";
 
 // =========================
 // Global regex (protect/statistics)
@@ -40,11 +42,8 @@ export const LINK_PATTERNS_ANCHORED: RegExp[] = [
 
 export function trimLinkEnd(s: string): string {
     // Skida završnu interpunkciju koja često nalegne uz URL/email.
-    // Primer: "https://x.y/z)." -> "https://x.y/z"
-    // Primer: "test@example.com," -> "test@example.com"
-    //
-    // VAŽNO: u character class [] '.' ne treba escape.
-    return (s ?? "").replace(/[,.;:!?)}\]]+$/g, "");
+    // Koristimo centralizovani regex iz common.ts
+    return (s ?? "").replace(PUNCTUATION_END_REGEX, "");
 }
 
 export function looksLikeLinkStart(fragLower: string): boolean {

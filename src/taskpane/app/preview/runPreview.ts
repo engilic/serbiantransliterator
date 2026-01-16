@@ -44,6 +44,9 @@ function extractTextFromWordOoxml(xml: string): string {
 export async function runPreview() {
     setStatus(t("status_generating_preview"), "info");
 
+    // UX: Mali delay da UI thread stigne da iscrta status pre teškog Word posla
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
     try {
         await Word.run(async (context) => {
             const range = context.document.getSelection();
