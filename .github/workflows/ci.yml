@@ -33,6 +33,9 @@ jobs:
             - name: Check merge conflict markers
               run: npm run check:conflicts
 
+            - name: Check user-facing hardcoded strings (i18n guard)
+              run: npm run check:i18n
+
             - name: Install deps (npm ci)
               run: npm ci
 
