@@ -1,8 +1,9 @@
-﻿// src/taskpane/app/settings/tags.ts
+// src/taskpane/app/settings/tags.ts
 /* global document */
 
 import { state } from "../state";
 import { escapeHtml } from "../../../shared/safeHtml";
+import { t } from "../../../shared/i18n";
 
 export type TagsCallbacks = {
     invalidatePreviewCache: () => void;
@@ -46,7 +47,9 @@ export function renderTags() {
 function createTagEl(text: string, type: "custom" | "preset"): HTMLElement {
     const div = document.createElement("div");
     div.className = `tag ${type}`;
-    div.innerHTML = `<span>${escapeHtml(text)}</span><span class="tag-remove" title="Ukloni">&times;</span>`;
+    div.innerHTML = `<span>${escapeHtml(text)}</span><span class="tag-remove" title="${escapeHtml(
+        t("ui_tag_remove")
+    )}">&times;</span>`;
 
     div.querySelector(".tag-remove")!.addEventListener("click", (e) => {
         e.stopPropagation();

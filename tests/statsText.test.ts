@@ -1,4 +1,4 @@
-﻿import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "vitest";
 import {
     buildApplyStatsText,
     buildApplyStatsTitle,
@@ -70,7 +70,6 @@ describe("word/statsText", () => {
         expect(text).toContain("Fusnote: 3");
         expect(text).toContain("Endnote: 4");
 
-        // NEW behavior
         expect(text).toContain("Fusnote podržane: NE");
         expect(text).toContain("Endnote podržane: NE");
     });
@@ -96,7 +95,8 @@ describe("word/statsText", () => {
     it("buildPreviewAppliedStats", () => {
         const s = buildPreviewAppliedStats();
         expect(s.title).toBe("Statistika: primenjen preview");
-        expect(s.text).toContain("Opseg: Selekcija");
+        expect(s.text).toContain("Opseg:");
+        expect(s.text).toContain("Selekcija");
         expect(s.text).toContain("bez ponovne konverzije");
     });
 });

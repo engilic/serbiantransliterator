@@ -28,28 +28,28 @@ export function buildApplyStatsText(result: ResultLike, scope: ApplyScope, extra
     const bridges = result.stats.bridges;
 
     let out =
-        `Opseg: ${scopeLabel(scope)}\n` +
-        `Promenjeno čvorova: ${result.stats.textNodes}\n` +
-        `Vreme: ${time}ms` +
-        `\nBridges:` +
-        `\n- links: ${bridges.links}` +
-        `\n- placeholders: ${bridges.placeholders}` +
-        `\n- brandPhrases: ${bridges.brandPhrases}` +
-        `\n- brandTokens: ${bridges.brandTokens}` +
-        `\n- ambiguousBrandSuffix: ${bridges.ambiguousBrandSuffix}` +
-        `\n- digraphs: ${bridges.digraphs}` +
-        `\n- userPhrases: ${bridges.userPhrases}` +
-        `\n- userTokens: ${bridges.userTokens}` +
-        `\n- allCapsHints: ${bridges.allCapsHints}` +
-        `\n- spaces: ${bridges.spaces}`;
+        `${t("stats_line_scope", scopeLabel(scope))}\n` +
+        `${t("stats_line_nodes_changed", result.stats.textNodes)}\n` +
+        `${t("stats_line_time_ms", time)}\n` +
+        `${t("stats_section_bridges")}\n` +
+        `${t("stats_bridge_line", "links", bridges.links)}\n` +
+        `${t("stats_bridge_line", "placeholders", bridges.placeholders)}\n` +
+        `${t("stats_bridge_line", "brandPhrases", bridges.brandPhrases)}\n` +
+        `${t("stats_bridge_line", "brandTokens", bridges.brandTokens)}\n` +
+        `${t("stats_bridge_line", "ambiguousBrandSuffix", bridges.ambiguousBrandSuffix)}\n` +
+        `${t("stats_bridge_line", "digraphs", bridges.digraphs)}\n` +
+        `${t("stats_bridge_line", "userPhrases", bridges.userPhrases)}\n` +
+        `${t("stats_bridge_line", "userTokens", bridges.userTokens)}\n` +
+        `${t("stats_bridge_line", "allCapsHints", bridges.allCapsHints)}\n` +
+        `${t("stats_bridge_line", "spaces", bridges.spaces)}`;
 
     const proof = result.stats.proofing;
     if (proof?.enabled) {
         out +=
-            `\nProofing language:` +
-            `\n- target: ${proof.targetLang ?? "N/A"}` +
-            `\n- changedRuns: ${proof.changedRuns}` +
-            `\n- skippedRuns: ${proof.skippedRuns}`;
+            `\n${t("stats_section_proofing")}` +
+            `\n${t("stats_proof_target", proof.targetLang ?? "N/A")}` +
+            `\n${t("stats_proof_changed_runs", proof.changedRuns)}` +
+            `\n${t("stats_proof_skipped_runs", proof.skippedRuns)}`;
 
         const reasons = Object.entries(proof.skippedByReason ?? {})
             .sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0))
@@ -57,23 +57,19 @@ export function buildApplyStatsText(result: ResultLike, scope: ApplyScope, extra
             .slice(0, 6);
 
         if (reasons.length) {
-            out += `\n- skippedByReason:`;
-            for (const [k, n] of reasons) out += `\n  - ${k}: ${n}`;
+            out += `\n${t("stats_proof_skipped_by_reason")}`;
+            for (const [k, n] of reasons) out += `\n${t("stats_proof_reason_line", k, n)}`;
         }
     }
 
     if (scope === "document" && extras) {
         out +=
-            `\nHeader/Footer: ${extras.headersFootersProcessed}` +
-            `\nFusnote: ${extras.footnotesProcessed}` +
-            `\nEndnote: ${extras.endnotesProcessed}`;
+            `\n${t("stats_line_headers_footers", extras.headersFootersProcessed)}` +
+            `\n${t("stats_line_footnotes", extras.footnotesProcessed)}` +
+            `\n${t("stats_line_endnotes", extras.endnotesProcessed)}`;
 
-        if (extras.footnotesSupported === false) {
-            out += `\n${t("stats_footnotes_na")}`;
-        }
-        if (extras.endnotesSupported === false) {
-            out += `\n${t("stats_endnotes_na")}`;
-        }
+        if (extras.footnotesSupported === false) out += `\n${t("stats_footnotes_na")}`;
+        if (extras.endnotesSupported === false) out += `\n${t("stats_endnotes_na")}`;
     }
 
     return out;
@@ -82,6 +78,6 @@ export function buildApplyStatsText(result: ResultLike, scope: ApplyScope, extra
 export function buildPreviewAppliedStats(): { title: string; text: string } {
     return {
         title: t("stats_header_preview"),
-        text: `Opseg: ${t("stats_scope_selection")}\n${t("stats_note_preview")}`,
+        text: `${t("stats_line_scope", t("stats_scope_selection"))}\n${t("stats_note_preview")}`,
     };
 }
