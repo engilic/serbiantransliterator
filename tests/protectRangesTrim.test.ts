@@ -58,4 +58,28 @@ describe("protect.ts - trim trailing punctuation for link-like tokens", () => {
         expect(text.slice(s, e)).toBe("tel:+381641234567");
         expect(text.slice(e, e + 2)).toBe("),");
     });
+
+    it("URL: keeps balanced ')' inside URL (Wikipedia-style)", () => {
+        const text = "Link: https://en.wikipedia.org/wiki/Test_(example).";
+        const ranges = collectProtectedRanges(text, opts());
+
+        const r = findRangeContaining(text, ranges, "https://en.wikipedia.org/wiki/");
+        expect(r).toBeTruthy();
+
+        const [s, e] = r!;
+        expect(text.slice(s, e)).toBe("https://en.wikipedia.org/wiki/Test_(example)");
+        expect(text.slice(e, e + 1)).toBe(".");
+    });
+
+    it("URL: trims only extra ')' when closers are unbalanced (keeps one balanced ')')", () => {
+        const text = "Link: https://en.wikipedia.org/wiki/Test_(example)), kraj";
+        const ranges = collectProtectedRanges(text, opts());
+
+        const r = findRangeContaining(text, ranges, "https://en.wikipedia.org/wiki/");
+        expect(r).toBeTruthy();
+
+        const [s, e] = r!;
+        expect(text.slice(s, e)).toBe("https://en.wikipedia.org/wiki/Test_(example)");
+        expect(text.slice(e, e + 2)).toBe("),");
+    });
 });
