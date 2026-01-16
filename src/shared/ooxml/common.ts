@@ -1,3 +1,5 @@
+// src/shared/ooxml/common.ts
+
 export const normKey = (s: string) => s.normalize("NFC").toLowerCase();
 
 export function getCpArray(text: string): string[] {
