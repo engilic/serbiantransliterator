@@ -47,15 +47,17 @@ function reasonToSerbian(reason: PreviewCacheDecisionReason): string {
 
 function buildDocumentExtraStatus(ui: UiSettings, extras: ExtrasSummary): string {
     const parts: string[] = [];
+
     if (ui.includeHeadersFooters && extras.headersFootersProcessed > 0) {
-        parts.push(`H/F: ${extras.headersFootersProcessed}`);
+        parts.push(t("status_extra_headers_footers", extras.headersFootersProcessed));
     }
     if (ui.includeFootnotes && extras.footnotesSupported === false) {
-        parts.push("Fusnote: N/A");
+        parts.push(t("status_extra_footnotes_na"));
     }
     if (ui.includeEndnotes && extras.endnotesSupported === false) {
-        parts.push("Endnote: N/A");
+        parts.push(t("status_extra_endnotes_na"));
     }
+
     return parts.length ? " | " + parts.join(" | ") : "";
 }
 
@@ -89,7 +91,7 @@ export async function runSmart() {
             const { result, extras } = await applyPipeline(context, scope, ui, opts);
 
             if (!result) {
-                setStatus(t("status_no_text_found"), "neutral"); // PR2: i18n
+                setStatus(t("status_no_text_found"), "neutral");
                 return;
             }
 
@@ -100,7 +102,6 @@ export async function runSmart() {
 
             const time = result.stats.timingMs.toFixed(0);
 
-            // FIX: pravi status key prema scope-u
             if (scope === "selection") {
                 setStatus(t("status_done_selection", result.type, time), "success");
             } else {
@@ -166,7 +167,7 @@ export async function applyFromPreview(scope: "selection" | "document") {
                 });
 
                 if (decision.ok) {
-                    setStatus(t("status_applying_preview"), "info"); // PR2: i18n
+                    setStatus(t("status_applying_preview"), "info");
                     range.insertOoxml(state.preview.convertedOoxml!, Word.InsertLocation.replace);
                     await context.sync();
                     setStatus(t("status_preview_applied"), "success");
@@ -180,13 +181,13 @@ export async function applyFromPreview(scope: "selection" | "document") {
 
                 if (decision.reason !== "missing") {
                     invalidatePreviewCache();
-                    setStatus(t("status_preview_cache_invalid", reasonToSerbian(decision.reason)), "info"); // PR2: i18n
+                    setStatus(t("status_preview_cache_invalid", reasonToSerbian(decision.reason)), "info");
                 }
 
                 const { result } = await applyPipeline(context, "selection", ui, opts);
 
                 if (!result) {
-                    setStatus(t("status_no_text_found"), "neutral"); // PR2: i18n
+                    setStatus(t("status_no_text_found"), "neutral");
                     return;
                 }
 
@@ -207,7 +208,7 @@ export async function applyFromPreview(scope: "selection" | "document") {
             const { result, extras } = await applyPipeline(context, "document", ui, opts);
 
             if (!result) {
-                setStatus(t("status_no_text_found"), "neutral"); // PR2: i18n
+                setStatus(t("status_no_text_found"), "neutral");
                 return;
             }
 

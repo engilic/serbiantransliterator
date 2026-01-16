@@ -110,7 +110,7 @@ export async function runPreview() {
                 state.preview.converted = convText;
 
                 showPreviewModal();
-                setStatus(t("status_preview_shown", converted.type), "success");
+                setStatus(t("status_preview_shown", converted.type), "success"); // PR5
                 return;
             }
 
@@ -167,7 +167,7 @@ export async function runPreview() {
             state.preview.converted = finalText;
 
             showPreviewModal();
-            setStatus(t("status_preview_shown", type), "success");
+            setStatus(t("status_preview_shown", type), "success"); // PR5
         });
     } catch (e) {
         console.error(e);
