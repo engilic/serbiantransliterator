@@ -203,8 +203,9 @@ function changeProfile(profile: ProfilePreset) {
     saveSettings();
     invalidatePreviewCache();
 
-    // Koristimo t() za prevod imena profila// eslint-disable-next-line @typescript-eslint/no-explicit-any
-
+    // Koristimo t() za prevod imena profila
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const profileKey = `profile_${profile}` as any;
     const displayName = t(profileKey) !== profileKey ? t(profileKey) : profile;
 
     setStatus(t("status_profile_changed", displayName), "info");
