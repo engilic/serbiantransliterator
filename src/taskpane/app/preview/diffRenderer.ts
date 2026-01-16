@@ -19,14 +19,15 @@ export function renderSideBySideWithHighlights(oldText: string, newText: string,
 
     // Optimization: If text is massive, skip diff calculation to avoid UI freeze
     if (a.length + b.length > maxTokens) {
+        const tooLarge = t("preview_label_too_large_diff");
         return `
       <div class="preview-grid">
         <div class="preview-pane">
-          <div class="preview-pane-title">Pre (Prevelik fajl za detaljan diff)</div>
+          <div class="preview-pane-title">${escapeHtml(t("preview_label_before"))} (${escapeHtml(tooLarge)})</div>
           <div class="preview-text-pane preview-pane-body">${escapeHtml(oldText.slice(0, 50000))}...</div>
         </div>
         <div class="preview-pane">
-          <div class="preview-pane-title">Posle (Prevelik fajl za detaljan diff)</div>
+          <div class="preview-pane-title">${escapeHtml(t("preview_label_after"))} (${escapeHtml(tooLarge)})</div>
           <div class="preview-text-pane preview-pane-body">${escapeHtml(newText.slice(0, 50000))}...</div>
         </div>
       </div>
@@ -60,11 +61,11 @@ export function renderSideBySideWithHighlights(oldText: string, newText: string,
     return `
     <div class="preview-grid">
       <div class="preview-pane">
-        <div class="preview-pane-title">Pre</div>
+        <div class="preview-pane-title">${escapeHtml(t("preview_label_before"))}</div>
         <div class="preview-text-pane preview-pane-body">${left}</div>
       </div>
       <div class="preview-pane">
-        <div class="preview-pane-title">Posle</div>
+        <div class="preview-pane-title">${escapeHtml(t("preview_label_after"))}</div>
         <div class="preview-text-pane preview-pane-body">${right}</div>
       </div>
     </div>
@@ -80,7 +81,9 @@ export function renderDiffHtml(oldText: string, newText: string, maxTokens: numb
     const b = tokenizeForDiff(newText);
 
     if (a.length + b.length > maxTokens) {
-        return `<div class="preview-text-pane preview-single-pane">${escapeHtml(newText.slice(0, 50000))}... (Prikaz skraćen zbog performansi)</div>`;
+        return `<div class="preview-text-pane preview-single-pane">${escapeHtml(newText.slice(0, 50000))}... (${escapeHtml(
+            t("preview_label_truncated_perf")
+        )})</div>`;
     }
 
     const ops = myersDiff(a, b);
