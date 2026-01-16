@@ -12,8 +12,13 @@ export function setStatus(msg: string, type: "info" | "success" | "error" | "neu
         type === "error"
             ? "var(--error-color)"
             : type === "success"
-              ? "var(--success-color)"
-              : "var(--text-color)";
+                ? "var(--success-color)"
+                : "var(--text-color)";
+
+    // Reset animacije
+    el.classList.remove("fade-in");
+    void el.offsetWidth; // trigger reflow
+    el.classList.add("fade-in");
 }
 
 export function refreshStats() {
@@ -23,12 +28,19 @@ export function refreshStats() {
     const showEl = document.getElementById("optShowStats") as HTMLInputElement | null;
     const show = !!showEl?.checked;
 
-    box.style.display = show ? "block" : "none";
     if (show) {
+        box.style.display = "block";
         const title = document.getElementById("statsTitle") as HTMLDivElement | null;
         const text = document.getElementById("statsText") as HTMLPreElement | null;
 
         if (title) title.innerText = state.lastStatsTitle;
         if (text) text.innerText = state.lastStatsText;
+
+        // Animiraj i stats box kad se pojavi
+        box.classList.remove("fade-in");
+        void box.offsetWidth;
+        box.classList.add("fade-in");
+    } else {
+        box.style.display = "none";
     }
 }
