@@ -37,14 +37,14 @@ const SR_RS = {
     modal_title_error: "Greška",
     modal_title_info: "Nema izmena",
 
-    // NEW: generička dugmad (da ne hardcode-ujemo po UI fajlovima)
+    // Generička dugmad (da ne hardcode-ujemo po UI fajlovima)
     btn_ok: "OK",
     btn_cancel: "Otkaži",
     btn_close: "Zatvori",
     btn_load_more: "Učitaj još",
     btn_apply: "PRESLOVI",
 
-    // NEW: preview tabovi
+    // Preview tabovi
     preview_btn_diff: "Razlike",
     preview_btn_plain: "Rezultat",
     preview_btn_side: "Pre/Posle",
@@ -54,6 +54,13 @@ const SR_RS = {
     preview_load_more_title: "Učitaj sledeće paragrafe",
     preview_load_more_none: "Nema više paragrafa za učitavanje",
 
+    // NEW (PR3): diff/preview labele
+    preview_label_before: "Pre",
+    preview_label_after: "Posle",
+    preview_label_too_large_diff: "Prevelik fajl za detaljan diff",
+    preview_label_truncated_perf: "Prikaz skraćen zbog performansi",
+
+    // Poruke
     msg_empty_selection:
         "Selektovan je samo prazan prostor (razmaci).<br>Molimo selektujte tekst ili ne selektujte ništa za ceo dokument.",
     msg_no_selection: "Nema selekcije za preslovljavanje.",
@@ -64,7 +71,7 @@ const SR_RS = {
     msg_preview_no_changes: "Tekst je već u traženom pismu ili nema šta da se menja.",
     msg_preview_scope_doc: "Dostupno samo kada pregledate ceo dokument",
 
-    // NEW: Zaštita od velikih dokumenata
+    // Zaštita od velikih dokumenata
     msg_doc_too_large:
         "Dokument je prevelik za automatsku obradu (limit 5MB).<br>Molimo podelite ga na manje delove.",
 
@@ -150,6 +157,12 @@ const EN_US: Record<TranslationKey, string> = {
     preview_load_more_title: "Load next paragraphs",
     preview_load_more_none: "No more paragraphs to load",
 
+    // NEW (PR3): diff/preview labels
+    preview_label_before: "Before",
+    preview_label_after: "After",
+    preview_label_too_large_diff: "File too large for detailed diff",
+    preview_label_truncated_perf: "View truncated due to performance",
+
     msg_empty_selection:
         "Only whitespace is selected.<br>Please select some text or select nothing for the whole document.",
     msg_no_selection: "No selection found.",
@@ -222,7 +235,7 @@ export function getLanguage(): Language {
 
 /**
  * Glavna funkcija za prevod.
- * Primer: t("status_done", type, time)
+ * Primer: t("status_done_selection", type, time)
  */
 export function t(key: TranslationKey, ...args: (string | number)[]): string {
     const dict = TRANSLATIONS[currentLang] || SR_RS;
