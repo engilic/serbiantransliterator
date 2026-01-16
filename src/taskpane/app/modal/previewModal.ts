@@ -1,4 +1,3 @@
-// src/taskpane/app/modal/previewModal.ts
 /* global document, navigator */
 
 import { state } from "../state";
@@ -12,6 +11,9 @@ import { t } from "../../../shared/i18n";
 import { PREVIEW_BATCH, DIFF_MAX_TOKENS } from "../preview/constants";
 import { renderDiffHtml, renderSideBySideWithHighlights } from "../preview/diffRenderer";
 import { convertTextForPreviewPlain } from "../preview/convertPreviewPlain";
+
+const PREVIEW_TITLE_ID = "previewTitleText";
+const PREVIEW_TITLE_TESTID = "previewTitleText";
 
 export function showPreviewToast(message: string, type: "success" | "error" | "info" = "info", ms = 1600) {
     const el = document.getElementById("previewToast") as HTMLDivElement | null;
@@ -89,6 +91,13 @@ function setLoadMoreButtonState(btn: HTMLButtonElement, canLoadMore: boolean, re
     btn.title = canLoadMore ? "Učitaj sledeće paragrafe" : (reason ?? "Nema više paragrafa za učitavanje");
 }
 
+function getPreviewTitleEl(): HTMLElement | null {
+    return (
+        (document.getElementById(PREVIEW_TITLE_ID) as HTMLElement | null) ??
+        (document.querySelector(`[data-testid="${PREVIEW_TITLE_TESTID}"]`) as HTMLElement | null)
+    );
+}
+
 async function loadMorePreviewParagraphs() {
     const snap = state.preview.settingsSnap;
     if (!snap) return;
@@ -110,7 +119,7 @@ async function loadMorePreviewParagraphs() {
     const { out } = convertTextForPreviewPlain(newOriginal, snap, protectedWords);
     state.preview.converted = out;
 
-    const titleEl = document.getElementById("state.preview.titleText");
+    const titleEl = getPreviewTitleEl();
     if (titleEl) titleEl.textContent = state.preview.titleText;
 
     const okBtn = document.getElementById("modalOk") as HTMLButtonElement | null;
@@ -127,7 +136,7 @@ function ensureModalApplyButton(): HTMLButtonElement {
     btn = document.createElement("button");
     btn.id = "modalApply";
     btn.type = "button";
-    btn.innerText = "PRESLOVI";
+    btn.innerText = t("btn_apply");
     btn.style.backgroundColor = "var(--primary-color)";
     btn.style.color = "white";
     btn.style.border = "none";
@@ -153,7 +162,7 @@ export function showPreviewModal() {
     text.innerHTML = `
     <div id="previewStickyHeader" class="preview-sticky-header">
       <div class="preview-header-row">
-        <div id="state.preview.titleText" class="preview-title">
+        <div id="${PREVIEW_TITLE_ID}" data-testid="${PREVIEW_TITLE_TESTID}" class="preview-title">
           ${escapeHtml(state.preview.titleText)}
         </div>
 
@@ -161,10 +170,10 @@ export function showPreviewModal() {
           <button id="previewCloseBtn" class="icon-btn preview-close-btn" type="button">×</button>
           <div id="previewToast" class="preview-toast" role="status"></div>
           <div class="preview-header-buttons">
-            <button id="previewBtnDiff" class="mini-btn" type="button">Razlike</button>
-            <button id="previewBtnPlain" class="mini-btn" type="button">Rezultat</button>
-            <button id="previewBtnSide" class="mini-btn" type="button">Pre/Posle</button>
-            <button id="previewBtnCopy" class="mini-btn" type="button">Kopiraj</button>
+            <button id="previewBtnDiff" class="mini-btn" type="button">${escapeHtml(t("preview_btn_diff"))}</button>
+            <button id="previewBtnPlain" class="mini-btn" type="button">${escapeHtml(t("preview_btn_plain"))}</button>
+            <button id="previewBtnSide" class="mini-btn" type="button">${escapeHtml(t("preview_btn_side"))}</button>
+            <button id="previewBtnCopy" class="mini-btn" type="button">${escapeHtml(t("preview_btn_copy"))}</button>
           </div>
         </div>
       </div>
@@ -201,7 +210,7 @@ export function showPreviewModal() {
     cancelBtn.style.display = "none";
 
     okBtn.style.display = "inline-flex";
-    okBtn.innerText = "Učitaj još";
+    okBtn.innerText = t("btn_load_more");
     okBtn.style.backgroundColor = "var(--bg-color)";
     okBtn.style.color = "var(--primary-color)";
     okBtn.style.border = "1px solid var(--input-border)";
@@ -217,6 +226,7 @@ export function showPreviewModal() {
     }
 
     applyBtn.style.display = "inline-flex";
+    applyBtn.innerText = t("btn_apply");
     applyBtn.onclick = async () => {
         overlay.style.display = "none";
         resetModalButtons();

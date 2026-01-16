@@ -1,4 +1,8 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
+# Fail fast ako postoje merge conflict markeri bilo gde u repo-u
+npm run check:conflicts
+
+# Format staged fajlova (prettier) + ostalo što si već imao
 npx lint-staged

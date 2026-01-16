@@ -1,23 +1,23 @@
-﻿import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { state } from "../src/taskpane/app/state";
 import { showPreviewModal } from "../src/taskpane/app/modal/previewModal";
+import { PREVIEW_BATCH } from "../src/taskpane/app/preview/constants";
 
+// Minimal mocks: preview modal koristi applyFromPreview + runWithUiLock u apply dugmetu
 vi.mock("../src/taskpane/app/uiLock", () => ({
-    runWithUiLock: async (fn: () => Promise<void>) => await fn(),
+    runWithUiLock: async (fn: () => Promise<void>) => {
+        await fn();
+    },
 }));
 
 vi.mock("../src/taskpane/app/word/apply", () => ({
     applyFromPreview: vi.fn(async () => undefined),
 }));
 
-vi.mock("../src/taskpane/app/preview/convertPreviewPlain", () => ({
-    convertTextForPreviewPlain: vi.fn((input: string) => ({ out: input.toUpperCase(), type: "Lat → Ćir" })),
-}));
-
-beforeEach(() => {
+function setupModalSkeletonDom() {
     document.body.innerHTML = `
-    <div id="modalOverlay" style="display:none">
-      <div id="modal" class="modal">
+    <div id="modalOverlay">
+      <div id="modal">
         <h3 id="modalTitle"></h3>
         <div id="modalText"></div>
         <textarea id="modalInput"></textarea>
@@ -28,59 +28,74 @@ beforeEach(() => {
       </div>
     </div>
   `;
+}
 
-    // setup preview state to mimic "document preview"
-    state.preview.scope = "document";
-    state.preview.mode = "diff";
-    state.preview.typeText = "Lat → Ćir";
-    state.preview.titleText = "Prvih 2 paragrafa (Lat → Ćir)";
+function getPreviewTitleEl(): HTMLElement | null {
+    return document.querySelector('[data-testid="previewTitleText"]') as HTMLElement | null;
+}
+
+beforeEach(() => {
+    setupModalSkeletonDom();
+
+    // reset preview state
     state.preview.settingsSnap = {
         schemaVersion: 2,
         profile: "custom",
         userWordsCustom: [],
-        protectBrands: true,
-        applySerbianQuotes: true,
-        preserveCodeBlocks: true,
-        setProofingLanguage: true,
-        protectRomans: true,
-        curlyProtection: "placeholders",
-        fixDoubleSpaces: true,
-        formatDates: false,
         confirmWholeDoc: true,
         includeHeadersFooters: false,
         includeFootnotes: false,
         includeEndnotes: false,
+        direction: "lat-to-cyr",
+        protectBrands: false,
+        preserveCodeBlocks: true,
+        protectRomans: true,
+        applySerbianQuotes: false,
+        fixDoubleSpaces: true,
+        formatDates: false,
+        curlyProtection: "placeholders",
+        setProofingLanguage: false,
         showStats: false,
-        direction: "auto",
     };
 
-    state.preview.allParagraphs = ["a", "b", "c", "d", "e"];
-    state.preview.shownCount = 2;
-    state.preview.canLoadMore = true;
-    state.preview.original = state.preview.allParagraphs.slice(0, 2).join("\n");
-    state.preview.converted = state.preview.original.toUpperCase();
-});
+    state.customWordsSet.clear();
+    state.presetWordsSet.clear();
 
-afterEach(() => {
-    document.body.innerHTML = "";
+    // Make a small doc preview list that requires "load more"
+    const paras = Array.from({ length: PREVIEW_BATCH + 5 }).map((_, i) => `Para ${i + 1}`);
+    state.preview.allParagraphs = paras;
+    state.preview.shownCount = PREVIEW_BATCH;
+    state.preview.canLoadMore = true;
+
+    state.preview.scope = "document";
+    state.preview.typeText = "Lat → Ćir";
+    state.preview.titleText = `Prvih ${state.preview.shownCount} paragrafa (${state.preview.typeText})`;
+
+    state.preview.original = paras.slice(0, state.preview.shownCount).join("\n");
+    state.preview.converted = state.preview.original; // modal će ionako da renderuje/refreshuje
+    state.preview.mode = "diff";
 });
 
 describe("previewModal - load more (document preview)", () => {
-    it("clicking 'Učitaj još' increases shownCount and updates title", async () => {
+    it("clicking 'Učitaj još' increases shownCount and updates title (via data-testid)", async () => {
         showPreviewModal();
 
         const okBtn = document.getElementById("modalOk") as HTMLButtonElement;
         expect(okBtn).toBeTruthy();
-        expect(okBtn.innerText).toBe("Učitaj još");
+        expect(okBtn.disabled).toBe(false);
 
-        // click load more
-        await okBtn.onclick?.(null as any);
+        const before = state.preview.shownCount;
 
-        expect(state.preview.shownCount).toBeGreaterThan(2);
-        expect(state.preview.titleText).toContain(`Prvih ${state.preview.shownCount} paragrafa`);
+        // click "Učitaj još" (handler je async)
+        await (okBtn.onclick as unknown as () => Promise<void>)();
 
-        // modal text holder should exist
-        const titleEl = document.getElementById("state.preview.titleText");
-        expect(titleEl?.textContent).toContain(`Prvih ${state.preview.shownCount} paragrafa`);
+        expect(state.preview.shownCount).toBeGreaterThan(before);
+        expect(state.preview.shownCount).toBe(
+            Math.min(state.preview.allParagraphs.length, before + PREVIEW_BATCH)
+        );
+
+        const titleEl = getPreviewTitleEl();
+        expect(titleEl).toBeTruthy();
+        expect(titleEl!.textContent ?? "").toContain(`Prvih ${state.preview.shownCount} paragrafa`);
     });
 });
