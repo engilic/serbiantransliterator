@@ -114,12 +114,12 @@ header {
     gap: 12px;
 }
 
-    .header-content h1 {
-        margin: 0;
-        font-size: 18px;
-        font-weight: 600;
-        color: var(--primary-color);
-    }
+.header-content h1 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--primary-color);
+}
 
 .version {
     font-size: 11px;
@@ -202,9 +202,9 @@ label {
     transition: opacity 0.2s;
 }
 
-    label:hover {
-        opacity: 0.8;
-    }
+label:hover {
+    opacity: 0.8;
+}
 
 input[type="checkbox"],
 input[type="radio"] {
@@ -226,12 +226,12 @@ select {
     transition: border-color 0.2s;
 }
 
-    select:focus {
-        outline: none;
-        border-color: var(--focus-border);
-        border-bottom-width: 2px;
-        padding-bottom: 7px;
-    }
+select:focus {
+    outline: none;
+    border-color: var(--focus-border);
+    border-bottom-width: 2px;
+    padding-bottom: 7px;
+}
 
 .hint {
     font-size: 12px;
@@ -261,9 +261,9 @@ button {
     user-select: none;
 }
 
-    button:active:not(:disabled) {
-        transform: scale(0.98);
-    }
+button:active:not(:disabled) {
+    transform: scale(0.98);
+}
 
 #runBtn,
 #previewBtn {
@@ -280,10 +280,10 @@ button {
     color: var(--primary-text);
 }
 
-    #runBtn:hover:not(:disabled) {
-        background-color: var(--primary-hover);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-    }
+#runBtn:hover:not(:disabled) {
+    background-color: var(--primary-hover);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
 
 #previewBtn {
     background-color: var(--bg-color);
@@ -291,20 +291,20 @@ button {
     border: 1px solid var(--border-color);
 }
 
-    #previewBtn:hover:not(:disabled) {
-        background-color: var(--neutral-lighter);
-        border-color: var(--primary-color);
-    }
+#previewBtn:hover:not(:disabled) {
+    background-color: var(--neutral-lighter);
+    border-color: var(--primary-color);
+}
 
-    #runBtn:disabled,
-    #previewBtn:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-        background-color: var(--disabled-bg);
-        color: var(--disabled-text);
-        border-color: transparent;
-        box-shadow: none;
-    }
+#runBtn:disabled,
+#previewBtn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background-color: var(--disabled-bg);
+    color: var(--disabled-text);
+    border-color: transparent;
+    box-shadow: none;
+}
 
 #runBtn .btn-subtitle {
     font-size: 11px;
@@ -338,25 +338,25 @@ button {
     height: 28px;
 }
 
-    .mini-btn:hover:not(:disabled) {
-        background-color: var(--neutral-lighter);
-        color: var(--primary-hover);
-        border-color: var(--primary-hover);
-    }
+.mini-btn:hover:not(:disabled) {
+    background-color: var(--neutral-lighter);
+    color: var(--primary-hover);
+    border-color: var(--primary-hover);
+}
 
-    .mini-btn:disabled {
-        background-color: var(--neutral-lighter);
-        color: var(--disabled-text);
-        border-color: var(--border-color);
-        cursor: default;
-        opacity: 0.6;
-    }
+.mini-btn:disabled {
+    background-color: var(--neutral-lighter);
+    color: var(--disabled-text);
+    border-color: var(--border-color);
+    cursor: default;
+    opacity: 0.6;
+}
 
-    .mini-btn svg {
-        width: 14px;
-        height: 14px;
-        fill: currentColor;
-    }
+.mini-btn svg {
+    width: 14px;
+    height: 14px;
+    fill: currentColor;
+}
 
 #resetBtn {
     font-size: 11px;
@@ -378,34 +378,34 @@ button {
     transition: all 0.2s;
 }
 
-    .icon-btn:hover:not(:disabled) {
-        background-color: var(--neutral-lighter);
-        border-color: var(--primary-color);
-        opacity: 1;
-        color: var(--primary-color);
-    }
+.icon-btn:hover:not(:disabled) {
+    background-color: var(--neutral-lighter);
+    border-color: var(--primary-color);
+    opacity: 1;
+    color: var(--primary-color);
+}
 
-    .icon-btn:disabled {
-        opacity: 0.3;
-        cursor: default;
-        background-color: var(--disabled-bg);
-    }
+.icon-btn:disabled {
+    opacity: 0.3;
+    cursor: default;
+    background-color: var(--disabled-bg);
+}
 
-    .icon-btn svg {
-        width: 18px;
-        height: 18px;
-        fill: currentColor;
-    }
+.icon-btn svg {
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
+}
 
 .btn-add {
     color: var(--success-color);
     border-color: var(--border-color);
 }
 
-    .btn-add:hover:not(:disabled) {
-        background-color: var(--bg-color);
-        border-color: var(--success-color);
-    }
+.btn-add:hover:not(:disabled) {
+    background-color: var(--bg-color);
+    border-color: var(--success-color);
+}
 
 .btn-primary {
     background: var(--primary-color);
@@ -413,9 +413,9 @@ button {
     border: none;
 }
 
-    .btn-primary:hover {
-        background-color: var(--primary-hover);
-    }
+.btn-primary:hover {
+    background-color: var(--primary-hover);
+}
 
 /* Status/Stats */
 #msg {
@@ -464,16 +464,16 @@ footer {
     background-color: var(--neutral-lighter);
 }
 
-    footer a {
-        color: var(--link-color);
-        text-decoration: none;
-        margin: 0 6px;
-        font-weight: 500;
-    }
+footer a {
+    color: var(--link-color);
+    text-decoration: none;
+    margin: 0 6px;
+    font-weight: 500;
+}
 
-        footer a:hover {
-            text-decoration: underline;
-        }
+footer a:hover {
+    text-decoration: underline;
+}
 
 /* Tags */
 .tags-container {
@@ -490,11 +490,11 @@ footer {
     transition: border 0.2s;
 }
 
-    .tags-container:focus-within {
-        border-color: var(--focus-border);
-        border-bottom-width: 2px;
-        padding-bottom: 5px;
-    }
+.tags-container:focus-within {
+    border-color: var(--focus-border);
+    border-bottom-width: 2px;
+    padding-bottom: 5px;
+}
 
 .tags-list {
     display: contents;
@@ -512,17 +512,17 @@ footer {
     font-weight: 500;
 }
 
-    .tag.custom {
-        background-color: var(--tag-custom-bg);
-        border-color: var(--tag-custom-border);
-        color: var(--tag-custom-text);
-    }
+.tag.custom {
+    background-color: var(--tag-custom-bg);
+    border-color: var(--tag-custom-border);
+    color: var(--tag-custom-text);
+}
 
-    .tag.preset {
-        background-color: var(--tag-preset-bg);
-        border-color: var(--tag-preset-border);
-        color: var(--tag-preset-text);
-    }
+.tag.preset {
+    background-color: var(--tag-preset-bg);
+    border-color: var(--tag-preset-border);
+    color: var(--tag-preset-text);
+}
 
 .tag-remove {
     cursor: pointer;
@@ -535,11 +535,11 @@ footer {
     height: 100%;
 }
 
-    .tag-remove:hover {
-        opacity: 1;
-        background-color: rgba(0,0,0,0.05);
-        border-radius: 50%;
-    }
+.tag-remove:hover {
+    opacity: 1;
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 50%;
+}
 
 .tag-input {
     border: none;
@@ -582,19 +582,19 @@ footer {
     flex-direction: column;
 }
 
-    .modal.wide {
-        max-width: 750px;
-        width: 96%;
-        height: 80vh;
-    }
+.modal.wide {
+    max-width: 750px;
+    width: 96%;
+    height: 80vh;
+}
 
-    .modal h3 {
-        margin-top: 0;
-        color: var(--text-color);
-        font-size: 18px;
-        font-weight: 600;
-        margin-bottom: 16px;
-    }
+.modal h3 {
+    margin-top: 0;
+    color: var(--text-color);
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 16px;
+}
 
 .modal-content {
     overflow-y: auto;
@@ -676,31 +676,31 @@ footer {
     border: 1px solid var(--border-color);
     background: var(--bg-color);
     color: var(--text-color);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     animation: fadeIn 0.2s ease-out;
 }
 
-    .preview-toast.show {
-        display: block;
-    }
+.preview-toast.show {
+    display: block;
+}
 
-    .preview-toast.success {
-        border-color: var(--success-color);
-        color: var(--success-color);
-        background-color: #f0fff0;
-    }
+.preview-toast.success {
+    border-color: var(--success-color);
+    color: var(--success-color);
+    background-color: #f0fff0;
+}
 
-    .preview-toast.error {
-        border-color: var(--error-color);
-        color: var(--error-color);
-        background-color: #fff0f0;
-    }
+.preview-toast.error {
+    border-color: var(--error-color);
+    color: var(--error-color);
+    background-color: #fff0f0;
+}
 
-    .preview-toast.info {
-        border-color: var(--primary-color);
-        color: var(--primary-color);
-        background-color: #f0f8ff;
-    }
+.preview-toast.info {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    background-color: #f0f8ff;
+}
 
 @media (prefers-color-scheme: dark) {
     .diff-changed {
@@ -751,19 +751,19 @@ footer {
     margin-left: 4px;
 }
 
-    .advanced-settings.open {
-        display: block;
-        animation: fadeIn 0.2s ease-out;
-    }
+.advanced-settings.open {
+    display: block;
+    animation: fadeIn 0.2s ease-out;
+}
 
 #clearAllBtn {
     color: var(--error-color);
     border-color: transparent;
 }
 
-    #clearAllBtn:hover:not(:disabled) {
-        background-color: rgba(209, 52, 56, 0.1);
-    }
+#clearAllBtn:hover:not(:disabled) {
+    background-color: rgba(209, 52, 56, 0.1);
+}
 
 .preview-sticky-header {
     position: sticky;
@@ -812,9 +812,9 @@ footer {
     border-radius: 4px;
 }
 
-    .preview-close-btn:hover {
-        background-color: var(--neutral-lighter);
-    }
+.preview-close-btn:hover {
+    background-color: var(--neutral-lighter);
+}
 
 .preview-header-buttons {
     display: flex;
