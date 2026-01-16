@@ -87,8 +87,8 @@ function main() {
 
     console.error(
         "ERROR: Hardcoded user-facing strings detected in src/taskpane/taskpane.html.\n" +
-        "- Use data-i18n for element text.\n" +
-        '- Use data-i18n-attr="title:KEY,placeholder:KEY,aria-label:KEY" for attributes.\n'
+            "- Use data-i18n for element text.\n" +
+            '- Use data-i18n-attr="title:KEY,placeholder:KEY,aria-label:KEY" for attributes.\n'
     );
 
     for (const v of violations.slice(0, 60)) {
