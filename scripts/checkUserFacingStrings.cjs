@@ -46,14 +46,14 @@ function posFromIndex(text, idx) {
     return { line, col };
 }
 
-function snippetAt(text, idx, maxLen = 120) {
+function snippetAt(text, idx, maxLen = 140) {
     const s = text.slice(idx, Math.min(text.length, idx + maxLen));
     return s.replace(/\s+/g, " ").trim();
 }
 
 /**
  * Returns array of violations for a single file.
- * Each violation: { line, col, rule, snippet }
+ * Each violation: { file, line, col, rule, snippet }
  */
 function checkFile(filePath) {
     const rel = path.relative(ROOT, filePath);
@@ -63,9 +63,17 @@ function checkFile(filePath) {
     const violations = [];
 
     // Rule 1: setStatus(...) first arg must NOT be a string literal.
-    const reSetStatus = /\bsetStatus\s*\(\s*([`'"])/g;
+    // Disallowed:
+    //   setStatus("...", ...)
+    //   setStatus('...', ...)
+    //   setStatus(`...`, ...)
+    // Allowed:
+    //   setStatus(t("..."), ...)
+    //   setStatus(msgVar, ...)
+    const reSetStatusHardcoded = /\bsetStatus\s*\(\s*([`'"])/g;
+
     let m;
-    while ((m = reSetStatus.exec(text)) !== null) {
+    while ((m = reSetStatusHardcoded.exec(text)) !== null) {
         const idx = m.index;
         const { line, col } = posFromIndex(text, idx);
 
@@ -77,12 +85,17 @@ function checkFile(filePath) {
             snippet: snippetAt(text, idx),
         });
 
-        if (reSetStatus.lastIndex === idx) reSetStatus.lastIndex++;
+        if (reSetStatusHardcoded.lastIndex === idx) reSetStatusHardcoded.lastIndex++;
     }
 
     // Rule 2: showModalInfo(...) first arg must NOT be a string literal.
-    const reShowModalInfo = /\bshowModalInfo\s*\(\s*([`'"])/g;
-    while ((m = reShowModalInfo.exec(text)) !== null) {
+    // Disallowed:
+    //   showModalInfo("Greška", ...)
+    // Allowed:
+    //   showModalInfo(t("modal_title_error"), ...)
+    const reShowModalInfoHardcoded = /\bshowModalInfo\s*\(\s*([`'"])/g;
+
+    while ((m = reShowModalInfoHardcoded.exec(text)) !== null) {
         const idx = m.index;
         const { line, col } = posFromIndex(text, idx);
 
@@ -94,7 +107,32 @@ function checkFile(filePath) {
             snippet: snippetAt(text, idx),
         });
 
-        if (reShowModalInfo.lastIndex === idx) reShowModalInfo.lastIndex++;
+        if (reShowModalInfoHardcoded.lastIndex === idx) reShowModalInfoHardcoded.lastIndex++;
+    }
+
+    // Rule 3 (NEW): t("status_error_prefix", <arg>) must NOT use a string literal as the 2nd arg.
+    // Disallowed:
+    //   t("status_error_prefix", "Dokument prevelik")
+    //   t("status_error_prefix", `...`)
+    // Allowed:
+    //   t("status_error_prefix", t("status_doc_too_large_short"))
+    //   t("status_error_prefix", someVar)
+    //   t("status_error_prefix", err.message)
+    const reStatusErrorPrefixHardcodedArg = /\bt\s*\(\s*["']status_error_prefix["']\s*,\s*([`'"])/g;
+
+    while ((m = reStatusErrorPrefixHardcodedArg.exec(text)) !== null) {
+        const idx = m.index;
+        const { line, col } = posFromIndex(text, idx);
+
+        violations.push({
+            file: rel,
+            line,
+            col,
+            rule: "t(status_error_prefix)-hardcoded-arg",
+            snippet: snippetAt(text, idx),
+        });
+
+        if (reStatusErrorPrefixHardcodedArg.lastIndex === idx) reStatusErrorPrefixHardcodedArg.lastIndex++;
     }
 
     return violations;
@@ -110,6 +148,7 @@ function main() {
 
     /** @type {Array<{file:string,line:number,col:number,rule:string,snippet:string}>} */
     const all = [];
+
     for (const f of files) {
         all.push(...checkFile(f));
     }
@@ -118,7 +157,12 @@ function main() {
         process.exit(0);
     }
 
-    console.error('ERROR: Hardcoded user-facing strings detected. Use i18n: t("...") instead.\n');
+    console.error(
+        "ERROR: Hardcoded user-facing strings detected.\n" +
+            '- Use i18n: t("...") for user-visible text\n' +
+            '- Do not pass string literals into t("status_error_prefix", ...)\n'
+    );
+
     for (const v of all) {
         console.error(`${v.file}:${v.line}:${v.col}  ${v.rule}\n  ${v.snippet}\n`);
     }
