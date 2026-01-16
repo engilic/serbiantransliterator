@@ -25,6 +25,7 @@ function logTelemetrySkippedRuns(skippedByReason: Record<string, number>) {
 }
 
 function reasonToSerbian(reason: PreviewCacheDecisionReason): string {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const key = `reason_${reason === "ok" ? "unknown" : reason}` as any;
     // Mapped: optsChanged -> reason_opts_changed, etc.
     // Manual mapping for safety:
