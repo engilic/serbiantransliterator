@@ -32,6 +32,9 @@ const SR_RS = {
     msg_preview_no_changes: "Tekst je već u traženom pismu ili nema šta da se menja.",
     msg_preview_scope_doc: "Dostupno samo kada pregledate ceo dokument",
 
+    // NEW: Zaštita od velikih dokumenata
+    msg_doc_too_large: "Dokument je prevelik za automatsku obradu (limit 5MB).<br>Molimo podelite ga na manje delove.",
+
     // Preview
     preview_title_selection: "Selektovani tekst ({0})",
     preview_title_doc: "Prvih {0} paragrafa ({1})",
