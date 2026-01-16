@@ -8,6 +8,77 @@ let currentLang: Language = "sr";
 
 // === SRPSKI (Izvor) ===
 const SR_RS = {
+    // ===== App / Taskpane static UI (NEW) =====
+    app_title: "Serbian Transliterator",
+    ui_version_prefix: "v",
+
+    section_settings: "PODEŠAVANJA",
+    btn_export: "Izvezi",
+    btn_import: "Uvezi",
+    btn_export_title: "Izvezi podešavanja",
+    btn_import_title: "Uvezi podešavanja",
+
+    section_profile: "PROFIL",
+    btn_reset_factory: "Fabrička podešavanja",
+    profile_select_aria: "Izbor profila",
+
+    section_direction: "SMER",
+    dir_auto: "Auto",
+    dir_to_ascii: "Ošišana latinica",
+    dir_lat_to_cyr: "Lat → Ćir",
+    dir_cyr_to_lat: "Ćir → Lat",
+
+    section_options: "OPCIJE",
+    opt_confirm_whole_doc: "Potvrdi preslovljavanje celog dokumenta",
+    opt_include_headers_footers: "Uključi zaglavlja/podnožja (header/footer)",
+    opt_include_footnotes: "Uključi fusnote (footnotes)",
+    opt_include_endnotes: "Uključi endnote (endnotes)",
+    opt_protect_brands: "Zaštiti brendove (Windows, ...)",
+    opt_smart_quotes: "Pametni navodnici ( „ … “ )",
+    opt_preserve_code_before: "Zaštiti kod (",
+    ui_inline_code_word: "inline",
+    opt_preserve_code_between: " / ",
+    ui_block_code_word: "blok",
+    opt_preserve_code_after: ")",
+    opt_show_stats: "Prikaži detaljnu statistiku",
+
+    section_corrections: "KOREKCIJA",
+    opt_fix_spaces: "Ukloni višak razmaka",
+
+    section_advanced: "NAPREDNO",
+    btn_toggle_advanced: "Napredno",
+    btn_toggle_advanced_title: "Prikaži/sakrij napredna podešavanja",
+
+    opt_curly_label_before: "Zaštita ",
+    opt_curly_label_after: " blokova",
+    opt_curly_aria: "Zaštita vitičastih zagrada",
+    opt_curly_placeholders: "Samo placeholder-i (npr. {USER_NAME})",
+    opt_curly_all: "Sve u {...} (legacy)",
+    opt_curly_none: "Ne štiti {...}",
+    opt_curly_hint: "Kontroliše da li se sadržaj u vitičastim zagradama preslovljava.",
+
+    opt_protect_romans: "Zaštiti rimske brojeve (IV, XIV)",
+    opt_set_proofing_language: "Postavi jezik provere (sr-Cyrl / sr-Latn)",
+    opt_format_dates: "Formatiraj datume (npr. 21.10.2023.)",
+    opt_format_dates_hint: "Ova opcija menja sadržaj (nije samo preslovljavanje).",
+
+    section_protected: "ZAŠTIĆENO",
+    btn_add_word_title: "Dodaj reč",
+    btn_clear_custom: "Moje",
+    btn_clear_preset: "Profil",
+    btn_clear_all: "Sve",
+    btn_clear_custom_title: "Obriši moje tagove",
+    btn_clear_preset_title: "Obriši tagove profila",
+    btn_clear_all_title: "Obriši sve reči",
+    tags_input_placeholder: "Upiši reč ili frazu...",
+    tags_hint: "Reči ovde ostaju u originalnom pismu.",
+
+    footer_help: "Pomoć",
+    footer_privacy: "Privatnost",
+    footer_copyright: "© 2026",
+
+    // ===== Existing keys (original project) =====
+
     // Statusi
     status_ready: "Spreman za rad.",
     status_generating_preview: "Generišem pregled...",
@@ -113,7 +184,7 @@ const SR_RS = {
     reason_missing: "cache nije kompletan",
     reason_unknown: "nepoznat razlog",
 
-    // Stats (postojeće)
+    // Stats
     stats_scope_selection: "Selekcija",
     stats_scope_document: "Ceo dokument",
     stats_header_apply: "Statistika: {0}",
@@ -122,7 +193,7 @@ const SR_RS = {
     stats_footnotes_na: "Fusnote podržane: NE",
     stats_endnotes_na: "Endnote podržane: NE",
 
-    // PR6: stats lines/sections (da nema hardcode u statsText.ts)
+    // PR6: stats lines/sections
     stats_line_scope: "Opseg: {0}",
     stats_line_nodes_changed: "Promenjeno čvorova: {0}",
     stats_line_time_ms: "Vreme: {0}ms",
@@ -152,8 +223,79 @@ const SR_RS = {
 };
 
 // === ENGLESKI (Prevod) ===
+// Mora sadržati SVE ključeve iz SR_RS, jer je tip: Record<TranslationKey, string>
 const EN_US: Record<TranslationKey, string> = {
-    // Statuses
+    // ===== App / Taskpane static UI (NEW) =====
+    app_title: "Serbian Transliterator",
+    ui_version_prefix: "v",
+
+    section_settings: "SETTINGS",
+    btn_export: "Export",
+    btn_import: "Import",
+    btn_export_title: "Export settings",
+    btn_import_title: "Import settings",
+
+    section_profile: "PROFILE",
+    btn_reset_factory: "Factory settings",
+    profile_select_aria: "Profile select",
+
+    section_direction: "DIRECTION",
+    dir_auto: "Auto",
+    dir_to_ascii: "ASCII Latin",
+    dir_lat_to_cyr: "Lat → Cyr",
+    dir_cyr_to_lat: "Cyr → Lat",
+
+    section_options: "OPTIONS",
+    opt_confirm_whole_doc: "Confirm processing the whole document",
+    opt_include_headers_footers: "Include headers/footers",
+    opt_include_footnotes: "Include footnotes",
+    opt_include_endnotes: "Include endnotes",
+    opt_protect_brands: "Protect brands (Windows, ...)",
+    opt_smart_quotes: "Smart quotes ( „ … “ )",
+    opt_preserve_code_before: "Preserve code (",
+    ui_inline_code_word: "inline",
+    opt_preserve_code_between: " / ",
+    ui_block_code_word: "block",
+    opt_preserve_code_after: ")",
+    opt_show_stats: "Show detailed statistics",
+
+    section_corrections: "CORRECTIONS",
+    opt_fix_spaces: "Remove extra spaces",
+
+    section_advanced: "ADVANCED",
+    btn_toggle_advanced: "Advanced",
+    btn_toggle_advanced_title: "Show/hide advanced settings",
+
+    opt_curly_label_before: "Protection for ",
+    opt_curly_label_after: " blocks",
+    opt_curly_aria: "Curly braces protection",
+    opt_curly_placeholders: "Only placeholders (e.g. {USER_NAME})",
+    opt_curly_all: "Everything inside {...} (legacy)",
+    opt_curly_none: "Do not protect {...}",
+    opt_curly_hint: "Controls whether text inside curly braces is transliterated.",
+
+    opt_protect_romans: "Protect Roman numerals (IV, XIV)",
+    opt_set_proofing_language: "Set proofing language (sr-Cyrl / sr-Latn)",
+    opt_format_dates: "Format dates (e.g. 21.10.2023.)",
+    opt_format_dates_hint: "This option changes content (not just transliteration).",
+
+    section_protected: "PROTECTED",
+    btn_add_word_title: "Add word",
+    btn_clear_custom: "Mine",
+    btn_clear_preset: "Profile",
+    btn_clear_all: "All",
+    btn_clear_custom_title: "Clear my tags",
+    btn_clear_preset_title: "Clear profile tags",
+    btn_clear_all_title: "Clear all words",
+    tags_input_placeholder: "Type a word or phrase...",
+    tags_hint: "Words here remain in the original script.",
+
+    footer_help: "Help",
+    footer_privacy: "Privacy",
+    footer_copyright: "© 2026",
+
+    // ===== Existing keys (original project) =====
+
     status_ready: "Ready.",
     status_generating_preview: "Generating preview...",
     status_processing: "Processing...",
@@ -169,7 +311,6 @@ const EN_US: Record<TranslationKey, string> = {
     status_preview_applied: "Done (applied from preview).",
     status_error_prefix: "Error: {0}",
 
-    // PR2
     status_no_text_found: "No text found to process.",
     status_processing_headers_footers: "Processing: headers/footers...",
     status_processing_footnotes: "Processing: footnotes...",
@@ -177,30 +318,24 @@ const EN_US: Record<TranslationKey, string> = {
     status_applying_preview: "Applying preview (no re-conversion)...",
     status_preview_cache_invalid: "Preview cache invalid ({0}). Re-converting...",
 
-    // PR4
     status_preview_shown: "Preview shown ({0})",
 
-    // PR5
     status_extra_headers_footers: "H/F: {0}",
     status_extra_footnotes_na: "Footnotes: N/A",
     status_extra_endnotes_na: "Endnotes: N/A",
 
-    // PR6
     status_doc_too_large_short: "Document too large (5MB limit)",
 
-    // Modals & Messages
     modal_title_confirm: "Confirmation",
     modal_title_error: "Error",
     modal_title_info: "No changes",
 
-    // Buttons
     btn_ok: "OK",
     btn_cancel: "Cancel",
     btn_close: "Close",
     btn_load_more: "Load more",
     btn_apply: "APPLY",
 
-    // PR4: main taskpane buttons (dynamic labels)
     ui_btn_run: "APPLY",
     ui_btn_preview: "PREVIEW",
     ui_sub_no_text: "NO TEXT",
@@ -209,26 +344,21 @@ const EN_US: Record<TranslationKey, string> = {
     ui_sub_run_document: "whole document",
     ui_sub_preview_document: "whole document",
 
-    // PR6: tags
     ui_tag_remove: "Remove",
 
-    // Preview tabs
     preview_btn_diff: "Diff",
     preview_btn_plain: "Result",
     preview_btn_side: "Before/After",
     preview_btn_copy: "Copy",
 
-    // PR2: tooltip / fallback for "load more"
     preview_load_more_title: "Load next paragraphs",
     preview_load_more_none: "No more paragraphs to load",
 
-    // PR3: diff/preview labels
     preview_label_before: "Before",
     preview_label_after: "After",
     preview_label_too_large_diff: "File too large for detailed diff",
     preview_label_truncated_perf: "View truncated due to performance",
 
-    // Messages
     msg_empty_selection:
         "Only whitespace is selected.<br>Please select some text or select nothing for the whole document.",
     msg_no_selection: "No selection found.",
@@ -242,14 +372,12 @@ const EN_US: Record<TranslationKey, string> = {
     msg_doc_too_large:
         "Document is too large for automatic processing (5MB limit).<br>Please split it into smaller parts.",
 
-    // Preview
     preview_title_selection: "Selection ({0})",
     preview_title_doc: "First {0} paragraphs ({1})",
     preview_diff_no_changes: "No text changes.",
     preview_toast_copied: "Copied",
     preview_toast_copy_fail: "Cannot copy",
 
-    // Cache reasons
     reason_opts_changed: "settings changed",
     reason_expired: "cache expired",
     reason_selection_changed: "selection changed",
@@ -257,7 +385,6 @@ const EN_US: Record<TranslationKey, string> = {
     reason_missing: "cache incomplete",
     reason_unknown: "unknown reason",
 
-    // Stats (postojeće)
     stats_scope_selection: "Selection",
     stats_scope_document: "Whole document",
     stats_header_apply: "Stats: {0}",
@@ -266,7 +393,6 @@ const EN_US: Record<TranslationKey, string> = {
     stats_footnotes_na: "Footnotes supported: NO",
     stats_endnotes_na: "Endnotes supported: NO",
 
-    // PR6: stats lines/sections
     stats_line_scope: "Scope: {0}",
     stats_line_nodes_changed: "Nodes changed: {0}",
     stats_line_time_ms: "Time: {0}ms",
@@ -285,7 +411,6 @@ const EN_US: Record<TranslationKey, string> = {
     stats_line_footnotes: "Footnotes: {0}",
     stats_line_endnotes: "Endnotes: {0}",
 
-    // Profile names
     profile_custom: "Custom",
     profile_it: "IT / Technology",
     profile_finance: "Finance / Banking",

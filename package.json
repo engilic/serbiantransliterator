@@ -30,7 +30,9 @@
         "deploy": "npm run build && wrangler pages deploy dist --project-name=serbiantransliterator",
         "check:conflicts": "node scripts/checkConflicts.cjs",
         "prepare": "husky install",
-        "check:i18n": "node scripts/checkUserFacingStrings.cjs"
+        "check:i18n:ts": "node scripts/checkUserFacingStrings.cjs",
+        "check:i18n:html": "node scripts/checkTaskpaneHtmlI18n.cjs",
+        "check:i18n": "npm run check:i18n:ts && npm run check:i18n:html"
     },
     "lint-staged": {
         "**/*.{ts,js,json,css,md,html}": [
