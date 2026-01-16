@@ -32,6 +32,9 @@ const SR_RS = {
     status_applying_preview: "Primena pregleda (bez ponovne konverzije)...",
     status_preview_cache_invalid: "Cache pregleda ne važi ({0}). Radim ponovnu konverziju...",
 
+    // PR4: status posle otvaranja preview-a
+    status_preview_shown: "Prikazan pregled ({0})",
+
     // Modali & Obaveštenja
     modal_title_confirm: "Potvrda",
     modal_title_error: "Greška",
@@ -43,6 +46,16 @@ const SR_RS = {
     btn_close: "Zatvori",
     btn_load_more: "Učitaj još",
     btn_apply: "PRESLOVI",
+
+    // PR4: main taskpane buttons (dynamic labels)
+    ui_btn_run: "PRESLOVI",
+    ui_btn_preview: "PREGLED",
+
+    ui_sub_no_text: "NEMA TEKSTA",
+    ui_sub_run_selection: "selekciju",
+    ui_sub_preview_selection: "selekcije",
+    ui_sub_run_document: "ceo dokument",
+    ui_sub_preview_document: "celog dokumenta",
 
     // Preview tabovi
     preview_btn_diff: "Razlike",
@@ -135,6 +148,9 @@ const EN_US: Record<TranslationKey, string> = {
     status_applying_preview: "Applying preview (no re-conversion)...",
     status_preview_cache_invalid: "Preview cache invalid ({0}). Re-converting...",
 
+    // PR4
+    status_preview_shown: "Preview shown ({0})",
+
     // Modals & Messages
     modal_title_confirm: "Confirmation",
     modal_title_error: "Error",
@@ -146,6 +162,16 @@ const EN_US: Record<TranslationKey, string> = {
     btn_close: "Close",
     btn_load_more: "Load more",
     btn_apply: "APPLY",
+
+    // PR4: main taskpane buttons (dynamic labels)
+    ui_btn_run: "APPLY",
+    ui_btn_preview: "PREVIEW",
+
+    ui_sub_no_text: "NO TEXT",
+    ui_sub_run_selection: "selection",
+    ui_sub_preview_selection: "selection",
+    ui_sub_run_document: "whole document",
+    ui_sub_preview_document: "whole document",
 
     // Preview tabs
     preview_btn_diff: "Diff",
@@ -227,6 +253,10 @@ export function getLanguage(): Language {
     return currentLang;
 }
 
+/**
+ * Glavna funkcija za prevod.
+ * Primer: t("status_done_selection", type, time)
+ */
 export function t(key: TranslationKey, ...args: (string | number)[]): string {
     const dict = TRANSLATIONS[currentLang] || SR_RS;
     let str = dict[key] || SR_RS[key] || key;

@@ -1,8 +1,9 @@
-﻿// src/taskpane/app/selection.ts
+// src/taskpane/app/selection.ts
 /* global Office, document */
 
 import { state } from "./state";
 import { invalidatePreviewCache } from "./preview/cache";
+import { t } from "../../shared/i18n";
 
 export function onSelectionChange() {
     invalidatePreviewCache();
@@ -35,23 +36,36 @@ export async function checkSelectionAndUpdateButtons() {
         const hasContent = rawText.trim().length > 0;
         const isJustWhitespace = rawText.length > 0 && !hasContent;
 
+        const runLabel = t("ui_btn_run");
+        const prevLabel = t("ui_btn_preview");
+
         if (isJustWhitespace) {
-            runBtn.innerHTML = `PRESLOVI<br><span class="btn-subtitle"><b>NEMA TEKSTA</b></span>`;
+            runBtn.innerHTML = `${runLabel}<br><span class="btn-subtitle"><b>${t("ui_sub_no_text")}</b></span>`;
             runBtn.disabled = true;
 
-            prevBtn.innerHTML = `PREGLED<br><span class="btn-subtitle"><b>NEMA TEKSTA</b></span>`;
+            prevBtn.innerHTML = `${prevLabel}<br><span class="btn-subtitle"><b>${t(
+                "ui_sub_no_text"
+            )}</b></span>`;
             prevBtn.disabled = true;
         } else if (hasContent) {
-            runBtn.innerHTML = `PRESLOVI<br><span class="btn-subtitle"><b>selekciju</b></span>`;
+            runBtn.innerHTML = `${runLabel}<br><span class="btn-subtitle"><b>${t(
+                "ui_sub_run_selection"
+            )}</b></span>`;
             runBtn.disabled = false;
 
-            prevBtn.innerHTML = `PREGLED<br><span class="btn-subtitle"><b>selekcije</b></span>`;
+            prevBtn.innerHTML = `${prevLabel}<br><span class="btn-subtitle"><b>${t(
+                "ui_sub_preview_selection"
+            )}</b></span>`;
             prevBtn.disabled = false;
         } else {
-            runBtn.innerHTML = `PRESLOVI<br><span class="btn-subtitle"><b>ceo dokument</b></span>`;
+            runBtn.innerHTML = `${runLabel}<br><span class="btn-subtitle"><b>${t(
+                "ui_sub_run_document"
+            )}</b></span>`;
             runBtn.disabled = false;
 
-            prevBtn.innerHTML = `PREGLED<br><span class="btn-subtitle"><b>celog dokumenta</b></span>`;
+            prevBtn.innerHTML = `${prevLabel}<br><span class="btn-subtitle"><b>${t(
+                "ui_sub_preview_document"
+            )}</b></span>`;
             prevBtn.disabled = false;
         }
     } catch {
