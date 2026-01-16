@@ -22,7 +22,14 @@ import { DEFAULT_SETTINGS, PRESETS, SETTINGS_KEY } from "./defaults";
 import { renderTags, setupTagEvents } from "./tags";
 import { initAdvancedSettingsToggle } from "./advanced";
 
+// NEW: i18n for static HTML (taskpane.html)
+import { initUiI18n } from "../i18n/uiI18n";
+
 export function initUi() {
+    // Ensure i18n is initialized before any UI labels/statuses are set.
+    // This is safe and does not touch Word runtime.
+    initUiI18n();
+
     const settings = loadSettingsFromStorage(SETTINGS_KEY, DEFAULT_SETTINGS) || DEFAULT_SETTINGS;
 
     state.customWordsSet = new Set(settings.userWordsCustom);

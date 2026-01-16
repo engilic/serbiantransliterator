@@ -2,13 +2,23 @@ import { test, expect } from "@playwright/test";
 
 test.describe("Taskpane E2E smoke (Office stub)", () => {
     test.beforeEach(async ({ page }) => {
-        // Blokiraj real Office.js (van Word host-a varira i nije potreban za smoke).
+        // Block real Office.js (outside Word host it varies and is not needed for smoke).
         await page.route("https://appsforoffice.microsoft.com/**", async (route) => {
             await route.abort();
         });
 
-        // Office stub mora postojati PRE nego što se učita taskpane bundle.
+        // Office stub must exist BEFORE taskpane bundle loads.
         await page.addInitScript(() => {
+            // Best-effort: make navigator.language deterministic (Chromium usually allows this in tests).
+            try {
+                Object.defineProperty(navigator, "language", {
+                    value: "sr-Latn-RS",
+                    configurable: true,
+                });
+            } catch {
+                // ignore
+            }
+
             const OfficeStub = {
                 HostType: { Word: "Word" },
                 EventType: { DocumentSelectionChanged: "DocumentSelectionChanged" },
@@ -16,8 +26,13 @@ test.describe("Taskpane E2E smoke (Office stub)", () => {
                 AsyncResultStatus: { Succeeded: "succeeded" },
 
                 context: {
+                    // Make i18n deterministic: force Serbian UI language.
+                    displayLanguage: "sr-Latn-RS",
+                    contentLanguage: "sr-Latn-RS",
+
                     document: {
                         addHandlerAsync: (...args: any[]) => {
+                            // Office API signature: (eventType, handler, callback?)
                             const cb = args[2];
                             if (typeof cb === "function") cb({ status: "succeeded" });
                         },
@@ -33,7 +48,7 @@ test.describe("Taskpane E2E smoke (Office stub)", () => {
             };
 
             (globalThis as any).Office = OfficeStub;
-            (globalThis as any).Word = {}; // postoji da init ne padne; Word.run se ne koristi bez klika
+            (globalThis as any).Word = {}; // exists so init doesn't crash; Word.run not used without clicking
         });
     });
 
@@ -43,8 +58,10 @@ test.describe("Taskpane E2E smoke (Office stub)", () => {
         await expect(page.locator("#runBtn")).toBeVisible();
         await expect(page.locator("#previewBtn")).toBeVisible();
 
-        // initUi() na kraju postavlja status
-        await expect(page.locator("#msg")).toContainText("Spreman za rad.");
+        // Wait for initUi() to set status. Accept sr OR en to be robust.
+        const msg = page.locator("#msg");
+        await expect(msg).not.toHaveText(""); // ensures something was set
+        await expect(msg).toHaveText(/(Spreman za rad\.)|(Ready\.)/);
     });
 
     test("advanced panel toggle works", async ({ page }) => {

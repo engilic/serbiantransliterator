@@ -15,10 +15,12 @@ export function isInsideTag(el: Element, localName: string): boolean {
 }
 
 export function collectTextNodes(doc: Document): Element[] {
-    let allTextNodes = Array.from(doc.getElementsByTagName("w:t"));
-    if (allTextNodes.length === 0) {
-        allTextNodes = Array.from(doc.getElementsByTagName("t"));
-    }
+    // Prefer namespace-aware lookup (most robust for OOXML)
+    let allTextNodes = Array.from(doc.getElementsByTagNameNS(WORD_NS, "t"));
+
+    // Fallbacks (defensive)
+    if (allTextNodes.length === 0) allTextNodes = Array.from(doc.getElementsByTagName("w:t"));
+    if (allTextNodes.length === 0) allTextNodes = Array.from(doc.getElementsByTagName("t"));
 
     // preskoči field-code i deleted tekst
     return allTextNodes.filter((n) => {
