@@ -204,6 +204,7 @@ function changeProfile(profile: ProfilePreset) {
     invalidatePreviewCache();
 
     // Koristimo t() za prevod imena profila
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const profileKey = `profile_${profile}` as any;
     const displayName = t(profileKey) !== profileKey ? t(profileKey) : profile;
 
