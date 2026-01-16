@@ -27,7 +27,13 @@
         "test:e2e": "playwright test",
         "serve:dist": "http-server dist -p 4173 -c-1",
         "clean": "rimraf dist",
-        "deploy": "npm run build && wrangler pages deploy dist --project-name=serbiantransliterator"
+        "deploy": "npm run build && wrangler pages deploy dist --project-name=serbiantransliterator",
+        "prepare": "husky install"
+    },
+    "lint-staged": {
+        "**/*.{ts,js,json,css,md}": [
+            "prettier --write"
+        ]
     },
     "dependencies": {
         "core-js": "^3.36.0",
@@ -51,7 +57,9 @@
         "html-loader": "^5.0.0",
         "html-webpack-plugin": "^5.6.0",
         "http-server": "^14.1.1",
+        "husky": "^8.0.0",
         "jsdom": "^27.4.0",
+        "lint-staged": "^15.2.0",
         "mini-css-extract-plugin": "^2.9.4",
         "office-addin-debugging": "^6.0.6",
         "office-addin-dev-certs": "^2.0.3",
