@@ -29,6 +29,19 @@ const SR_RS = {
     modal_title_error: "Greška",
     modal_title_info: "Nema izmena",
 
+    // NEW: generička dugmad (da ne hardcode-ujemo po UI fajlovima)
+    btn_ok: "OK",
+    btn_cancel: "Otkaži",
+    btn_close: "Zatvori",
+    btn_load_more: "Učitaj još",
+    btn_apply: "PRESLOVI",
+
+    // NEW: preview tabovi
+    preview_btn_diff: "Razlike",
+    preview_btn_plain: "Rezultat",
+    preview_btn_side: "Pre/Posle",
+    preview_btn_copy: "Kopiraj",
+
     msg_empty_selection:
         "Selektovan je samo prazan prostor (razmaci).<br>Molimo selektujte tekst ili ne selektujte ništa za ceo dokument.",
     msg_no_selection: "Nema selekcije za preslovljavanje.",
@@ -99,6 +112,19 @@ const EN_US: Record<TranslationKey, string> = {
     modal_title_confirm: "Confirmation",
     modal_title_error: "Error",
     modal_title_info: "No changes",
+
+    // Buttons
+    btn_ok: "OK",
+    btn_cancel: "Cancel",
+    btn_close: "Close",
+    btn_load_more: "Load more",
+    btn_apply: "APPLY",
+
+    // Preview tabs
+    preview_btn_diff: "Diff",
+    preview_btn_plain: "Result",
+    preview_btn_side: "Before/After",
+    preview_btn_copy: "Copy",
 
     msg_empty_selection:
         "Only whitespace is selected.<br>Please select some text or select nothing for the whole document.",

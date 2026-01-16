@@ -1,4 +1,3 @@
-// src/taskpane/app/word/apply.ts
 /* global Word, console */
 
 import { unsafeHtml } from "../../../shared/safeHtml";
@@ -100,9 +99,14 @@ export async function runSmart() {
             }
 
             const time = result.stats.timingMs.toFixed(0);
-            const extraInfo = scope === "document" ? buildDocumentExtraStatus(ui, extras) : "";
 
-            setStatus(t("status_done_document", result.type, time, extraInfo), "success");
+            // FIX: pravi status key prema scope-u
+            if (scope === "selection") {
+                setStatus(t("status_done_selection", result.type, time), "success");
+            } else {
+                const extraInfo = buildDocumentExtraStatus(ui, extras);
+                setStatus(t("status_done_document", result.type, time, extraInfo), "success");
+            }
 
             state.lastStatsTitle = buildApplyStatsTitle(result);
             state.lastStatsText = buildApplyStatsText(result, scope, extras);

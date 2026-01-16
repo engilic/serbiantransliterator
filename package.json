@@ -28,10 +28,11 @@
         "serve:dist": "http-server dist -p 4173 -c-1",
         "clean": "rimraf dist",
         "deploy": "npm run build && wrangler pages deploy dist --project-name=serbiantransliterator",
+        "check:conflicts": "node scripts/checkConflicts.cjs",
         "prepare": "husky install"
     },
     "lint-staged": {
-        "**/*.{ts,js,json,css,md}": [
+        "**/*.{ts,js,json,css,md,html}": [
             "prettier --write"
         ]
     },

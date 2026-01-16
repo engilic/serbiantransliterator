@@ -1,7 +1,8 @@
-﻿// src/taskpane/app/modal/modal.ts
+// src/taskpane/app/modal/modal.ts
 /* global document */
 
 import { unwrapHtml, type SafeHtml } from "../../../shared/safeHtml";
+import { t } from "../../../shared/i18n";
 
 let modalPromiseResolver: ((val: boolean) => void) | null = null;
 
@@ -24,7 +25,7 @@ export function confirmInPanel(safeHtmlMsg: SafeHtml): Promise<boolean> {
     title.style.display = "";
     cancelBtn.style.display = "inline-flex";
 
-    title.innerText = "Potvrda";
+    title.innerText = t("modal_title_confirm");
     text.innerHTML = unwrapHtml(safeHtmlMsg);
     input.style.display = "none";
 
@@ -33,7 +34,7 @@ export function confirmInPanel(safeHtmlMsg: SafeHtml): Promise<boolean> {
     if (applyBtn) applyBtn.style.display = "none";
 
     okBtn.style.display = "inline-flex";
-    okBtn.innerText = "OK";
+    okBtn.innerText = t("btn_ok");
     okBtn.disabled = false;
     okBtn.style.opacity = "";
     okBtn.style.cursor = "";
@@ -43,7 +44,7 @@ export function confirmInPanel(safeHtmlMsg: SafeHtml): Promise<boolean> {
     okBtn.style.border = "none";
     okBtn.onclick = handleModalOk;
 
-    cancelBtn.innerText = "Otkaži";
+    cancelBtn.innerText = t("btn_cancel");
     cancelBtn.style.backgroundColor = "";
     cancelBtn.style.color = "";
     cancelBtn.style.border = "";
@@ -77,7 +78,7 @@ export function showModalInfo(titleStr: string, safeHtmlMsg: SafeHtml) {
 
     okBtn.style.display = "none";
 
-    cancelBtn.innerText = "Zatvori";
+    cancelBtn.innerText = t("btn_close");
     cancelBtn.style.backgroundColor = "var(--primary-color)";
     cancelBtn.style.color = "white";
     cancelBtn.style.border = "none";
@@ -109,14 +110,14 @@ export function resetModalButtons() {
     title.style.display = "";
 
     cancelBtn.style.display = "inline-flex";
-    cancelBtn.innerText = "Otkaži";
+    cancelBtn.innerText = t("btn_cancel");
     cancelBtn.style.backgroundColor = "";
     cancelBtn.style.color = "";
     cancelBtn.style.border = "";
     cancelBtn.onclick = closeModal;
 
     okBtn.style.display = "inline-flex";
-    okBtn.innerText = "OK";
+    okBtn.innerText = t("btn_ok");
     okBtn.disabled = false;
     okBtn.style.opacity = "";
     okBtn.style.cursor = "";

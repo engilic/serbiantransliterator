@@ -269,7 +269,6 @@ function wasWordTransliterated(orig: string, fin: string, direction: Direction |
     }
 
     if (direction === "auto") {
-        // auto nije očekivan ovde, ali neka bude konzervativno
         return (RE_LAT.test(orig) && RE_CYR.test(fin)) || (RE_CYR.test(orig) && RE_LAT.test(fin));
     }
 
@@ -357,7 +356,6 @@ function applyProofingLanguagePreserveUnchanged(
         }
 
         if (!anyChanged) {
-            // Expected in many cases: brands/tokens unchanged.
             skip("noChangedWords");
             continue;
         }
@@ -498,14 +496,10 @@ export function convertOoxml(
     const preserveCodeBlocks = options?.preserveCodeBlocks !== false;
     const protectBrands = options?.protectBrands !== false;
 
-    /**
-     * BITNO: proofing language je sada OPT-IN:
-     * - radi samo kad eksplicitno proslediš setProofingLanguage: true
-     * - testovi ne prosleđuju tu opciju => nema splitovanja run-ova => testovi ostaju validni
-     */
+    const curlyProtection = options?.curlyProtection ?? "placeholders";
+
     const shouldSetLang = options?.setProofingLanguage === true;
 
-    // Keep proofing stats in ConvertStats even when disabled (better observability)
     let proofing: ProofingStats = { ...emptyProofing };
 
     const doFixSpaces = options?.fixDoubleSpaces === true;
@@ -533,10 +527,18 @@ export function convertOoxml(
         spaces: 0,
     };
 
+    // IMPORTANT: bridgovanje razmaka preko <w:t> granica treba da radi uvek
+    // (testovi i real-world Word run-split to očekuju).
     bridges.spaces = bridgeSpacesAcrossTextNodes(textNodes);
 
-    // placeholders bridging (radi u oba smera)
-    bridges.placeholders = bridgeBracedPlaceholdersAcrossTextNodes(textNodes);
+    // placeholders bridging zavisi od curlyProtection
+    if (curlyProtection === "none") {
+        bridges.placeholders = 0;
+    } else if (curlyProtection === "all") {
+        bridges.placeholders = bridgeBracedPlaceholdersAcrossTextNodes(textNodes, "all");
+    } else {
+        bridges.placeholders = bridgeBracedPlaceholdersAcrossTextNodes(textNodes, "placeholders");
+    }
 
     if (userProtectedPhrases.length) {
         const infos = getCachedPhraseInfos(userProtectedPhrases);
@@ -573,7 +575,6 @@ export function convertOoxml(
         }
     }
 
-    // PERF: original run text pravimo samo ako je proofing language uključen
     let originalRunText: Map<Element, string> | null = null;
     if (shouldSetLang) {
         proofing.enabled = true;

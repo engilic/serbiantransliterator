@@ -1,4 +1,8 @@
-﻿import { findNextNodeWithText, getCpArray } from "../../common";
+// src/shared/ooxml/bridge/lexical/placeholders.ts
+
+import { findNextNodeWithText, getCpArray } from "../../common";
+
+type CurlyMode = "placeholders" | "all";
 
 function buildLookahead(textNodes: Element[], startIndex: number, maxCp: number) {
     const plan: Array<{ nodeIndex: number; takeCp: number; cps: string[] }> = [];
@@ -54,14 +58,20 @@ function consumeFromPlan(
     return moved;
 }
 
+const PLACEHOLDER_RE = /^\{[A-Za-z][A-Za-z0-9_:-]{0,120}\}$/;
+
 /**
- * Braced placeholders bridging: "{USER_NAME}" je zaštićeno u plain-text protect sloju,
- * ali u OOXML može biti splitovano preko više <w:t>.
+ * Braced placeholders bridging:
+ * - mode="placeholders": bridguje samo placeholder-like "{USER_NAME}" / "{Order-Id}" itd.
+ * - mode="all": legacy; bridguje bilo šta od "{" do prve "}" (do MAX_LOOKAHEAD_CP)
  *
- * Ova funkcija spaja sufiks od poslednjeg "{" (koji nema zatvarajuće "}" u istom node-u)
- * sa nastavkom iz sledećih node-ova do prve "}" (limitirano max lookahead).
+ * Napomena:
+ * Ovo postoji jer protect sloj radi u plain-text-u, ali Word OOXML često splituje "{USER" + "_NAME}" kroz <w:t>.
  */
-export function bridgeBracedPlaceholdersAcrossTextNodes(textNodes: Element[]): number {
+export function bridgeBracedPlaceholdersAcrossTextNodes(
+    textNodes: Element[],
+    mode: CurlyMode = "placeholders"
+): number {
     const MAX_LOOKAHEAD_CP = 250;
     let changed = 0;
 
@@ -90,11 +100,18 @@ export function bridgeBracedPlaceholdersAcrossTextNodes(textNodes: Element[]): n
         const endIdx = combined.indexOf("}");
         if (endIdx < 0) continue;
 
-        const neededLen = endIdx + 1 - frag.length;
+        const candidate = combined.slice(0, endIdx + 1);
+
+        if (mode === "placeholders") {
+            // Strict: samo placeholder-like (bez whitespace, kontrolisana dužina i allowed chars)
+            if (!PLACEHOLDER_RE.test(candidate)) continue;
+        }
+
+        const neededLen = candidate.length - frag.length;
         if (neededLen <= 0) continue;
 
         const moved = consumeFromPlan(textNodes, plan, neededLen);
-        if (moved.length === 0) continue;
+        if (moved.length !== neededLen) continue;
 
         aNode.textContent = aRaw + moved;
         changed++;

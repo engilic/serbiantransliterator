@@ -16,6 +16,10 @@ jobs:
         name: test-build-validate
         runs-on: ubuntu-latest
 
+        # Husky je super lokalno, ali u CI ne treba da instalira git hook-ove.
+        env:
+            HUSKY: "0"
+
         steps:
             - name: Checkout
               uses: actions/checkout@v4
@@ -26,8 +30,11 @@ jobs:
                   node-version: "20"
                   cache: "npm"
 
-            - name: Install deps (npm install)
-              run: npm install
+            - name: Check merge conflict markers
+              run: npm run check:conflicts
+
+            - name: Install deps (npm ci)
+              run: npm ci
 
             - name: Format check (Prettier)
               run: npm run format:check
