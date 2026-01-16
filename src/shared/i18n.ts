@@ -24,7 +24,7 @@ const SR_RS = {
     status_preview_applied: "Završeno (primenjen preview).",
     status_error_prefix: "Greška: {0}",
 
-    // NEW (PR2): dodatni status stringovi
+    // PR2: dodatni status stringovi
     status_no_text_found: "Nije pronađen tekst za obradu.",
     status_processing_headers_footers: "Obrada: zaglavlja/podnožja...",
     status_processing_footnotes: "Obrada: fusnote...",
@@ -37,7 +37,7 @@ const SR_RS = {
     modal_title_error: "Greška",
     modal_title_info: "Nema izmena",
 
-    // Generička dugmad (da ne hardcode-ujemo po UI fajlovima)
+    // Dugmad
     btn_ok: "OK",
     btn_cancel: "Otkaži",
     btn_close: "Zatvori",
@@ -50,11 +50,11 @@ const SR_RS = {
     preview_btn_side: "Pre/Posle",
     preview_btn_copy: "Kopiraj",
 
-    // NEW (PR2): tooltip / fallback za "load more"
+    // PR2: tooltip / fallback za "load more"
     preview_load_more_title: "Učitaj sledeće paragrafe",
     preview_load_more_none: "Nema više paragrafa za učitavanje",
 
-    // NEW (PR3): diff/preview labele
+    // PR3: diff/preview labele
     preview_label_before: "Pre",
     preview_label_after: "Posle",
     preview_label_too_large_diff: "Prevelik fajl za detaljan diff",
@@ -127,7 +127,7 @@ const EN_US: Record<TranslationKey, string> = {
     status_preview_applied: "Done (applied from preview).",
     status_error_prefix: "Error: {0}",
 
-    // NEW (PR2)
+    // PR2
     status_no_text_found: "No text found to process.",
     status_processing_headers_footers: "Processing: headers/footers...",
     status_processing_footnotes: "Processing: footnotes...",
@@ -153,16 +153,17 @@ const EN_US: Record<TranslationKey, string> = {
     preview_btn_side: "Before/After",
     preview_btn_copy: "Copy",
 
-    // NEW (PR2): tooltip / fallback for "load more"
+    // PR2: tooltip / fallback for "load more"
     preview_load_more_title: "Load next paragraphs",
     preview_load_more_none: "No more paragraphs to load",
 
-    // NEW (PR3): diff/preview labels
+    // PR3: diff/preview labels
     preview_label_before: "Before",
     preview_label_after: "After",
     preview_label_too_large_diff: "File too large for detailed diff",
     preview_label_truncated_perf: "View truncated due to performance",
 
+    // Messages
     msg_empty_selection:
         "Only whitespace is selected.<br>Please select some text or select nothing for the whole document.",
     msg_no_selection: "No selection found.",
@@ -216,27 +217,16 @@ const TRANSLATIONS: Record<Language, typeof SR_RS> = {
     en: EN_US,
 };
 
-/**
- * Menja aktivni jezik.
- * @param lang "sr" ili "en"
- */
 export function setLanguage(lang: Language) {
     if (TRANSLATIONS[lang]) {
         currentLang = lang;
     }
 }
 
-/**
- * Vraća trenutni jezik.
- */
 export function getLanguage(): Language {
     return currentLang;
 }
 
-/**
- * Glavna funkcija za prevod.
- * Primer: t("status_done_selection", type, time)
- */
 export function t(key: TranslationKey, ...args: (string | number)[]): string {
     const dict = TRANSLATIONS[currentLang] || SR_RS;
     let str = dict[key] || SR_RS[key] || key;
