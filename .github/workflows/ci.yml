@@ -26,8 +26,8 @@ jobs:
                   node-version: "20"
                   cache: "npm"
 
-            - name: Install deps (npm ci)
-              run: npm ci
+            - name: Install deps (npm install)
+              run: npm install
 
             - name: Format check (Prettier)
               run: npm run format:check
