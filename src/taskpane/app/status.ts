@@ -12,8 +12,8 @@ export function setStatus(msg: string, type: "info" | "success" | "error" | "neu
         type === "error"
             ? "var(--error-color)"
             : type === "success"
-                ? "var(--success-color)"
-                : "var(--text-color)";
+              ? "var(--success-color)"
+              : "var(--text-color)";
 
     // Reset animacije
     el.classList.remove("fade-in");
