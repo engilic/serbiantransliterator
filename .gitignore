@@ -36,3 +36,7 @@ test-results/
 # ===== AI generator output (local only) =====
 poruka_part*.txt
 fajlovi_za_ai_lista.txt
+
+# ===== Local security audit artifacts (local only) =====
+audit.json
+audit*.json
