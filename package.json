@@ -33,7 +33,8 @@
         "check:i18n:ts": "node scripts/checkUserFacingStrings.cjs",
         "check:i18n:html": "node scripts/checkTaskpaneHtmlI18n.cjs",
         "check:i18n": "npm run check:i18n:ts && npm run check:i18n:html",
-        "manifest:bump:prod": "node scripts/bumpManifestProdVersion.cjs"
+        "audit:high": "npm audit --audit-level=high",
+        "ai:pack": "pwsh -NoProfile -ExecutionPolicy Bypass -File ./poruke-za-ai.ps1 -base . -outDir . -clean"
     },
     "lint-staged": {
         "**/*.{ts,js,cjs,mjs,json,css,md,html}": [

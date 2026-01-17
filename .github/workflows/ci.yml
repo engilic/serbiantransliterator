@@ -39,6 +39,9 @@ jobs:
             - name: Install deps (npm ci)
               run: npm ci
 
+            - name: Security audit (npm audit --audit-level=high)
+              run: npm run audit:high
+
             - name: Format check (Prettier)
               run: npm run format:check
 
