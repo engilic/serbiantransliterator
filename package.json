@@ -35,7 +35,7 @@
         "check:i18n": "npm run check:i18n:ts && npm run check:i18n:html"
     },
     "lint-staged": {
-        "**/*.{ts,js,json,css,md,html}": [
+        "**/*.{ts,js,cjs,mjs,json,css,md,html}": [
             "prettier --write"
         ]
     },
