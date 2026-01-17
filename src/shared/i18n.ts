@@ -1,12 +1,34 @@
 // src/shared/i18n.ts
 
+// Pomocne funkcije za srpsku gramatiku (jednina/dvojina/množina)
+function getSerbianPluralForm(n: number): "one" | "few" | "many" {
+    const n100 = n % 100;
+    const n10 = n % 10;
+
+    // 11-14 uvek množina (npr. 11 čvorova, 12 čvorova...)
+    if (n100 >= 5 && n100 <= 20) return "many";
+    // 1 je jednina (npr. 1 čvor)
+    if (n10 === 1) return "one";
+    // 2, 3, 4 su dvojina (npr. 2 čvora)
+    if (n10 >= 2 && n10 <= 4) return "few";
+    // sve ostalo je množina (0, 5, 6...)
+    return "many";
+}
+
+function getEnglishPluralForm(n: number): "one" | "many" {
+    // Engleski ima samo jedninu i množinu
+    return n === 1 ? "one" : "many";
+}
+
 export type TranslationKey = keyof typeof SR_RS;
 export type Language = "sr" | "en";
 
 // Trenutni aktivni jezik (default je srpski)
 let currentLang: Language = "sr";
 
-// === SRPSKI (Izvor) ===
+// =========================
+// SRPSKI (Izvor)
+// =========================
 const SR_RS = {
     // ===== App / Taskpane static UI =====
     app_title: "Serbian Transliterator",
@@ -207,7 +229,7 @@ const SR_RS = {
 
     // PR6: stats lines/sections
     stats_line_scope: "Opseg: {0}",
-    stats_line_nodes_changed: "Promenjeno čvorova: {0}",
+    stats_line_nodes_changed: "Promenjeno {0} čvorova", // Default (many)
     stats_line_time_ms: "Vreme: {0}ms",
 
     stats_section_bridges: "Bridges:",
@@ -232,9 +254,21 @@ const SR_RS = {
     profile_legal: "Pravo / Administracija",
     profile_marketing: "Marketing / Društvene mreže",
     profile_journalism: "Novinarstvo / Mediji",
+
+    // =======================
+    // PLURALIZACIJA (STATISTIKA)
+    // =======================
+
+    // stats_line_nodes_changed
+    // Ispravka: Dodaj {0} umesto hardcoded 1
+    stats_line_nodes_changed_one: "Promenjen {0} čvor",
+    stats_line_nodes_changed_few: "Promenjena {0} čvora",
+    stats_line_nodes_changed_many: "Promenjeno {0} čvorova",
 };
 
-// === ENGLESKI (Prevod) ===
+// =========================
+// ENGLESKI (Prevod)
+// =========================
 const EN_US: Record<TranslationKey, string> = {
     // ===== App / Taskpane static UI =====
     app_title: "Serbian Transliterator",
@@ -384,7 +418,7 @@ const EN_US: Record<TranslationKey, string> = {
     preview_btn_side: "Before/After",
     preview_btn_copy: "Copy",
 
-    // PR2: tooltip / fallback for "load more"
+    // PR2: tooltip / fallback za "load more"
     preview_load_more_title: "Load next paragraphs",
     preview_load_more_none: "No more paragraphs to load",
 
@@ -434,7 +468,7 @@ const EN_US: Record<TranslationKey, string> = {
 
     // PR6: stats lines/sections
     stats_line_scope: "Scope: {0}",
-    stats_line_nodes_changed: "Nodes changed: {0}",
+    stats_line_nodes_changed: "Changed {0} nodes", // Default (many)
     stats_line_time_ms: "Time: {0}ms",
 
     stats_section_bridges: "Bridges:",
@@ -449,7 +483,7 @@ const EN_US: Record<TranslationKey, string> = {
 
     stats_line_headers_footers: "Header/Footer: {0}",
     stats_line_footnotes: "Footnotes: {0}",
-    stats_line_endnotes: "Endnotes: {0}",
+    stats_line_endnotes: "Endnote: {0}",
 
     // Profile names
     profile_custom: "Custom",
@@ -459,6 +493,15 @@ const EN_US: Record<TranslationKey, string> = {
     profile_legal: "Legal / Admin",
     profile_marketing: "Marketing / Social Media",
     profile_journalism: "Journalism / Media",
+
+    // =======================
+    // PLURALIZATION (STATISTICS)
+    // =======================
+
+    // stats_line_nodes_changed
+    stats_line_nodes_changed_one: "Changed {0} node", // Dodato {0}
+    stats_line_nodes_changed_few: "Changed {0} nodes", // Dodato {0}
+    stats_line_nodes_changed_many: "Changed {0} nodes",
 };
 
 // Mapa svih prevoda
@@ -492,4 +535,27 @@ export function t(key: TranslationKey, ...args: (string | number)[]): string {
     }
 
     return str;
+}
+
+/**
+ * Funkcija za pluralizaciju (npr. statistika čvorova).
+ * Koristi specifične ključeve iz rečnika (npr. stats_line_nodes_changed_one)
+ * ili se vraća na osnovni ključ ako specifični ne postoji.
+ */
+export function tPlural(key: TranslationKey, count: number): string {
+    const dict = TRANSLATIONS[currentLang] || SR_RS;
+
+    if (currentLang === "sr") {
+        const form = getSerbianPluralForm(count);
+        const specificKey = `${key}_${form}` as TranslationKey;
+        if (dict[specificKey]) return t(specificKey, count);
+    } else if (currentLang === "en") {
+        const form = getEnglishPluralForm(count);
+        const specificKey = `${key}_${form}` as TranslationKey;
+        if (dict[specificKey]) return t(specificKey, count);
+    }
+
+    // Fallback: ako nema specifičnog prevoda za plural formu, koristi osnovni ključ
+    // i pokušaj da zameni {0} sa brojem.
+    return t(key, count);
 }
