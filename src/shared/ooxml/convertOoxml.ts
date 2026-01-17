@@ -438,6 +438,53 @@ export function convertOoxml(
     const parser = new DOMParser();
     const doc = parser.parseFromString(ooxml, "application/xml");
 
+    // Defensive: if OOXML is invalid XML, DOMParser may produce a <parsererror> document.
+    // In that case, safest is to no-op (return original XML) with "Nema teksta" label.
+    try {
+        const pe = doc.getElementsByTagName("parsererror");
+        if (pe && pe.length > 0) {
+            return {
+                xml: ooxml,
+                type: "Nema teksta",
+                stats: {
+                    direction: options?.direction ?? "auto",
+                    textNodes: 0,
+                    charsBefore: 0,
+                    charsAfter: 0,
+                    detected: { urls: 0, emails: 0 },
+                    code: {
+                        fenceMarkersSeen: 0,
+                        inlineTicksSeen: 0,
+                        endedInFence: false,
+                        endedInInline: false,
+                    },
+                    bridges: {
+                        links: 0,
+                        placeholders: 0,
+                        brandPhrases: 0,
+                        brandTokens: 0,
+                        digraphs: 0,
+                        userPhrases: 0,
+                        userTokens: 0,
+                        allCapsHints: 0,
+                        spaces: 0,
+                        ambiguousBrandSuffix: 0,
+                    },
+                    proofing: {
+                        enabled: false,
+                        targetLang: null,
+                        changedRuns: 0,
+                        skippedRuns: 0,
+                        skippedByReason: {},
+                    },
+                    timingMs: 0,
+                },
+            };
+        }
+    } catch {
+        // ignore; continue best-effort
+    }
+
     const textNodes = collectTextNodes(doc);
     const fullText = getFullText(textNodes);
 

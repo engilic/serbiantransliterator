@@ -2,7 +2,7 @@
 
 import type { ConvertStats } from "../../../shared/ooxml/convertOoxml";
 import type { ExtrasSummary } from "../types";
-import { t } from "../../../shared/i18n";
+import { t, tPlural } from "../../../shared/i18n";
 
 export type ApplyScope = "selection" | "document";
 
@@ -29,7 +29,7 @@ export function buildApplyStatsText(result: ResultLike, scope: ApplyScope, extra
 
     let out =
         `${t("stats_line_scope", scopeLabel(scope))}\n` +
-        `${t("stats_line_nodes_changed", result.stats.textNodes)}\n` +
+        `${tPlural("stats_line_nodes_changed", result.stats.textNodes)}\n` +
         `${t("stats_line_time_ms", time)}\n` +
         `${t("stats_section_bridges")}\n` +
         `${t("stats_bridge_line", "links", bridges.links)}\n` +
@@ -51,7 +51,9 @@ export function buildApplyStatsText(result: ResultLike, scope: ApplyScope, extra
             `\n${t("stats_proof_changed_runs", proof.changedRuns)}` +
             `\n${t("stats_proof_skipped_runs", proof.skippedRuns)}`;
 
-        const reasons = Object.entries(proof.skippedByReason ?? {})
+        const skipped = (proof.skippedByReason ?? {}) as Record<string, number>;
+
+        const reasons = Object.entries(skipped)
             .sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0))
             .filter(([, n]) => (n ?? 0) > 0)
             .slice(0, 6);
