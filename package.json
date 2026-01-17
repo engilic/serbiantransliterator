@@ -65,7 +65,7 @@
         "http-server": "^14.1.1",
         "husky": "^8.0.3",
         "jsdom": "^27.4.0",
-        "lint-staged": "^15.2.0",
+        "lint-staged": "^16.2.7",
         "mini-css-extract-plugin": "^2.9.4",
         "office-addin-debugging": "^6.0.6",
         "office-addin-dev-certs": "^2.0.3",
