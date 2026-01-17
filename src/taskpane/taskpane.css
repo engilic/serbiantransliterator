@@ -64,9 +64,6 @@ body {
     height: 100%;
     margin: 0;
     padding: 0;
-}
-
-body {
     font-family: "Segoe UI", sans-serif;
     font-size: 14px;
     background-color: var(--bg-color);
@@ -75,6 +72,7 @@ body {
     display: flex;
     flex-direction: column;
     min-height: 100vh;
+    overflow-y: auto;
 }
 
 /* Animations */
@@ -132,6 +130,31 @@ header {
     margin-left: auto;
     margin-top: 5px;
     border: 1px solid var(--border-color);
+}
+
+/* Footer */
+footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    padding: 16px 20px;
+    border-top: 1px solid var(--border-color);
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-color);
+    opacity: 1;
+    background-color: var(--bg-color);
+}
+
+footer a {
+    color: var(--link-color);
+    text-decoration: none;
+    margin: 0 6px;
+    font-weight: 500;
+}
+
+footer a:hover {
+    text-decoration: underline;
 }
 
 /* Layout */
@@ -451,28 +474,6 @@ button:active:not(:disabled) {
     white-space: pre-wrap;
     font-family: "Consolas", monospace;
     line-height: 1.4;
-}
-
-/* Footer */
-footer {
-    padding: 16px 20px;
-    border-top: 1px solid var(--border-color);
-    text-align: center;
-    font-size: 12px;
-    color: var(--text-color);
-    opacity: 0.7;
-    background-color: var(--neutral-lighter);
-}
-
-footer a {
-    color: var(--link-color);
-    text-decoration: none;
-    margin: 0 6px;
-    font-weight: 500;
-}
-
-footer a:hover {
-    text-decoration: underline;
 }
 
 /* Tags */
@@ -822,4 +823,55 @@ footer a:hover {
     gap: 6px;
     align-items: stretch;
     min-width: 120px;
+}
+
+/* ===== Always-visible language picker (under main buttons) ===== */
+.lang-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    /* IMPORTANT: keep transparent-ish look (do NOT override whole app bg) */
+    background: var(--bg-color);
+}
+
+.lang-left {
+    flex: 1;
+    min-width: 0;
+}
+
+.lang-right {
+    flex: 0 0 auto;
+    width: 220px;
+}
+
+.lang-label {
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    opacity: 0.85;
+    line-height: 1.2;
+}
+
+.lang-hint {
+    margin-top: 4px;
+}
+
+.lang-row select#optUiLanguage {
+    width: 100%;
+}
+
+@media (max-width: 520px) {
+    .lang-row {
+        flex-direction: column;
+    }
+
+    .lang-right {
+        width: 100%;
+    }
 }

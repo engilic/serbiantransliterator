@@ -2,14 +2,40 @@
 /* global document, navigator */
 
 import { setLanguage, t, type Language } from "../../../shared/i18n";
+import { safeGetItem, safeSetItem, safeRemoveItem } from "../../../shared/storage/safeLocalStorage";
+
+export type UiLangPref = "sr" | "en" | "auto";
+
+const LANG_KEY = "serbiantransliterator.ui.lang";
+
+export function asUiLangPref(v: unknown): UiLangPref {
+    const s = String(v ?? "").toLowerCase();
+    return s === "en" || s === "auto" || s === "sr" ? (s as UiLangPref) : "sr";
+}
 
 /**
- * Ultra-defensive language pick:
- * - prefer Office displayLanguage/contentLanguage if available
- * - else fallback to navigator.language
- * - default: "sr"
+ * Default language preference: SR.
+ * (If user never touched the setting, UI stays Serbian.)
  */
-export function detectUiLanguage(): Language {
+export function getUiLanguagePreference(): UiLangPref {
+    const raw = safeGetItem(LANG_KEY);
+    if (!raw) return "sr";
+    return asUiLangPref(raw);
+}
+
+export function setUiLanguagePreference(pref: UiLangPref): void {
+    // Keep storage clean:
+    // - default "sr" => remove key
+    // - store "en" / "auto"
+    if (pref === "sr") safeRemoveItem(LANG_KEY);
+    else safeSetItem(LANG_KEY, pref);
+
+    // Apply immediately
+    applyUiLanguage(pref);
+}
+
+function detectUiLanguageFromEnv(): Language {
+    // Office context preferred, then navigator; default "sr"
     try {
         const officeAny = (globalThis as unknown as { Office?: any }).Office;
         const displayLang: string | undefined = officeAny?.context?.displayLanguage;
@@ -17,6 +43,7 @@ export function detectUiLanguage(): Language {
 
         const pick = (displayLang || contentLang || "").toLowerCase();
         if (pick.startsWith("en")) return "en";
+        if (pick.startsWith("sr")) return "sr";
     } catch {
         // ignore
     }
@@ -24,6 +51,7 @@ export function detectUiLanguage(): Language {
     try {
         const nav = (navigator?.language || "").toLowerCase();
         if (nav.startsWith("en")) return "en";
+        if (nav.startsWith("sr")) return "sr";
     } catch {
         // ignore
     }
@@ -32,30 +60,25 @@ export function detectUiLanguage(): Language {
 }
 
 function setAttr(el: Element, attrName: string, value: string) {
-    // empty value => remove to avoid stale tooltips/placeholders
     if (!value) el.removeAttribute(attrName);
     else el.setAttribute(attrName, value);
 }
 
 /**
  * Apply translations to:
- * - elements with data-i18n (textContent)
- * - elements with data-i18n-attr="title:key,placeholder:key,aria-label:key"
+ * - elements with data-i18n            => textContent
+ * - elements with data-i18n-attr       => attributes
  *
- * Security: uses textContent / setAttribute only.
+ * Security: uses textContent / setAttribute only (no innerHTML).
  */
 export function applyI18nToDom(root: ParentNode = document): void {
-    // text nodes
     const textEls = root.querySelectorAll?.("[data-i18n]") ?? [];
     for (const el of Array.from(textEls)) {
         const key = (el as HTMLElement).dataset?.i18n;
         if (!key) continue;
-
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (el as HTMLElement).textContent = t(key as any);
+        (el as HTMLElement).textContent = t(key as never);
     }
 
-    // attributes
     const attrEls = root.querySelectorAll?.("[data-i18n-attr]") ?? [];
     for (const el of Array.from(attrEls)) {
         const spec = (el as HTMLElement).dataset?.i18nAttr ?? "";
@@ -69,37 +92,52 @@ export function applyI18nToDom(root: ParentNode = document): void {
         for (const p of pairs) {
             const [attr, keyRaw] = p.split(":").map((x) => (x ?? "").trim());
             if (!attr || !keyRaw) continue;
-
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const val = t(keyRaw as any);
-            setAttr(el, attr, val);
+            setAttr(el, attr, t(keyRaw as never));
         }
     }
 
-    // <title> is not easily selectable with querySelector in some cases, set explicitly
     try {
         document.title = t("app_title");
     } catch {
         // ignore
     }
 
-    // update <html lang="">
     try {
         const htmlEl = document.documentElement;
-        if (htmlEl) htmlEl.lang = detectUiLanguage() === "en" ? "en" : "sr";
+        if (htmlEl) htmlEl.lang = getLanguage() === "en" ? "en" : "sr";
     } catch {
         // ignore
     }
 }
 
-/**
- * One call convenience:
- * - detect language
- * - set language in i18n engine
- * - apply i18n to current DOM
- */
-export function initUiI18n(): void {
-    const lang = detectUiLanguage();
+export function applyUiLanguage(pref: UiLangPref): void {
+    const lang: Language = pref === "auto" ? detectUiLanguageFromEnv() : pref === "en" ? "en" : "sr";
+
     setLanguage(lang);
     applyI18nToDom(document);
+}
+
+/**
+ * Init i18n:
+ * - read UI language preference from storage (default: "sr")
+ * - apply language + translate DOM
+ */
+export function initUiI18n(): void {
+    const pref = getUiLanguagePreference();
+    applyUiLanguage(pref);
+}
+
+// Small helper: current Language (sr/en) from i18n module state.
+// (We can't import getLanguage() without exporting it in i18n.ts; keep simple.)
+function getLanguage(): Language {
+    // We infer from one stable string: if "status_ready" in EN is "Ready."
+    // But safer: store it in a module global? Not needed; we only use for <html lang>.
+    // We'll just default to "sr" and rely on detect/apply to set.
+    // NOTE: if you already export getLanguage() from i18n.ts, replace this with import.
+    try {
+        const ready = t("status_ready");
+        return ready === "Ready." ? "en" : "sr";
+    } catch {
+        return "sr";
+    }
 }

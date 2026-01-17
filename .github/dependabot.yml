@@ -1,0 +1,32 @@
+version: 2
+updates:
+    # === NPM dependencies (package.json / package-lock.json) ===
+    - package-ecosystem: "npm"
+      directory: "/"
+      schedule:
+          interval: "weekly"
+          day: "monday"
+          time: "06:00"
+      open-pull-requests-limit: 10
+      labels:
+          - "dependencies"
+          - "security"
+      versioning-strategy: "auto"
+      commit-message:
+          prefix: "chore(deps)"
+          include: "scope"
+
+    # === GitHub Actions dependencies (.github/workflows/*.yml) ===
+    - package-ecosystem: "github-actions"
+      directory: "/"
+      schedule:
+          interval: "weekly"
+          day: "monday"
+          time: "06:00"
+      open-pull-requests-limit: 10
+      labels:
+          - "ci"
+          - "dependencies"
+      commit-message:
+          prefix: "chore(ci)"
+          include: "scope"

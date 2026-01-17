@@ -8,7 +8,7 @@ let currentLang: Language = "sr";
 
 // === SRPSKI (Izvor) ===
 const SR_RS = {
-    // ===== App / Taskpane static UI (NEW) =====
+    // ===== App / Taskpane static UI =====
     app_title: "Serbian Transliterator",
     ui_version_prefix: "v",
 
@@ -49,6 +49,14 @@ const SR_RS = {
     btn_toggle_advanced: "Napredno",
     btn_toggle_advanced_title: "Prikaži/sakrij napredna podešavanja",
 
+    // NEW: UI language picker (Advanced)
+    opt_ui_language_label: "Jezik interfejsa",
+    opt_ui_language_aria: "Izbor jezika interfejsa",
+    opt_ui_language_sr: "Srpski (default)",
+    opt_ui_language_en: "English",
+    opt_ui_language_auto: "Auto (Office/browser)",
+    opt_ui_language_hint: "Menja jezik UI-ja. Default je srpski. Auto prati Office/browser jezik.",
+
     opt_curly_label_before: "Zaštita ",
     opt_curly_label_after: " blokova",
     opt_curly_aria: "Zaštita vitičastih zagrada",
@@ -76,6 +84,10 @@ const SR_RS = {
     footer_help: "Pomoć",
     footer_privacy: "Privatnost",
     footer_copyright: "© 2026",
+
+    // NEW: default stats placeholders (used before first action)
+    ui_stats_default_title: "Statistika poslednje akcije",
+    ui_stats_default_text: "(Nema statistike još)",
 
     // ===== Existing keys (original project) =====
 
@@ -223,9 +235,8 @@ const SR_RS = {
 };
 
 // === ENGLESKI (Prevod) ===
-// Mora sadržati SVE ključeve iz SR_RS, jer je tip: Record<TranslationKey, string>
 const EN_US: Record<TranslationKey, string> = {
-    // ===== App / Taskpane static UI (NEW) =====
+    // ===== App / Taskpane static UI =====
     app_title: "Serbian Transliterator",
     ui_version_prefix: "v",
 
@@ -266,6 +277,14 @@ const EN_US: Record<TranslationKey, string> = {
     btn_toggle_advanced: "Advanced",
     btn_toggle_advanced_title: "Show/hide advanced settings",
 
+    // NEW: UI language picker (Advanced)
+    opt_ui_language_label: "UI language",
+    opt_ui_language_aria: "UI language selection",
+    opt_ui_language_sr: "Serbian (default)",
+    opt_ui_language_en: "English",
+    opt_ui_language_auto: "Auto (Office/browser)",
+    opt_ui_language_hint: "Changes UI language. Default is Serbian. Auto follows Office/browser language.",
+
     opt_curly_label_before: "Protection for ",
     opt_curly_label_after: " blocks",
     opt_curly_aria: "Curly braces protection",
@@ -294,8 +313,13 @@ const EN_US: Record<TranslationKey, string> = {
     footer_privacy: "Privacy",
     footer_copyright: "© 2026",
 
+    // NEW: default stats placeholders (used before first action)
+    ui_stats_default_title: "Last action stats",
+    ui_stats_default_text: "(No stats yet)",
+
     // ===== Existing keys (original project) =====
 
+    // Statuses
     status_ready: "Ready.",
     status_generating_preview: "Generating preview...",
     status_processing: "Processing...",
@@ -311,6 +335,7 @@ const EN_US: Record<TranslationKey, string> = {
     status_preview_applied: "Done (applied from preview).",
     status_error_prefix: "Error: {0}",
 
+    // PR2
     status_no_text_found: "No text found to process.",
     status_processing_headers_footers: "Processing: headers/footers...",
     status_processing_footnotes: "Processing: footnotes...",
@@ -318,24 +343,30 @@ const EN_US: Record<TranslationKey, string> = {
     status_applying_preview: "Applying preview (no re-conversion)...",
     status_preview_cache_invalid: "Preview cache invalid ({0}). Re-converting...",
 
+    // PR4
     status_preview_shown: "Preview shown ({0})",
 
+    // PR5
     status_extra_headers_footers: "H/F: {0}",
     status_extra_footnotes_na: "Footnotes: N/A",
     status_extra_endnotes_na: "Endnotes: N/A",
 
+    // PR6
     status_doc_too_large_short: "Document too large (5MB limit)",
 
+    // Modals & Messages
     modal_title_confirm: "Confirmation",
     modal_title_error: "Error",
     modal_title_info: "No changes",
 
+    // Buttons
     btn_ok: "OK",
     btn_cancel: "Cancel",
     btn_close: "Close",
     btn_load_more: "Load more",
     btn_apply: "APPLY",
 
+    // PR4: main taskpane buttons (dynamic labels)
     ui_btn_run: "APPLY",
     ui_btn_preview: "PREVIEW",
     ui_sub_no_text: "NO TEXT",
@@ -344,21 +375,26 @@ const EN_US: Record<TranslationKey, string> = {
     ui_sub_run_document: "whole document",
     ui_sub_preview_document: "whole document",
 
+    // PR6: tags
     ui_tag_remove: "Remove",
 
+    // Preview tabs
     preview_btn_diff: "Diff",
     preview_btn_plain: "Result",
     preview_btn_side: "Before/After",
     preview_btn_copy: "Copy",
 
+    // PR2: tooltip / fallback for "load more"
     preview_load_more_title: "Load next paragraphs",
     preview_load_more_none: "No more paragraphs to load",
 
+    // PR3: diff/preview labels
     preview_label_before: "Before",
     preview_label_after: "After",
     preview_label_too_large_diff: "File too large for detailed diff",
     preview_label_truncated_perf: "View truncated due to performance",
 
+    // Messages
     msg_empty_selection:
         "Only whitespace is selected.<br>Please select some text or select nothing for the whole document.",
     msg_no_selection: "No selection found.",
@@ -372,12 +408,14 @@ const EN_US: Record<TranslationKey, string> = {
     msg_doc_too_large:
         "Document is too large for automatic processing (5MB limit).<br>Please split it into smaller parts.",
 
+    // Preview
     preview_title_selection: "Selection ({0})",
     preview_title_doc: "First {0} paragraphs ({1})",
     preview_diff_no_changes: "No text changes.",
     preview_toast_copied: "Copied",
     preview_toast_copy_fail: "Cannot copy",
 
+    // Cache reasons
     reason_opts_changed: "settings changed",
     reason_expired: "cache expired",
     reason_selection_changed: "selection changed",
@@ -385,6 +423,7 @@ const EN_US: Record<TranslationKey, string> = {
     reason_missing: "cache incomplete",
     reason_unknown: "unknown reason",
 
+    // Stats
     stats_scope_selection: "Selection",
     stats_scope_document: "Whole document",
     stats_header_apply: "Stats: {0}",
@@ -393,6 +432,7 @@ const EN_US: Record<TranslationKey, string> = {
     stats_footnotes_na: "Footnotes supported: NO",
     stats_endnotes_na: "Endnotes supported: NO",
 
+    // PR6: stats lines/sections
     stats_line_scope: "Scope: {0}",
     stats_line_nodes_changed: "Nodes changed: {0}",
     stats_line_time_ms: "Time: {0}ms",
@@ -411,6 +451,7 @@ const EN_US: Record<TranslationKey, string> = {
     stats_line_footnotes: "Footnotes: {0}",
     stats_line_endnotes: "Endnotes: {0}",
 
+    // Profile names
     profile_custom: "Custom",
     profile_it: "IT / Technology",
     profile_finance: "Finance / Banking",

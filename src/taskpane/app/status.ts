@@ -2,6 +2,7 @@
 /* global document */
 
 import { state } from "./state";
+import { t } from "../../shared/i18n";
 
 export function setStatus(msg: string, type: "info" | "success" | "error" | "neutral") {
     const el = document.getElementById("msg") as HTMLDivElement | null;
@@ -33,8 +34,11 @@ export function refreshStats() {
         const title = document.getElementById("statsTitle") as HTMLDivElement | null;
         const text = document.getElementById("statsText") as HTMLPreElement | null;
 
-        if (title) title.innerText = state.lastStatsTitle;
-        if (text) text.innerText = state.lastStatsText;
+        const titleText = state.lastStatsTitle || t("ui_stats_default_title");
+        const bodyText = state.lastStatsText || t("ui_stats_default_text");
+
+        if (title) title.innerText = titleText;
+        if (text) text.innerText = bodyText;
 
         // Animiraj i stats box kad se pojavi
         box.classList.remove("fade-in");

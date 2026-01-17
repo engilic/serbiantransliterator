@@ -9,7 +9,7 @@ import { setStatus, refreshStats } from "../status";
 import { invalidatePreviewCache } from "../preview/cache";
 import { confirmInPanel } from "../modal/modal";
 import { unsafeHtml } from "../../../shared/safeHtml";
-import { t } from "../../../shared/i18n"; // Import i18n
+import { t } from "../../../shared/i18n";
 
 import { runWithUiLock } from "../uiLock";
 import { runSmart } from "../word/apply";
@@ -22,13 +22,15 @@ import { DEFAULT_SETTINGS, PRESETS, SETTINGS_KEY } from "./defaults";
 import { renderTags, setupTagEvents } from "./tags";
 import { initAdvancedSettingsToggle } from "./advanced";
 
-// NEW: i18n for static HTML (taskpane.html)
-import { initUiI18n } from "../i18n/uiI18n";
+import { initUiI18n, getUiLanguagePreference, setUiLanguagePreference, asUiLangPref } from "../i18n/uiI18n";
+import { checkSelectionAndUpdateButtons } from "../selection";
 
 export function initUi() {
-    // Ensure i18n is initialized before any UI labels/statuses are set.
-    // This is safe and does not touch Word runtime.
+    // 1) Init i18n (DEFAULT: sr, unless user selects otherwise)
     initUiI18n();
+
+    // 2) Language picker init (defensive if DOM doesn't have it)
+    initLanguagePicker();
 
     const settings = loadSettingsFromStorage(SETTINGS_KEY, DEFAULT_SETTINGS) || DEFAULT_SETTINGS;
 
@@ -65,6 +67,31 @@ export function initUi() {
 
     refreshStats();
     setStatus(t("status_ready"), "neutral");
+}
+
+function initLanguagePicker() {
+    const sel = document.getElementById("optUiLanguage") as HTMLSelectElement | null;
+    if (!sel) return;
+
+    sel.value = getUiLanguagePreference();
+
+    sel.onchange = () => {
+        const pref = asUiLangPref(sel.value);
+        setUiLanguagePreference(pref);
+
+        // Update dynamic UI (best-effort):
+        // - run/preview button labels depend on t()
+        // - tags tooltips depend on t()
+        // - stats box fallback depends on t()
+        renderTags();
+        refreshStats();
+        setStatus(t("status_ready"), "neutral");
+        try {
+            void checkSelectionAndUpdateButtons();
+        } catch {
+            // best-effort
+        }
+    };
 }
 
 function bindButtons() {
@@ -210,7 +237,6 @@ function changeProfile(profile: ProfilePreset) {
     saveSettings();
     invalidatePreviewCache();
 
-    // Koristimo t() za prevod imena profila
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const profileKey = `profile_${profile}` as any;
     const displayName = t(profileKey) !== profileKey ? t(profileKey) : profile;
@@ -270,6 +296,7 @@ function exportSettingsAsDownload() {
 function handleFileImport(e: Event) {
     const input = e.target as HTMLInputElement;
     if (!input.files?.[0]) return;
+
     const reader = new FileReader();
     reader.onload = (_evt) => {
         try {
@@ -277,8 +304,10 @@ function handleFileImport(e: Event) {
             const parsed = JSON.parse(json);
             if (typeof parsed.profile !== "string" || !Array.isArray(parsed.userWordsCustom))
                 throw new Error();
+
             const newSettings: UiSettings = { ...DEFAULT_SETTINGS, ...parsed, schemaVersion: 2 };
             saveSettingsToStorage(SETTINGS_KEY, newSettings);
+
             initUi();
             invalidatePreviewCache();
             setStatus(t("status_settings_loaded"), "success");
