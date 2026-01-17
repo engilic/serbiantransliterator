@@ -1,4 +1,4 @@
-﻿// src/taskpane/app/state.ts
+// src/taskpane/app/state.ts
 
 import type { PreviewState, ProfilePreset } from "./types";
 
@@ -33,8 +33,9 @@ export const state = {
 
     currentProfile: "custom" as ProfilePreset,
 
-    lastStatsTitle: "Statistika poslednje akcije",
-    lastStatsText: "(Nema statistike još)",
+    // No hardcoded language here. status.ts will fallback using i18n keys.
+    lastStatsTitle: "",
+    lastStatsText: "",
 
     selectionTimeout: null as ReturnType<typeof setTimeout> | null,
     isApplyingProfile: false,

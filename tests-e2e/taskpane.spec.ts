@@ -1,24 +1,25 @@
 import { test, expect } from "@playwright/test";
 
-test.describe("Taskpane E2E smoke (Office stub)", () => {
+const LANG_KEY = "serbiantransliterator.ui.lang";
+
+test.describe("Taskpane E2E smoke (Office stub) + UI language picker", () => {
     test.beforeEach(async ({ page }) => {
-        // Block real Office.js (outside Word host it varies and is not needed for smoke).
+        // Block real Office.js
         await page.route("https://appsforoffice.microsoft.com/**", async (route) => {
             await route.abort();
         });
 
-        // Office stub must exist BEFORE taskpane bundle loads.
+        // Ensure preference starts clean each test
         await page.addInitScript(() => {
-            // Best-effort: make navigator.language deterministic (Chromium usually allows this in tests).
             try {
-                Object.defineProperty(navigator, "language", {
-                    value: "sr-Latn-RS",
-                    configurable: true,
-                });
+                localStorage.removeItem(LANG_KEY);
             } catch {
                 // ignore
             }
+        });
 
+        // Office stub must exist BEFORE taskpane bundle loads.
+        await page.addInitScript(() => {
             const OfficeStub = {
                 HostType: { Word: "Word" },
                 EventType: { DocumentSelectionChanged: "DocumentSelectionChanged" },
@@ -26,13 +27,13 @@ test.describe("Taskpane E2E smoke (Office stub)", () => {
                 AsyncResultStatus: { Succeeded: "succeeded" },
 
                 context: {
-                    // Make i18n deterministic: force Serbian UI language.
-                    displayLanguage: "sr-Latn-RS",
-                    contentLanguage: "sr-Latn-RS",
+                    // IMPORTANT: Force Office UI language to EN to verify that our default is still SR
+                    // (because user requested default sr, not auto).
+                    displayLanguage: "en-US",
+                    contentLanguage: "en-US",
 
                     document: {
                         addHandlerAsync: (...args: any[]) => {
-                            // Office API signature: (eventType, handler, callback?)
                             const cb = args[2];
                             if (typeof cb === "function") cb({ status: "succeeded" });
                         },
@@ -40,6 +41,7 @@ test.describe("Taskpane E2E smoke (Office stub)", () => {
                             const cb = args[2];
                             if (typeof cb === "function") cb({ status: "succeeded" });
                         },
+                        // No selection => "whole document" labels
                         getSelectedDataAsync: (_type: any, cb: any) => cb({ status: "succeeded", value: "" }),
                     },
                 },
@@ -48,30 +50,51 @@ test.describe("Taskpane E2E smoke (Office stub)", () => {
             };
 
             (globalThis as any).Office = OfficeStub;
-            (globalThis as any).Word = {}; // exists so init doesn't crash; Word.run not used without clicking
+            (globalThis as any).Word = {}; // Word.run not used without clicking
         });
     });
 
-    test("taskpane loads and initializes UI", async ({ page }) => {
+    test("language picker is visible under main buttons; default language is Serbian", async ({ page }) => {
         await page.goto("/taskpane.html");
 
         await expect(page.locator("#runBtn")).toBeVisible();
         await expect(page.locator("#previewBtn")).toBeVisible();
 
-        // Wait for initUi() to set status. Accept sr OR en to be robust.
+        // Picker exists and is visible
+        const picker = page.locator("#optUiLanguage");
+        await expect(picker).toBeVisible();
+
+        // Default should be Serbian even though Office displayLanguage is en-US
+        // (user requested default sr)
+        await expect(picker).toHaveValue("sr");
+
         const msg = page.locator("#msg");
-        await expect(msg).not.toHaveText(""); // ensures something was set
-        await expect(msg).toHaveText(/(Spreman za rad\.)|(Ready\.)/);
+        await expect(msg).toHaveText("Spreman za rad.");
     });
 
-    test("advanced panel toggle works", async ({ page }) => {
+    test("switching language to English updates status text", async ({ page }) => {
         await page.goto("/taskpane.html");
 
-        const btn = page.locator("#toggleAdvancedBtn");
-        const panel = page.locator("#advancedSettings");
+        const picker = page.locator("#optUiLanguage");
+        await expect(picker).toBeVisible();
 
-        await expect(panel).not.toHaveClass(/open/);
-        await btn.click();
-        await expect(panel).toHaveClass(/open/);
+        // Change to EN
+        await picker.selectOption("en");
+
+        const msg = page.locator("#msg");
+        await expect(msg).toHaveText("Ready.");
+    });
+
+    test("switching language to Auto follows Office language (en-US in stub)", async ({ page }) => {
+        await page.goto("/taskpane.html");
+
+        const picker = page.locator("#optUiLanguage");
+        await expect(picker).toBeVisible();
+
+        // Auto should follow Office context language (en-US) -> Ready.
+        await picker.selectOption("auto");
+
+        const msg = page.locator("#msg");
+        await expect(msg).toHaveText("Ready.");
     });
 });
