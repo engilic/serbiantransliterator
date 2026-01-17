@@ -1,12 +1,24 @@
 // src/taskpane/app/i18n/uiI18n.ts
 /* global document, navigator */
 
-import { setLanguage, t, type Language } from "../../../shared/i18n";
+import { setLanguage, t, type Language, getLanguage } from "../../../shared/i18n";
 import { safeGetItem, safeSetItem, safeRemoveItem } from "../../../shared/storage/safeLocalStorage";
 
 export type UiLangPref = "sr" | "en" | "auto";
 
 const LANG_KEY = "serbiantransliterator.ui.lang";
+
+// Minimal Office typing (avoid `any`, keep runtime-safe)
+type OfficeContextLike = {
+    displayLanguage?: string;
+    contentLanguage?: string;
+};
+
+type OfficeLike = {
+    context?: OfficeContextLike;
+};
+
+type GlobalWithOffice = typeof globalThis & { Office?: OfficeLike };
 
 export function asUiLangPref(v: unknown): UiLangPref {
     const s = String(v ?? "").toLowerCase();
@@ -37,9 +49,9 @@ export function setUiLanguagePreference(pref: UiLangPref): void {
 function detectUiLanguageFromEnv(): Language {
     // Office context preferred, then navigator; default "sr"
     try {
-        const officeAny = (globalThis as unknown as { Office?: any }).Office;
-        const displayLang: string | undefined = officeAny?.context?.displayLanguage;
-        const contentLang: string | undefined = officeAny?.context?.contentLanguage;
+        const office = (globalThis as GlobalWithOffice).Office;
+        const displayLang = office?.context?.displayLanguage;
+        const contentLang = office?.context?.contentLanguage;
 
         const pick = (displayLang || contentLang || "").toLowerCase();
         if (pick.startsWith("en")) return "en";
@@ -125,19 +137,4 @@ export function applyUiLanguage(pref: UiLangPref): void {
 export function initUiI18n(): void {
     const pref = getUiLanguagePreference();
     applyUiLanguage(pref);
-}
-
-// Small helper: current Language (sr/en) from i18n module state.
-// (We can't import getLanguage() without exporting it in i18n.ts; keep simple.)
-function getLanguage(): Language {
-    // We infer from one stable string: if "status_ready" in EN is "Ready."
-    // But safer: store it in a module global? Not needed; we only use for <html lang>.
-    // We'll just default to "sr" and rely on detect/apply to set.
-    // NOTE: if you already export getLanguage() from i18n.ts, replace this with import.
-    try {
-        const ready = t("status_ready");
-        return ready === "Ready." ? "en" : "sr";
-    } catch {
-        return "sr";
-    }
 }
