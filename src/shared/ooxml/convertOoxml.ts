@@ -672,6 +672,11 @@ export function convertOoxml(
     }
 
     let xml = new XMLSerializer().serializeToString(doc);
+
+    // Workaround:
+    // Some XMLSerializer implementations may emit xmlns="" when namespaces are mixed.
+    // In WordprocessingML this is unwanted noise and can create unstable diffs.
+    // Removing it keeps output stable for Word.
     xml = xml.replace(/ xmlns=""/g, "");
 
     const t1 = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
