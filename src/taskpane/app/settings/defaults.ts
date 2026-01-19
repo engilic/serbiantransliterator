@@ -11,6 +11,8 @@ export const DEFAULT_SETTINGS: UiSettings = {
 
     theme: "auto",
     customSubstitutions: "",
+    // NEW
+    dialect: "none",
 
     confirmWholeDoc: true,
     includeHeadersFooters: false,
@@ -50,6 +52,7 @@ export const PRESETS: Record<string, Partial<UiSettings> & { userWords: string[]
         formatDates: true,
         confirmWholeDoc: true,
         curlyProtection: "placeholders",
+        dialect: "none",
         userWords: [
             "Git",
             "GitHub",
@@ -99,6 +102,7 @@ export const PRESETS: Record<string, Partial<UiSettings> & { userWords: string[]
         formatDates: true,
         confirmWholeDoc: true,
         curlyProtection: "placeholders",
+        dialect: "none",
         userWords: [
             "SWIFT",
             "IBAN",
@@ -137,6 +141,7 @@ export const PRESETS: Record<string, Partial<UiSettings> & { userWords: string[]
         formatDates: true,
         confirmWholeDoc: true,
         curlyProtection: "placeholders",
+        dialect: "none",
         userWords: [
             "mg",
             "ml",
@@ -173,6 +178,7 @@ export const PRESETS: Record<string, Partial<UiSettings> & { userWords: string[]
         formatDates: false,
         confirmWholeDoc: true,
         curlyProtection: "placeholders",
+        dialect: "none",
         userWords: [
             "Facebook",
             "Instagram",
@@ -212,6 +218,7 @@ export const PRESETS: Record<string, Partial<UiSettings> & { userWords: string[]
         formatDates: true,
         confirmWholeDoc: true,
         curlyProtection: "placeholders",
+        dialect: "none",
         userWords: [
             "Ustav Republike Srbije",
             "Zakon o obligacionim odnosima",
@@ -243,6 +250,7 @@ export const PRESETS: Record<string, Partial<UiSettings> & { userWords: string[]
         formatDates: true,
         confirmWholeDoc: true,
         curlyProtection: "placeholders",
+        dialect: "none",
         userWords: [
             "Reuters",
             "Associated Press",

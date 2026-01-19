@@ -1,7 +1,7 @@
 // src/taskpane/app/settings/getters.ts
 /* global document */
 
-import type { UiSettings, DirectionUi, ProfilePreset, AppTheme } from "../types";
+import type { UiSettings, DirectionUi, ProfilePreset, AppTheme, DialectUi } from "../types";
 import type { OoxmlOptions } from "../../../shared/ooxml/convertOoxml";
 import { state } from "../state";
 import { asCurlyProtectionUi } from "../word/curlyProtection";
@@ -25,7 +25,6 @@ export function getSelectValue(id: string): string {
     return String(el?.value ?? "");
 }
 
-// NEW: Helper for textarea
 export function getTextValue(id: string): string {
     const el = document.getElementById(id) as HTMLTextAreaElement | null;
     return String(el?.value ?? "");
@@ -55,6 +54,10 @@ function asAppTheme(v: string): AppTheme {
     return v === "light" || v === "dark" ? v : "auto";
 }
 
+function asDialectUi(v: string): DialectUi {
+    return v === "ekavica_to_ijekavica" || v === "ijekavica_to_ekavica" ? v : "none";
+}
+
 function parseCustomSubstitutions(raw: string): Record<string, string> {
     const map: Record<string, string> = {};
     if (!raw) return map;
@@ -81,11 +84,14 @@ export function getSettingsFromUi(): UiSettings {
     const curlyRaw = getSelectValue("optCurlyProtection");
     const curlyProtection = asCurlyProtectionUi(curlyRaw);
 
-    // NEW
     const themeRaw = getSelectValue("optTheme");
     const theme = asAppTheme(themeRaw);
 
     const subsRaw = getTextValue("optCustomSubstitutions");
+
+    // NEW
+    const dialectRaw = getSelectValue("optDialect");
+    const dialect = asDialectUi(dialectRaw);
 
     return {
         schemaVersion: 2,
@@ -93,9 +99,11 @@ export function getSettingsFromUi(): UiSettings {
         profile,
         userWordsCustom: Array.from(state.customWordsSet),
 
-        // NEW
         theme,
         customSubstitutions: subsRaw,
+
+        // NEW
+        dialect,
 
         protectBrands: getCheckValue("optProtectBrands"),
         applySerbianQuotes: getCheckValue("optSerbianQuotes"),
@@ -126,7 +134,6 @@ export function getOoxmlOptionsFromUi(): OoxmlOptions {
     if (s.direction === "cyr-to-lat") dir = "cyr-to-lat";
     if (s.direction === "to-ascii") dir = "to-ascii";
 
-    // Parse map only here to send clean object to core
     const customSubsMap = parseCustomSubstitutions(s.customSubstitutions);
 
     return {
@@ -141,7 +148,8 @@ export function getOoxmlOptionsFromUi(): OoxmlOptions {
         curlyProtection: s.curlyProtection,
         userProtected: [...Array.from(state.customWordsSet), ...Array.from(state.presetWordsSet)],
 
-        // NEW
         customSubstitutions: customSubsMap,
+        // NEW
+        dialect: s.dialect,
     };
 }
