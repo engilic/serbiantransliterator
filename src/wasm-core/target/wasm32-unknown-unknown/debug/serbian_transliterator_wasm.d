@@ -1,1 +1,0 @@
-D:\SerbianTransliteratorWeb\SerbianTransliterator\src\wasm-core\target\wasm32-unknown-unknown\debug\serbian_transliterator_wasm.wasm: D:\SerbianTransliteratorWeb\SerbianTransliterator\src\wasm-core\src\lib.rs
