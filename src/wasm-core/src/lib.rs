@@ -1,57 +1,6 @@
 use wasm_bindgen::prelude::*;
 
-// Baza znanja (U produkciji ovo bi se učitavalo iz fajla, ovde je hardcoded radi brzine)
-fn get_ekavica_to_ijekavica(word: &str) -> Option<&str> {
-    match word.to_lowercase().as_str() {
-        "vreme" => Some("vrijeme"),
-        "lepo" => Some("lijepo"),
-        "deca" => Some("djeca"),
-        "vera" => Some("vjera"),
-        "reka" => Some("rijeka"),
-        "pesma" => Some("pjesma"),
-        "mesec" => Some("mjesec"),
-        "mesto" => Some("mjesto"),
-        "vesti" => Some("vijesti"),
-        "zvezda" => Some("zvijezda"),
-        "sneg" => Some("snijeg"),
-        "celo" => Some("cijelo"),
-        "belo" => Some("bijelo"),
-        "htela" => Some("htjela"),
-        "videla" => Some("vidjela"),
-        "leteti" => Some("letjeti"),
-        "razumeti" => Some("razumjeti"),
-        "uspeh" => Some("uspjeh"),
-        "svet" => Some("svijet"),
-        "cvet" => Some("cvijet"),
-        _ => None,
-    }
-}
-
-fn get_ijekavica_to_ekavica(word: &str) -> Option<&str> {
-    match word.to_lowercase().as_str() {
-        "vrijeme" => Some("vreme"),
-        "lijepo" => Some("lepo"),
-        "djeca" => Some("deca"),
-        "vjera" => Some("vera"),
-        "rijeka" => Some("reka"),
-        "pjesma" => Some("pesma"),
-        "mjesec" => Some("mesec"),
-        "mjesto" => Some("mesto"),
-        "vijesti" => Some("vesti"),
-        "zvijezda" => Some("zvezda"),
-        "snijeg" => Some("sneg"),
-        "cijelo" => Some("celo"),
-        "bijelo" => Some("belo"),
-        "htjela" => Some("htela"),
-        "vidjela" => Some("videla"),
-        "letjeti" => Some("leteti"),
-        "razumjeti" => Some("razumeti"),
-        "uspjeh" => Some("uspeh"),
-        "svijet" => Some("svet"),
-        "cvijet" => Some("cvet"),
-        _ => None,
-    }
-}
+mod dictionary;
 
 // Funkcija koja čuva veliko slovo (Lepo -> Lijepo, lepo -> lijepo)
 fn match_case(original: &str, replacement: &str) -> String {
@@ -90,10 +39,10 @@ pub fn convert_dialect(text: &str, mode: &str) -> String {
         }
         let word: String = chars[start..i].iter().collect();
 
-        // Proveri zamenu
+        // Proveri zamenu koristeći novi modul
         let replacement = match mode {
-            "ekavica_to_ijekavica" => get_ekavica_to_ijekavica(&word),
-            "ijekavica_to_ekavica" => get_ijekavica_to_ekavica(&word),
+            "ekavica_to_ijekavica" => dictionary::get_ekavica_to_ijekavica(&word),
+            "ijekavica_to_ekavica" => dictionary::get_ijekavica_to_ekavica(&word),
             _ => None
         };
 
@@ -186,7 +135,7 @@ pub fn to_latin(text: &str) -> String {
             'Ф' => result.push('F'), 'ф' => result.push('f'),
             'Х' => result.push('H'), 'х' => result.push('h'),
             'Ц' => result.push('C'), 'ц' => result.push('c'),
-            'Ч' => result.push('Č'), 'ч' => result.push('č'),
+            'Č' => result.push('Č'), 'č' => result.push('č'),
             'Џ' => result.push_str("Dž"), 'џ' => result.push_str("dž"),
             'Ш' => result.push('Š'), 'ш' => result.push('š'),
             _ => result.push(c),
