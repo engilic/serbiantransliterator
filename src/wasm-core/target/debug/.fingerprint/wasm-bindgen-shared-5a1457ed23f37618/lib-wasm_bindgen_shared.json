@@ -1,0 +1,23 @@
+{
+    "rustc": 7895727629726570510,
+    "features": "[]",
+    "declared_features": "[]",
+    "target": 8958406094080315647,
+    "profile": 6553885787648027783,
+    "path": 7933741714643660964,
+    "deps": [
+        [1548027836057496652, "unicode_ident", false, 3952621314734363487],
+        [9166542761925590510, "build_script_build", false, 7585041391574228257]
+    ],
+    "local": [
+        {
+            "CheckDepInfo": {
+                "dep_info": "debug\\.fingerprint\\wasm-bindgen-shared-5a1457ed23f37618\\dep-lib-wasm_bindgen_shared",
+                "checksum": false
+            }
+        }
+    ],
+    "rustflags": [],
+    "config": 2069994364910194474,
+    "compile_kind": 0
+}
