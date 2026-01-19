@@ -1,7 +1,7 @@
 // src/taskpane/app/i18n/uiI18n.ts
 /* global document, navigator */
 
-import { setLanguage, t, type Language, getLanguage } from "../../../shared/i18n";
+import { setLanguage, t, type Language, getLanguage, isTranslationKey } from "../../../shared/i18n";
 import { safeGetItem, safeSetItem, safeRemoveItem } from "../../../shared/storage/safeLocalStorage";
 
 export type UiLangPref = "sr" | "en" | "auto";
@@ -87,8 +87,8 @@ export function applyI18nToDom(root: ParentNode = document): void {
     const textEls = root.querySelectorAll?.("[data-i18n]") ?? [];
     for (const el of Array.from(textEls)) {
         const key = (el as HTMLElement).dataset?.i18n;
-        if (!key) continue;
-        (el as HTMLElement).textContent = t(key as never);
+        if (!key || !isTranslationKey(key)) continue;
+        (el as HTMLElement).textContent = t(key);
     }
 
     const attrEls = root.querySelectorAll?.("[data-i18n-attr]") ?? [];
@@ -103,8 +103,8 @@ export function applyI18nToDom(root: ParentNode = document): void {
 
         for (const p of pairs) {
             const [attr, keyRaw] = p.split(":").map((x) => (x ?? "").trim());
-            if (!attr || !keyRaw) continue;
-            setAttr(el, attr, t(keyRaw as never));
+            if (!attr || !keyRaw || !isTranslationKey(keyRaw)) continue;
+            setAttr(el, attr, t(keyRaw));
         }
     }
 

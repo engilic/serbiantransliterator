@@ -93,13 +93,19 @@ export function showModalInfo(titleStr: string, safeHtmlMsg: SafeHtml) {
 export function handleModalOk() {
     (document.getElementById("modalOverlay") as HTMLDivElement).style.display = "none";
     resetModalButtons();
-    if (modalPromiseResolver) modalPromiseResolver(true);
+
+    const r = modalPromiseResolver;
+    modalPromiseResolver = null;
+    r?.(true);
 }
 
 export function closeModal() {
     (document.getElementById("modalOverlay") as HTMLDivElement).style.display = "none";
     resetModalButtons();
-    if (modalPromiseResolver) modalPromiseResolver(false);
+
+    const r = modalPromiseResolver;
+    modalPromiseResolver = null;
+    r?.(false);
 }
 
 export function resetModalButtons() {
