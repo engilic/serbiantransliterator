@@ -5,6 +5,8 @@ import type { CurlyProtectionUi } from "./word/curlyProtection";
 export type DirectionUi = "auto" | "lat-to-cyr" | "cyr-to-lat" | "to-ascii";
 export type ProfilePreset = "custom" | "it" | "finance" | "medical" | "legal" | "journalism" | "marketing";
 export type AppTheme = "auto" | "light" | "dark";
+// NEW
+export type DialectUi = "none" | "ekavica_to_ijekavica" | "ijekavica_to_ekavica";
 
 export interface UiSettings {
     schemaVersion: 2;
@@ -13,7 +15,10 @@ export interface UiSettings {
     userWordsCustom: string[];
 
     theme: AppTheme;
-    customSubstitutions: string; // Raw string from textarea
+    customSubstitutions: string;
+
+    // NEW
+    dialect: DialectUi;
 
     protectBrands: boolean;
     applySerbianQuotes: boolean;
@@ -21,12 +26,6 @@ export interface UiSettings {
     setProofingLanguage: boolean;
     protectRomans: boolean;
 
-    /**
-     * Kako štitimo {...} u plain tekstu / Word tekstu.
-     * - placeholders: štiti samo placeholder-like (default)
-     * - all: legacy ponašanje (štiti bilo šta u {...})
-     * - none: ne štiti {...}
-     */
     curlyProtection: CurlyProtectionUi;
 
     fixDoubleSpaces: boolean;
@@ -60,7 +59,6 @@ export interface PreviewState {
 
     toastTimer: ReturnType<typeof setTimeout> | null;
 
-    // Cache (selection preview apply)
     convertedOoxml: string | null;
     ooxmlOptsSnapJson: string | null;
     selectionTextHash: string | null;

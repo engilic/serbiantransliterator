@@ -28,7 +28,6 @@
                     <button id="previewBtn" type="button"></button>
                 </div>
 
-                <!-- Languages & Theme Row -->
                 <div class="lang-row">
                     <div class="lang-group">
                         <div class="lang-label" data-i18n="opt_ui_language_label"></div>
@@ -244,7 +243,16 @@
 
                     <div class="hint" data-i18n="opt_format_dates_hint"></div>
 
-                    <!-- NEW: Custom Subs -->
+                    <!-- NEW: Dialect -->
+                    <div class="field-row" style="margin-top: 15px">
+                        <div class="field-label" data-i18n="opt_dialect_label"></div>
+                        <select id="optDialect" data-i18n-attr="aria-label:opt_dialect_aria">
+                            <option value="none" data-i18n="opt_dialect_none"></option>
+                            <option value="ekavica_to_ijekavica" data-i18n="opt_dialect_ei"></option>
+                            <option value="ijekavica_to_ekavica" data-i18n="opt_dialect_ie"></option>
+                        </select>
+                    </div>
+
                     <div class="field-row" style="margin-top: 15px">
                         <div class="field-label" data-i18n="opt_custom_subs_label"></div>
                         <textarea

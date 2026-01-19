@@ -1,6 +1,5 @@
 // src/shared/i18n.ts
 
-// Pomocne funkcije za srpsku gramatiku (jednina/dvojina/množina)
 function getSerbianPluralForm(n: number): "one" | "few" | "many" {
     const n100 = n % 100;
     const n10 = n % 10;
@@ -59,14 +58,11 @@ const SR_RS = {
     opt_ui_language_en: "English",
     opt_ui_language_auto: "Auto (Office/browser)",
     opt_ui_language_hint: "Menja jezik UI-ja. Default je srpski. Auto prati Office/browser jezik.",
-
-    // NEW THEME
     ui_theme_label: "Tema / Theme",
     ui_theme_aria: "Izbor teme",
     ui_theme_auto: "Auto",
     ui_theme_light: "Svetla ☀️",
     ui_theme_dark: "Tamna 🌙",
-
     opt_curly_label_before: "Zaštita ",
     opt_curly_label_after: " blokova",
     opt_curly_aria: "Zaštita vitičastih zagrada",
@@ -79,10 +75,17 @@ const SR_RS = {
     opt_format_dates: "Formatiraj datume (npr. 21.10.2023.)",
     opt_format_dates_hint: "Ova opcija menja sadržaj (nije samo preslovljavanje).",
 
-    // NEW CUSTOM SUBS
+    // CUSTOM SUBS
     opt_custom_subs_label: "Custom Substitutions (Izvor -> Cilj)",
     opt_custom_subs_placeholder: "vreme -> vrijeme\nlepo -> lijepo",
     opt_custom_subs_hint: "Jedno pravilo po liniji. Primenjuje se na kraju.",
+
+    // NEW DIALECT
+    opt_dialect_label: "Dijalekt / Pismo",
+    opt_dialect_aria: "Izbor dijalekta",
+    opt_dialect_none: "Samo preslovljavanje (Standard)",
+    opt_dialect_ei: "Ekavica → Ijekavica (beta)",
+    opt_dialect_ie: "Ijekavica → Ekavica (beta)",
 
     section_protected: "ZAŠTIĆENO",
     btn_add_word_title: "Dodaj reč",
@@ -254,14 +257,11 @@ const EN_US: Record<TranslationKey, string> = {
     opt_ui_language_en: "English",
     opt_ui_language_auto: "Auto (Office/browser)",
     opt_ui_language_hint: "Changes UI language. Default is Serbian. Auto follows Office/browser language.",
-
-    // NEW THEME
     ui_theme_label: "Theme",
     ui_theme_aria: "Theme selection",
     ui_theme_auto: "Auto",
     ui_theme_light: "Light ☀️",
     ui_theme_dark: "Dark 🌙",
-
     opt_curly_label_before: "Protection for ",
     opt_curly_label_after: " blocks",
     opt_curly_aria: "Curly braces protection",
@@ -273,11 +273,16 @@ const EN_US: Record<TranslationKey, string> = {
     opt_set_proofing_language: "Set proofing language (sr-Cyrl / sr-Latn)",
     opt_format_dates: "Format dates (e.g. 21.10.2023.)",
     opt_format_dates_hint: "This option changes content (not just transliteration).",
-
-    // NEW CUSTOM SUBS
     opt_custom_subs_label: "Custom Substitutions (Source -> Dest)",
     opt_custom_subs_placeholder: "vreme -> vrijeme\nlepo -> lijepo",
     opt_custom_subs_hint: "One rule per line. Applied last.",
+
+    // NEW
+    opt_dialect_label: "Dialect / Script",
+    opt_dialect_aria: "Dialect selection",
+    opt_dialect_none: "Transliteration only (Standard)",
+    opt_dialect_ei: "Ekavica → Ijekavica (beta)",
+    opt_dialect_ie: "Ijekavica → Ekavica (beta)",
 
     section_protected: "PROTECTED",
     btn_add_word_title: "Add word",

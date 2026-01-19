@@ -1,7 +1,7 @@
 // src/taskpane/app/settings/ui.ts
 /* global document, Blob, URL, FileReader */
 
-import type { UiSettings, ProfilePreset, AppTheme } from "../types";
+import type { UiSettings, ProfilePreset, AppTheme, DialectUi } from "../types";
 import { state } from "../state";
 import { asCurlyProtectionUi } from "../word/curlyProtection";
 
@@ -177,6 +177,10 @@ function applySettingsToUi(s: UiSettings) {
     const subArea = document.getElementById("optCustomSubstitutions") as HTMLTextAreaElement | null;
     if (subArea) subArea.value = s.customSubstitutions || "";
 
+    // NEW: Dialect
+    const dialectSel = document.getElementById("optDialect") as HTMLSelectElement | null;
+    if (dialectSel) dialectSel.value = s.dialect || "none";
+
     refreshStats();
     updateResetButtonState();
 }
@@ -201,6 +205,7 @@ function updateResetButtonState() {
         "showStats",
         "theme",
         "customSubstitutions",
+        "dialect",
     ];
 
     const mismatches = keys.filter((k) => current[k] !== DEFAULT_SETTINGS[k]);
@@ -250,6 +255,11 @@ function changeProfile(profile: ProfilePreset) {
                     data.curlyProtection ?? DEFAULT_SETTINGS.curlyProtection
                 );
             }
+            // NEW
+            if (data.dialect !== undefined) {
+                const dSel = document.getElementById("optDialect") as HTMLSelectElement | null;
+                if (dSel) dSel.value = data.dialect;
+            }
         }
     }
 
@@ -285,6 +295,7 @@ function setupInputListeners() {
         "dirCyrToLat",
         "dirToAscii",
         "optCustomSubstitutions",
+        "optDialect", // NEW
     ];
 
     ids.forEach((id) => {

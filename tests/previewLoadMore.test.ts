@@ -3,7 +3,7 @@ import { state } from "../src/taskpane/app/state";
 import { showPreviewModal } from "../src/taskpane/app/modal/previewModal";
 import { PREVIEW_BATCH } from "../src/taskpane/app/preview/constants";
 
-// Minimal mocks: preview modal koristi applyFromPreview + runWithUiLock u apply dugmetu
+// Minimal mocks
 vi.mock("../src/taskpane/app/uiLock", () => ({
     runWithUiLock: async (fn: () => Promise<void>) => {
         await fn();
@@ -37,15 +37,14 @@ function getPreviewTitleEl(): HTMLElement | null {
 beforeEach(() => {
     setupModalSkeletonDom();
 
-    // reset preview state
     state.preview.settingsSnap = {
         schemaVersion: 2,
         profile: "custom",
         userWordsCustom: [],
 
-        // FIX: Add missing fields for typecheck
         theme: "auto",
         customSubstitutions: "",
+        dialect: "none", // <--- DODATO OVDE
 
         confirmWholeDoc: true,
         includeHeadersFooters: false,
@@ -66,7 +65,6 @@ beforeEach(() => {
     state.customWordsSet.clear();
     state.presetWordsSet.clear();
 
-    // Make a small doc preview list that requires "load more"
     const paras = Array.from({ length: PREVIEW_BATCH + 5 }).map((_, i) => `Para ${i + 1}`);
     state.preview.allParagraphs = paras;
     state.preview.shownCount = PREVIEW_BATCH;
@@ -77,7 +75,7 @@ beforeEach(() => {
     state.preview.titleText = `Prvih ${state.preview.shownCount} paragrafa (${state.preview.typeText})`;
 
     state.preview.original = paras.slice(0, state.preview.shownCount).join("\n");
-    state.preview.converted = state.preview.original; // modal će ionako da renderuje/refreshuje
+    state.preview.converted = state.preview.original;
     state.preview.mode = "diff";
 });
 
@@ -91,7 +89,6 @@ describe("previewModal - load more (document preview)", () => {
 
         const before = state.preview.shownCount;
 
-        // click "Učitaj još" (handler je async)
         await (okBtn.onclick as unknown as () => Promise<void>)();
 
         expect(state.preview.shownCount).toBeGreaterThan(before);

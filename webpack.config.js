@@ -1,4 +1,4 @@
-﻿/* eslint-disable no-undef */
+/* eslint-disable no-undef */
 const path = require("path");
 const pkg = require("./package.json");
 const devCerts = require("office-addin-dev-certs");
@@ -6,6 +6,7 @@ const CopyWebpackPlugin = require("copy-webpack-plugin");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const TerserPlugin = require("terser-webpack-plugin");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
+const WasmPackPlugin = require("@wasm-tool/wasm-pack-plugin");
 
 async function getHttpsOptions() {
     const httpsOptions = await devCerts.getHttpsServerOptions();
@@ -23,6 +24,11 @@ module.exports = async (env, options) => {
             commands: ["./src/commands/commands.ts"],
         },
         resolve: { extensions: [".ts", ".html", ".js"] },
+
+        experiments: {
+            asyncWebAssembly: true,
+        },
+
         module: {
             rules: [
                 {
@@ -80,6 +86,10 @@ module.exports = async (env, options) => {
                 },
             },
         },
+        // NEW: Suppress size warnings
+        performance: {
+            hints: false,
+        },
         plugins: [
             new MiniCssExtractPlugin({
                 filename: "[name].css",
@@ -121,6 +131,11 @@ module.exports = async (env, options) => {
                     { from: "src/static/privacy.html", to: "privacy.html", noErrorOnMissing: true },
                     { from: "src/static/_headers", to: "_headers", toType: "file", noErrorOnMissing: true },
                 ],
+            }),
+
+            new WasmPackPlugin({
+                crateDirectory: path.resolve(__dirname, "src/wasm-core"),
+                outDir: path.resolve(__dirname, "src/wasm-core/pkg"),
             }),
         ],
         devServer: {
