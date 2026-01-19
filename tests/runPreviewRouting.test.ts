@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 const W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
 
@@ -110,7 +110,7 @@ function makeWordStub(params: { selectionText: string; selectionOoxml?: string; 
 }
 
 beforeEach(() => {
-    vi.resetAllMocks();
+    vi.clearAllMocks();
 
     // reset preview state that tests touch
     state.preview.scope = "selection";

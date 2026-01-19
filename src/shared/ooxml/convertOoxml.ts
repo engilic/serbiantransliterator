@@ -22,6 +22,7 @@ import {
     LAT_ALLCAPS_HINT,
 } from "./bridge/index";
 import { URL_RE_G, EMAIL_RE_G } from "../patterns/links";
+import { perfMonitor } from "../../taskpane/app/telemetry/performanceMonitor";
 
 const ALWAYS_LATIN_PHRASE_INFOS = buildPhraseInfos(ALWAYS_LATIN_PHRASES);
 const PHRASE_INFOS_CACHE_MAX = 80;
@@ -435,6 +436,9 @@ export function convertOoxml(
 ): { xml: string; type: string; stats: ConvertStats } {
     const t0 = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
 
+    // Track OOXML size for performance monitoring
+    const ooxmlSizeKb = Math.round(ooxml.length / 1024);
+
     const parser = new DOMParser();
     const doc = parser.parseFromString(ooxml, "application/xml");
 
@@ -727,6 +731,16 @@ export function convertOoxml(
     xml = xml.replace(/ xmlns=""/g, "");
 
     const t1 = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+    const duration = Math.max(0, t1 - t0);
+
+    // Record performance metrics
+    if (typeof perfMonitor !== "undefined") {
+        perfMonitor.record("convertOoxml", textNodes.length, duration, {
+            sizeKb: ooxmlSizeKb,
+            direction: direction,
+            bridges: Object.values(bridges).reduce((a, b) => a + b, 0),
+        });
+    }
 
     const stats: ConvertStats = {
         direction,
@@ -742,7 +756,7 @@ export function convertOoxml(
         },
         bridges,
         proofing,
-        timingMs: Math.max(0, t1 - t0),
+        timingMs: duration,
     };
 
     return { xml, type: label, stats };

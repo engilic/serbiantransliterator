@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // mock convertOoxml used inside headersFooters.ts
 vi.mock("../src/shared/ooxml/convertOoxml", () => ({
@@ -13,7 +13,7 @@ vi.mock("../src/shared/ooxml/convertOoxml", () => ({
 import { processHeadersFooters } from "../src/taskpane/app/word/headersFooters";
 
 beforeEach(() => {
-    vi.resetAllMocks();
+    vi.clearAllMocks();
 
     // Word enums used in headersFooters.ts
     (globalThis as any).Word = {

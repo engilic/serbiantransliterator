@@ -263,6 +263,17 @@ const SR_RS = {
     stats_line_nodes_changed_one: "Promenjen {0} čvor",
     stats_line_nodes_changed_few: "Promenjena {0} čvora",
     stats_line_nodes_changed_many: "Promenjeno {0} čvorova",
+
+    // Error recovery messages
+    error_max_retries_exceeded: "Maksimalan broj pokušaja prekoračen",
+    error_network_retrying: "Mrežna greška, pokušavam ponovo...",
+    error_word_api_retrying: "Word API greška, pokušavam ponovo...",
+    error_out_of_memory_split_document: "Dokument je prevelik. Molimo podelite ga na manje delove.",
+    error_selection_lost: "Selekcija je izgubljena. Molimo selektujte ponovo.",
+
+    // Performance warnings
+    perf_slow_operation: "Operacija traje duže od očekivanog...",
+    perf_very_slow_warning: "Obrada je veoma spora. Razmislite o podeli dokumenta.",
 };
 
 // =========================
@@ -501,6 +512,17 @@ const EN_US: Record<TranslationKey, string> = {
     stats_line_nodes_changed_one: "Changed {0} node",
     stats_line_nodes_changed_few: "Changed {0} nodes",
     stats_line_nodes_changed_many: "Changed {0} nodes",
+
+    // Error recovery messages
+    error_max_retries_exceeded: "Maximum retry attempts exceeded",
+    error_network_retrying: "Network error, retrying...",
+    error_word_api_retrying: "Word API error, retrying...",
+    error_out_of_memory_split_document: "Document too large. Please split it into smaller parts.",
+    error_selection_lost: "Selection lost. Please select again.",
+
+    // Performance warnings
+    perf_slow_operation: "Operation is taking longer than expected...",
+    perf_very_slow_warning: "Processing is very slow. Consider splitting the document.",
 };
 
 // Mapa svih prevoda

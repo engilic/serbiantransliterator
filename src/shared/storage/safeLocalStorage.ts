@@ -3,7 +3,7 @@
 /**
  * Defensive wrapper oko localStorage.
  *
- * Razlog: u nekim okru�enjima (npr. restriktivan privacy re�im / blokiran storage)
+ * Razlog: u nekim okruženjima (npr. restriktivan privacy režim / blokiran storage)
  * localStorage.getItem/setItem/removeItem mogu da bace exception.
  *
  * Cilj: UI i add-in ne smeju da puknu zbog storage-a (best-effort).

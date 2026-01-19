@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // mock convertOoxml used inside notes.ts
 vi.mock("../src/shared/ooxml/convertOoxml", () => ({
@@ -12,7 +12,7 @@ vi.mock("../src/shared/ooxml/convertOoxml", () => ({
 import { processNotes } from "../src/taskpane/app/word/notes";
 
 beforeEach(() => {
-    vi.resetAllMocks();
+    vi.clearAllMocks();
 
     (globalThis as any).Word = {
         InsertLocation: { replace: "replace" },
