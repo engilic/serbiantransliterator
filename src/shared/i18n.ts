@@ -260,7 +260,6 @@ const SR_RS = {
     // =======================
 
     // stats_line_nodes_changed
-    // Ispravka: Dodaj {0} umesto hardcoded 1
     stats_line_nodes_changed_one: "Promenjen {0} čvor",
     stats_line_nodes_changed_few: "Promenjena {0} čvora",
     stats_line_nodes_changed_many: "Promenjeno {0} čvorova",
@@ -499,8 +498,8 @@ const EN_US: Record<TranslationKey, string> = {
     // =======================
 
     // stats_line_nodes_changed
-    stats_line_nodes_changed_one: "Changed {0} node", // Dodato {0}
-    stats_line_nodes_changed_few: "Changed {0} nodes", // Dodato {0}
+    stats_line_nodes_changed_one: "Changed {0} node",
+    stats_line_nodes_changed_few: "Changed {0} nodes",
     stats_line_nodes_changed_many: "Changed {0} nodes",
 };
 
@@ -558,4 +557,12 @@ export function tPlural(key: TranslationKey, count: number): string {
     // Fallback: ako nema specifičnog prevoda za plural formu, koristi osnovni ključ
     // i pokušaj da zameni {0} sa brojem.
     return t(key, count);
+}
+
+/**
+ * Runtime + type-guard: proveri da li je proizvoljan string validan TranslationKey.
+ * Koristi se za data-i18n/data-i18n-attr input iz DOM-a (string).
+ */
+export function isTranslationKey(k: string): k is TranslationKey {
+    return Object.prototype.hasOwnProperty.call(SR_RS, k);
 }
