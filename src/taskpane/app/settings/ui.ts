@@ -1,7 +1,7 @@
 // src/taskpane/app/settings/ui.ts
 /* global document, Blob, URL, FileReader */
 
-import type { UiSettings, ProfilePreset } from "../types";
+import type { UiSettings, ProfilePreset, AppTheme } from "../types";
 import { state } from "../state";
 import { asCurlyProtectionUi } from "../word/curlyProtection";
 
@@ -15,7 +15,7 @@ import { runWithUiLock } from "../uiLock";
 import { runSmart } from "../word/apply";
 import { runPreview } from "../preview/runPreview";
 
-import { getSettingsFromUi } from "./getters";
+import { getSettingsFromUi, getOoxmlOptionsFromUi, getSelectValue } from "./getters";
 import { loadSettingsFromStorage, saveSettingsToStorage } from "./store";
 import { DEFAULT_SETTINGS, PRESETS, SETTINGS_KEY } from "./defaults";
 
@@ -25,11 +25,15 @@ import { initAdvancedSettingsToggle } from "./advanced";
 import { initUiI18n, getUiLanguagePreference, setUiLanguagePreference, asUiLangPref } from "../i18n/uiI18n";
 import { checkSelectionAndUpdateButtons } from "../selection";
 
-export function initUi() {
-    // 1) Init i18n (DEFAULT: sr, unless user selects otherwise)
-    initUiI18n();
+function applyTheme(theme: AppTheme) {
+    document.documentElement.setAttribute("data-theme", theme);
+    if (theme === "auto") {
+        document.documentElement.removeAttribute("data-theme");
+    }
+}
 
-    // 2) Language picker init (defensive if DOM doesn't have it)
+export function initUi() {
+    initUiI18n();
     initLanguagePicker();
 
     const settings = loadSettingsFromStorage(SETTINGS_KEY, DEFAULT_SETTINGS) || DEFAULT_SETTINGS;
@@ -65,6 +69,16 @@ export function initUi() {
         changeProfile(val);
     };
 
+    // Theme binding
+    const themeSel = document.getElementById("optTheme") as HTMLSelectElement | null;
+    if (themeSel) {
+        themeSel.onchange = () => {
+            const val = themeSel.value as AppTheme;
+            applyTheme(val);
+            saveSettings();
+        };
+    }
+
     refreshStats();
     setStatus(t("status_ready"), "neutral");
 }
@@ -78,11 +92,6 @@ function initLanguagePicker() {
     sel.onchange = () => {
         const pref = asUiLangPref(sel.value);
         setUiLanguagePreference(pref);
-
-        // Update dynamic UI (best-effort):
-        // - run/preview button labels depend on t()
-        // - tags tooltips depend on t()
-        // - stats box fallback depends on t()
         renderTags();
         refreshStats();
         setStatus(t("status_ready"), "neutral");
@@ -159,6 +168,15 @@ function applySettingsToUi(s: UiSettings) {
     setCheckValue("optIncludeFootnotes", s.includeFootnotes);
     setCheckValue("optIncludeEndnotes", s.includeEndnotes);
 
+    // Theme
+    const themeSel = document.getElementById("optTheme") as HTMLSelectElement | null;
+    if (themeSel) themeSel.value = s.theme || "auto";
+    applyTheme(s.theme || "auto");
+
+    // Custom Subs
+    const subArea = document.getElementById("optCustomSubstitutions") as HTMLTextAreaElement | null;
+    if (subArea) subArea.value = s.customSubstitutions || "";
+
     refreshStats();
     updateResetButtonState();
 }
@@ -181,6 +199,8 @@ function updateResetButtonState() {
         "fixDoubleSpaces",
         "formatDates",
         "showStats",
+        "theme",
+        "customSubstitutions",
     ];
 
     const mismatches = keys.filter((k) => current[k] !== DEFAULT_SETTINGS[k]);
@@ -264,10 +284,15 @@ function setupInputListeners() {
         "dirLatToCyr",
         "dirCyrToLat",
         "dirToAscii",
+        "optCustomSubstitutions",
     ];
 
     ids.forEach((id) => {
-        const el = document.getElementById(id) as HTMLInputElement | HTMLSelectElement | null;
+        const el = document.getElementById(id) as
+            | HTMLInputElement
+            | HTMLSelectElement
+            | HTMLTextAreaElement
+            | null;
         if (!el) return;
         el.onchange = () => {
             if (id !== "optShowStats") invalidatePreviewCache();

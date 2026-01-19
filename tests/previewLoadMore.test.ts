@@ -42,6 +42,11 @@ beforeEach(() => {
         schemaVersion: 2,
         profile: "custom",
         userWordsCustom: [],
+
+        // FIX: Add missing fields for typecheck
+        theme: "auto",
+        customSubstitutions: "",
+
         confirmWholeDoc: true,
         includeHeadersFooters: false,
         includeFootnotes: false,

@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { state } from "../src/taskpane/app/state";
 
 import { getSettingsFromUi, getOoxmlOptionsFromUi } from "../src/taskpane/app/settings/getters";
@@ -21,12 +21,22 @@ function setupDomForGetters() {
     <input type="radio" id="dirLatToCyr" name="direction" value="lat-to-cyr" />
     <input type="radio" id="dirCyrToLat" name="direction" value="cyr-to-lat" />
 
-    <!-- NEW: curlyProtection select -->
+    <!-- curlyProtection select -->
     <select id="optCurlyProtection">
       <option value="placeholders">placeholders</option>
       <option value="all">all</option>
       <option value="none">none</option>
     </select>
+    
+    <!-- NEW: Theme Select -->
+    <select id="optTheme">
+      <option value="auto">auto</option>
+      <option value="light">light</option>
+      <option value="dark">dark</option>
+    </select>
+    
+    <!-- NEW: Custom Subs Textarea -->
+    <textarea id="optCustomSubstitutions"></textarea>
 
     <!-- checkboxes used by getters -->
     <input type="checkbox" id="optConfirmWholeDoc" />
@@ -61,6 +71,7 @@ describe("settings/getters.ts", () => {
         (document.getElementById("dirLatToCyr") as HTMLInputElement).checked = true;
 
         (document.getElementById("optCurlyProtection") as HTMLSelectElement).value = "all";
+        (document.getElementById("optTheme") as HTMLSelectElement).value = "dark";
 
         check("optProtectBrands", true);
         check("optSerbianQuotes", true);
@@ -78,6 +89,7 @@ describe("settings/getters.ts", () => {
         expect(s.applySerbianQuotes).toBe(true);
         expect(s.preserveCodeBlocks).toBe(true);
         expect(s.curlyProtection).toBe("all");
+        expect(s.theme).toBe("dark");
     });
 
     it("fallback: if no radio is selected, direction falls back to 'auto'", () => {
@@ -112,5 +124,17 @@ describe("settings/getters.ts", () => {
         expect(o.curlyProtection).toBe("none");
         expect(o.userProtected).toContain("MojaFirma");
         expect(o.userProtected).toContain("iPhone");
+    });
+
+    it("parses custom substitutions correctly", () => {
+        const area = document.getElementById("optCustomSubstitutions") as HTMLTextAreaElement;
+        area.value = "  foo -> bar  \n  baz->qux \n invalid line"; // Test input
+
+        const o = getOoxmlOptionsFromUi();
+
+        expect(o.customSubstitutions).toEqual({
+            foo: "bar",
+            baz: "qux",
+        });
     });
 });

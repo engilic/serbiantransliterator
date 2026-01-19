@@ -1,7 +1,7 @@
-﻿// src/taskpane/app/settings/getters.ts
+// src/taskpane/app/settings/getters.ts
 /* global document */
 
-import type { UiSettings, DirectionUi, ProfilePreset } from "../types";
+import type { UiSettings, DirectionUi, ProfilePreset, AppTheme } from "../types";
 import type { OoxmlOptions } from "../../../shared/ooxml/convertOoxml";
 import { state } from "../state";
 import { asCurlyProtectionUi } from "../word/curlyProtection";
@@ -25,6 +25,12 @@ export function getSelectValue(id: string): string {
     return String(el?.value ?? "");
 }
 
+// NEW: Helper for textarea
+export function getTextValue(id: string): string {
+    const el = document.getElementById(id) as HTMLTextAreaElement | null;
+    return String(el?.value ?? "");
+}
+
 function asProfilePreset(v: string | null | undefined): ProfilePreset {
     const s = (v ?? "") as ProfilePreset;
     const allowed: ProfilePreset[] = [
@@ -45,6 +51,26 @@ function asDirectionUi(v: string | null | undefined): DirectionUi {
     return allowed.includes(s) ? s : "auto";
 }
 
+function asAppTheme(v: string): AppTheme {
+    return v === "light" || v === "dark" ? v : "auto";
+}
+
+function parseCustomSubstitutions(raw: string): Record<string, string> {
+    const map: Record<string, string> = {};
+    if (!raw) return map;
+    const lines = raw.split(/\r?\n/);
+    for (const line of lines) {
+        if (!line.trim()) continue;
+        const parts = line.split("->");
+        if (parts.length === 2) {
+            const k = parts[0]!.trim();
+            const v = parts[1]!.trim();
+            if (k) map[k] = v;
+        }
+    }
+    return map;
+}
+
 export function getSettingsFromUi(): UiSettings {
     const profileRaw = (document.getElementById("profilePreset") as HTMLSelectElement | null)?.value;
     const profile = asProfilePreset(profileRaw);
@@ -55,11 +81,21 @@ export function getSettingsFromUi(): UiSettings {
     const curlyRaw = getSelectValue("optCurlyProtection");
     const curlyProtection = asCurlyProtectionUi(curlyRaw);
 
+    // NEW
+    const themeRaw = getSelectValue("optTheme");
+    const theme = asAppTheme(themeRaw);
+
+    const subsRaw = getTextValue("optCustomSubstitutions");
+
     return {
         schemaVersion: 2,
 
         profile,
         userWordsCustom: Array.from(state.customWordsSet),
+
+        // NEW
+        theme,
+        customSubstitutions: subsRaw,
 
         protectBrands: getCheckValue("optProtectBrands"),
         applySerbianQuotes: getCheckValue("optSerbianQuotes"),
@@ -67,7 +103,6 @@ export function getSettingsFromUi(): UiSettings {
         setProofingLanguage: getCheckValue("optSetProofingLanguage"),
         protectRomans: getCheckValue("optProtectRomans"),
 
-        // NEW:
         curlyProtection,
 
         fixDoubleSpaces: getCheckValue("optFixDoubleSpaces"),
@@ -91,6 +126,9 @@ export function getOoxmlOptionsFromUi(): OoxmlOptions {
     if (s.direction === "cyr-to-lat") dir = "cyr-to-lat";
     if (s.direction === "to-ascii") dir = "to-ascii";
 
+    // Parse map only here to send clean object to core
+    const customSubsMap = parseCustomSubstitutions(s.customSubstitutions);
+
     return {
         direction: dir,
         protectBrands: s.protectBrands,
@@ -100,10 +138,10 @@ export function getOoxmlOptionsFromUi(): OoxmlOptions {
         fixDoubleSpaces: s.fixDoubleSpaces,
         formatDates: s.formatDates,
         protectRomans: s.protectRomans,
-
-        // NEW: prosleđuje se do convertPlainText unutar convertOoxml
         curlyProtection: s.curlyProtection,
-
         userProtected: [...Array.from(state.customWordsSet), ...Array.from(state.presetWordsSet)],
+
+        // NEW
+        customSubstitutions: customSubsMap,
     };
 }
