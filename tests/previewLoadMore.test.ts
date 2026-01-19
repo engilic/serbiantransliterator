@@ -43,9 +43,10 @@ beforeEach(() => {
         profile: "custom",
         userWordsCustom: [],
 
-        // FIX: Add missing fields for typecheck
         theme: "auto",
         customSubstitutions: "",
+        // FIX: Add dialect property for type safety
+        dialect: "none",
 
         confirmWholeDoc: true,
         includeHeadersFooters: false,

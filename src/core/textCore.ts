@@ -4,7 +4,19 @@ import { fixSerbianQuotes } from "./quotes";
 import { collectProtectedRanges, splitByRanges, type CurlyProtection } from "./protect";
 import { cyrillicToLatin, detectMajorityScript, latinToCyrillic } from "./serbian";
 
+let wasmModule: typeof import("../wasm-core/pkg") | null = null;
+
+export async function initWasm() {
+    try {
+        wasmModule = await import("../wasm-core/pkg");
+        console.log("WASM module loaded successfully");
+    } catch (e) {
+        console.warn("WASM load failed, falling back to JS", e);
+    }
+}
+
 export type Direction = "auto" | "lat-to-cyr" | "cyr-to-lat";
+export type Dialect = "none" | "ekavica_to_ijekavica" | "ijekavica_to_ekavica";
 
 export interface CoreOptions {
     userProtected?: string[];
@@ -13,6 +25,7 @@ export interface CoreOptions {
     preserveCodeBlocks?: boolean;
     curlyProtection?: CurlyProtection;
     customSubstitutions?: Record<string, string>;
+    dialect?: Dialect;
 }
 
 const normKey = (s: string) => s.normalize("NFC").toLowerCase();
@@ -239,7 +252,6 @@ export function detectScript(text: string): "latin" | "cyrillic" {
     return detectMajorityScript(text);
 }
 
-// NEW
 function applyCustomSubstitutions(text: string, subs?: Record<string, string>): string {
     if (!subs || Object.keys(subs).length === 0) return text;
     let out = text;
@@ -248,6 +260,12 @@ function applyCustomSubstitutions(text: string, subs?: Record<string, string>): 
         out = out.replace(new RegExp(safeSrc, "g"), dest);
     }
     return out;
+}
+
+function applyDialect(text: string, dialect?: Dialect): string {
+    if (!dialect || dialect === "none") return text;
+    if (!wasmModule) return text;
+    return wasmModule.convert_dialect(text, dialect);
 }
 
 function convertUnprotectedSegment(segment: string, toCyrillic: boolean, options?: CoreOptions): string {
@@ -297,7 +315,12 @@ function convertUnprotectedSegment(segment: string, toCyrillic: boolean, options
             out += tok;
             continue;
         }
-        out += toCyrillic ? latinToCyrillic(tok) : cyrillicToLatin(tok);
+
+        if (wasmModule) {
+            out += toCyrillic ? wasmModule.to_cyrillic(tok) : wasmModule.to_latin(tok);
+        } else {
+            out += toCyrillic ? latinToCyrillic(tok) : cyrillicToLatin(tok);
+        }
     }
     return out;
 }
@@ -344,11 +367,15 @@ export function convertPlainText(
         }
         let seg = part.text.normalize("NFC");
         if (toCyr) seg = applyPreCorrectionsLatToCyr(seg);
+
+        if (options?.dialect && options.dialect !== "none") {
+            seg = applyDialect(seg, options.dialect);
+        }
+
         seg = convertUnprotectedSegment(seg, toCyr, options);
         if (toCyr && options?.applySerbianQuotes !== false) {
             seg = fixSerbianQuotes(seg);
         }
-        // NEW
         if (options?.customSubstitutions) {
             seg = applyCustomSubstitutions(seg, options.customSubstitutions);
         }

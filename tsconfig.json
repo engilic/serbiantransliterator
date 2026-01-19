@@ -10,7 +10,9 @@
         "sourceMap": true,
 
         "module": "ESNext",
-        "moduleResolution": "bundler"
+        "moduleResolution": "bundler",
+
+        "skipLibCheck": true
     },
     "exclude": ["node_modules", "dist", "scripts"]
 }
