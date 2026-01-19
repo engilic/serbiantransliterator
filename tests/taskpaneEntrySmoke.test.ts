@@ -1,5 +1,17 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
+// Mock initWasm to prevent timeout in JSDOM environment
+vi.mock("../src/core/textCore", async (importOriginal) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const actual = (await importOriginal()) as any;
+    return {
+        ...actual,
+        initWasm: vi.fn(async () => {
+            // No-op, resolve immediately
+        }),
+    };
+});
+
 function setupDomForTaskpane() {
     // Minimalan DOM koji settings/ui.ts očekuje u initUi()
     document.body.innerHTML = `
@@ -22,7 +34,7 @@ function setupDomForTaskpane() {
       <option value="journalism">journalism</option>
     </select>
     
-    <!-- ADDED: UI Language, Theme -->
+    <!-- UI Language, Theme -->
     <select id="optUiLanguage"></select>
     <select id="optTheme"></select>
 
@@ -55,12 +67,12 @@ function setupDomForTaskpane() {
         <option value="none">none</option>
       </select>
       
-      <!-- ADDED: Custom Subs -->
+      <!-- Custom Subs -->
       <textarea id="optCustomSubstitutions"></textarea>
     </div>
 
     <!-- tags -->
-    <!-- ADDED: Filter -->
+    <!-- Filter -->
     <input id="tagFilterInput" />
     
     <div id="tagsContainer"></div>
