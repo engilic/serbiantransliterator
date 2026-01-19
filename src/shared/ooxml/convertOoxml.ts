@@ -34,24 +34,20 @@ function normalizePhraseForKey(p: string): string {
 
 function phrasesCacheKey(phrases: string[]): string {
     const norm = phrases.map(normalizePhraseForKey).filter(Boolean);
-    const uniqSorted = Array.from(new Set(norm)).sort(); // order-insensitive + dedupe
+    const uniqSorted = Array.from(new Set(norm)).sort();
     return JSON.stringify(uniqSorted);
 }
 
 function getCachedPhraseInfos(phrases: string[]) {
     const key = phrasesCacheKey(phrases);
-
     const hit = phraseInfosCache.get(key);
     if (hit) return hit;
-
     const infos = buildPhraseInfos(phrases);
     phraseInfosCache.set(key, infos);
-
     if (phraseInfosCache.size > PHRASE_INFOS_CACHE_MAX) {
         const firstKey = phraseInfosCache.keys().next().value as string | undefined;
         if (firstKey) phraseInfosCache.delete(firstKey);
     }
-
     return infos;
 }
 
@@ -106,6 +102,22 @@ function countMatches(text: string, re: RegExp): number {
     while (re.exec(text)) c++;
     return c;
 }
+
+// === NEW: Cleanup helper ===
+function removeProofingTags(doc: Document) {
+    // Uklanja <w:proofErr>, <w:noProof> i slične tagove koji prave crvene linije
+    // jer nakon transliteracije stari spellcheck status više nije validan.
+    const tagsToRemove = ["proofErr", "noProof", "lang"];
+    // Napomena: 'lang' brišemo samo ako ne radimo setProofingLanguage,
+    // ali ovde ga ostavljamo jer ga Proofing logika kasnije eksplicitno setuje.
+    // Fokusiramo se na proofErr.
+
+    const errs = Array.from(doc.getElementsByTagNameNS(WORD_NS, "proofErr"));
+    for (const el of errs) {
+        if (el.parentNode) el.parentNode.removeChild(el);
+    }
+}
+// ===========================
 
 const ROMAN_REGEX_STRICT =
     /\b(?!I\b)(?=[MDCLXVI]+\b)M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})\b/g;
@@ -178,10 +190,6 @@ const ROMAN_I_PREFIXES = [
 
 const ROMAN_I_REGEX = new RegExp(`\\b(${ROMAN_I_PREFIXES.join("|")})\\s+I\\b`, "g");
 
-/* =========================
-   PROOFING LANGUAGE (per word, preserve unchanged)
-   ========================= */
-
 const RE_CYR = /[\u0400-\u052F]/u;
 const RE_LAT = /[A-Za-zČčĆćĐđŠšŽž]/u;
 
@@ -200,30 +208,25 @@ function extractLetterWordSpans(text: string): WordSpan[] {
     const cps = Array.from(text.normalize("NFC"));
     const out: WordSpan[] = [];
     let i = 0;
-
     while (i < cps.length) {
         const cp = cps[i];
         if (!cp || !isTokenChar(cp)) {
             i++;
             continue;
         }
-
         const start = i;
         let hasLetter = false;
-
         while (i < cps.length) {
             const cp2 = cps[i];
             if (!cp2 || !isTokenChar(cp2)) break;
             if (/\p{L}/u.test(cp2)) hasLetter = true;
             i++;
         }
-
         const end = i;
         if (hasLetter) {
             out.push({ startCp: start, endCp: end, text: cps.slice(start, end).join("") });
         }
     }
-
     return out;
 }
 
@@ -260,19 +263,10 @@ function isSimpleRun(run: Element): boolean {
 
 function wasWordTransliterated(orig: string, fin: string, direction: Direction | "to-ascii"): boolean {
     if (orig === fin) return false;
-
-    if (direction === "lat-to-cyr") {
-        return RE_LAT.test(orig) && RE_CYR.test(fin);
-    }
-
-    if (direction === "cyr-to-lat" || direction === "to-ascii") {
-        return RE_CYR.test(orig) && RE_LAT.test(fin);
-    }
-
-    if (direction === "auto") {
+    if (direction === "lat-to-cyr") return RE_LAT.test(orig) && RE_CYR.test(fin);
+    if (direction === "cyr-to-lat" || direction === "to-ascii") return RE_CYR.test(orig) && RE_LAT.test(fin);
+    if (direction === "auto")
         return (RE_LAT.test(orig) && RE_CYR.test(fin)) || (RE_CYR.test(orig) && RE_LAT.test(fin));
-    }
-
     return false;
 }
 
@@ -295,9 +289,7 @@ function applyProofingLanguagePreserveUnchanged(
     direction: Direction | "to-ascii"
 ): ProofingApplyResult {
     const target = targetLangForDirection(direction);
-    if (!target) {
-        return { changedRuns: 0, skippedRuns: 0, skippedByReason: {} };
-    }
+    if (!target) return { changedRuns: 0, skippedRuns: 0, skippedByReason: {} };
 
     const runs: Element[] = [];
     const seen = new WeakSet<Element>();
@@ -323,15 +315,12 @@ function applyProofingLanguagePreserveUnchanged(
             skip("notSimpleRun");
             continue;
         }
-
         const orig = originalRunText.get(run);
         if (orig == null) {
             skip("missingOriginal");
             continue;
         }
-
         const fin = getRunTextFromTChildren(run);
-
         const origWords = extractLetterWordSpans(orig);
         const finWords = extractLetterWordSpans(fin);
 
@@ -379,10 +368,8 @@ function applyProofingLanguagePreserveUnchanged(
             if (!w) continue;
             const segStart = cursorCp;
             const segEnd = w.endCp;
-
             const segText = finCps.slice(segStart, segEnd).join("");
             segs.push({ text: segText, changed: changedWord[i] ?? false });
-
             cursorCp = segEnd;
         }
 
@@ -395,7 +382,6 @@ function applyProofingLanguagePreserveUnchanged(
 
         for (const seg of segs) {
             const newRun = doc.createElementNS(WORD_NS, "w:r");
-
             let newRPr: Element | null = null;
             if (baseRPr) {
                 newRPr = baseRPr.cloneNode(true) as Element;
@@ -404,130 +390,60 @@ function applyProofingLanguagePreserveUnchanged(
                 newRPr = doc.createElementNS(WORD_NS, "w:rPr");
                 newRun.appendChild(newRPr);
             }
-
             if (seg.changed && newRPr) {
                 ensureLangOnRPr(doc, newRPr, target);
             }
-
             const tEl = doc.createElementNS(WORD_NS, "w:t");
             if (needsXmlSpacePreserve(seg.text)) {
                 tEl.setAttributeNS(XML_NS, "xml:space", "preserve");
             }
             tEl.textContent = seg.text;
-
             newRun.appendChild(tEl);
             parent.insertBefore(newRun, run);
         }
-
         parent.removeChild(run);
         changedRuns++;
     }
-
     return { changedRuns, skippedRuns, skippedByReason };
 }
-
-/* =========================
-   MAIN CONVERTER
-   ========================= */
 
 export function convertOoxml(
     ooxml: string,
     options?: OoxmlOptions
 ): { xml: string; type: string; stats: ConvertStats } {
     const t0 = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
-
-    // Track OOXML size for performance monitoring
     const ooxmlSizeKb = Math.round(ooxml.length / 1024);
 
     const parser = new DOMParser();
     const doc = parser.parseFromString(ooxml, "application/xml");
 
-    // Defensive: if OOXML is invalid XML, DOMParser may produce a <parsererror> document.
-    // In that case, safest is to no-op (return original XML) with "Nema teksta" label.
     try {
         const pe = doc.getElementsByTagName("parsererror");
         if (pe && pe.length > 0) {
             return {
                 xml: ooxml,
                 type: "Nema teksta",
-                stats: {
-                    direction: options?.direction ?? "auto",
-                    textNodes: 0,
-                    charsBefore: 0,
-                    charsAfter: 0,
-                    detected: { urls: 0, emails: 0 },
-                    code: {
-                        fenceMarkersSeen: 0,
-                        inlineTicksSeen: 0,
-                        endedInFence: false,
-                        endedInInline: false,
-                    },
-                    bridges: {
-                        links: 0,
-                        placeholders: 0,
-                        brandPhrases: 0,
-                        brandTokens: 0,
-                        digraphs: 0,
-                        userPhrases: 0,
-                        userTokens: 0,
-                        allCapsHints: 0,
-                        spaces: 0,
-                        ambiguousBrandSuffix: 0,
-                    },
-                    proofing: {
-                        enabled: false,
-                        targetLang: null,
-                        changedRuns: 0,
-                        skippedRuns: 0,
-                        skippedByReason: {},
-                    },
-                    timingMs: 0,
-                },
+                stats: createEmptyStats(options?.direction),
             };
         }
     } catch {
-        // ignore; continue best-effort
+        // ignore
     }
 
     const textNodes = collectTextNodes(doc);
     const fullText = getFullText(textNodes);
 
-    const emptyProofing: ProofingStats = {
-        enabled: false,
-        targetLang: null,
-        changedRuns: 0,
-        skippedRuns: 0,
-        skippedByReason: {},
-    };
-
     if (!fullText.trim()) {
         return {
             xml: ooxml,
             type: "Nema teksta",
-            stats: {
-                direction: "auto",
-                textNodes: textNodes.length,
-                charsBefore: fullText.length,
-                charsAfter: fullText.length,
-                detected: { urls: 0, emails: 0 },
-                code: { fenceMarkersSeen: 0, inlineTicksSeen: 0, endedInFence: false, endedInInline: false },
-                bridges: {
-                    links: 0,
-                    brandPhrases: 0,
-                    brandTokens: 0,
-                    digraphs: 0,
-                    userPhrases: 0,
-                    userTokens: 0,
-                    allCapsHints: 0,
-                    spaces: 0,
-                    ambiguousBrandSuffix: 0,
-                    placeholders: 0,
-                },
-                proofing: emptyProofing,
-                timingMs: 0,
-            },
+            stats: createEmptyStats(options?.direction, textNodes.length, fullText.length),
         };
     }
+
+    // === NEW: Clean old proofing errors before processing ===
+    removeProofingTags(doc);
+    // =========================================================
 
     const dirSetting = options?.direction ?? "auto";
     let direction: Direction | "to-ascii";
@@ -546,13 +462,8 @@ export function convertOoxml(
 
     const preserveCodeBlocks = options?.preserveCodeBlocks !== false;
     const protectBrands = options?.protectBrands !== false;
-
     const curlyProtection = options?.curlyProtection ?? "placeholders";
-
     const shouldSetLang = options?.setProofingLanguage === true;
-
-    let proofing: ProofingStats = { ...emptyProofing };
-
     const doFixSpaces = options?.fixDoubleSpaces === true;
     const doFixDates = options?.formatDates === true;
     const doProtectRomans = options?.protectRomans !== false;
@@ -578,11 +489,8 @@ export function convertOoxml(
         spaces: 0,
     };
 
-    // IMPORTANT: bridgovanje razmaka preko <w:t> granica treba da radi uvek
-    // (testovi i real-world Word run-split to očekuju).
     bridges.spaces = bridgeSpacesAcrossTextNodes(textNodes);
 
-    // placeholders bridging zavisi od curlyProtection
     if (curlyProtection === "none") {
         bridges.placeholders = 0;
     } else if (curlyProtection === "all") {
@@ -601,22 +509,18 @@ export function convertOoxml(
 
     if (direction === "lat-to-cyr") {
         bridges.links = bridgeLinksAcrossTextNodes(textNodes);
-
         if (protectBrands) {
             bridges.brandPhrases = bridgePhrasesAcrossTextNodes(textNodes, ALWAYS_LATIN_PHRASE_INFOS);
             bridges.brandTokens = bridgeAlwaysLatinTokensAcrossTextNodes(textNodes);
             bridges.ambiguousBrandSuffix = bridgeAmbiguousBrandSuffixAcrossTextNodes(textNodes);
         }
-
         bridges.digraphs = bridgeDigraphsAcrossTextNodes(textNodes);
-
         if (doProtectRomans) {
             const strictMatches = fullText.match(ROMAN_REGEX_STRICT) || [];
             const uniqueStrict = [...new Set(strictMatches)];
             if (uniqueStrict.length > 0) {
                 bridgeExactTokensAcrossTextNodes(textNodes, uniqueStrict);
             }
-
             const iMatches = fullText.match(ROMAN_I_REGEX) || [];
             const uniqueIPhrases = [...new Set(iMatches)];
             if (uniqueIPhrases.length > 0) {
@@ -626,11 +530,18 @@ export function convertOoxml(
         }
     }
 
+    let proofing: ProofingStats = {
+        enabled: false,
+        targetLang: null,
+        changedRuns: 0,
+        skippedRuns: 0,
+        skippedByReason: {},
+    };
     let originalRunText: Map<Element, string> | null = null;
+
     if (shouldSetLang) {
         proofing.enabled = true;
         proofing.targetLang = targetLangForDirection(direction);
-
         originalRunText = new Map<Element, string>();
         const seenRuns = new WeakSet<Element>();
         for (const t of textNodes) {
@@ -655,14 +566,11 @@ export function convertOoxml(
     for (const node of textNodes) {
         const original = node.textContent ?? "";
         if (original === "") continue;
-
         let finalText = "";
-
         const transformFn = (input: string) => {
             let temp = input;
             if (doFixSpaces) temp = removeMultipleSpaces(temp);
             if (doFixDates) temp = formatSerbianDates(temp);
-
             if (direction === "to-ascii") {
                 const { text: tempLat } = convertPlainText(temp, "cyr-to-lat", {
                     ...options,
@@ -699,7 +607,6 @@ export function convertOoxml(
         if (needsXmlSpacePreserve(finalText)) {
             node.setAttributeNS(XML_NS, "xml:space", "preserve");
         }
-
         node.textContent = finalText;
     }
 
@@ -713,7 +620,13 @@ export function convertOoxml(
             const r = applyProofingLanguagePreserveUnchanged(doc, textNodes, originalRunText, direction);
             proofing = { enabled: true, targetLang: target, ...r };
         } else {
-            proofing = { ...emptyProofing, enabled: false, targetLang: null };
+            proofing = {
+                enabled: false,
+                targetLang: null,
+                changedRuns: 0,
+                skippedRuns: 0,
+                skippedByReason: {},
+            };
         }
     }
 
@@ -723,17 +636,11 @@ export function convertOoxml(
     }
 
     let xml = new XMLSerializer().serializeToString(doc);
-
-    // Workaround:
-    // Some XMLSerializer implementations may emit xmlns="" when namespaces are mixed.
-    // In WordprocessingML this is unwanted noise and can create unstable diffs.
-    // Removing it keeps output stable for Word.
     xml = xml.replace(/ xmlns=""/g, "");
 
     const t1 = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
     const duration = Math.max(0, t1 - t0);
 
-    // Record performance metrics
     if (typeof perfMonitor !== "undefined") {
         perfMonitor.record("convertOoxml", textNodes.length, duration, {
             sizeKb: ooxmlSizeKb,
@@ -760,4 +667,29 @@ export function convertOoxml(
     };
 
     return { xml, type: label, stats };
+}
+
+function createEmptyStats(direction?: string, textNodes = 0, chars = 0): ConvertStats {
+    return {
+        direction: (direction as any) || "auto",
+        textNodes,
+        charsBefore: chars,
+        charsAfter: chars,
+        detected: { urls: 0, emails: 0 },
+        code: { fenceMarkersSeen: 0, inlineTicksSeen: 0, endedInFence: false, endedInInline: false },
+        bridges: {
+            links: 0,
+            placeholders: 0,
+            brandPhrases: 0,
+            brandTokens: 0,
+            digraphs: 0,
+            userPhrases: 0,
+            userTokens: 0,
+            allCapsHints: 0,
+            spaces: 0,
+            ambiguousBrandSuffix: 0,
+        },
+        proofing: { enabled: false, targetLang: null, changedRuns: 0, skippedRuns: 0, skippedByReason: {} },
+        timingMs: 0,
+    };
 }

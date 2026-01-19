@@ -3,7 +3,8 @@
 import { state } from "../state";
 import { runWithUiLock } from "../uiLock";
 import { applyFromPreview } from "../word/apply";
-import { closeModal, resetModalButtons, clearModalResolver } from "./modal";
+import { closeModal, resetModalButtons } from "./modal";
+import { modalManager } from "./modalManager";
 import { escapeHtml } from "../../../shared/safeHtml";
 import { normalizeNewlines } from "../selection";
 import { t } from "../../../shared/i18n";
@@ -30,32 +31,47 @@ export function showPreviewToast(message: string, type: "success" | "error" | "i
     }, ms);
 }
 
+// Improved Copy Logic (Clipboard API + Fallback)
 async function copyToClipboard(text: string): Promise<boolean> {
-    try {
-        await navigator.clipboard.writeText(text);
-        return true;
-    } catch {
-        // fallback
+    if (!text) return false;
+
+    // 1. Try modern Clipboard API
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+        try {
+            await navigator.clipboard.writeText(text);
+            return true;
+        } catch (err) {
+            console.warn("Clipboard API failed, trying fallback:", err);
+        }
     }
+
+    // 2. Fallback: execCommand('copy') with hidden textarea
     try {
         const ta = document.createElement("textarea");
         ta.value = text;
-        ta.setAttribute("readonly", "true");
+
+        // Ensure it's not visible but part of DOM
         ta.style.position = "fixed";
         ta.style.top = "0";
         ta.style.left = "0";
         ta.style.width = "1px";
         ta.style.height = "1px";
-        ta.style.opacity = "0";
+        ta.style.opacity = "0.01";
         ta.style.pointerEvents = "none";
+        ta.setAttribute("readonly", "true");
+
         document.body.appendChild(ta);
         ta.focus();
         ta.select();
-        const doc = document as unknown as { execCommand: (commandId: string) => boolean };
-        const ok = doc.execCommand("copy");
+
+        // Cast to any to suppress deprecation warning (we need this for legacy Office)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const ok = (document as any).execCommand("copy");
+
         document.body.removeChild(ta);
         return ok === true;
-    } catch {
+    } catch (e) {
+        console.error("Copy fallback failed:", e);
         return false;
     }
 }
@@ -84,7 +100,6 @@ export function renderPreviewMode() {
     if (btnSide) btnSide.disabled = state.preview.mode === "side";
 }
 
-// PR2: i18n tooltip stringovi
 function setLoadMoreButtonState(btn: HTMLButtonElement, canLoadMore: boolean, reason?: string) {
     btn.disabled = !canLoadMore;
     btn.style.opacity = canLoadMore ? "1" : "0.45";
@@ -168,7 +183,7 @@ export function showPreviewModal() {
         </div>
 
         <div class="preview-header-right">
-          <button id="previewCloseBtn" class="icon-btn preview-close-btn" type="button">×</button>
+          <button id="previewCloseBtn" class="icon-btn preview-close-btn" type="button" title="${escapeHtml(t("btn_close"))} (Esc)">×</button>
           <div id="previewToast" class="preview-toast" role="status"></div>
           <div class="preview-header-buttons">
             <button id="previewBtnDiff" class="mini-btn" type="button">${escapeHtml(t("preview_btn_diff"))}</button>
@@ -237,5 +252,7 @@ export function showPreviewModal() {
     };
 
     overlay.style.display = "flex";
-    clearModalResolver();
+
+    // NEW: Use direct manager call instead of deprecated helper
+    modalManager.forceClose();
 }
