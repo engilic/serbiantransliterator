@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 /**
  * Mocks must be declared before importing the module-under-test.
@@ -76,7 +76,7 @@ function makeWordStub(selectionText: string, selectionOoxml: string) {
 const NOW = 2_000_000;
 
 beforeEach(() => {
-    vi.resetAllMocks();
+    vi.clearAllMocks();
     vi.spyOn(Date, "now").mockReturnValue(NOW);
 
     // minimal settings/options used by applyFromPreview

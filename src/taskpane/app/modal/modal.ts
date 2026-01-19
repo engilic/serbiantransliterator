@@ -3,15 +3,13 @@
 
 import { unwrapHtml, type SafeHtml } from "../../../shared/safeHtml";
 import { t } from "../../../shared/i18n";
-
-let modalPromiseResolver: ((val: boolean) => void) | null = null;
+import { modalManager } from "./modalManager";
 
 /**
- * Preview modal koristi isti overlay, ali ne sme da ostavi "confirm" resolver aktivnim.
- * Preview poziva ovo da bi sprečio da OK/Cancel rezolvuju stari Promise.
+ * @deprecated Use modalManager directly for new code
  */
 export function clearModalResolver() {
-    modalPromiseResolver = null;
+    modalManager.forceClose();
 }
 
 export function confirmInPanel(safeHtmlMsg: SafeHtml): Promise<boolean> {
@@ -54,7 +52,7 @@ export function confirmInPanel(safeHtmlMsg: SafeHtml): Promise<boolean> {
     overlay.style.display = "flex";
 
     return new Promise((resolve) => {
-        modalPromiseResolver = resolve;
+        modalManager.open("confirm", resolve);
     });
 }
 
@@ -87,25 +85,19 @@ export function showModalInfo(titleStr: string, safeHtmlMsg: SafeHtml) {
     (document.getElementById("modal") as HTMLDivElement).classList.remove("wide");
     overlay.style.display = "flex";
 
-    modalPromiseResolver = null;
+    modalManager.open("info");
 }
 
 export function handleModalOk() {
     (document.getElementById("modalOverlay") as HTMLDivElement).style.display = "none";
     resetModalButtons();
-
-    const r = modalPromiseResolver;
-    modalPromiseResolver = null;
-    r?.(true);
+    modalManager.resolve(true);
 }
 
 export function closeModal() {
     (document.getElementById("modalOverlay") as HTMLDivElement).style.display = "none";
     resetModalButtons();
-
-    const r = modalPromiseResolver;
-    modalPromiseResolver = null;
-    r?.(false);
+    modalManager.resolve(false);
 }
 
 export function resetModalButtons() {
