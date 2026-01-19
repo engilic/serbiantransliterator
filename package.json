@@ -15,7 +15,7 @@
         "start": "npm run start:debug",
         "stop": "office-addin-debugging stop manifest.xml",
         "validate": "office-addin-manifest validate manifest.xml",
-        "validate:prod": "npx office-addin-manifest validate manifest.prod.xml",
+        "validate:prod": "office-addin-manifest validate manifest.prod.xml",
         "test": "cross-env VITE_CJS_IGNORE_WARNING=1 vitest run",
         "test:watch": "cross-env VITE_CJS_IGNORE_WARNING=1 vitest",
         "test:coverage": "cross-env VITE_CJS_IGNORE_WARNING=1 vitest run --coverage",
