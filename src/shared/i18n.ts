@@ -103,6 +103,10 @@ const SR_RS = {
     tags_input_placeholder: "Upiši reč ili frazu...",
     tags_hint: "Reči ovde ostaju u originalnom pismu.",
 
+    // NEW: Filter
+    tags_filter_placeholder: "🔍 Filtriraj...",
+    tags_filter_aria: "Filtriraj zaštićene reči",
+
     footer_help: "Pomoć",
     footer_privacy: "Privatnost",
     footer_copyright: "© 2026",
@@ -352,6 +356,10 @@ const EN_US: Record<TranslationKey, string> = {
     btn_clear_all_title: "Clear all words",
     tags_input_placeholder: "Type a word or phrase...",
     tags_hint: "Words here remain in the original script.",
+
+    // NEW: Filter
+    tags_filter_placeholder: "🔍 Filter tags...",
+    tags_filter_aria: "Filter protected words",
 
     footer_help: "Help",
     footer_privacy: "Privacy",

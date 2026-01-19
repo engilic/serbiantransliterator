@@ -4,6 +4,9 @@ import { unsafeHtml } from "../../../shared/safeHtml";
 import type { OoxmlOptions } from "../../../shared/ooxml/convertOoxml";
 import { t } from "../../../shared/i18n";
 
+// STATIC IMPORT (Ključno za testove)
+import { convertOoxml } from "../../../shared/ooxml/convertOoxml";
+
 import { state, PREVIEW_CACHE_TTL_MS } from "../state";
 import { setStatus, refreshStats } from "../status";
 import { confirmInPanel, showModalInfo } from "../modal/modal";
@@ -15,10 +18,8 @@ import { analyzeSelectionText } from "./selectionText";
 import { buildApplyStatsText, buildApplyStatsTitle, buildPreviewAppliedStats } from "./statsText";
 import { decidePreviewCacheReuse, type PreviewCacheDecisionReason } from "./previewCacheDecision";
 import type { UiSettings, ExtrasSummary } from "../types";
-// NEW: Import recovery
 import { errorRecovery } from "../error/errorRecovery";
 
-// Telemetry helper
 function logTelemetrySkippedRuns(skippedByReason: Record<string, number>) {
     if (Object.keys(skippedByReason).length === 0) return;
     console.warn("[Telemetry] Skipped runs detected:", skippedByReason);
@@ -60,11 +61,11 @@ function buildDocumentExtraStatus(ui: UiSettings, extras: ExtrasSummary): string
 export async function runSmart() {
     try {
         await Word.run(async (context) => {
-            const sel = context.document.getSelection();
+            let sel = context.document.getSelection();
             sel.load("text");
             await context.sync();
 
-            const selInfo = analyzeSelectionText(sel.text);
+            let selInfo = analyzeSelectionText(sel.text);
 
             if (selInfo.isJustWhitespace) {
                 showModalInfo(t("modal_title_error"), unsafeHtml(t("msg_empty_selection")));
@@ -72,9 +73,26 @@ export async function runSmart() {
                 return;
             }
 
+            let scope: "selection" | "document" = selInfo.hasText ? "selection" : "document";
+
+            if (scope === "document") {
+                const firstPara = sel.paragraphs.getFirst();
+                const paraRange = firstPara.getRange();
+
+                paraRange.load("text");
+                await context.sync();
+
+                const paraInfo = analyzeSelectionText(paraRange.text);
+
+                if (paraInfo.hasText) {
+                    sel = paraRange;
+                    scope = "selection";
+                    console.log("Auto-expanded to paragraph");
+                }
+            }
+
             const ui = getSettingsFromUi();
             const opts = getOoxmlOptionsFromUi();
-            const scope: "selection" | "document" = selInfo.hasText ? "selection" : "document";
 
             if (scope === "document" && ui.confirmWholeDoc) {
                 const ok = await confirmInPanel(unsafeHtml(t("msg_confirm_whole_doc")));
@@ -84,14 +102,43 @@ export async function runSmart() {
                 }
             }
 
-            const { result, extras } = await applyPipeline(context, scope, ui, opts);
+            let result, extras;
+
+            if (scope === "selection") {
+                setStatus(t("status_processing"), "info");
+                const ooxml = sel.getOoxml();
+                await context.sync();
+
+                const rawXml = ooxml.value ?? "";
+
+                // Static call (mocked correctly in tests)
+                const convertRes = convertOoxml(rawXml, opts);
+
+                if (convertRes.type !== "Nema teksta") {
+                    sel.insertOoxml(convertRes.xml, Word.InsertLocation.replace);
+                    sel.select();
+                    await context.sync();
+                }
+
+                result = convertRes;
+                extras = {
+                    headersFootersProcessed: 0,
+                    footnotesProcessed: 0,
+                    endnotesProcessed: 0,
+                    footnotesSupported: true,
+                    endnotesSupported: true,
+                };
+            } else {
+                const r = await applyPipeline(context, "document", ui, opts);
+                result = r.result;
+                extras = r.extras;
+            }
 
             if (!result) {
                 setStatus(t("status_no_text_found"), "neutral");
                 return;
             }
 
-            // TELEMETRY LOG
             if (result.stats.proofing?.skippedByReason) {
                 logTelemetrySkippedRuns(result.stats.proofing.skippedByReason);
             }
@@ -111,7 +158,6 @@ export async function runSmart() {
             refreshStats();
         });
     } catch (e) {
-        // CHANGED: Use centralized error recovery
         await errorRecovery.handle(e, { operation: "runSmart" });
     }
 }
@@ -221,7 +267,6 @@ export async function applyFromPreview(scope: "selection" | "document") {
             refreshStats();
         });
     } catch (e) {
-        // CHANGED: Use centralized error recovery
         await errorRecovery.handle(e, { operation: "applyFromPreview" });
     }
 }
