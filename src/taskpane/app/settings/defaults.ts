@@ -8,6 +8,10 @@ export const DEFAULT_SETTINGS: UiSettings = {
     schemaVersion: 2,
     profile: "custom",
     userWordsCustom: [],
+
+    theme: "auto",
+    customSubstitutions: "",
+
     confirmWholeDoc: true,
     includeHeadersFooters: false,
     includeFootnotes: false,
@@ -24,8 +28,6 @@ export const DEFAULT_SETTINGS: UiSettings = {
     showStats: false,
 };
 
-// Imena profila su sada ključevi u i18n.ts, ovaj objekat se može ukloniti ako se ne koristi direktno.
-// Ali ako ga koristiš za fallback, ostavi ga. U ui.ts smo prebacili logiku na t("profile_...").
 export const PROFILE_NAMES: Record<string, string> = {
     custom: "Ručno",
     it: "IT / Tehnologija",

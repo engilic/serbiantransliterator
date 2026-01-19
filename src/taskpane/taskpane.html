@@ -24,23 +24,27 @@
         <main>
             <div class="section">
                 <div class="button-group">
-                    <!-- Filled by selection.ts -->
                     <button id="runBtn" type="button"></button>
                     <button id="previewBtn" type="button"></button>
                 </div>
 
-                <!-- UI language -->
+                <!-- Languages & Theme Row -->
                 <div class="lang-row">
-                    <div class="lang-left">
+                    <div class="lang-group">
                         <div class="lang-label" data-i18n="opt_ui_language_label"></div>
-                        <div class="hint lang-hint" data-i18n="opt_ui_language_hint"></div>
-                    </div>
-
-                    <div class="lang-right">
                         <select id="optUiLanguage" data-i18n-attr="aria-label:opt_ui_language_aria">
                             <option value="sr" data-i18n="opt_ui_language_sr"></option>
                             <option value="en" data-i18n="opt_ui_language_en"></option>
                             <option value="auto" data-i18n="opt_ui_language_auto"></option>
+                        </select>
+                    </div>
+
+                    <div class="lang-group">
+                        <div class="lang-label" data-i18n="ui_theme_label"></div>
+                        <select id="optTheme" data-i18n-attr="aria-label:ui_theme_aria">
+                            <option value="auto" data-i18n="ui_theme_auto"></option>
+                            <option value="light" data-i18n="ui_theme_light"></option>
+                            <option value="dark" data-i18n="ui_theme_dark"></option>
                         </select>
                     </div>
                 </div>
@@ -106,7 +110,6 @@
                 </select>
             </div>
 
-            <!-- Direction -->
             <div class="section">
                 <div class="section-header">
                     <div class="section-title" data-i18n="section_direction"></div>
@@ -135,7 +138,6 @@
                 </div>
             </div>
 
-            <!-- Options -->
             <div class="section">
                 <div class="section-title" data-i18n="section_options"></div>
 
@@ -184,7 +186,6 @@
                 </label>
             </div>
 
-            <!-- Corrections -->
             <div class="section">
                 <div class="section-title" data-i18n="section_corrections"></div>
                 <label>
@@ -193,7 +194,6 @@
                 </label>
             </div>
 
-            <!-- Advanced -->
             <div class="section">
                 <div class="section-header">
                     <div class="section-title" data-i18n="section_advanced"></div>
@@ -243,10 +243,27 @@
                     </label>
 
                     <div class="hint" data-i18n="opt_format_dates_hint"></div>
+
+                    <!-- NEW: Custom Subs -->
+                    <div class="field-row" style="margin-top: 15px">
+                        <div class="field-label" data-i18n="opt_custom_subs_label"></div>
+                        <textarea
+                            id="optCustomSubstitutions"
+                            rows="4"
+                            style="
+                                width: 100%;
+                                margin-top: 5px;
+                                font-family: monospace;
+                                font-size: 12px;
+                                resize: vertical;
+                            "
+                            data-i18n-attr="placeholder:opt_custom_subs_placeholder"
+                        ></textarea>
+                        <div class="hint" data-i18n="opt_custom_subs_hint"></div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Protected / Tags -->
             <div class="section">
                 <div class="section-header">
                     <div class="section-title" data-i18n="section_protected"></div>
@@ -316,7 +333,6 @@
                     </div>
                 </div>
 
-                <!-- NEW: Filter Input -->
                 <div class="tags-filter-container">
                     <input
                         type="text"

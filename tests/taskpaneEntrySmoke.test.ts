@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 function setupDomForTaskpane() {
     // Minimalan DOM koji settings/ui.ts očekuje u initUi()
@@ -21,6 +21,10 @@ function setupDomForTaskpane() {
       <option value="marketing">marketing</option>
       <option value="journalism">journalism</option>
     </select>
+    
+    <!-- ADDED: UI Language, Theme -->
+    <select id="optUiLanguage"></select>
+    <select id="optTheme"></select>
 
     <!-- direction radios -->
     <input type="radio" id="dirAuto" name="direction" value="auto" checked />
@@ -50,9 +54,15 @@ function setupDomForTaskpane() {
         <option value="all">all</option>
         <option value="none">none</option>
       </select>
+      
+      <!-- ADDED: Custom Subs -->
+      <textarea id="optCustomSubstitutions"></textarea>
     </div>
 
     <!-- tags -->
+    <!-- ADDED: Filter -->
+    <input id="tagFilterInput" />
+    
     <div id="tagsContainer"></div>
     <div id="tagsList"></div>
     <input id="tagInput" />

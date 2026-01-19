@@ -4,12 +4,16 @@ import type { CurlyProtectionUi } from "./word/curlyProtection";
 
 export type DirectionUi = "auto" | "lat-to-cyr" | "cyr-to-lat" | "to-ascii";
 export type ProfilePreset = "custom" | "it" | "finance" | "medical" | "legal" | "journalism" | "marketing";
+export type AppTheme = "auto" | "light" | "dark";
 
 export interface UiSettings {
     schemaVersion: 2;
 
     profile: ProfilePreset;
     userWordsCustom: string[];
+
+    theme: AppTheme;
+    customSubstitutions: string; // Raw string from textarea
 
     protectBrands: boolean;
     applySerbianQuotes: boolean;
@@ -18,10 +22,10 @@ export interface UiSettings {
     protectRomans: boolean;
 
     /**
-     * Kako �titimo {...} u plain tekstu / Word tekstu.
-     * - placeholders: �titi samo placeholder-like (default)
-     * - all: legacy pona�anje (�titi bilo �ta u {...})
-     * - none: ne �titi {...}
+     * Kako štitimo {...} u plain tekstu / Word tekstu.
+     * - placeholders: štiti samo placeholder-like (default)
+     * - all: legacy ponašanje (štiti bilo šta u {...})
+     * - none: ne štiti {...}
      */
     curlyProtection: CurlyProtectionUi;
 
@@ -60,8 +64,6 @@ export interface PreviewState {
     convertedOoxml: string | null;
     ooxmlOptsSnapJson: string | null;
     selectionTextHash: string | null;
-
-    // NEW: hash originalnog OOXML-a selekcije (hvata i formatiranje)
     selectionOoxmlHash: string | null;
 
     cacheTimestamp: number | null;
