@@ -14,6 +14,8 @@ import { getSettingsFromUi, getOoxmlOptionsFromUi } from "../settings/getters";
 import { PREVIEW_BATCH } from "./constants";
 import { convertTextForPreviewPlain } from "./convertPreviewPlain";
 import { t } from "../../../shared/i18n";
+// NEW: Import recovery
+import { errorRecovery } from "../error/errorRecovery";
 
 function extractTextFromWordOoxml(xml: string): string {
     const W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
@@ -44,7 +46,6 @@ function extractTextFromWordOoxml(xml: string): string {
 export async function runPreview() {
     setStatus(t("status_generating_preview"), "info");
 
-    // UX: Mali delay da UI thread stigne da iscrta status pre teškog Word posla
     await new Promise((resolve) => setTimeout(resolve, 100));
 
     try {
@@ -110,7 +111,7 @@ export async function runPreview() {
                 state.preview.converted = convText;
 
                 showPreviewModal();
-                setStatus(t("status_preview_shown", converted.type), "success"); // PR5
+                setStatus(t("status_preview_shown", converted.type), "success");
                 return;
             }
 
@@ -167,10 +168,10 @@ export async function runPreview() {
             state.preview.converted = finalText;
 
             showPreviewModal();
-            setStatus(t("status_preview_shown", type), "success"); // PR5
+            setStatus(t("status_preview_shown", type), "success");
         });
     } catch (e) {
-        console.error(e);
-        setStatus(t("status_error_prefix", (e as Error).message), "error");
+        // CHANGED: Use centralized error recovery
+        await errorRecovery.handle(e, { operation: "runPreview" });
     }
 }
