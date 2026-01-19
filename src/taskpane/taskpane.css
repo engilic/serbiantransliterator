@@ -12,6 +12,7 @@
     --input-bg: #ffffff;
     --input-border: #8a8886;
     --focus-border: #0f6cbd;
+    --focus-ring: rgba(15, 108, 189, 0.3);
     --error-color: #d13438;
     --success-color: #107c10;
     --disabled-bg: #f3f2f1;
@@ -39,6 +40,7 @@
         --input-bg: #333333;
         --input-border: #a19f9d;
         --focus-border: #4ba0ff;
+        --focus-ring: rgba(75, 160, 255, 0.3);
         --disabled-bg: #3b3a39;
         --disabled-text: #797775;
         --link-color: #69afe5;
@@ -73,6 +75,16 @@ body {
     flex-direction: column;
     min-height: 100vh;
     overflow-y: auto;
+}
+
+/* Accessible Focus States */
+button:focus-visible,
+select:focus-visible,
+input:focus-visible,
+a:focus-visible {
+    outline: 2px solid var(--focus-border);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px var(--focus-ring);
 }
 
 /* Animations */
@@ -495,6 +507,7 @@ button:active:not(:disabled) {
     border-color: var(--focus-border);
     border-bottom-width: 2px;
     padding-bottom: 5px;
+    box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
 .tags-list {
@@ -534,12 +547,13 @@ button:active:not(:disabled) {
     display: flex;
     align-items: center;
     height: 100%;
+    padding: 0 2px;
+    border-radius: 50%;
 }
 
 .tag-remove:hover {
     opacity: 1;
-    background-color: rgba(0, 0, 0, 0.05);
-    border-radius: 50%;
+    background-color: rgba(0, 0, 0, 0.1);
 }
 
 .tag-input {
@@ -835,7 +849,6 @@ button:active:not(:disabled) {
     padding: 10px 12px;
     border: 1px solid var(--border-color);
     border-radius: 6px;
-    /* IMPORTANT: keep transparent-ish look (do NOT override whole app bg) */
     background: var(--bg-color);
 }
 
