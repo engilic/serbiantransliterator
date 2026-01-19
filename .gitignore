@@ -40,3 +40,7 @@ fajlovi_za_ai_lista.txt
 # ===== Local security audit artifacts (local only) =====
 audit.json
 audit*.json
+
+# ===== Rust / WASM =====
+src/wasm-core/target/
+src/wasm-core/pkg/
