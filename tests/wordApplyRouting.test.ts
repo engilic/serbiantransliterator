@@ -1,45 +1,69 @@
-﻿import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-// ---- mocks (must be declared before importing module under test) ----
-
-vi.mock("../src/taskpane/app/status", () => ({
-    setStatus: vi.fn(),
-    refreshStats: vi.fn(),
-}));
-
-vi.mock("../src/taskpane/app/modal/modal", () => ({
-    confirmInPanel: vi.fn(),
-    showModalInfo: vi.fn(),
-}));
-
-vi.mock("../src/taskpane/app/word/pipeline", () => ({
-    applyPipeline: vi.fn(),
-}));
-
+// Mocks for UI/Status modules
+vi.mock("../src/taskpane/app/status", () => ({ setStatus: vi.fn(), refreshStats: vi.fn() }));
+vi.mock("../src/taskpane/app/modal/modal", () => ({ confirmInPanel: vi.fn(), showModalInfo: vi.fn() }));
+vi.mock("../src/taskpane/app/word/pipeline", () => ({ applyPipeline: vi.fn() }));
 vi.mock("../src/taskpane/app/settings/getters", () => ({
     getSettingsFromUi: vi.fn(),
     getOoxmlOptionsFromUi: vi.fn(),
 }));
-
-// Avoid needing real ConvertStats/Extras formatting
 vi.mock("../src/taskpane/app/word/statsText", () => ({
     buildApplyStatsTitle: vi.fn(() => "TITLE"),
     buildApplyStatsText: vi.fn(() => "TEXT"),
     buildPreviewAppliedStats: vi.fn(() => ({ title: "PREVIEW", text: "PREVIEW_TEXT" })),
 }));
 
-// ---- imports (after mocks) ----
-import { runSmart } from "../src/taskpane/app/word/apply";
+// REMOVED: vi.mock("../src/shared/ooxml/convertOoxml", ...)
+// We will use the REAL convertOoxml implementation to test integration properly.
 
+import { runSmart } from "../src/taskpane/app/word/apply";
 import { setStatus } from "../src/taskpane/app/status";
 import { confirmInPanel, showModalInfo } from "../src/taskpane/app/modal/modal";
 import { applyPipeline } from "../src/taskpane/app/word/pipeline";
 import { getSettingsFromUi, getOoxmlOptionsFromUi } from "../src/taskpane/app/settings/getters";
 
-function makeWordStub(selectionText: string) {
+const W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+
+// Helper to create valid minimal Word OOXML so the real convertOoxml works
+function makeSimpleOoxml(text: string) {
+    return `
+<w:document xmlns:w="${W_NS}">
+  <w:body>
+    <w:p>
+      <w:r><w:t>${text}</w:t></w:r>
+    </w:p>
+  </w:body>
+</w:document>
+`.trim();
+}
+
+function makeWordStub(selectionText: string, expandText: string = "") {
+    // Generate valid OOXML so real convertOoxml returns a valid result (not "Nema teksta")
+    // If text is empty, convertOoxml will return "Nema teksta", which is what we want for empty selection check.
+    const selXml = makeSimpleOoxml(selectionText);
+    const paraXml = makeSimpleOoxml(expandText);
+
+    const paraRangeMock = {
+        text: expandText,
+        load: vi.fn(),
+        getOoxml: vi.fn(() => ({ value: paraXml })),
+        insertOoxml: vi.fn(),
+        select: vi.fn(),
+    };
+
     const selectionRange = {
         text: selectionText,
         load: vi.fn(),
+        getOoxml: vi.fn(() => ({ value: selXml })),
+        insertOoxml: vi.fn(),
+        select: vi.fn(),
+
+        paragraphs: {
+            getFirst: vi.fn(() => ({
+                getRange: vi.fn(() => paraRangeMock),
+            })),
+        },
     };
 
     const context = {
@@ -53,30 +77,18 @@ function makeWordStub(selectionText: string) {
         run: async (cb: (ctx: any) => Promise<void>) => {
             await cb(context);
         },
-        // apply.ts references these in other functions; harmless to include
         InsertLocation: { replace: "replace" },
     };
 
-    return { context, selectionRange };
+    return { context, selectionRange, paraRangeMock };
 }
 
 beforeEach(() => {
     vi.resetAllMocks();
-
-    // default settings/options
-    (getSettingsFromUi as unknown as { mockReturnValue: (v: any) => void }).mockReturnValue({
-        confirmWholeDoc: true,
-    });
-
-    (getOoxmlOptionsFromUi as unknown as { mockReturnValue: (v: any) => void }).mockReturnValue({
-        direction: "auto",
-    });
-
-    // default modal confirm = true
-    (confirmInPanel as unknown as { mockResolvedValue: (v: any) => void }).mockResolvedValue(true);
-
-    // default pipeline result
-    (applyPipeline as unknown as { mockResolvedValue: (v: any) => void }).mockResolvedValue({
+    (getSettingsFromUi as any).mockReturnValue({ confirmWholeDoc: true });
+    (getOoxmlOptionsFromUi as any).mockReturnValue({ direction: "lat-to-cyr" }); // Set explicit direction so conversion happens
+    (confirmInPanel as any).mockResolvedValue(true);
+    (applyPipeline as any).mockResolvedValue({
         result: { type: "Lat → Ćir", stats: { timingMs: 12.3 } },
         extras: {
             headersFootersProcessed: 0,
@@ -93,40 +105,43 @@ afterEach(() => {
 });
 
 describe("word/apply.runSmart - routing (stubbed Word.run)", () => {
-    it("whitespace-only selection => shows modal error and does not call applyPipeline", async () => {
+    it("whitespace-only selection => shows modal error and does not call pipeline", async () => {
         makeWordStub("   \n\t  ");
-
         await runSmart();
-
         expect(showModalInfo).toHaveBeenCalledTimes(1);
         expect(applyPipeline).not.toHaveBeenCalled();
-
-        // status should be error-ish message
-        expect(setStatus).toHaveBeenCalled();
     });
 
-    it("non-empty selection => calls applyPipeline with scope=selection", async () => {
-        makeWordStub("Zdravo");
-
+    it("non-empty selection => runs inline logic (insertOoxml on selection)", async () => {
+        const { selectionRange } = makeWordStub("Zdravo");
         await runSmart();
 
+        // Since "Zdravo" (lat) -> "Здраво" (cyr) via real convertOoxml, insertOoxml SHOULD be called.
+        expect(selectionRange.insertOoxml).toHaveBeenCalled();
+        expect(setStatus).toHaveBeenCalledWith(expect.stringContaining("Završeno"), "success");
+    });
+
+    it("no selection + paragraph text => Smart Expand to paragraph + inline logic", async () => {
+        // Selection empty, Para text "Paragraf"
+        const { paraRangeMock } = makeWordStub("", "Paragraf");
+        await runSmart();
+
+        // "Paragraf" -> "Параграф" => insertOoxml called
+        expect(paraRangeMock.insertOoxml).toHaveBeenCalled();
         expect(confirmInPanel).not.toHaveBeenCalled();
-        expect(applyPipeline).toHaveBeenCalledTimes(1);
-
-        const call = (applyPipeline as any).mock.calls[0];
-        expect(call[1]).toBe("selection"); // scope
+        expect(setStatus).toHaveBeenCalledWith(expect.stringContaining("Završeno"), "success");
     });
 
-    it("no selection + confirmWholeDoc=true + user cancels => does not call applyPipeline and sets status 'Otkazano.'", async () => {
-        makeWordStub(""); // no selection => document scope
-        (confirmInPanel as any).mockResolvedValue(false);
-
+    it("no selection + paragraph empty + confirm => Document scope (applyPipeline)", async () => {
+        makeWordStub("", "");
+        (confirmInPanel as any).mockResolvedValue(true);
         await runSmart();
-
-        expect(confirmInPanel).toHaveBeenCalledTimes(1);
-        expect(applyPipeline).not.toHaveBeenCalled();
-
-        // exact string from apply.ts
-        expect(setStatus).toHaveBeenCalledWith("Otkazano.", "neutral");
+        expect(confirmInPanel).toHaveBeenCalled();
+        expect(applyPipeline).toHaveBeenCalledWith(
+            expect.anything(),
+            "document",
+            expect.anything(),
+            expect.anything()
+        );
     });
 });

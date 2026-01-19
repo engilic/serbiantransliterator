@@ -24,12 +24,12 @@
         <main>
             <div class="section">
                 <div class="button-group">
-                    <!-- Filled by selection.ts (checkSelectionAndUpdateButtons) -->
+                    <!-- Filled by selection.ts -->
                     <button id="runBtn" type="button"></button>
                     <button id="previewBtn" type="button"></button>
                 </div>
 
-                <!-- UI language (always visible) -->
+                <!-- UI language -->
                 <div class="lang-row">
                     <div class="lang-left">
                         <div class="lang-label" data-i18n="opt_ui_language_label"></div>
@@ -106,6 +106,7 @@
                 </select>
             </div>
 
+            <!-- Direction -->
             <div class="section">
                 <div class="section-header">
                     <div class="section-title" data-i18n="section_direction"></div>
@@ -134,6 +135,7 @@
                 </div>
             </div>
 
+            <!-- Options -->
             <div class="section">
                 <div class="section-title" data-i18n="section_options"></div>
 
@@ -182,6 +184,7 @@
                 </label>
             </div>
 
+            <!-- Corrections -->
             <div class="section">
                 <div class="section-title" data-i18n="section_corrections"></div>
                 <label>
@@ -190,6 +193,7 @@
                 </label>
             </div>
 
+            <!-- Advanced -->
             <div class="section">
                 <div class="section-header">
                     <div class="section-title" data-i18n="section_advanced"></div>
@@ -242,6 +246,7 @@
                 </div>
             </div>
 
+            <!-- Protected / Tags -->
             <div class="section">
                 <div class="section-header">
                     <div class="section-title" data-i18n="section_protected"></div>
@@ -309,6 +314,16 @@
                             <span data-i18n="btn_clear_all"></span>
                         </button>
                     </div>
+                </div>
+
+                <!-- NEW: Filter Input -->
+                <div class="tags-filter-container">
+                    <input
+                        type="text"
+                        id="tagFilterInput"
+                        class="tag-filter-input"
+                        data-i18n-attr="placeholder:tags_filter_placeholder,aria-label:tags_filter_aria"
+                    />
                 </div>
 
                 <div class="tags-container" id="tagsContainer">

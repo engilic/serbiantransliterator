@@ -31,15 +31,33 @@ function afterTagsChanged() {
     cbRef.updateResetButtonState();
 }
 
+// NEW: Helper for filtering
+function getFilterTerm(): string {
+    const el = document.getElementById("tagFilterInput") as HTMLInputElement | null;
+    return el ? el.value.trim().toLowerCase() : "";
+}
+
 export function renderTags() {
     const container = document.getElementById("tagsList") as HTMLDivElement;
     container.innerHTML = "";
 
+    const filter = getFilterTerm(); // Read filter
+
     const customSorted = Array.from(state.customWordsSet).sort();
     const presetSorted = Array.from(state.presetWordsSet).sort();
 
-    customSorted.forEach((word) => container.appendChild(createTagEl(word, "custom")));
-    presetSorted.forEach((word) => container.appendChild(createTagEl(word, "preset")));
+    // Render loop with filter check
+    customSorted.forEach((word) => {
+        if (!filter || word.toLowerCase().includes(filter)) {
+            container.appendChild(createTagEl(word, "custom"));
+        }
+    });
+
+    presetSorted.forEach((word) => {
+        if (!filter || word.toLowerCase().includes(filter)) {
+            container.appendChild(createTagEl(word, "preset"));
+        }
+    });
 
     updateTagsButtonsState();
 }
@@ -77,6 +95,10 @@ function addTag() {
     input.value = "";
     addBtn.disabled = true;
 
+    // Clear filter on add so user sees what they added
+    const filterEl = document.getElementById("tagFilterInput") as HTMLInputElement | null;
+    if (filterEl) filterEl.value = "";
+
     renderTags();
     afterTagsChanged();
 }
@@ -104,6 +126,14 @@ export function setupTagEvents(cb: TagsCallbacks) {
     const addBtn = document.getElementById("addTagBtn") as HTMLButtonElement;
     const container = document.getElementById("tagsContainer") as HTMLDivElement;
     const tagsList = document.getElementById("tagsList") as HTMLDivElement;
+
+    // NEW: Filter Input
+    const filterInput = document.getElementById("tagFilterInput") as HTMLInputElement | null;
+    if (filterInput) {
+        filterInput.oninput = () => {
+            renderTags();
+        };
+    }
 
     addBtn.disabled = true;
 
