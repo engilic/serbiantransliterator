@@ -15,16 +15,16 @@ import { analyzeSelectionText } from "./selectionText";
 import { buildApplyStatsText, buildApplyStatsTitle, buildPreviewAppliedStats } from "./statsText";
 import { decidePreviewCacheReuse, type PreviewCacheDecisionReason } from "./previewCacheDecision";
 import type { UiSettings, ExtrasSummary } from "../types";
+// NEW: Import recovery
+import { errorRecovery } from "../error/errorRecovery";
 
 // Telemetry helper
 function logTelemetrySkippedRuns(skippedByReason: Record<string, number>) {
     if (Object.keys(skippedByReason).length === 0) return;
-    // U produkciji ovo bi bio poziv ka Azure AppInsights ili slično
     console.warn("[Telemetry] Skipped runs detected:", skippedByReason);
 }
 
 function reasonToSerbian(reason: PreviewCacheDecisionReason): string {
-    // Manual mapping for safety:
     switch (reason) {
         case "optsChanged":
             return t("reason_opts_changed");
@@ -111,8 +111,8 @@ export async function runSmart() {
             refreshStats();
         });
     } catch (e) {
-        console.error(e);
-        setStatus(t("status_error_prefix", (e as Error).message), "error");
+        // CHANGED: Use centralized error recovery
+        await errorRecovery.handle(e, { operation: "runSmart" });
     }
 }
 
@@ -187,7 +187,6 @@ export async function applyFromPreview(scope: "selection" | "document") {
                     return;
                 }
 
-                // TELEMETRY
                 if (result.stats.proofing?.skippedByReason) {
                     logTelemetrySkippedRuns(result.stats.proofing.skippedByReason);
                 }
@@ -208,7 +207,6 @@ export async function applyFromPreview(scope: "selection" | "document") {
                 return;
             }
 
-            // TELEMETRY
             if (result.stats.proofing?.skippedByReason) {
                 logTelemetrySkippedRuns(result.stats.proofing.skippedByReason);
             }
@@ -223,7 +221,7 @@ export async function applyFromPreview(scope: "selection" | "document") {
             refreshStats();
         });
     } catch (e) {
-        console.error(e);
-        setStatus(t("status_error_prefix", (e as Error).message), "error");
+        // CHANGED: Use centralized error recovery
+        await errorRecovery.handle(e, { operation: "applyFromPreview" });
     }
 }
