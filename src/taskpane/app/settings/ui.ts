@@ -8,7 +8,7 @@ import { asCurlyProtectionUi } from "../word/curlyProtection";
 import { setStatus, refreshStats } from "../status";
 import { invalidatePreviewCache } from "../preview/cache";
 import { confirmInPanel } from "../modal/modal";
-import { unsafeHtml } from "../../../shared/safeHtml";
+import { unsafeHtml, escapeHtml } from "../../../shared/safeHtml";
 import { t } from "../../../shared/i18n";
 
 import { runWithUiLock } from "../uiLock";
@@ -30,6 +30,75 @@ function applyTheme(theme: AppTheme) {
     if (theme === "auto") {
         document.documentElement.removeAttribute("data-theme");
     }
+}
+
+// NEW: Custom Subs Logic
+function renderSubsList() {
+    const area = document.getElementById("optCustomSubstitutions") as HTMLTextAreaElement;
+    const container = document.getElementById("subsContainer") as HTMLDivElement;
+
+    const raw = area.value.trim();
+    const lines = raw ? raw.split("\n") : [];
+
+    container.innerHTML = "";
+
+    if (lines.length === 0) {
+        container.innerHTML = `<div class="subs-empty hint" data-i18n="subs_list_empty">${t("subs_list_empty")}</div>`;
+        return;
+    }
+
+    lines.forEach((line) => {
+        if (!line.includes("->")) return;
+        const [src, dest] = line.split("->").map((s) => s.trim());
+
+        const item = document.createElement("div");
+        item.className = "sub-item";
+        item.innerHTML = `
+            <span class="sub-text"><b>${escapeHtml(src)}</b> &rarr; ${escapeHtml(dest)}</span>
+            <span class="sub-remove" title="${t("ui_tag_remove")}">&times;</span>
+        `;
+
+        item.querySelector(".sub-remove")!.addEventListener("click", () => {
+            removeSub(line);
+        });
+
+        container.appendChild(item);
+    });
+}
+
+function addSub() {
+    const srcInput = document.getElementById("subSrc") as HTMLInputElement;
+    const destInput = document.getElementById("subDest") as HTMLInputElement;
+    const area = document.getElementById("optCustomSubstitutions") as HTMLTextAreaElement;
+
+    const src = srcInput.value.trim();
+    const dest = destInput.value.trim();
+
+    if (!src || !dest) return;
+
+    const newLine = `${src} -> ${dest}`;
+    const current = area.value.trim();
+    area.value = current ? current + "\n" + newLine : newLine;
+
+    area.dispatchEvent(new Event("change")); // Trigger save
+
+    srcInput.value = "";
+    destInput.value = "";
+    srcInput.focus();
+
+    renderSubsList();
+}
+
+function removeSub(lineToRemove: string) {
+    const area = document.getElementById("optCustomSubstitutions") as HTMLTextAreaElement;
+    const lines = area.value
+        .split("\n")
+        .map((s) => s.trim())
+        .filter((s) => s !== lineToRemove && s);
+    area.value = lines.join("\n");
+
+    area.dispatchEvent(new Event("change"));
+    renderSubsList();
 }
 
 export function initUi() {
@@ -64,12 +133,15 @@ export function initUi() {
     bindButtons();
     setupInputListeners();
 
+    // Bind Subs UI
+    (document.getElementById("addSubBtn") as HTMLButtonElement).onclick = addSub;
+    renderSubsList();
+
     (document.getElementById("profilePreset") as HTMLSelectElement).onchange = (e) => {
         const val = (e.target as HTMLSelectElement).value as ProfilePreset;
         changeProfile(val);
     };
 
-    // Theme binding
     const themeSel = document.getElementById("optTheme") as HTMLSelectElement | null;
     if (themeSel) {
         themeSel.onchange = () => {
@@ -93,6 +165,7 @@ function initLanguagePicker() {
         const pref = asUiLangPref(sel.value);
         setUiLanguagePreference(pref);
         renderTags();
+        renderSubsList(); // Re-render subs to update empty text
         refreshStats();
         setStatus(t("status_ready"), "neutral");
         try {
@@ -176,6 +249,7 @@ function applySettingsToUi(s: UiSettings) {
     // Custom Subs
     const subArea = document.getElementById("optCustomSubstitutions") as HTMLTextAreaElement | null;
     if (subArea) subArea.value = s.customSubstitutions || "";
+    renderSubsList(); // Update UI list
 
     // NEW: Dialect
     const dialectSel = document.getElementById("optDialect") as HTMLSelectElement | null;
@@ -255,7 +329,6 @@ function changeProfile(profile: ProfilePreset) {
                     data.curlyProtection ?? DEFAULT_SETTINGS.curlyProtection
                 );
             }
-            // NEW
             if (data.dialect !== undefined) {
                 const dSel = document.getElementById("optDialect") as HTMLSelectElement | null;
                 if (dSel) dSel.value = data.dialect;
@@ -295,7 +368,7 @@ function setupInputListeners() {
         "dirCyrToLat",
         "dirToAscii",
         "optCustomSubstitutions",
-        "optDialect", // NEW
+        "optDialect",
     ];
 
     ids.forEach((id) => {

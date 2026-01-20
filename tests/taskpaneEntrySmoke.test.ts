@@ -8,7 +8,7 @@ vi.mock("../src/core/textCore", () => ({
 }));
 
 function setupDomForTaskpane() {
-    // ... (DOM setup ostaje isti, kopiraj ga iz prethodnih poruka ili zadrži postojeći)
+    // Minimalan DOM koji settings/ui.ts očekuje u initUi()
     document.body.innerHTML = `
     <button id="runBtn"></button>
     <button id="previewBtn"></button>
@@ -42,7 +42,14 @@ function setupDomForTaskpane() {
       <select id="optCurlyProtection">
         <option value="placeholders">placeholders</option>
       </select>
+      
+      <!-- Custom Subs UI Mock -->
+      <input id="subSrc" />
+      <input id="subDest" />
+      <button id="addSubBtn"></button>
+      <div id="subsContainer"></div>
       <textarea id="optCustomSubstitutions"></textarea>
+      
       <select id="optDialect"></select>
     </div>
     <input id="tagFilterInput" />

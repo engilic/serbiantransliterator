@@ -1,23 +1,34 @@
 // src/shared/i18n.ts
 
+// Pomocne funkcije za srpsku gramatiku (jednina/dvojina/množina)
 function getSerbianPluralForm(n: number): "one" | "few" | "many" {
     const n100 = n % 100;
     const n10 = n % 10;
+
+    // 11-14 uvek množina (npr. 11 čvorova, 12 čvorova...)
     if (n100 >= 5 && n100 <= 20) return "many";
+    // 1 je jednina (npr. 1 čvor)
     if (n10 === 1) return "one";
+    // 2, 3, 4 su dvojina (npr. 2 čvora)
     if (n10 >= 2 && n10 <= 4) return "few";
+    // sve ostalo je množina (0, 5, 6...)
     return "many";
 }
 
 function getEnglishPluralForm(n: number): "one" | "many" {
+    // Engleski ima samo jedninu i množinu
     return n === 1 ? "one" : "many";
 }
 
 export type TranslationKey = keyof typeof SR_RS;
 export type Language = "sr" | "en";
 
+// Trenutni aktivni jezik (default je srpski)
 let currentLang: Language = "sr";
 
+// =========================
+// SRPSKI (Izvor)
+// =========================
 const SR_RS = {
     app_title: "Serbian Transliterator",
     ui_version_prefix: "v",
@@ -58,11 +69,14 @@ const SR_RS = {
     opt_ui_language_en: "English",
     opt_ui_language_auto: "Auto (Office/browser)",
     opt_ui_language_hint: "Menja jezik UI-ja. Default je srpski. Auto prati Office/browser jezik.",
+
+    // THEME
     ui_theme_label: "Tema / Theme",
     ui_theme_aria: "Izbor teme",
     ui_theme_auto: "Auto",
     ui_theme_light: "Svetla ☀️",
     ui_theme_dark: "Tamna 🌙",
+
     opt_curly_label_before: "Zaštita ",
     opt_curly_label_after: " blokova",
     opt_curly_aria: "Zaštita vitičastih zagrada",
@@ -75,12 +89,15 @@ const SR_RS = {
     opt_format_dates: "Formatiraj datume (npr. 21.10.2023.)",
     opt_format_dates_hint: "Ova opcija menja sadržaj (nije samo preslovljavanje).",
 
-    // CUSTOM SUBS
+    // CUSTOM SUBS UI KEYS (Fixed missing keys)
     opt_custom_subs_label: "Custom Substitutions (Izvor -> Cilj)",
     opt_custom_subs_placeholder: "vreme -> vrijeme\nlepo -> lijepo",
     opt_custom_subs_hint: "Jedno pravilo po liniji. Primenjuje se na kraju.",
+    subs_list_empty: "Nema definisanih zamena.",
+    subs_input_src: "Izvor (npr. lepo)",
+    subs_input_dest: "Cilj (npr. lijepo)",
 
-    // NEW DIALECT
+    // DIALECT
     opt_dialect_label: "Dijalekt / Pismo",
     opt_dialect_aria: "Izbor dijalekta",
     opt_dialect_none: "Samo preslovljavanje (Standard)",
@@ -217,6 +234,9 @@ const SR_RS = {
     perf_very_slow_warning: "Obrada je veoma spora. Razmislite o podeli dokumenta.",
 };
 
+// =========================
+// ENGLESKI (Prevod)
+// =========================
 const EN_US: Record<TranslationKey, string> = {
     app_title: "Serbian Transliterator",
     ui_version_prefix: "v",
@@ -273,11 +293,16 @@ const EN_US: Record<TranslationKey, string> = {
     opt_set_proofing_language: "Set proofing language (sr-Cyrl / sr-Latn)",
     opt_format_dates: "Format dates (e.g. 21.10.2023.)",
     opt_format_dates_hint: "This option changes content (not just transliteration).",
+
+    // CUSTOM SUBS (Fixed missing keys)
     opt_custom_subs_label: "Custom Substitutions (Source -> Dest)",
     opt_custom_subs_placeholder: "vreme -> vrijeme\nlepo -> lijepo",
     opt_custom_subs_hint: "One rule per line. Applied last.",
+    subs_list_empty: "No substitutions defined.",
+    subs_input_src: "Source (e.g. lepo)",
+    subs_input_dest: "Dest (e.g. lijepo)",
 
-    // NEW
+    // DIALECT
     opt_dialect_label: "Dialect / Script",
     opt_dialect_aria: "Dialect selection",
     opt_dialect_none: "Transliteration only (Standard)",
@@ -414,6 +439,7 @@ const EN_US: Record<TranslationKey, string> = {
     perf_very_slow_warning: "Processing is very slow. Consider splitting the document.",
 };
 
+// Mapa svih prevoda
 const TRANSLATIONS: Record<Language, typeof SR_RS> = {
     sr: SR_RS,
     en: EN_US,
@@ -429,19 +455,31 @@ export function getLanguage(): Language {
     return currentLang;
 }
 
+/**
+ * Glavna funkcija za prevod.
+ * Primer: t("status_done_selection", type, time)
+ */
 export function t(key: TranslationKey, ...args: (string | number)[]): string {
     const dict = TRANSLATIONS[currentLang] || SR_RS;
     let str = dict[key] || SR_RS[key] || key;
+
     if (args.length > 0) {
         args.forEach((arg, index) => {
             str = str.replace(new RegExp(`\\{${index}\\}`, "g"), String(arg));
         });
     }
+
     return str;
 }
 
+/**
+ * Funkcija za pluralizaciju (npr. statistika čvorova).
+ * Koristi specifične ključeve iz rečnika (npr. stats_line_nodes_changed_one)
+ * ili se vraća na osnovni ključ ako specifični ne postoji.
+ */
 export function tPlural(key: TranslationKey, count: number): string {
     const dict = TRANSLATIONS[currentLang] || SR_RS;
+
     if (currentLang === "sr") {
         const form = getSerbianPluralForm(count);
         const specificKey = `${key}_${form}` as TranslationKey;
@@ -451,9 +489,16 @@ export function tPlural(key: TranslationKey, count: number): string {
         const specificKey = `${key}_${form}` as TranslationKey;
         if (dict[specificKey]) return t(specificKey, count);
     }
+
+    // Fallback: ako nema specifičnog prevoda za plural formu, koristi osnovni ključ
+    // i pokušaj da zameni {0} sa brojem.
     return t(key, count);
 }
 
+/**
+ * Runtime + type-guard: proveri da li je proizvoljan string validan TranslationKey.
+ * Koristi se za data-i18n/data-i18n-attr input iz DOM-a (string).
+ */
 export function isTranslationKey(k: string): k is TranslationKey {
     return Object.prototype.hasOwnProperty.call(SR_RS, k);
 }
