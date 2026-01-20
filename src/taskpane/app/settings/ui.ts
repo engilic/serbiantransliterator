@@ -1,7 +1,7 @@
 // src/taskpane/app/settings/ui.ts
 /* global document, Blob, URL, FileReader */
 
-import type { UiSettings, ProfilePreset, AppTheme, DialectUi } from "../types";
+import type { UiSettings, ProfilePreset, AppTheme } from "../types";
 import { state } from "../state";
 import { asCurlyProtectionUi } from "../word/curlyProtection";
 
@@ -15,7 +15,7 @@ import { runWithUiLock } from "../uiLock";
 import { runSmart } from "../word/apply";
 import { runPreview } from "../preview/runPreview";
 
-import { getSettingsFromUi, getOoxmlOptionsFromUi, getSelectValue } from "./getters";
+import { getSettingsFromUi, getOoxmlOptionsFromUi } from "./getters";
 import { loadSettingsFromStorage, saveSettingsToStorage } from "./store";
 import { DEFAULT_SETTINGS, PRESETS, SETTINGS_KEY } from "./defaults";
 
@@ -24,6 +24,7 @@ import { initAdvancedSettingsToggle } from "./advanced";
 
 import { initUiI18n, getUiLanguagePreference, setUiLanguagePreference, asUiLangPref } from "../i18n/uiI18n";
 import { checkSelectionAndUpdateButtons } from "../selection";
+import { get, getOptional } from "../utils/dom"; // NEW DOM helper
 
 function applyTheme(theme: AppTheme) {
     document.documentElement.setAttribute("data-theme", theme);
@@ -34,8 +35,8 @@ function applyTheme(theme: AppTheme) {
 
 // NEW: Custom Subs Logic
 function renderSubsList() {
-    const area = document.getElementById("optCustomSubstitutions") as HTMLTextAreaElement;
-    const container = document.getElementById("subsContainer") as HTMLDivElement;
+    const area = get<HTMLTextAreaElement>("optCustomSubstitutions");
+    const container = get<HTMLDivElement>("subsContainer");
 
     const raw = area.value.trim();
     const lines = raw ? raw.split("\n") : [];
@@ -67,9 +68,9 @@ function renderSubsList() {
 }
 
 function addSub() {
-    const srcInput = document.getElementById("subSrc") as HTMLInputElement;
-    const destInput = document.getElementById("subDest") as HTMLInputElement;
-    const area = document.getElementById("optCustomSubstitutions") as HTMLTextAreaElement;
+    const srcInput = get<HTMLInputElement>("subSrc");
+    const destInput = get<HTMLInputElement>("subDest");
+    const area = get<HTMLTextAreaElement>("optCustomSubstitutions");
 
     const src = srcInput.value.trim();
     const dest = destInput.value.trim();
@@ -90,7 +91,7 @@ function addSub() {
 }
 
 function removeSub(lineToRemove: string) {
-    const area = document.getElementById("optCustomSubstitutions") as HTMLTextAreaElement;
+    const area = get<HTMLTextAreaElement>("optCustomSubstitutions");
     const lines = area.value
         .split("\n")
         .map((s) => s.trim())
@@ -134,15 +135,15 @@ export function initUi() {
     setupInputListeners();
 
     // Bind Subs UI
-    (document.getElementById("addSubBtn") as HTMLButtonElement).onclick = addSub;
+    get<HTMLButtonElement>("addSubBtn").onclick = addSub;
     renderSubsList();
 
-    (document.getElementById("profilePreset") as HTMLSelectElement).onchange = (e) => {
+    get<HTMLSelectElement>("profilePreset").onchange = (e) => {
         const val = (e.target as HTMLSelectElement).value as ProfilePreset;
         changeProfile(val);
     };
 
-    const themeSel = document.getElementById("optTheme") as HTMLSelectElement | null;
+    const themeSel = getOptional<HTMLSelectElement>("optTheme");
     if (themeSel) {
         themeSel.onchange = () => {
             const val = themeSel.value as AppTheme;
@@ -156,7 +157,7 @@ export function initUi() {
 }
 
 function initLanguagePicker() {
-    const sel = document.getElementById("optUiLanguage") as HTMLSelectElement | null;
+    const sel = getOptional<HTMLSelectElement>("optUiLanguage");
     if (!sel) return;
 
     sel.value = getUiLanguagePreference();
@@ -177,15 +178,15 @@ function initLanguagePicker() {
 }
 
 function bindButtons() {
-    (document.getElementById("runBtn") as HTMLButtonElement).onclick = () => runWithUiLock(runSmart);
-    (document.getElementById("previewBtn") as HTMLButtonElement).onclick = () => runWithUiLock(runPreview);
-    (document.getElementById("exportBtn") as HTMLButtonElement).onclick = exportSettingsAsDownload;
+    get<HTMLButtonElement>("runBtn").onclick = () => runWithUiLock(runSmart);
+    get<HTMLButtonElement>("previewBtn").onclick = () => runWithUiLock(runPreview);
+    get<HTMLButtonElement>("exportBtn").onclick = exportSettingsAsDownload;
 
-    const fileInput = document.getElementById("fileInput") as HTMLInputElement;
-    (document.getElementById("importBtn") as HTMLButtonElement).onclick = () => fileInput.click();
+    const fileInput = get<HTMLInputElement>("fileInput");
+    get<HTMLButtonElement>("importBtn").onclick = () => fileInput.click();
     fileInput.onchange = handleFileImport;
 
-    (document.getElementById("resetBtn") as HTMLButtonElement).onclick = async () => {
+    get<HTMLButtonElement>("resetBtn").onclick = async () => {
         const ok = await confirmInPanel(unsafeHtml(t("msg_reset_confirm")));
         if (ok) resetSettings();
     };
@@ -219,7 +220,7 @@ function resetSettings() {
 }
 
 function applySettingsToUi(s: UiSettings) {
-    (document.getElementById("profilePreset") as HTMLSelectElement).value = s.profile;
+    get<HTMLSelectElement>("profilePreset").value = s.profile;
 
     setCheckValue("optConfirmWholeDoc", s.confirmWholeDoc);
     setCheckValue("optProtectBrands", s.protectBrands);
@@ -228,7 +229,7 @@ function applySettingsToUi(s: UiSettings) {
     setCheckValue("optProtectRomans", s.protectRomans);
     setCheckValue("optSetProofingLanguage", s.setProofingLanguage);
 
-    const curlySel = document.getElementById("optCurlyProtection") as HTMLSelectElement | null;
+    const curlySel = getOptional<HTMLSelectElement>("optCurlyProtection");
     if (curlySel) curlySel.value = s.curlyProtection;
 
     setCheckValue("optShowStats", s.showStats);
@@ -242,17 +243,17 @@ function applySettingsToUi(s: UiSettings) {
     setCheckValue("optIncludeEndnotes", s.includeEndnotes);
 
     // Theme
-    const themeSel = document.getElementById("optTheme") as HTMLSelectElement | null;
+    const themeSel = getOptional<HTMLSelectElement>("optTheme");
     if (themeSel) themeSel.value = s.theme || "auto";
     applyTheme(s.theme || "auto");
 
     // Custom Subs
-    const subArea = document.getElementById("optCustomSubstitutions") as HTMLTextAreaElement | null;
+    const subArea = getOptional<HTMLTextAreaElement>("optCustomSubstitutions");
     if (subArea) subArea.value = s.customSubstitutions || "";
     renderSubsList(); // Update UI list
 
     // NEW: Dialect
-    const dialectSel = document.getElementById("optDialect") as HTMLSelectElement | null;
+    const dialectSel = getOptional<HTMLSelectElement>("optDialect");
     if (dialectSel) dialectSel.value = s.dialect || "none";
 
     refreshStats();
@@ -283,7 +284,7 @@ function updateResetButtonState() {
     ];
 
     const mismatches = keys.filter((k) => current[k] !== DEFAULT_SETTINGS[k]);
-    const btn = document.getElementById("resetBtn") as HTMLButtonElement | null;
+    const btn = getOptional<HTMLButtonElement>("resetBtn");
     if (btn) btn.disabled = mismatches.length === 0;
 }
 
@@ -295,7 +296,7 @@ function switchToCustomIfManual() {
     }
 
     state.currentProfile = "custom";
-    const select = document.getElementById("profilePreset") as HTMLSelectElement;
+    const select = getOptional<HTMLSelectElement>("profilePreset");
     if (select) select.value = "custom";
     saveSettings();
 }
@@ -323,14 +324,14 @@ function changeProfile(profile: ProfilePreset) {
             if (data.formatDates !== undefined) setCheckValue("optFormatDates", data.formatDates);
             if (data.confirmWholeDoc !== undefined) setCheckValue("optConfirmWholeDoc", data.confirmWholeDoc);
 
-            const curlySel = document.getElementById("optCurlyProtection") as HTMLSelectElement | null;
+            const curlySel = getOptional<HTMLSelectElement>("optCurlyProtection");
             if (curlySel) {
                 curlySel.value = asCurlyProtectionUi(
                     data.curlyProtection ?? DEFAULT_SETTINGS.curlyProtection
                 );
             }
             if (data.dialect !== undefined) {
-                const dSel = document.getElementById("optDialect") as HTMLSelectElement | null;
+                const dSel = getOptional<HTMLSelectElement>("optDialect");
                 if (dSel) dSel.value = data.dialect;
             }
         }
@@ -372,13 +373,11 @@ function setupInputListeners() {
     ];
 
     ids.forEach((id) => {
-        const el = document.getElementById(id) as
-            | HTMLInputElement
-            | HTMLSelectElement
-            | HTMLTextAreaElement
-            | null;
+        const el = getOptional<HTMLElement>(id);
         if (!el) return;
-        el.onchange = () => {
+
+        // Input or Select or Textarea
+        (el as GlobalEventHandlers).onchange = () => {
             if (id !== "optShowStats") invalidatePreviewCache();
             if (!state.isApplyingProfile) switchToCustomIfManual();
             else saveSettings();
@@ -429,7 +428,7 @@ function handleFileImport(e: Event) {
 }
 
 function setCheckValue(id: string, val: boolean) {
-    const el = document.getElementById(id) as HTMLInputElement | null;
+    const el = getOptional<HTMLInputElement>(id);
     if (el) el.checked = val;
 }
 

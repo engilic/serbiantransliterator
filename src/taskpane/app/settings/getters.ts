@@ -1,13 +1,12 @@
 // src/taskpane/app/settings/getters.ts
-/* global document */
-
 import type { UiSettings, DirectionUi, ProfilePreset, AppTheme, DialectUi } from "../types";
 import type { OoxmlOptions } from "../../../shared/ooxml/convertOoxml";
 import { state } from "../state";
 import { asCurlyProtectionUi } from "../word/curlyProtection";
+import { getOptional } from "../utils/dom";
 
 export function getCheckValue(id: string): boolean {
-    const el = document.getElementById(id) as HTMLInputElement | null;
+    const el = getOptional<HTMLInputElement>(id);
     return !!el?.checked;
 }
 
@@ -21,12 +20,12 @@ export function getRadioValue(name: string): string {
 }
 
 export function getSelectValue(id: string): string {
-    const el = document.getElementById(id) as HTMLSelectElement | null;
+    const el = getOptional<HTMLSelectElement>(id);
     return String(el?.value ?? "");
 }
 
 export function getTextValue(id: string): string {
-    const el = document.getElementById(id) as HTMLTextAreaElement | null;
+    const el = getOptional<HTMLTextAreaElement>(id);
     return String(el?.value ?? "");
 }
 
@@ -75,7 +74,7 @@ function parseCustomSubstitutions(raw: string): Record<string, string> {
 }
 
 export function getSettingsFromUi(): UiSettings {
-    const profileRaw = (document.getElementById("profilePreset") as HTMLSelectElement | null)?.value;
+    const profileRaw = getSelectValue("profilePreset");
     const profile = asProfilePreset(profileRaw);
 
     const dirRaw = getRadioValue("direction");
@@ -88,39 +87,28 @@ export function getSettingsFromUi(): UiSettings {
     const theme = asAppTheme(themeRaw);
 
     const subsRaw = getTextValue("optCustomSubstitutions");
-
-    // NEW
     const dialectRaw = getSelectValue("optDialect");
     const dialect = asDialectUi(dialectRaw);
 
     return {
         schemaVersion: 2,
-
         profile,
         userWordsCustom: Array.from(state.customWordsSet),
-
         theme,
         customSubstitutions: subsRaw,
-
-        // NEW
         dialect,
-
         protectBrands: getCheckValue("optProtectBrands"),
         applySerbianQuotes: getCheckValue("optSerbianQuotes"),
         preserveCodeBlocks: getCheckValue("optPreserveCodeBlocks"),
         setProofingLanguage: getCheckValue("optSetProofingLanguage"),
         protectRomans: getCheckValue("optProtectRomans"),
-
         curlyProtection,
-
         fixDoubleSpaces: getCheckValue("optFixDoubleSpaces"),
         formatDates: getCheckValue("optFormatDates"),
-
         confirmWholeDoc: getCheckValue("optConfirmWholeDoc"),
         includeHeadersFooters: getCheckValue("optIncludeHeadersFooters"),
         includeFootnotes: getCheckValue("optIncludeFootnotes"),
         includeEndnotes: getCheckValue("optIncludeEndnotes"),
-
         showStats: getCheckValue("optShowStats"),
         direction,
     };
@@ -134,8 +122,6 @@ export function getOoxmlOptionsFromUi(): OoxmlOptions {
     if (s.direction === "cyr-to-lat") dir = "cyr-to-lat";
     if (s.direction === "to-ascii") dir = "to-ascii";
 
-    const customSubsMap = parseCustomSubstitutions(s.customSubstitutions);
-
     return {
         direction: dir,
         protectBrands: s.protectBrands,
@@ -147,9 +133,7 @@ export function getOoxmlOptionsFromUi(): OoxmlOptions {
         protectRomans: s.protectRomans,
         curlyProtection: s.curlyProtection,
         userProtected: [...Array.from(state.customWordsSet), ...Array.from(state.presetWordsSet)],
-
-        customSubstitutions: customSubsMap,
-        // NEW
+        customSubstitutions: parseCustomSubstitutions(s.customSubstitutions),
         dialect: s.dialect,
     };
 }
