@@ -1,5 +1,10 @@
 # Serbian Transliterator
 
+[![CI](https://github.com/engilic/serbiantransliterator/actions/workflows/ci.yml/badge.svg)](https://github.com/engilic/serbiantransliterator/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Code Style: Prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg)](https://github.com/prettier/prettier)
+[![WASM: Rust](https://img.shields.io/badge/wasm-rust-orange.svg)](https://rustwasm.github.io/)
+
 Word Office.js Taskpane Add-in za preslovljavanje srpskog teksta između **latinice ↔ ćirilice** direktno u Microsoft Word dokumentu (selekcija ili ceo dokument).
 
 **Production:** https://serbiantransliterator.pages.dev  
@@ -14,11 +19,11 @@ Word Office.js Taskpane Add-in za preslovljavanje srpskog teksta između **latin
 - **Zaštita tokena:** URL, e-mail, `mailto:`, `tel:`, `sip:`, `sms:`, `geo:`, `skype:`, `teams:`, `msteams:`
 - **Zaštita “brend” reči** i tehnoloških termina (npr. `iPhone`, `.NET`, `Node.js`) + user “protected words”
 - **Custom Substitutions:** Korisnički definisana pravila za zamenu.
-- **OOXML bridging:** Pametno spajanje teksta preko `<w:t>` granica (tokeni, linkovi, fraze, digrafi).
-- **Preview:** Diff / pre-posle / rezultat + “apply from preview” uz cache i hash.
+- **OOXML bridging:** Pametno spajanje teksta preko `<w:t>` granica (tokeni, linkovi, fraze, digrafi, `{PLACEHOLDER}` blokovi).
+- **Preview:** Diff / pre-posle / rezultat + “apply from preview” uz cache i hash (text + OOXML).
 - **Teme:** Light / Dark / Auto.
-- **Opciona obrada:** Header/footer, footnotes, endnotes.
-- **i18n:** UI na srpskom i engleskom.
+- **Opciona obrada:** Header/footer, footnotes, endnotes (best-effort, uz feedback).
+- **i18n:** UI tekstovi i statusi centralizovani (taskpane bez hardcoded stringova + CI guard).
 
 ---
 
@@ -36,12 +41,12 @@ Word Office.js Taskpane Add-in za preslovljavanje srpskog teksta između **latin
 
 ### Prerequisites
 
-- **Node.js** (preporučeno: Node 20+, usklađeno sa CI)
+- **Node.js** (preporučeno: **Node 20**, usklađeno sa CI)
 - **Rust & Cargo** (neophodno za kompajliranje core logike)
-    - Windows: `winget install Rustlang.Rustup` i Visual Studio Build Tools (`winget install Microsoft.VisualStudio.2022.BuildTools --override "--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"`)
+    - Windows: `winget install Rustlang.Rustup` i Visual Studio Build Tools
     - Mac/Linux: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
 - **wasm-pack**: `cargo install wasm-pack`
-- PowerShell 7 (`pwsh`) (opciono, za neke skripte)
+- PowerShell 7 (`pwsh`) je potreban samo za neke lokalne helper skripte (npr. AI pack)
 
 ### Install
 

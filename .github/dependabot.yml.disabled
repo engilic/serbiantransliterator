@@ -1,99 +1,23 @@
 version: 2
 updates:
-    # === NPM dependencies (package.json / package-lock.json) ===
-    - package-ecosystem: "npm"
-      directory: "/"
-      schedule:
-          interval: "weekly"
-          day: "monday"
-          time: "06:00"
-      rebase-strategy: "auto"
-      open-pull-requests-limit: 10
-      labels:
-          - "dependencies"
-          - "security"
-      versioning-strategy: "auto"
-      commit-message:
-          prefix: "chore(deps)"
-          include: "scope"
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+    groups:
+      minor-patches:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
 
-      # Group version updates to reduce PR noise
-      groups:
-          # 1) Tooling/dev stack (safe-ish to update together)
-          tooling:
-              patterns:
-                  - "@types/*"
-                  - "@playwright/test"
-                  - "@vitest/*"
-                  - "vitest"
-                  - "eslint"
-                  - "eslint-*"
-                  - "prettier"
-                  - "typescript"
-                  - "webpack"
-                  - "webpack-*"
-                  - "babel-*"
-                  - "@babel/*"
-                  - "css-loader"
-                  - "mini-css-extract-plugin"
-                  - "html-webpack-plugin"
-                  - "copy-webpack-plugin"
-                  - "concurrently"
-                  - "cross-env"
-                  - "rimraf"
-                  - "wait-on"
-                  - "http-server"
-                  - "jsdom"
-              update-types:
-                  - "minor"
-                  - "patch"
-
-          # 2) Office add-in tooling (keep together)
-          office-addins:
-              patterns:
-                  - "office-addin-*"
-                  - "@types/office-js"
-              update-types:
-                  - "minor"
-                  - "patch"
-
-          # 3) Runtime deps (you have few; keep separate)
-          runtime:
-              patterns:
-                  - "core-js"
-                  - "regenerator-runtime"
-              update-types:
-                  - "minor"
-                  - "patch"
-
-          # 4) Keep major updates ungrouped (so they are reviewed one-by-one)
-          majors:
-              patterns:
-                  - "*"
-              update-types:
-                  - "major"
-
-    # === GitHub Actions dependencies (.github/workflows/*.yml) ===
-    - package-ecosystem: "github-actions"
-      directory: "/"
-      schedule:
-          interval: "weekly"
-          day: "monday"
-          time: "06:00"
-      rebase-strategy: "auto"
-      open-pull-requests-limit: 10
-      labels:
-          - "ci"
-          - "dependencies"
-      commit-message:
-          prefix: "chore(ci)"
-          include: "scope"
-
-      groups:
-          github-actions:
-              patterns:
-                  - "*"
-              update-types:
-                  - "minor"
-                  - "patch"
-                  - "major"
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
