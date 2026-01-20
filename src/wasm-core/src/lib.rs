@@ -2,7 +2,7 @@ use wasm_bindgen::prelude::*;
 
 mod dictionary;
 
-// Funkcija koja čuva veliko slovo (Lepo -> Lijepo, lepo -> lijepo)
+// Funkcija koja čuva veliko slovo
 fn match_case(original: &str, replacement: &str) -> String {
     let mut chars_orig = original.chars();
     let first = chars_orig.next();
@@ -32,14 +32,13 @@ pub fn convert_dialect(text: &str, mode: &str) -> String {
             continue;
         }
 
-        // Uhvati reč
         let start = i;
         while i < len && chars[i].is_alphabetic() {
             i += 1;
         }
         let word: String = chars[start..i].iter().collect();
 
-        // Proveri zamenu koristeći novi modul
+        // Koristi dictionary mod
         let replacement = match mode {
             "ekavica_to_ijekavica" => dictionary::get_ekavica_to_ijekavica(&word),
             "ijekavica_to_ekavica" => dictionary::get_ijekavica_to_ekavica(&word),
@@ -55,6 +54,9 @@ pub fn convert_dialect(text: &str, mode: &str) -> String {
 
     result
 }
+
+// ... (to_cyrillic i to_latin ostaju isti kao pre, kopiraj ih iz prethodnog fajla ako trebaju)
+// Ali evo ih za svaki slučaj da imaš ceo fajl:
 
 #[wasm_bindgen]
 pub fn to_cyrillic(text: &str) -> String {
