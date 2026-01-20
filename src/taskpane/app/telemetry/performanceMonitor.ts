@@ -1,5 +1,7 @@
 // src/taskpane/app/telemetry/performanceMonitor.ts
 
+import { logger } from "./logger"; // NEW
+
 export interface PerformanceEntry {
     operation: string;
     nodeCount: number;
@@ -54,15 +56,16 @@ export class PerformanceMonitor {
 
         // Alert for slow operations
         if (duration > this.SLOW_THRESHOLD_MS) {
-            console.warn(
-                `Slow operation detected: ${operation} took ${duration.toFixed(0)}ms for ${nodeCount} nodes`
+            logger.warn(
+                `Slow operation detected: ${operation} took ${duration.toFixed(0)}ms for ${nodeCount} nodes`,
+                entry
             );
             this.notifySlowOperation(entry);
         }
 
         // Extra warning for very slow operations
         if (duration > 10000) {
-            console.error(
+            logger.error(
                 `Very slow operation: ${operation} took ${(duration / 1000).toFixed(1)}s for ${nodeCount} nodes`
             );
         }
@@ -142,7 +145,7 @@ export class PerformanceMonitor {
             try {
                 cb(entry);
             } catch (e) {
-                console.error("Error in slow operation callback:", e);
+                logger.error("Error in slow operation callback", e);
             }
         });
     }
@@ -155,6 +158,6 @@ export const perfMonitor = new PerformanceMonitor();
 if (typeof window !== "undefined") {
     perfMonitor.onSlowOperation((entry) => {
         // Could trigger a toast notification here
-        console.info(`Performance warning: ${entry.operation} was slow (${entry.duration.toFixed(0)}ms)`);
+        logger.info(`Performance warning: ${entry.operation} was slow (${entry.duration.toFixed(0)}ms)`);
     });
 }
