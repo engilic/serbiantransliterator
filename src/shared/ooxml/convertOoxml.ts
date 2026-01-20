@@ -103,7 +103,7 @@ function countMatches(text: string, re: RegExp): number {
     return c;
 }
 
-// === NEW: Cleanup helper ===
+// === Cleanup helper ===
 function removeProofingTags(doc: Document) {
     const errs = Array.from(doc.getElementsByTagNameNS(WORD_NS, "proofErr"));
     for (const el of errs) {
@@ -434,9 +434,8 @@ export function convertOoxml(
         };
     }
 
-    // === NEW: Clean old proofing errors before processing ===
+    // Clean old proofing errors before processing
     removeProofingTags(doc);
-    // =========================================================
 
     const dirSetting = options?.direction ?? "auto";
     let direction: Direction | "to-ascii";
@@ -643,7 +642,7 @@ export function convertOoxml(
     }
 
     const stats: ConvertStats = {
-        direction,
+        direction: direction as ConvertStats["direction"], // Explicit cast to remove any ambiguity
         textNodes: textNodes.length,
         charsBefore: fullText.length,
         charsAfter,
@@ -664,7 +663,7 @@ export function convertOoxml(
 
 function createEmptyStats(direction?: string, textNodes = 0, chars = 0): ConvertStats {
     return {
-        direction: (direction as Direction | "to-ascii") || "auto",
+        direction: (direction as ConvertStats["direction"]) || "auto",
         textNodes,
         charsBefore: chars,
         charsAfter: chars,
