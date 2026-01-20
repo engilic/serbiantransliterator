@@ -8,3 +8,11 @@ crate-type = ["cdylib"]
 
 [dependencies]
 wasm-bindgen = "0.2"
+
+# === OPTIMIZACIJA ZA VELIČINU (RELEASE) ===
+[profile.release]
+opt-level = "z"   # Optimizuj za veličinu
+lto = true        # Link Time Optimization
+codegen-units = 1 # Manje paralelizma = bolja optimizacija
+strip = true      # Ukloni simbole
+panic = "abort"   # Ukloni panic unwinding kod

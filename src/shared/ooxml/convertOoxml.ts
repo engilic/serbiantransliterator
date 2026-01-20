@@ -105,13 +105,6 @@ function countMatches(text: string, re: RegExp): number {
 
 // === NEW: Cleanup helper ===
 function removeProofingTags(doc: Document) {
-    // Uklanja <w:proofErr>, <w:noProof> i slične tagove koji prave crvene linije
-    // jer nakon transliteracije stari spellcheck status više nije validan.
-    const tagsToRemove = ["proofErr", "noProof", "lang"];
-    // Napomena: 'lang' brišemo samo ako ne radimo setProofingLanguage,
-    // ali ovde ga ostavljamo jer ga Proofing logika kasnije eksplicitno setuje.
-    // Fokusiramo se na proofErr.
-
     const errs = Array.from(doc.getElementsByTagNameNS(WORD_NS, "proofErr"));
     for (const el of errs) {
         if (el.parentNode) el.parentNode.removeChild(el);
@@ -671,7 +664,7 @@ export function convertOoxml(
 
 function createEmptyStats(direction?: string, textNodes = 0, chars = 0): ConvertStats {
     return {
-        direction: (direction as any) || "auto",
+        direction: (direction as Direction | "to-ascii") || "auto",
         textNodes,
         charsBefore: chars,
         charsAfter: chars,

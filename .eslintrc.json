@@ -38,7 +38,14 @@
             }
         },
         {
-            "files": ["webpack.config.js", "babel.config.json", "vitest.config.ts"],
+            "files": [
+                "webpack.config.js",
+                "webpack.common.js",
+                "webpack.dev.js",
+                "webpack.prod.js",
+                "babel.config.json",
+                "vitest.config.ts"
+            ],
             "env": {
                 "node": true
             },
