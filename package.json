@@ -98,11 +98,13 @@
         "webpack": "^5.91.0",
         "webpack-cli": "^5.1.4",
         "webpack-dev-server": "^5.2.3",
+        "webpack-merge": "^6.0.1",
         "wrangler": "^4.59.2"
     },
     "overrides": {
         "esbuild": "0.27.2",
         "tmp": "0.2.5",
-        "rimraf": "^5.0.5"
+        "rimraf": "^5.0.5",
+        "undici": "6.23.0"
     }
 }
