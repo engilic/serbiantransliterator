@@ -9,23 +9,26 @@ Word Office.js Taskpane Add-in za preslovljavanje srpskog teksta između **latin
 
 ## Features (ukratko)
 
-- Preslovljavanje: **Auto**, **Lat → Ćir**, **Ćir → Lat**, **Ošišana latinica**
-- Zaštita tokena: URL, e-mail, `mailto:`, `tel:`, `sip:`, `sms:`, `geo:`, `skype:`, `teams:`, `msteams:`
-- Zaštita “brend” reči i tehnoloških termina (npr. `iPhone`, `.NET`, `Node.js`) + user “protected words”
-- OOXML bridging preko više `<w:t>` čvorova (tokeni, linkovi, fraze, digrafi, `{PLACEHOLDER}` blokovi)
-- Preview: diff / pre-posle / rezultat + “apply from preview” uz cache i hash (text + OOXML)
-- Opciona obrada: header/footer, footnotes, endnotes (best-effort, uz feedback)
-- i18n: UI tekstovi i statusi centralizovani (taskpane bez hardcoded stringova + CI guard)
+- **Preslovljavanje:** Auto, Lat → Ćir, Ćir → Lat, Ošišana latinica
+- **Dijalekti (NOVO):** Konverzija Ekavica ↔ Ijekavica (beta) uz pomoć Rust/WASM engine-a.
+- **Zaštita tokena:** URL, e-mail, `mailto:`, `tel:`, `sip:`, `sms:`, `geo:`, `skype:`, `teams:`, `msteams:`
+- **Zaštita “brend” reči** i tehnoloških termina (npr. `iPhone`, `.NET`, `Node.js`) + user “protected words”
+- **Custom Substitutions:** Korisnički definisana pravila za zamenu.
+- **OOXML bridging:** Pametno spajanje teksta preko `<w:t>` granica (tokeni, linkovi, fraze, digrafi).
+- **Preview:** Diff / pre-posle / rezultat + “apply from preview” uz cache i hash.
+- **Teme:** Light / Dark / Auto.
+- **Opciona obrada:** Header/footer, footnotes, endnotes.
+- **i18n:** UI na srpskom i engleskom.
 
 ---
 
 ## Tech stack
 
-- TypeScript
-- Office.js (Word Taskpane Add-in)
-- Webpack
-- Vitest (jsdom) + Playwright (E2E smoke)
-- Cloudflare Pages (hosting)
+- **Frontend:** TypeScript, Office.js (Word Taskpane Add-in)
+- **Core Logic:** Hibridni engine (TypeScript + Rust/WASM)
+- **Build:** Webpack 5 + wasm-pack
+- **Test:** Vitest (jsdom) + Playwright (E2E smoke)
+- **Hosting:** Cloudflare Pages
 
 ---
 
@@ -33,8 +36,12 @@ Word Office.js Taskpane Add-in za preslovljavanje srpskog teksta između **latin
 
 ### Prerequisites
 
-- Node.js (preporučeno: **Node 20**, usklađeno sa CI)
-- PowerShell 7 (`pwsh`) je potreban samo za neke lokalne helper skripte (npr. AI pack)
+- **Node.js** (preporučeno: Node 20+, usklađeno sa CI)
+- **Rust & Cargo** (neophodno za kompajliranje core logike)
+    - Windows: `winget install Rustlang.Rustup` i Visual Studio Build Tools (`winget install Microsoft.VisualStudio.2022.BuildTools --override "--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"`)
+    - Mac/Linux: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
+- **wasm-pack**: `cargo install wasm-pack`
+- PowerShell 7 (`pwsh`) (opciono, za neke skripte)
 
 ### Install
 
