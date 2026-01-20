@@ -28,6 +28,7 @@
                     <button id="previewBtn" type="button"></button>
                 </div>
 
+                <!-- Languages & Theme Row -->
                 <div class="lang-row">
                     <div class="lang-group">
                         <div class="lang-label" data-i18n="opt_ui_language_label"></div>
@@ -253,21 +254,36 @@
                         </select>
                     </div>
 
+                    <!-- NEW: Custom Subs UI -->
                     <div class="field-row" style="margin-top: 15px">
                         <div class="field-label" data-i18n="opt_custom_subs_label"></div>
-                        <textarea
-                            id="optCustomSubstitutions"
-                            rows="4"
-                            style="
-                                width: 100%;
-                                margin-top: 5px;
-                                font-family: monospace;
-                                font-size: 12px;
-                                resize: vertical;
-                            "
-                            data-i18n-attr="placeholder:opt_custom_subs_placeholder"
-                        ></textarea>
-                        <div class="hint" data-i18n="opt_custom_subs_hint"></div>
+
+                        <!-- Add New -->
+                        <div class="subs-add-row">
+                            <input
+                                type="text"
+                                id="subSrc"
+                                data-i18n-attr="placeholder:subs_input_src"
+                                class="sub-input"
+                            />
+                            <span class="arrow">→</span>
+                            <input
+                                type="text"
+                                id="subDest"
+                                data-i18n-attr="placeholder:subs_input_dest"
+                                class="sub-input"
+                            />
+                            <button id="addSubBtn" class="mini-btn" type="button">+</button>
+                        </div>
+
+                        <!-- List -->
+                        <div id="subsContainer" class="subs-container">
+                            <!-- Items will be injected here via JS -->
+                            <div class="subs-empty hint" data-i18n="subs_list_empty"></div>
+                        </div>
+
+                        <!-- Hidden textarea for storage persistence compatibility -->
+                        <textarea id="optCustomSubstitutions" style="display: none"></textarea>
                     </div>
                 </div>
             </div>
