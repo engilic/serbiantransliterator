@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // Mocks must be declared before importing module-under-test
 vi.mock("../src/taskpane/app/status", () => ({
@@ -19,9 +19,16 @@ vi.mock("../src/taskpane/app/word/extras", () => ({
     })),
 }));
 
+// --- NEW MOCK for chunking ---
+// We mock the entire chunking module to avoid complex DOM mocking inside unit tests
+vi.mock("../src/taskpane/app/word/chunking", () => ({
+    processDocumentInChunks: vi.fn(async () => 100), // Returns 100 changed nodes
+}));
+
 import { applyPipeline } from "../src/taskpane/app/word/pipeline";
 import { showModalInfo } from "../src/taskpane/app/modal/modal";
 import { applyExtrasIfEnabled } from "../src/taskpane/app/word/extras";
+import { processDocumentInChunks } from "../src/taskpane/app/word/chunking";
 
 const W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
 
@@ -52,6 +59,13 @@ function makeContextWithSelectionText(selectionText: string) {
             getSelection: () => selectionRange,
             body: {
                 getRange: (_type: string) => bodyRange,
+                // chunking needs paragraphs, but since we mock processDocumentInChunks,
+                // we don't strictly need this structure unless we test integration.
+                // But let's add it for safety if we remove the mock later.
+                paragraphs: {
+                    load: vi.fn(),
+                    items: [],
+                },
             },
         },
         sync: vi.fn(async () => undefined),
@@ -102,16 +116,23 @@ describe("word/pipeline.applyPipeline (stubbed)", () => {
         expect(args[1]).toBe("replace");
     });
 
-    it("document: calls extras then converts whole document range", async () => {
-        const { context, bodyRange } = makeContextWithSelectionText("");
+    it("document: calls extras then calls processDocumentInChunks", async () => {
+        const { context } = makeContextWithSelectionText("");
 
         const ui: any = { includeHeadersFooters: true, includeFootnotes: true, includeEndnotes: true };
         const opts: any = { direction: "lat-to-cyr" };
 
         const r = await applyPipeline(context as any, "document", ui, opts);
 
+        // Verify extras called
         expect(applyExtrasIfEnabled).toHaveBeenCalledTimes(1);
+
+        // Verify chunking called instead of body.insertOoxml directly
+        expect(processDocumentInChunks).toHaveBeenCalledTimes(1);
+        expect(processDocumentInChunks).toHaveBeenCalledWith(context, opts);
+
+        // Result stats should reflect the mocked return value from chunking (100 nodes)
         expect(r.result).not.toBeNull();
-        expect(bodyRange.insertOoxml).toHaveBeenCalledTimes(1);
+        expect(r.result!.stats.textNodes).toBe(100);
     });
 });

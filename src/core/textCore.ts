@@ -1,15 +1,53 @@
+// src/core/textCore.ts
+
 import { ALWAYS_LATIN_PHRASES, ALWAYS_LATIN_TOKENS_STRICT, ALWAYS_LATIN_TOKENS_AMBIGUOUS } from "./rules";
 import { applyPreCorrectionsLatToCyr } from "./corrections";
 import { fixSerbianQuotes } from "./quotes";
 import { collectProtectedRanges, splitByRanges, type CurlyProtection } from "./protect";
 import { cyrillicToLatin, detectMajorityScript, latinToCyrillic } from "./serbian";
 
-let wasmModule: typeof import("../wasm-core/pkg") | null = null;
+// Importuj tip za WASM (load_dictionary mora biti definisan u wasm-shim.d.ts)
+// Definišemo precizan tip sa novim potpisom: load_dictionary(mode, json)
+type WasmModule = typeof import("../wasm-core/pkg") & {
+    load_dictionary: (mode: string, json: string) => void;
+};
+
+let wasmModule: WasmModule | null = null;
 
 export async function initWasm() {
     try {
-        wasmModule = await import("../wasm-core/pkg");
+        // 1. Učitaj WASM modul
+        const module = await import("../wasm-core/pkg");
+        wasmModule = module as unknown as WasmModule;
         console.log("WASM module loaded successfully");
+
+        // 2. Učitaj rečnike paralelno
+        try {
+            const [resE2I, resI2E] = await Promise.all([
+                fetch("assets/dict_e2i.json"),
+                fetch("assets/dict_i2e.json"),
+            ]);
+
+            if (resE2I.ok) {
+                const json = await resE2I.text();
+                // "e2i" mapiramo u Rust-u na "ekavica_to_ijekavica"
+                wasmModule?.load_dictionary("e2i", json);
+                console.log("Dictionary E2I loaded");
+            } else {
+                console.warn("Failed to fetch dict_e2i.json");
+            }
+
+            if (resI2E.ok) {
+                const json = await resI2E.text();
+                // "i2e" mapiramo u Rust-u na "ijekavica_to_ekavica"
+                wasmModule?.load_dictionary("i2e", json);
+                console.log("Dictionary I2E loaded");
+            } else {
+                console.warn("Failed to fetch dict_i2e.json");
+            }
+        } catch (dictErr) {
+            console.warn("Failed to load dictionaries", dictErr);
+        }
     } catch (e) {
         console.warn("WASM load failed, falling back to JS", e);
     }
@@ -25,7 +63,7 @@ export interface CoreOptions {
     preserveCodeBlocks?: boolean;
     curlyProtection?: CurlyProtection;
     customSubstitutions?: Record<string, string>;
-    dialect?: Dialect; // NEW
+    dialect?: Dialect;
 }
 
 const normKey = (s: string) => s.normalize("NFC").toLowerCase();
@@ -262,7 +300,7 @@ function applyCustomSubstitutions(text: string, subs?: Record<string, string>): 
     return out;
 }
 
-// NEW: WASM Dialect application
+// WASM Dialect application
 function applyDialect(text: string, dialect?: Dialect): string {
     if (!dialect || dialect === "none") return text;
     if (!wasmModule) return text; // JS Fallback does not support dialects yet
