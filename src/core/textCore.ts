@@ -18,7 +18,7 @@ export async function initWasm() {
     try {
         // 1. Učitaj WASM modul
         const module = await import("../wasm-core/pkg");
-        wasmModule = module as any;
+        wasmModule = module as unknown as WasmModule;
         console.log("WASM module loaded successfully");
 
         // 2. Učitaj rečnike paralelno
