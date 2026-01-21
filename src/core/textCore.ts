@@ -7,7 +7,6 @@ import { collectProtectedRanges, splitByRanges, type CurlyProtection } from "./p
 import { cyrillicToLatin, detectMajorityScript, latinToCyrillic } from "./serbian";
 
 // === OFFLINE IMPORT (Bundle-ovani rečnici) ===
-// Putanja prilagođena tvojoj strukturi: src/core -> src/static/assets
 import dictE2I from "../static/assets/dict_e2i.json";
 import dictI2E from "../static/assets/dict_i2e.json";
 
@@ -17,17 +16,15 @@ type WasmModule = typeof import("../wasm-core/pkg") & {
 };
 
 let wasmModule: WasmModule | null = null;
-// Flagovi za stanje rečnika (sada su uvek true ako je import uspeo, ali ostavljamo logiku za svaki slučaj)
 const isDictLoaded = { e2i: false, i2e: false };
 
 export async function initWasm() {
     try {
-        // 1. Učitaj WASM modul
         const module = await import("../wasm-core/pkg");
         wasmModule = module as unknown as WasmModule;
         console.log("WASM module loaded successfully");
 
-        // 2. Učitaj rečnike SINHRONO iz bundle-a (Offline)
+        // === SINHRONO UČITAVANJE (OFFLINE) ===
         try {
             if (wasmModule) {
                 wasmModule.load_dictionary("e2i", JSON.stringify(dictE2I));
@@ -293,20 +290,12 @@ function applyCustomSubstitutions(text: string, subs?: Record<string, string>): 
     return out;
 }
 
-// WASM Dialect application (with safe offline checks)
 function applyDialect(text: string, dialect?: Dialect): string {
     if (!dialect || dialect === "none") return text;
-    if (!wasmModule) return text; // JS Fallback does not support dialects yet
+    if (!wasmModule) return text;
 
-    // Safety check: da li je rečnik učitan?
-    if (dialect === "ekavica_to_ijekavica" && !isDictLoaded.e2i) {
-        console.warn("Skipping dialect conversion: E2I dict not loaded.");
-        return text;
-    }
-    if (dialect === "ijekavica_to_ekavica" && !isDictLoaded.i2e) {
-        console.warn("Skipping dialect conversion: I2E dict not loaded.");
-        return text;
-    }
+    if (dialect === "ekavica_to_ijekavica" && !isDictLoaded.e2i) return text;
+    if (dialect === "ijekavica_to_ekavica" && !isDictLoaded.i2e) return text;
 
     return wasmModule.convert_dialect(text, dialect);
 }
@@ -342,19 +331,7 @@ function convertUnprotectedSegment(segment: string, toCyrillic: boolean, options
             out += tok;
             continue;
         }
-        if (STRONG_FOREIGN.test(tok)) {
-            out += tok;
-            continue;
-        }
-        if (hasForeignLetter(tok)) {
-            out += tok;
-            continue;
-        }
-        if (isMixedCaseBrandy(tok)) {
-            out += tok;
-            continue;
-        }
-        if (isHashLike(tok)) {
+        if (STRONG_FOREIGN.test(tok) || hasForeignLetter(tok) || isMixedCaseBrandy(tok) || isHashLike(tok)) {
             out += tok;
             continue;
         }
@@ -411,7 +388,6 @@ export function convertPlainText(
         let seg = part.text.normalize("NFC");
         if (toCyr) seg = applyPreCorrectionsLatToCyr(seg);
 
-        // NEW: Dialect conversion (Pre-transliteration step)
         if (options?.dialect && options.dialect !== "none") {
             seg = applyDialect(seg, options.dialect);
         }

@@ -1,7 +1,7 @@
 {
     "compilerOptions": {
         "target": "es2018",
-        "lib": ["es2018", "dom"],
+        "lib": ["es2018", "dom", "webworker"],
         "allowJs": true,
         "baseUrl": ".",
         "esModuleInterop": true,

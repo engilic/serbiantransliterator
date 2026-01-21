@@ -1,6 +1,6 @@
 // src/shared/ooxml/convertOoxml.ts
 
-import { convertPlainText, detectScript, type Direction, type CoreOptions } from "../../core/textCore";
+import { convertPlainText, type Direction, type CoreOptions, detectScript } from "../../core/textCore";
 import { ALWAYS_LATIN_PHRASES } from "../../core/rules";
 import { XML_NS, WORD_NS, collectTextNodes, getFullText, needsXmlSpacePreserve } from "./dom";
 import { applySerbianQuotesAcrossNodes } from "./quotes";
@@ -95,6 +95,33 @@ export type ConvertStats = {
     timingMs: number;
 };
 
+// === HELPER DEFINITIONS (Move createEmptyStats here) ===
+
+function createEmptyStats(direction?: string, textNodes = 0, chars = 0): ConvertStats {
+    return {
+        direction: (direction as ConvertStats["direction"]) || "auto",
+        textNodes,
+        charsBefore: chars,
+        charsAfter: chars,
+        detected: { urls: 0, emails: 0 },
+        code: { fenceMarkersSeen: 0, inlineTicksSeen: 0, endedInFence: false, endedInInline: false },
+        bridges: {
+            links: 0,
+            placeholders: 0,
+            brandPhrases: 0,
+            brandTokens: 0,
+            digraphs: 0,
+            userPhrases: 0,
+            userTokens: 0,
+            allCapsHints: 0,
+            spaces: 0,
+            ambiguousBrandSuffix: 0,
+        },
+        proofing: { enabled: false, targetLang: null, changedRuns: 0, skippedRuns: 0, skippedByReason: {} },
+        timingMs: 0,
+    };
+}
+
 function countMatches(text: string, re: RegExp): number {
     if (!re.global) return re.test(text) ? 1 : 0;
     re.lastIndex = 0;
@@ -103,18 +130,15 @@ function countMatches(text: string, re: RegExp): number {
     return c;
 }
 
-// === Cleanup helper ===
 function removeProofingTags(doc: Document) {
     const errs = Array.from(doc.getElementsByTagNameNS(WORD_NS, "proofErr"));
     for (const el of errs) {
         if (el.parentNode) el.parentNode.removeChild(el);
     }
 }
-// ===========================
 
 const ROMAN_REGEX_STRICT =
     /\b(?!I\b)(?=[MDCLXVI]+\b)M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})\b/g;
-
 const ROMAN_I_PREFIXES = [
     "Petar",
     "Aleksandar",
@@ -150,7 +174,6 @@ const ROMAN_I_PREFIXES = [
     "Grgur",
     "Klement",
     "Inoćentije",
-    "Jovan",
     "Nikola",
     "Napoleon",
     "Konstantin",
@@ -180,7 +203,6 @@ const ROMAN_I_PREFIXES = [
     "Boj",
     "Put",
 ];
-
 const ROMAN_I_REGEX = new RegExp(`\\b(${ROMAN_I_PREFIXES.join("|")})\\s+I\\b`, "g");
 
 const RE_CYR = /[\u0400-\u052F]/u;
@@ -399,6 +421,8 @@ function applyProofingLanguagePreserveUnchanged(
     }
     return { changedRuns, skippedRuns, skippedByReason };
 }
+
+// === MAIN EXPORT ===
 
 export function convertOoxml(
     ooxml: string,
@@ -659,29 +683,4 @@ export function convertOoxml(
     };
 
     return { xml, type: label, stats };
-}
-
-function createEmptyStats(direction?: string, textNodes = 0, chars = 0): ConvertStats {
-    return {
-        direction: (direction as ConvertStats["direction"]) || "auto",
-        textNodes,
-        charsBefore: chars,
-        charsAfter: chars,
-        detected: { urls: 0, emails: 0 },
-        code: { fenceMarkersSeen: 0, inlineTicksSeen: 0, endedInFence: false, endedInInline: false },
-        bridges: {
-            links: 0,
-            placeholders: 0,
-            brandPhrases: 0,
-            brandTokens: 0,
-            digraphs: 0,
-            userPhrases: 0,
-            userTokens: 0,
-            allCapsHints: 0,
-            spaces: 0,
-            ambiguousBrandSuffix: 0,
-        },
-        proofing: { enabled: false, targetLang: null, changedRuns: 0, skippedRuns: 0, skippedByReason: {} },
-        timingMs: 0,
-    };
 }
