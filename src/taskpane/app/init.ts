@@ -8,6 +8,8 @@ import { runWithUiLock } from "./uiLock";
 import { runSmart } from "./word/apply";
 import { closeModal } from "./modal/modal";
 import { modalManager } from "./modal/modalManager";
+import { logger } from "./telemetry/logger"; // NEW
+import { showPreviewToast } from "./modal/previewModal"; // Koristimo toast da javimo useru
 
 export function initTaskpane() {
     // 1) UI init (settings load + bind dugmad + tags + listeners)
@@ -29,7 +31,10 @@ export function initTaskpane() {
     // 4) Keyboard Shortcuts (Power User feature)
     setupKeyboardShortcuts();
 
-    // 5) Cleanup on unload
+    // 5) Debug logs export (Hidden feature)
+    setupDebugTrigger();
+
+    // 6) Cleanup on unload
     window.addEventListener("beforeunload", () => {
         cleanupEventHandlers();
     });
@@ -54,6 +59,27 @@ function setupKeyboardShortcuts() {
             if (runBtn && !runBtn.disabled && !modalManager.isOpen()) {
                 e.preventDefault();
                 runBtn.click(); // Trigger visual click effect too
+            }
+        }
+    });
+}
+
+function setupDebugTrigger() {
+    const versionEl = document.querySelector(".version");
+    if (!versionEl) return;
+
+    let clicks = 0;
+    versionEl.addEventListener("click", async () => {
+        clicks++;
+        if (clicks >= 5) {
+            clicks = 0;
+            const logs = logger.exportLogs();
+            try {
+                await navigator.clipboard.writeText(logs);
+                // Use toast instead of alert for better UX
+                showPreviewToast("Debug logs copied to clipboard!", "success", 3000);
+            } catch (e) {
+                logger.error("Copy failed", e);
             }
         }
     });

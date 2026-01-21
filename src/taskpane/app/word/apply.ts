@@ -1,4 +1,4 @@
-/* global Word, console */
+/* global Word */
 
 import { unsafeHtml } from "../../../shared/safeHtml";
 import type { OoxmlOptions } from "../../../shared/ooxml/convertOoxml";
@@ -19,10 +19,11 @@ import { buildApplyStatsText, buildApplyStatsTitle, buildPreviewAppliedStats } f
 import { decidePreviewCacheReuse, type PreviewCacheDecisionReason } from "./previewCacheDecision";
 import type { UiSettings, ExtrasSummary } from "../types";
 import { errorRecovery } from "../error/errorRecovery";
+import { logger } from "../telemetry/logger"; // NEW
 
 function logTelemetrySkippedRuns(skippedByReason: Record<string, number>) {
     if (Object.keys(skippedByReason).length === 0) return;
-    console.warn("[Telemetry] Skipped runs detected:", skippedByReason);
+    logger.warn("[Telemetry] Skipped runs detected:", skippedByReason);
 }
 
 function reasonToSerbian(reason: PreviewCacheDecisionReason): string {
@@ -65,7 +66,7 @@ export async function runSmart() {
             sel.load("text");
             await context.sync();
 
-            const selInfo = analyzeSelectionText(sel.text);
+            let selInfo = analyzeSelectionText(sel.text);
 
             if (selInfo.isJustWhitespace) {
                 showModalInfo(t("modal_title_error"), unsafeHtml(t("msg_empty_selection")));
@@ -87,7 +88,7 @@ export async function runSmart() {
                 if (paraInfo.hasText) {
                     sel = paraRange;
                     scope = "selection";
-                    console.log("Auto-expanded to paragraph");
+                    logger.info("Auto-expanded to paragraph"); // NEW
                 }
             }
 

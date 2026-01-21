@@ -2,6 +2,7 @@
 
 import { t } from "../../../shared/i18n";
 import { setStatus } from "../status";
+import { logger } from "../telemetry/logger"; // NEW
 
 export interface ErrorContext {
     operation: string;
@@ -31,8 +32,8 @@ export class ErrorRecoveryHandler {
         const errorInfo = this.extractErrorInfo(error);
         const strategy = this.determineStrategy(errorInfo, context);
 
-        // Log for debugging
-        console.error(`Error in ${context.operation}:`, errorInfo);
+        // Log for debugging (NEW: using logger)
+        logger.error(`Error in ${context.operation}: ${errorInfo.message}`, { errorInfo, context });
 
         // Track retry attempts
         if (strategy.shouldRetry) {
@@ -51,7 +52,7 @@ export class ErrorRecoveryHandler {
             try {
                 await strategy.fallbackAction();
             } catch (fallbackError) {
-                console.error("Fallback action failed:", fallbackError);
+                logger.error("Fallback action failed", fallbackError);
             }
         }
 
@@ -141,8 +142,7 @@ export class ErrorRecoveryHandler {
                 shouldRetry: false,
                 userMessage: t("error_out_of_memory_split_document"),
                 fallbackAction: async () => {
-                    // Could open a help modal here
-                    console.info("Suggested: Split document into smaller parts");
+                    logger.info("Suggested: Split document into smaller parts");
                 },
             };
         }
