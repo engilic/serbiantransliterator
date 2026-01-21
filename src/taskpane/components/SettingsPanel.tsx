@@ -40,12 +40,18 @@ const useStyles = makeStyles({
 });
 
 export const SettingsPanel: React.FC<SettingsPanelProps> = ({
-    protectBrands, setProtectBrands,
-    direction, setDirection,
-    serbianQuotes, setSerbianQuotes,
-    preserveCode, setPreserveCode,
-    proofingLang, setProofingLang,
-    formatDates, setFormatDates
+    protectBrands,
+    setProtectBrands,
+    direction,
+    setDirection,
+    serbianQuotes,
+    setSerbianQuotes,
+    preserveCode,
+    setPreserveCode,
+    proofingLang,
+    setProofingLang,
+    formatDates,
+    setFormatDates,
 }) => {
     const styles = useStyles();
 
@@ -54,14 +60,30 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             <Label className={styles.sectionTitle}>Smer Preslovljavanja</Label>
             <Dropdown
                 aria-label="Izbor smera"
-                value={direction === "auto" ? "Automatski" : direction === "lat-to-cyr" ? "Lat → Ćir" : direction === "cyr-to-lat" ? "Ćir → Lat" : direction}
+                value={
+                    direction === "auto"
+                        ? "Automatski"
+                        : direction === "lat-to-cyr"
+                          ? "Lat → Ćir"
+                          : direction === "cyr-to-lat"
+                            ? "Ćir → Lat"
+                            : direction
+                }
                 selectedOptions={[direction]}
                 onOptionSelect={(_, data) => setDirection(data.optionValue as string)}
             >
-                <Option value="auto" text="Automatski">Automatski</Option>
-                <Option value="lat-to-cyr" text="Lat → Ćir">Lat → Ćir</Option>
-                <Option value="cyr-to-lat" text="Ćir → Lat">Ćir → Lat</Option>
-                <Option value="to-ascii" text="Ošišana latinica">Ošišana latinica</Option>
+                <Option value="auto" text="Automatski">
+                    Automatski
+                </Option>
+                <Option value="lat-to-cyr" text="Lat → Ćir">
+                    Lat → Ćir
+                </Option>
+                <Option value="cyr-to-lat" text="Ćir → Lat">
+                    Ćir → Lat
+                </Option>
+                <Option value="to-ascii" text="Ošišana latinica">
+                    Ošišana latinica
+                </Option>
             </Dropdown>
 
             <Divider style={{ marginTop: "10px", marginBottom: "10px" }} />

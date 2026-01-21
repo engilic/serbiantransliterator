@@ -35,7 +35,9 @@ export const Header: React.FC<HeaderProps> = ({ title, version }) => {
 
     return (
         <header className={styles.header}>
-            <Text className={styles.title} as="h1">{title}</Text>
+            <Text className={styles.title} as="h1">
+                {title}
+            </Text>
             <span className={styles.version}>v{version}</span>
         </header>
     );

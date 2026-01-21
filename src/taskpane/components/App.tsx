@@ -41,7 +41,9 @@ export const App: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [progress, setProgress] = useState(0);
     const [status, setStatus] = useState<{ type: StatusType; msg: string; visible: boolean }>({
-        type: "info", msg: "", visible: false
+        type: "info",
+        msg: "",
+        visible: false,
     });
 
     const handleRun = async () => {
@@ -58,17 +60,15 @@ export const App: React.FC = () => {
                     applySerbianQuotes: serbianQuotes,
                     preserveCodeBlocks: preserveCode,
                     setProofingLanguage: proofingLang,
-                    formatDates: formatDates
+                    formatDates: formatDates,
                 },
                 onProgress: (p: number) => setProgress(p),
                 onStatus: (msg: string, type: string) => {
-                    const safeType: StatusType = (type === "success" || type === "error" || type === "warning")
-                        ? type
-                        : "info";
+                    const safeType: StatusType =
+                        type === "success" || type === "error" || type === "warning" ? type : "info";
                     setStatus({ type: safeType, msg, visible: true });
-                }
+                },
             });
-
         } catch (e) {
             setStatus({ type: "error", msg: String(e), visible: true });
         } finally {
@@ -81,21 +81,23 @@ export const App: React.FC = () => {
             <Header title="Serbian Transliterator" version="1.0.0" />
 
             <div className={styles.content}>
-                <StatusMessage
-                    type={status.type}
-                    message={status.msg}
-                    visible={status.visible}
-                />
+                <StatusMessage type={status.type} message={status.msg} visible={status.visible} />
 
                 <ProgressBar value={progress} visible={loading} />
 
                 <SettingsPanel
-                    direction={direction} setDirection={setDirection}
-                    protectBrands={protectBrands} setProtectBrands={setProtectBrands}
-                    serbianQuotes={serbianQuotes} setSerbianQuotes={setSerbianQuotes}
-                    preserveCode={preserveCode} setPreserveCode={setPreserveCode}
-                    proofingLang={proofingLang} setProofingLang={setProofingLang}
-                    formatDates={formatDates} setFormatDates={setFormatDates}
+                    direction={direction}
+                    setDirection={setDirection}
+                    protectBrands={protectBrands}
+                    setProtectBrands={setProtectBrands}
+                    serbianQuotes={serbianQuotes}
+                    setSerbianQuotes={setSerbianQuotes}
+                    preserveCode={preserveCode}
+                    setPreserveCode={setPreserveCode}
+                    proofingLang={proofingLang}
+                    setProofingLang={setProofingLang}
+                    formatDates={formatDates}
+                    setFormatDates={setFormatDates}
                 />
             </div>
 
@@ -109,7 +111,9 @@ export const App: React.FC = () => {
                 >
                     {loading ? <Spinner size="tiny" /> : "PRESLOVI"}
                 </Button>
-                <Button size="large" disabled={loading}>Pregled</Button>
+                <Button size="large" disabled={loading}>
+                    Pregled
+                </Button>
             </div>
         </FluentProvider>
     );
