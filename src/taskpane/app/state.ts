@@ -2,7 +2,7 @@
 
 import type { UiSettings, PreviewState, ProfilePreset } from "./types";
 import { DEFAULT_SETTINGS } from "./settings/defaults";
-import type { InteractiveDiff } from "../../shared/diff/interactive"; // Import type
+import type { InteractiveDiff } from "../../shared/diff/interactive";
 
 export const PREVIEW_CACHE_TTL_MS = 60_000; // 1 minut
 
@@ -20,7 +20,8 @@ interface AppState {
     lastStatsTitle: string;
     lastStatsText: string;
 
-    selectionChangeHandler: ((args: unknown) => void) | null;
+    selectionChangeHandler: ((args: any) => void) | null;
+    selectionTimeout: ReturnType<typeof setTimeout> | null;
 
     preview: ExtendedPreviewState;
 }
@@ -35,6 +36,7 @@ export const state: AppState = {
     lastStatsText: "",
 
     selectionChangeHandler: null,
+    selectionTimeout: null,
 
     preview: {
         scope: "selection",
@@ -59,7 +61,6 @@ export const state: AppState = {
 
         cacheTimestamp: null,
 
-        // NEW
         interactiveDiff: null,
     },
 };
