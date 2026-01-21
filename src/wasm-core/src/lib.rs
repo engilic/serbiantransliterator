@@ -3,41 +3,87 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 use once_cell::sync::Lazy;
 
-// Globalno skladište za rečnik: Map<Mode, Map<Word, Replacement>>
-// Primer: "ekavica_to_ijekavica" -> { "lepo": "lijepo", ... }
+// Globalno skladište
 static DICTIONARY: Lazy<Mutex<HashMap<String, HashMap<String, String>>>> = Lazy::new(|| {
     Mutex::new(HashMap::new())
 });
 
-// Ovu funkciju zove JS da ubaci JSON podatke
 #[wasm_bindgen]
 pub fn load_dictionary(mode: &str, json_data: &str) -> Result<(), JsValue> {
     let data: HashMap<String, String> = serde_json::from_str(json_data)
         .map_err(|e| JsValue::from_str(&format!("JSON error: {}", e)))?;
+    insert_data(mode, data)?;
+    Ok(())
+}
 
+#[wasm_bindgen]
+pub fn load_dictionary_bin(mode: &str, bin_data: &[u8]) -> Result<(), JsValue> {
+    let data: HashMap<String, String> = bincode::deserialize(bin_data)
+        .map_err(|e| JsValue::from_str(&format!("Bincode error: {}", e)))?;
+    insert_data(mode, data)?;
+    Ok(())
+}
+
+fn insert_data(mode: &str, data: HashMap<String, String>) -> Result<(), JsValue> {
     let mut global_dict = DICTIONARY.lock().map_err(|_| JsValue::from_str("Mutex poisoned"))?;
-    
-    // Ubaci mapu pod odgovarajući ključ ("ekavica_to_ijekavica" ili "ijekavica_to_ekavica")
-    // Mapiramo kratki mod "e2i" u pun naziv ako treba, ili koristimo pun naziv direktno.
     let key = match mode {
         "e2i" => "ekavica_to_ijekavica",
         "i2e" => "ijekavica_to_ekavica",
         _ => mode
     };
-    
     global_dict.insert(key.to_string(), data);
-    
     Ok(())
 }
 
-fn lookup_word(mode: &str, word: &str) -> Option<String> {
-    let dict = DICTIONARY.lock().ok()?;
-    let map = dict.get(mode)?;
-    // Tražimo reč (case-sensitive u mapi, ali ulaz je već lowercase-ovan pre poziva ako treba, 
-    // mada u match_case logici radimo sa originalom. 
-    // Ovde pretpostavljamo da su ključevi u JSON-u mala slova.)
-    map.get(&word.to_lowercase()).cloned()
+// === SMART STEMMING LOGIC ===
+
+// Najčešći srpski sufiksi (poređani po dužini, duži prvo da ne bi "pojeli" kraće greškom)
+// Ovo pokriva: Pridjeve, Imenice (padeže), Glagole (neka vremena)
+const SUFFIXES: &[&str] = &[
+    "ima", "om", "em", "im", "ih", "og", "eg", "uj", // 2-3 slova
+    "a", "e", "i", "o", "u"                          // 1 slovo
+];
+
+fn try_smart_lookup(map: &HashMap<String, String>, word: &str) -> Option<String> {
+    let word_lower = word.to_lowercase();
+
+    // 1. Probaj tačan pogodak (najbrže)
+    if let Some(res) = map.get(&word_lower) {
+        return Some(match_case(word, res));
+    }
+
+    // 2. Probaj skidanje sufiksa (Stemming)
+    // Ne diramo reči kraće od 4 slova da ne bismo uništili kratke reči (npr. 'oko' -> 'ok')
+    if word_lower.chars().count() < 4 {
+        return None;
+    }
+
+    for suffix in SUFFIXES {
+        if word_lower.ends_with(suffix) {
+            let root_len = word_lower.len() - suffix.len();
+            let root = &word_lower[..root_len];
+
+            // Ako je koren prekratak, batali (npr. 'brzi' -> 'br' + 'zi' -> ne valja)
+            if root.chars().count() < 3 {
+                continue;
+            }
+
+            if let Some(root_translation) = map.get(root) {
+                // NAŠLI SMO KOREN!
+                // Sada treba zalepiti sufiks nazad na PREVEDENI koren.
+                // Primer: ulaz "lepim" -> root "lep" -> prevod "lijep" -> izlaz "lijep" + "im"
+                
+                let mut result = root_translation.clone();
+                result.push_str(suffix);
+                return Some(match_case(word, &result));
+            }
+        }
+    }
+
+    None
 }
+
+// === END SMART LOGIC ===
 
 fn match_case(original: &str, replacement: &str) -> String {
     let mut chars_orig = original.chars();
@@ -47,8 +93,6 @@ fn match_case(original: &str, replacement: &str) -> String {
         if f.is_uppercase() {
             let mut chars_repl = replacement.chars();
             if let Some(r) = chars_repl.next() {
-                // Ako je original velikim slovom, i zamenu počni velikim
-                // Ostatak zamene ostaje kako jeste (obično mala slova)
                 let mut res = r.to_uppercase().to_string();
                 res.push_str(chars_repl.as_str());
                 return res;
@@ -60,6 +104,10 @@ fn match_case(original: &str, replacement: &str) -> String {
 
 #[wasm_bindgen]
 pub fn convert_dialect(text: &str, mode: &str) -> String {
+    // Uzmi referencu na mapu da ne lock-ujemo mutex 1000 puta u petlji
+    let guard = DICTIONARY.lock().unwrap();
+    let map_opt = guard.get(mode);
+
     let mut result = String::with_capacity(text.len());
     let chars: Vec<char> = text.chars().collect();
     let len = chars.len();
@@ -78,16 +126,19 @@ pub fn convert_dialect(text: &str, mode: &str) -> String {
         }
         let word: String = chars[start..i].iter().collect();
 
-        // Koristi lookup u HashMap-i
-        let replacement = lookup_word(mode, &word);
+        // Ako imamo mapu, probaj pametni lookup
+        let replacement = if let Some(map) = map_opt {
+            try_smart_lookup(map, &word)
+        } else {
+            None
+        };
 
         if let Some(repl) = replacement {
-            result.push_str(&match_case(&word, &repl));
+            result.push_str(&repl);
         } else {
             result.push_str(&word);
         }
     }
-
     result
 }
 

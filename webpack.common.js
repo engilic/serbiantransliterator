@@ -9,11 +9,11 @@ const WasmPackPlugin = require("@wasm-tool/wasm-pack-plugin");
 module.exports = {
     entry: {
         polyfill: ["core-js/stable", "regenerator-runtime/runtime"],
-        taskpane: ["./src/taskpane/taskpane.ts"],
+        taskpane: ["./src/taskpane/index.tsx"], // React entry point
         commands: ["./src/commands/commands.ts"],
     },
     resolve: {
-        extensions: [".ts", ".html", ".js"],
+        extensions: [".ts", ".tsx", ".html", ".js"],
     },
     experiments: {
         asyncWebAssembly: true,
@@ -21,7 +21,7 @@ module.exports = {
     module: {
         rules: [
             {
-                test: /\.ts$/,
+                test: /\.(ts|tsx)$/, // Support .ts AND .tsx
                 use: "babel-loader",
                 exclude: /node_modules/,
             },
@@ -41,7 +41,6 @@ module.exports = {
                     filename: "assets/[name][ext]",
                 },
             },
-            // === CRITICAL FIX: Binary Loader ===
             {
                 test: /\.bin$/,
                 type: "asset/inline",
