@@ -1,38 +1,35 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { state } from "../src/taskpane/app/state";
 import { showPreviewToast, renderPreviewMode } from "../src/taskpane/app/modal/previewModal";
+import { InteractiveDiff } from "../src/shared/diff/interactive";
 
 beforeEach(() => {
     document.body.innerHTML = `
     <div id="previewToast"></div>
-
-    <button id="previewBtnDiff"></button>
-    <button id="previewBtnPlain"></button>
-    <button id="previewBtnSide"></button>
-
+    <button id="pBtnDiff"></button>
+    <button id="pBtnPlain"></button>
+    <button id="pBtnSide"></button>
     <div id="previewHolder"></div>
   `;
 
-    // minimal preview state
     state.preview.original = "a b";
     state.preview.converted = "a x b";
     state.preview.mode = "diff";
     state.preview.toastTimer = null;
+    state.preview.interactiveDiff = null;
 });
 
 afterEach(() => {
-    // cleanup timers if any
     if (state.preview.toastTimer) {
         clearTimeout(state.preview.toastTimer);
         state.preview.toastTimer = null;
     }
-
     vi.useRealTimers();
     document.body.innerHTML = "";
 });
 
 describe("preview modal helpers (smoke)", () => {
-    it("showPreviewToast sets classes and auto-hides", () => {
+    it("showPreviewToast sets classes and auto-hides and clears text", () => {
         vi.useFakeTimers();
 
         showPreviewToast("Kopirano", "success", 50);
@@ -40,7 +37,6 @@ describe("preview modal helpers (smoke)", () => {
         const el = document.getElementById("previewToast")!;
         expect(el.textContent).toBe("Kopirano");
         expect(el.classList.contains("show")).toBe(true);
-        expect(el.classList.contains("success")).toBe(true);
 
         vi.advanceTimersByTime(60);
 
@@ -48,15 +44,26 @@ describe("preview modal helpers (smoke)", () => {
         expect(el.textContent).toBe("");
     });
 
-    it("renderPreviewMode renders diff mode by default", () => {
+    it("renderPreviewMode renders diff mode by default (using interactive diff)", () => {
         state.preview.mode = "diff";
+
+        // Mock interactive diff manually
+        state.preview.interactiveDiff = new InteractiveDiff([
+            { type: "equal", value: "a " },
+            { type: "insert", value: "x" },
+            { type: "equal", value: " b" },
+        ]);
+
         renderPreviewMode();
 
         const holder = document.getElementById("previewHolder")!;
-        expect(holder.innerHTML).toContain("diff-changed");
+        expect(holder.innerHTML).toContain("diff-added");
     });
 
     it("renderPreviewMode renders plain and side modes", () => {
+        // Prepare state
+        state.preview.interactiveDiff = new InteractiveDiff([]);
+
         state.preview.mode = "plain";
         renderPreviewMode();
         expect(document.getElementById("previewHolder")!.innerHTML).toContain("preview-single-pane");

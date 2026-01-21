@@ -2,106 +2,111 @@
 
 import { myersDiff } from "../../../shared/diff";
 import { escapeHtml } from "../../../shared/safeHtml";
-import { t } from "../../../shared/i18n";
+import type { InteractiveDiff } from "../../../shared/diff/interactive";
 
-export function tokenizeForDiff(text: string): string[] {
-    const splitRegex = /([^\s\w\u0400-\u04FF\u0100-\u017F]+|\s+)/;
-    return text.split(splitRegex).filter(Boolean);
+function tokenize(text: string): string[] {
+    // Tokenizacija koja čuva razmake kao zasebne tokene za precizan diff
+    return text.split(/([ \t\n\r]+)/).filter((x) => x);
 }
 
-function isWhitespaceToken(s: string): boolean {
-    return /^\s+$/u.test(s);
-}
+/**
+ * Renderuje HTML za InteractiveDiff instancu.
+ * Generiše span-ove sa data-idx atributima.
+ */
+export function renderInteractiveDiffHtml(interactive: InteractiveDiff, maxLen = 20000): string {
+    const ops = interactive.getOps();
+    let html = "";
+    let len = 0;
 
-export function renderSideBySideWithHighlights(oldText: string, newText: string, maxTokens: number): string {
-    const a = tokenizeForDiff(oldText);
-    const b = tokenizeForDiff(newText);
+    for (let i = 0; i < ops.length; i++) {
+        const op = ops[i];
+        if (!op) continue;
 
-    // Optimization: If text is massive, skip diff calculation to avoid UI freeze
-    if (a.length + b.length > maxTokens) {
-        const tooLarge = t("preview_label_too_large_diff");
-        return `
-      <div class="preview-grid">
-        <div class="preview-pane">
-          <div class="preview-pane-title">${escapeHtml(t("preview_label_before"))} (${escapeHtml(tooLarge)})</div>
-          <div class="preview-text-pane preview-pane-body">${escapeHtml(oldText.slice(0, 50000))}...</div>
-        </div>
-        <div class="preview-pane">
-          <div class="preview-pane-title">${escapeHtml(t("preview_label_after"))} (${escapeHtml(tooLarge)})</div>
-          <div class="preview-text-pane preview-pane-body">${escapeHtml(newText.slice(0, 50000))}...</div>
-        </div>
-      </div>
-    `;
+        const val = escapeHtml(op.value);
+        const rejected = interactive.isRejected(i);
+
+        // Base classes
+        let cls = "";
+        let tooltip = "";
+
+        if (op.type === "insert") {
+            cls = "diff-added clickable";
+            tooltip = "Klikni da odbaciš izmenu";
+            if (rejected) cls += " diff-rejected";
+        } else if (op.type === "delete") {
+            cls = "diff-removed clickable";
+            tooltip = "Klikni da zadržiš ovaj tekst";
+            if (rejected) cls += " diff-rejected";
+        }
+
+        // Render
+        if (op.type === "equal") {
+            html += val;
+        } else {
+            // Span sa indeksom operacije
+            html += `<span class="${cls}" data-idx="${i}" title="${tooltip}">${val}</span>`;
+        }
+
+        len += op.value.length;
+        if (len > maxLen) {
+            html += "... (prikaz skraćen)";
+            break;
+        }
     }
 
-    const ops = myersDiff(a, b);
+    return html;
+}
+
+// Zadržavamo staru funkciju za side-by-side (ne-interaktivni deo za sad)
+export function renderSideBySideWithHighlights(original: string, converted: string, maxLen = 20000): string {
+    const aTok = tokenize(original);
+    const bTok = tokenize(converted);
+    const ops = myersDiff(aTok, bTok);
 
     let left = "";
     let right = "";
+    let len = 0;
 
     for (const op of ops) {
-        const v = op.value;
-
+        const val = escapeHtml(op.value);
         if (op.type === "equal") {
-            left += escapeHtml(v);
-            right += escapeHtml(v);
-            continue;
+            left += val;
+            right += val;
+        } else if (op.type === "delete") {
+            left += `<span class="diff-removed">${val}</span>`;
+        } else if (op.type === "insert") {
+            right += `<span class="diff-added">${val}</span>`;
         }
 
-        const wrap = !isWhitespaceToken(v);
-
-        if (op.type === "delete") {
-            left += wrap ? `<span class="diff-removed">${escapeHtml(v)}</span>` : escapeHtml(v);
-            continue;
-        }
-
-        right += wrap ? `<span class="diff-added">${escapeHtml(v)}</span>` : escapeHtml(v);
+        len += op.value.length;
+        if (len > maxLen) break;
     }
 
-    return `
-    <div class="preview-grid">
-      <div class="preview-pane">
-        <div class="preview-pane-title">${escapeHtml(t("preview_label_before"))}</div>
-        <div class="preview-text-pane preview-pane-body">${left}</div>
-      </div>
-      <div class="preview-pane">
-        <div class="preview-pane-title">${escapeHtml(t("preview_label_after"))}</div>
-        <div class="preview-text-pane preview-pane-body">${right}</div>
-      </div>
-    </div>
-  `;
+    return `<div class="preview-grid">
+        <div class="preview-col"><strong>Pre:</strong><br>${left}</div>
+        <div class="preview-col"><strong>Posle:</strong><br>${right}</div>
+    </div>`;
 }
 
-export function renderDiffHtml(oldText: string, newText: string, maxTokens: number): string {
-    if (oldText === newText) {
-        return `<div class="preview-text-pane preview-single-pane preview-no-changes">${t("preview_diff_no_changes")}</div>`;
-    }
-
-    const a = tokenizeForDiff(oldText);
-    const b = tokenizeForDiff(newText);
-
-    if (a.length + b.length > maxTokens) {
-        return `<div class="preview-text-pane preview-single-pane">${escapeHtml(newText.slice(0, 50000))}... (${escapeHtml(
-            t("preview_label_truncated_perf")
-        )})</div>`;
-    }
-
-    const ops = myersDiff(a, b);
-
+// Fallback funkcija za backward compatibility ako je negde zatreba
+export function renderDiffHtml(original: string, converted: string, maxLen = 20000): string {
+    // Ovo je samo wrapper oko starog myersDiff-a, ali sada je bolje koristiti InteractiveDiff
+    // Ostavićemo je ako neki test zavisi od nje, ali idealno treba koristiti renderInteractiveDiffHtml
+    const ops = myersDiff(tokenize(original), tokenize(converted));
     let html = "";
+    let len = 0;
+
     for (const op of ops) {
-        const v = op.value;
-
+        const val = escapeHtml(op.value);
         if (op.type === "equal") {
-            html += escapeHtml(v);
-            continue;
+            html += val;
+        } else if (op.type === "delete") {
+            html += `<span class="diff-removed">${val}</span>`;
+        } else if (op.type === "insert") {
+            html += `<span class="diff-added">${val}</span>`;
         }
-
-        if (op.type === "delete") continue;
-
-        if (isWhitespaceToken(v)) html += escapeHtml(v);
-        else html += `<span class="diff-changed">${escapeHtml(v)}</span>`;
+        len += op.value.length;
+        if (len > maxLen) break;
     }
-
-    return `<div class="preview-text-pane preview-single-pane">${html}</div>`;
+    return html;
 }

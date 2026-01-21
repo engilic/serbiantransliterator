@@ -1,258 +1,184 @@
-/* global document, navigator */
+// src/taskpane/app/modal/previewModal.ts
+/* global document */
 
 import { state } from "../state";
-import { runWithUiLock } from "../uiLock";
 import { applyFromPreview } from "../word/apply";
-import { closeModal, resetModalButtons } from "./modal";
-import { modalManager } from "./modalManager";
+import { get, getOptional } from "../utils/dom";
+import { renderInteractiveDiffHtml, renderSideBySideWithHighlights } from "../preview/diffRenderer";
 import { escapeHtml } from "../../../shared/safeHtml";
-import { normalizeNewlines } from "../selection";
-import { t } from "../../../shared/i18n";
-
-import { PREVIEW_BATCH, DIFF_MAX_TOKENS } from "../preview/constants";
-import { renderDiffHtml, renderSideBySideWithHighlights } from "../preview/diffRenderer";
+import { myersDiff } from "../../../shared/diff";
+import { InteractiveDiff } from "../../../shared/diff/interactive";
+import { PREVIEW_BATCH } from "../preview/constants";
 import { convertTextForPreviewPlain } from "../preview/convertPreviewPlain";
 
-const PREVIEW_TITLE_ID = "previewTitleText";
-const PREVIEW_TITLE_TESTID = "previewTitleText";
-
-export function showPreviewToast(message: string, type: "success" | "error" | "info" = "info", ms = 1600) {
-    const el = document.getElementById("previewToast") as HTMLDivElement | null;
-    if (!el) return;
-
-    el.textContent = message;
-    el.classList.remove("success", "error", "info");
-    el.classList.add("show", type);
-
-    if (state.preview.toastTimer) clearTimeout(state.preview.toastTimer);
-    state.preview.toastTimer = setTimeout(() => {
-        el.classList.remove("show", "success", "error", "info");
-        el.textContent = "";
-    }, ms);
-}
-
-// Improved Copy Logic (Clipboard API + Fallback)
-async function copyToClipboard(text: string): Promise<boolean> {
-    if (!text) return false;
-
-    // 1. Try modern Clipboard API
-    if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
-        try {
-            await navigator.clipboard.writeText(text);
-            return true;
-        } catch (err) {
-            console.warn("Clipboard API failed, trying fallback:", err);
-        }
-    }
-
-    // 2. Fallback: execCommand('copy') with hidden textarea
-    try {
-        const ta = document.createElement("textarea");
-        ta.value = text;
-
-        // Ensure it's not visible but part of DOM
-        ta.style.position = "fixed";
-        ta.style.top = "0";
-        ta.style.left = "0";
-        ta.style.width = "1px";
-        ta.style.height = "1px";
-        ta.style.opacity = "0.01";
-        ta.style.pointerEvents = "none";
-        ta.setAttribute("readonly", "true");
-
-        document.body.appendChild(ta);
-        ta.focus();
-        ta.select();
-
-        // Cast to any to suppress deprecation warning (we need this for legacy Office)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const ok = (document as any).execCommand("copy");
-
-        document.body.removeChild(ta);
-        return ok === true;
-    } catch (e) {
-        console.error("Copy fallback failed:", e);
-        return false;
-    }
-}
-
-export function renderPreviewMode() {
-    const holder = document.getElementById("previewHolder");
-    if (!holder) return;
-
-    const orig = normalizeNewlines(state.preview.original);
-    const conv = normalizeNewlines(state.preview.converted);
-
-    if (state.preview.mode === "plain") {
-        holder.innerHTML = `<div class="preview-text-pane preview-single-pane preview-single-pane">${escapeHtml(conv)}</div>`;
-    } else if (state.preview.mode === "side") {
-        holder.innerHTML = renderSideBySideWithHighlights(orig, conv, DIFF_MAX_TOKENS);
-    } else {
-        holder.innerHTML = renderDiffHtml(orig, conv, DIFF_MAX_TOKENS);
-    }
-
-    const btnDiff = document.getElementById("previewBtnDiff") as HTMLButtonElement | null;
-    const btnPlain = document.getElementById("previewBtnPlain") as HTMLButtonElement | null;
-    const btnSide = document.getElementById("previewBtnSide") as HTMLButtonElement | null;
-
-    if (btnDiff) btnDiff.disabled = state.preview.mode === "diff";
-    if (btnPlain) btnPlain.disabled = state.preview.mode === "plain";
-    if (btnSide) btnSide.disabled = state.preview.mode === "side";
-}
-
-function setLoadMoreButtonState(btn: HTMLButtonElement, canLoadMore: boolean, reason?: string) {
-    btn.disabled = !canLoadMore;
-    btn.style.opacity = canLoadMore ? "1" : "0.45";
-    btn.style.cursor = canLoadMore ? "pointer" : "not-allowed";
-    btn.title = canLoadMore ? t("preview_load_more_title") : (reason ?? t("preview_load_more_none"));
-}
-
-function getPreviewTitleEl(): HTMLElement | null {
-    return (
-        (document.getElementById(PREVIEW_TITLE_ID) as HTMLElement | null) ??
-        (document.querySelector(`[data-testid="${PREVIEW_TITLE_TESTID}"]`) as HTMLElement | null)
-    );
-}
-
-async function loadMorePreviewParagraphs() {
-    const snap = state.preview.settingsSnap;
-    if (!snap) return;
-    if (!state.preview.allParagraphs.length) return;
-    if (!state.preview.canLoadMore) return;
-
-    state.preview.shownCount = Math.min(
-        state.preview.allParagraphs.length,
-        state.preview.shownCount + PREVIEW_BATCH
-    );
-    state.preview.canLoadMore = state.preview.shownCount < state.preview.allParagraphs.length;
-
-    state.preview.titleText = t("preview_title_doc", state.preview.shownCount, state.preview.typeText);
-
-    const newOriginal = state.preview.allParagraphs.slice(0, state.preview.shownCount).join("\n");
-    state.preview.original = newOriginal;
-
-    const protectedWords = [...Array.from(state.customWordsSet), ...Array.from(state.presetWordsSet)];
-    const { out } = convertTextForPreviewPlain(newOriginal, snap, protectedWords);
-    state.preview.converted = out;
-
-    const titleEl = getPreviewTitleEl();
-    if (titleEl) titleEl.textContent = state.preview.titleText;
-
-    const okBtn = document.getElementById("modalOk") as HTMLButtonElement | null;
-    if (okBtn) setLoadMoreButtonState(okBtn, state.preview.canLoadMore);
-
-    renderPreviewMode();
-}
-
-function ensureModalApplyButton(): HTMLButtonElement {
-    const actions = document.querySelector("#modalOverlay .modal-actions") as HTMLDivElement;
-    let btn = document.getElementById("modalApply") as HTMLButtonElement | null;
-    if (btn) return btn;
-
-    btn = document.createElement("button");
-    btn.id = "modalApply";
-    btn.type = "button";
-    btn.innerText = t("btn_apply");
-    btn.style.backgroundColor = "var(--primary-color)";
-    btn.style.color = "white";
-    btn.style.border = "none";
-
-    actions.insertBefore(btn, actions.firstChild);
-    return btn;
+function tokenize(text: string): string[] {
+    return text.split(/([ \t\n\r]+)/).filter((x) => x);
 }
 
 export function showPreviewModal() {
-    const overlay = document.getElementById("modalOverlay") as HTMLDivElement;
-    const title = document.getElementById("modalTitle") as HTMLHeadingElement;
-    const text = document.getElementById("modalText") as HTMLDivElement;
-    const input = document.getElementById("modalInput") as HTMLTextAreaElement;
+    const overlay = get<HTMLDivElement>("modalOverlay");
+    const modal = get<HTMLDivElement>("modal");
 
-    const okBtn = document.getElementById("modalOk") as HTMLButtonElement;
-    const cancelBtn = document.getElementById("modalCancel") as HTMLButtonElement;
-    const applyBtn = ensureModalApplyButton();
+    if (!state.preview.interactiveDiff) {
+        const ops = myersDiff(tokenize(state.preview.original), tokenize(state.preview.converted));
+        state.preview.interactiveDiff = new InteractiveDiff(ops);
+    }
 
-    title.style.display = "none";
-    input.style.display = "none";
-    (document.getElementById("modal") as HTMLDivElement).classList.add("wide");
+    modal.classList.add("wide");
 
-    text.innerHTML = `
-    <div id="previewStickyHeader" class="preview-sticky-header">
-      <div class="preview-header-row">
-        <div id="${PREVIEW_TITLE_ID}" data-testid="${PREVIEW_TITLE_TESTID}" class="preview-title">
-          ${escapeHtml(state.preview.titleText)}
+    const showLoadMore = state.preview.scope === "document" && state.preview.canLoadMore;
+
+    modal.innerHTML = `
+      <div class="preview-sticky-header">
+        <div class="preview-header-row">
+            <div class="preview-title" data-testid="previewTitleText">${escapeHtml(state.preview.titleText)}</div>
+            <div class="preview-header-right">
+                <button class="preview-close-btn" id="previewCloseX" title="Zatvori">&times;</button>
+                <div class="preview-header-buttons">
+                    <button id="modalOk" class="btn-primary" type="button">PRIMENI</button>
+                </div>
+            </div>
         </div>
-
-        <div class="preview-header-right">
-          <button id="previewCloseBtn" class="icon-btn preview-close-btn" type="button" title="${escapeHtml(t("btn_close"))} (Esc)">×</button>
-          <div id="previewToast" class="preview-toast" role="status"></div>
-          <div class="preview-header-buttons">
-            <button id="previewBtnDiff" class="mini-btn" type="button">${escapeHtml(t("preview_btn_diff"))}</button>
-            <button id="previewBtnPlain" class="mini-btn" type="button">${escapeHtml(t("preview_btn_plain"))}</button>
-            <button id="previewBtnSide" class="mini-btn" type="button">${escapeHtml(t("preview_btn_side"))}</button>
-            <button id="previewBtnCopy" class="mini-btn" type="button">${escapeHtml(t("preview_btn_copy"))}</button>
-          </div>
+        <div class="button-group" style="margin-top:8px; justify-content: flex-start;">
+            <button id="pBtnDiff" class="mini-btn ${state.preview.mode === "diff" ? "active" : ""}">Razlike</button>
+            <button id="pBtnSide" class="mini-btn ${state.preview.mode === "side" ? "active" : ""}">Pre/Posle</button>
+            <button id="pBtnPlain" class="mini-btn ${state.preview.mode === "plain" ? "active" : ""}">Rezultat</button>
         </div>
       </div>
-    </div>
-    <div id="previewHolder"></div>
-  `;
+      <div id="previewHolder" class="preview-text-pane"></div>
+      
+      ${showLoadMore ? `<div style="margin-top:10px; text-align:center"><button id="previewLoadMoreBtn" class="mini-btn">Učitaj još</button></div>` : ""}
+      
+      <div id="previewToast" class="preview-toast"></div>
+    `;
 
-    (document.getElementById("previewCloseBtn") as HTMLButtonElement).onclick = () => closeModal();
+    const closeBtn = getOptional<HTMLButtonElement>("previewCloseX");
+    if (closeBtn) closeBtn.onclick = closePreview;
 
-    (document.getElementById("previewBtnDiff") as HTMLButtonElement).onclick = () => {
-        state.preview.mode = "diff";
-        renderPreviewMode();
-    };
-    (document.getElementById("previewBtnPlain") as HTMLButtonElement).onclick = () => {
-        state.preview.mode = "plain";
-        renderPreviewMode();
-    };
-    (document.getElementById("previewBtnSide") as HTMLButtonElement).onclick = () => {
-        state.preview.mode = "side";
-        renderPreviewMode();
-    };
-
-    (document.getElementById("previewBtnCopy") as HTMLButtonElement).onclick = async () => {
-        const ok = await copyToClipboard(state.preview.converted ?? "");
-        if (ok) showPreviewToast(t("preview_toast_copied"), "success");
-        else showPreviewToast(t("preview_toast_copy_fail"), "error", 2200);
-    };
-
-    if (state.preview.mode !== "diff" && state.preview.mode !== "plain" && state.preview.mode !== "side") {
-        state.preview.mode = "diff";
-    }
-    renderPreviewMode();
-
-    cancelBtn.style.display = "none";
-
-    okBtn.style.display = "inline-flex";
-    okBtn.innerText = t("btn_load_more");
-    okBtn.style.backgroundColor = "var(--bg-color)";
-    okBtn.style.color = "var(--primary-color)";
-    okBtn.style.border = "1px solid var(--input-border)";
-
-    if (state.preview.scope === "document") {
-        setLoadMoreButtonState(okBtn, state.preview.canLoadMore);
+    const okBtn = getOptional<HTMLButtonElement>("modalOk");
+    if (okBtn) {
         okBtn.onclick = async () => {
-            await loadMorePreviewParagraphs();
+            closePreview();
+            await applyFromPreview(state.preview.scope);
         };
-    } else {
-        setLoadMoreButtonState(okBtn, false, t("msg_preview_scope_doc"));
-        okBtn.onclick = () => {};
     }
 
-    applyBtn.style.display = "inline-flex";
-    applyBtn.innerText = t("btn_apply");
-    applyBtn.onclick = async () => {
-        overlay.style.display = "none";
-        resetModalButtons();
-        await runWithUiLock(async () => {
-            await applyFromPreview(state.preview.scope);
-        });
+    const btnDiff = getOptional<HTMLButtonElement>("pBtnDiff");
+    if (btnDiff) btnDiff.onclick = () => switchMode("diff");
+
+    const btnSide = getOptional<HTMLButtonElement>("pBtnSide");
+    if (btnSide) btnSide.onclick = () => switchMode("side");
+
+    const btnPlain = getOptional<HTMLButtonElement>("pBtnPlain");
+    if (btnPlain) btnPlain.onclick = () => switchMode("plain");
+
+    // Load More Listener
+    const loadMoreBtn = getOptional<HTMLButtonElement>("previewLoadMoreBtn");
+    if (loadMoreBtn) {
+        loadMoreBtn.onclick = () => {
+            const total = state.preview.allParagraphs.length;
+            const current = state.preview.shownCount;
+            const nextBatch = state.preview.allParagraphs.slice(current, current + PREVIEW_BATCH);
+
+            if (nextBatch.length > 0) {
+                const joined = nextBatch.join("\n");
+                const res = convertTextForPreviewPlain(
+                    joined,
+                    state.preview.settingsSnap!,
+                    Array.from(state.customWordsSet)
+                );
+
+                state.preview.original += "\n" + joined;
+                state.preview.converted += "\n" + res.out;
+                state.preview.shownCount += nextBatch.length;
+
+                if (state.preview.shownCount >= total) {
+                    state.preview.canLoadMore = false;
+                    loadMoreBtn.style.display = "none";
+                }
+
+                const ops = myersDiff(tokenize(state.preview.original), tokenize(state.preview.converted));
+                state.preview.interactiveDiff = new InteractiveDiff(ops);
+
+                state.preview.titleText = `Prvih ${state.preview.shownCount} paragrafa (${state.preview.typeText})`;
+                const titleEl = document.querySelector('[data-testid="previewTitleText"]');
+                if (titleEl) titleEl.textContent = state.preview.titleText;
+
+                renderPreviewMode();
+            }
+        };
+    }
+
+    const holder = get<HTMLDivElement>("previewHolder");
+    holder.onclick = (e) => {
+        const target = e.target as HTMLElement;
+        const idxStr = target.getAttribute("data-idx");
+
+        if (state.preview.mode === "diff" && idxStr && state.preview.interactiveDiff) {
+            const idx = parseInt(idxStr, 10);
+            if (!isNaN(idx)) {
+                state.preview.interactiveDiff.toggle(idx);
+                renderPreviewMode();
+            }
+        }
     };
 
+    renderPreviewMode();
     overlay.style.display = "flex";
+}
 
-    // NEW: Use direct manager call instead of deprecated helper
-    modalManager.forceClose();
+export function renderPreviewMode() {
+    const holder = get<HTMLDivElement>("previewHolder");
+    const { mode, original, converted, interactiveDiff } = state.preview;
+
+    if (mode === "diff" && interactiveDiff) {
+        holder.innerHTML = renderInteractiveDiffHtml(interactiveDiff);
+    } else if (mode === "side") {
+        holder.innerHTML = renderSideBySideWithHighlights(original, converted);
+    } else {
+        const text = interactiveDiff ? interactiveDiff.buildResult() : converted;
+        holder.innerHTML = `<div class="preview-single-pane">${escapeHtml(text)}</div>`;
+    }
+
+    updateActiveButton("pBtnDiff", mode === "diff");
+    updateActiveButton("pBtnSide", mode === "side");
+    updateActiveButton("pBtnPlain", mode === "plain");
+}
+
+function updateActiveButton(id: string, active: boolean) {
+    const btn = document.getElementById(id);
+    if (btn) {
+        if (active) btn.classList.add("active");
+        else btn.classList.remove("active");
+        btn.style.backgroundColor = active ? "var(--neutral-light)" : "var(--bg-color)";
+        btn.style.borderColor = active ? "var(--primary-color)" : "var(--border-color)";
+    }
+}
+
+function switchMode(m: "diff" | "side" | "plain") {
+    state.preview.mode = m;
+    renderPreviewMode();
+}
+
+function closePreview() {
+    const overlay = document.getElementById("modalOverlay");
+    if (overlay) overlay.style.display = "none";
+}
+
+export function showPreviewToast(msg: string, type: "success" | "error" | "info" = "info", duration = 2000) {
+    const toast = document.getElementById("previewToast");
+    if (!toast) return;
+
+    toast.textContent = msg;
+    toast.className = `preview-toast show ${type}`;
+
+    if (state.preview.toastTimer) {
+        clearTimeout(state.preview.toastTimer);
+    }
+
+    state.preview.toastTimer = setTimeout(() => {
+        toast.classList.remove("show");
+        toast.textContent = "";
+        state.preview.toastTimer = null;
+    }, duration);
 }
