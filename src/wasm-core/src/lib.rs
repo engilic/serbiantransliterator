@@ -3,41 +3,50 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 use once_cell::sync::Lazy;
 
-// Globalno skladište za rečnik: Map<Mode, Map<Word, Replacement>>
-// Primer: "ekavica_to_ijekavica" -> { "lepo": "lijepo", ... }
+// Globalno skladište
 static DICTIONARY: Lazy<Mutex<HashMap<String, HashMap<String, String>>>> = Lazy::new(|| {
     Mutex::new(HashMap::new())
 });
 
-// Ovu funkciju zove JS da ubaci JSON podatke
+// Stara JSON metoda (zadržavamo je za svaki slučaj, ili za dev mode)
 #[wasm_bindgen]
 pub fn load_dictionary(mode: &str, json_data: &str) -> Result<(), JsValue> {
+    // console_error_panic_hook::set_once(); // Dobro za debug
     let data: HashMap<String, String> = serde_json::from_str(json_data)
         .map_err(|e| JsValue::from_str(&format!("JSON error: {}", e)))?;
+    insert_data(mode, data)?;
+    Ok(())
+}
 
+// NOVA BINARNA METODA (Zero-Copy ish)
+#[wasm_bindgen]
+pub fn load_dictionary_bin(mode: &str, bin_data: &[u8]) -> Result<(), JsValue> {
+    let data: HashMap<String, String> = bincode::deserialize(bin_data)
+        .map_err(|e| JsValue::from_str(&format!("Bincode error: {}", e)))?;
+    insert_data(mode, data)?;
+    Ok(())
+}
+
+// Helper da ne ponavljamo kod za insert
+fn insert_data(mode: &str, data: HashMap<String, String>) -> Result<(), JsValue> {
     let mut global_dict = DICTIONARY.lock().map_err(|_| JsValue::from_str("Mutex poisoned"))?;
-    
-    // Ubaci mapu pod odgovarajući ključ ("ekavica_to_ijekavica" ili "ijekavica_to_ekavica")
-    // Mapiramo kratki mod "e2i" u pun naziv ako treba, ili koristimo pun naziv direktno.
     let key = match mode {
         "e2i" => "ekavica_to_ijekavica",
         "i2e" => "ijekavica_to_ekavica",
         _ => mode
     };
-    
     global_dict.insert(key.to_string(), data);
-    
     Ok(())
 }
 
 fn lookup_word(mode: &str, word: &str) -> Option<String> {
     let dict = DICTIONARY.lock().ok()?;
     let map = dict.get(mode)?;
-    // Tražimo reč (case-sensitive u mapi, ali ulaz je već lowercase-ovan pre poziva ako treba, 
-    // mada u match_case logici radimo sa originalom. 
-    // Ovde pretpostavljamo da su ključevi u JSON-u mala slova.)
     map.get(&word.to_lowercase()).cloned()
 }
+
+// ... (Ostatak fajla: match_case, convert_dialect, to_cyrillic... ostaje ISTI)
+// ... Kopiraj postojeće funkcije ispod ...
 
 fn match_case(original: &str, replacement: &str) -> String {
     let mut chars_orig = original.chars();
@@ -47,8 +56,6 @@ fn match_case(original: &str, replacement: &str) -> String {
         if f.is_uppercase() {
             let mut chars_repl = replacement.chars();
             if let Some(r) = chars_repl.next() {
-                // Ako je original velikim slovom, i zamenu počni velikim
-                // Ostatak zamene ostaje kako jeste (obično mala slova)
                 let mut res = r.to_uppercase().to_string();
                 res.push_str(chars_repl.as_str());
                 return res;
@@ -78,7 +85,6 @@ pub fn convert_dialect(text: &str, mode: &str) -> String {
         }
         let word: String = chars[start..i].iter().collect();
 
-        // Koristi lookup u HashMap-i
         let replacement = lookup_word(mode, &word);
 
         if let Some(repl) = replacement {
@@ -87,7 +93,6 @@ pub fn convert_dialect(text: &str, mode: &str) -> String {
             result.push_str(&word);
         }
     }
-
     result
 }
 

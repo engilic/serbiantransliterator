@@ -41,6 +41,11 @@ module.exports = {
                     filename: "assets/[name][ext]",
                 },
             },
+            // === NOVO: Binary Loader za Offline Dictionaries ===
+            {
+                test: /\.bin$/,
+                type: "asset/inline", // Pretvara fajl u Base64 string u JS bundle-u
+            },
         ],
     },
     plugins: [

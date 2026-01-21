@@ -4,7 +4,24 @@ process.env.VITE_CJS_IGNORE_WARNING ??= "1";
 import { defineConfig } from "vitest/config";
 import path from "path";
 
+// Jednostavan plugin da transformiše .bin u string za testove
+const rawBinaryLoader = {
+    name: "raw-binary-loader",
+    transform(code: string, id: string) {
+        if (id.endsWith(".bin")) {
+            // U testovima nam nije bitan stvarni binarni sadržaj dictionary-a
+            // bitno je samo da se importuje kao string da ne puca parser.
+            // Vraćamo dummy base64 string.
+            return {
+                code: 'export default "DUMMY_BASE64_DATA_FOR_TESTS";',
+                map: null,
+            };
+        }
+    },
+};
+
 export default defineConfig({
+    plugins: [rawBinaryLoader], // <--- DODAJ PLUGIN
     resolve: {
         alias: [
             {
