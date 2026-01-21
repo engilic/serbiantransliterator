@@ -6,9 +6,10 @@ import { convertOoxml } from "../../../shared/ooxml/convertOoxml";
 import { setStatus } from "../status";
 import { t } from "../../../shared/i18n";
 
-// Broj paragrafa koji se obrađuju u jednom prolazu (transakciji).
-// 50 je dobar balans između brzine (manje round-trips) i memorije.
-const BATCH_SIZE = 50;
+// Smanjeno sa 50 na 25 radi veće stabilnosti na slabijim mašinama
+const BATCH_SIZE = 25;
+// Pauza između betčeva da UI "prodiše" (sprečava "Add-in is unresponsive" upozorenje)
+const YIELD_DELAY_MS = 20;
 
 /**
  * Obrađuje dokument deo po deo (chunking) kako bi se izbegao 5MB limit
@@ -20,6 +21,7 @@ export async function processDocumentInChunks(
 ): Promise<number> {
     // 1. Učitaj reference na sve paragrafe (ovo je metadata, ne ceo tekst)
     const paragraphs = context.document.body.paragraphs;
+    // eslint-disable-next-line office-addins/no-context-sync-in-loop
     paragraphs.load("items");
     await context.sync();
 
@@ -50,6 +52,8 @@ export async function processDocumentInChunks(
 
         // 3. Učitaj "teški" OOXML samo za ovaj batch
         const ooxmlRes = batchRange.getOoxml();
+
+        // eslint-disable-next-line office-addins/no-context-sync-in-loop
         await context.sync();
 
         const rawXml = ooxmlRes.value;
@@ -64,15 +68,17 @@ export async function processDocumentInChunks(
             changedNodesTotal += result.stats.textNodes;
         }
 
-        // 6. Osveži UI status i oslobodi memoriju (sync)
+        // 6. Osveži UI status
         processedCount += batchItems.length;
         const progress = Math.round((processedCount / totalParagraphs) * 100);
 
         const statusMsg = `${t("status_processing")} ${progress}% (${processedCount}/${totalParagraphs})`;
         setStatus(statusMsg, "info");
 
-        // Svaki sync čisti "pending queue" komandi ka Word-u
+        // 7. Sync + Yield (Ključna promena: čekamo malo da UI ne blokira)
+        // eslint-disable-next-line office-addins/no-context-sync-in-loop
         await context.sync();
+        await new Promise((resolve) => setTimeout(resolve, YIELD_DELAY_MS));
     }
 
     return changedNodesTotal;

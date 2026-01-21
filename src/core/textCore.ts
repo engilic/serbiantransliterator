@@ -6,6 +6,9 @@ import { fixSerbianQuotes } from "./quotes";
 import { collectProtectedRanges, splitByRanges, type CurlyProtection } from "./protect";
 import { cyrillicToLatin, detectMajorityScript, latinToCyrillic } from "./serbian";
 
+// Dodajemo flag za stanje rečnika
+let isDictLoaded = { e2i: false, i2e: false };
+
 // Importuj tip za WASM (load_dictionary mora biti definisan u wasm-shim.d.ts)
 type WasmModule = typeof import("../wasm-core/pkg") & {
     load_dictionary: (mode: string, json: string) => void;
@@ -15,13 +18,13 @@ let wasmModule: WasmModule | null = null;
 
 export async function initWasm() {
     try {
-        // 1. Učitaj WASM modul
         const module = await import("../wasm-core/pkg");
-        // FIX: Cast as unknown first to satisfy ESLint
         wasmModule = module as unknown as WasmModule;
         console.log("WASM module loaded successfully");
 
-        // 2. Učitaj rečnike paralelno
+        // Reset flagova
+        isDictLoaded = { e2i: false, i2e: false };
+
         try {
             const [resE2I, resI2E] = await Promise.all([
                 fetch("assets/dict_e2i.json"),
@@ -31,6 +34,7 @@ export async function initWasm() {
             if (resE2I.ok) {
                 const json = await resE2I.text();
                 wasmModule?.load_dictionary("e2i", json);
+                isDictLoaded.e2i = true;
                 console.log("Dictionary E2I loaded");
             } else {
                 console.warn("Failed to fetch dict_e2i.json");
@@ -39,6 +43,7 @@ export async function initWasm() {
             if (resI2E.ok) {
                 const json = await resI2E.text();
                 wasmModule?.load_dictionary("i2e", json);
+                isDictLoaded.i2e = true;
                 console.log("Dictionary I2E loaded");
             } else {
                 console.warn("Failed to fetch dict_i2e.json");
@@ -301,7 +306,18 @@ function applyCustomSubstitutions(text: string, subs?: Record<string, string>): 
 // WASM Dialect application
 function applyDialect(text: string, dialect?: Dialect): string {
     if (!dialect || dialect === "none") return text;
-    if (!wasmModule) return text; // JS Fallback does not support dialects yet
+    if (!wasmModule) return text;
+
+    // Safety check: da li je rečnik učitan?
+    if (dialect === "ekavica_to_ijekavica" && !isDictLoaded.e2i) {
+        console.warn("Skipping dialect conversion: E2I dict not ready.");
+        return text;
+    }
+    if (dialect === "ijekavica_to_ekavica" && !isDictLoaded.i2e) {
+        console.warn("Skipping dialect conversion: I2E dict not ready.");
+        return text;
+    }
+
     return wasmModule.convert_dialect(text, dialect);
 }
 

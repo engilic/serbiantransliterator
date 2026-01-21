@@ -67,7 +67,7 @@ export async function runSmart() {
             sel.load("text");
             await context.sync();
 
-            let selInfo = analyzeSelectionText(sel.text);
+            const selInfo = analyzeSelectionText(sel.text);
 
             if (selInfo.isJustWhitespace) {
                 showModalInfo(t("modal_title_error"), unsafeHtml(t("msg_empty_selection")));

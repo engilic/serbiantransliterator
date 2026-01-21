@@ -20,7 +20,11 @@ interface AppState {
     lastStatsTitle: string;
     lastStatsText: string;
 
-    selectionChangeHandler: ((args: any) => void) | null;
+    // FIX: Promenjeno 'any' u 'unknown' da zadovolji linter.
+    // U Office.js, ovo je zapravo Office.DocumentSelectionChangedEventArgs,
+    // ali 'unknown' je bezbedan tip za čuvanje reference.
+    selectionChangeHandler: ((args: unknown) => void) | null;
+
     selectionTimeout: ReturnType<typeof setTimeout> | null;
 
     preview: ExtendedPreviewState;
