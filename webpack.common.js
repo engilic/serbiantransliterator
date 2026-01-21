@@ -41,6 +41,11 @@ module.exports = {
                     filename: "assets/[name][ext]",
                 },
             },
+            // === CRITICAL FIX: Binary Loader ===
+            {
+                test: /\.bin$/,
+                type: "asset/inline",
+            },
         ],
     },
     plugins: [
