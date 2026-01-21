@@ -12,18 +12,14 @@ Word Office.js Taskpane Add-in za preslovljavanje srpskog teksta između **latin
 
 ---
 
-## Features (ukratko)
+## Features
 
-- **Preslovljavanje:** Auto, Lat → Ćir, Ćir → Lat, Ošišana latinica
-- **Dijalekti (NOVO):** Konverzija Ekavica ↔ Ijekavica (beta) uz pomoć Rust/WASM engine-a.
-- **Zaštita tokena:** URL, e-mail, `mailto:`, `tel:`, `sip:`, `sms:`, `geo:`, `skype:`, `teams:`, `msteams:`
-- **Zaštita “brend” reči** i tehnoloških termina (npr. `iPhone`, `.NET`, `Node.js`) + user “protected words”
-- **Custom Substitutions:** Korisnički definisana pravila za zamenu.
-- **OOXML bridging:** Pametno spajanje teksta preko `<w:t>` granica (tokeni, linkovi, fraze, digrafi, `{PLACEHOLDER}` blokovi).
-- **Preview:** Diff / pre-posle / rezultat + “apply from preview” uz cache i hash (text + OOXML).
-- **Teme:** Light / Dark / Auto.
-- **Opciona obrada:** Header/footer, footnotes, endnotes (best-effort, uz feedback).
-- **i18n:** UI tekstovi i statusi centralizovani (taskpane bez hardcoded stringova + CI guard).
+- **100% Offline:** Svi resursi su ugrađeni. Nema zavisnosti od interneta.
+- **Preslovljavanje:** Auto, Lat → Ćir, Ćir → Lat, Ošišana latinica.
+- **Dijalekti (WASM):** Ekavica ↔ Ijekavica (pokreće Rust core).
+- **Smart Chunking:** Obrađuje dokumente od 500+ strana bez blokiranja Word-a (progress bar).
+- **Zaštita:** Čuva URL-ove, e-mailove, kod (`...`) i brendove (`iPhone`).
+- **Preview:** Uporedni pregled izmena pre primene.
 
 ---
 
