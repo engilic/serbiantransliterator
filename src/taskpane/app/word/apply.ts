@@ -1,3 +1,4 @@
+// src/taskpane/app/word/apply.ts
 /* global Word */
 
 import { unsafeHtml } from "../../../shared/safeHtml";
@@ -19,7 +20,7 @@ import { buildApplyStatsText, buildApplyStatsTitle, buildPreviewAppliedStats } f
 import { decidePreviewCacheReuse, type PreviewCacheDecisionReason } from "./previewCacheDecision";
 import type { UiSettings, ExtrasSummary } from "../types";
 import { errorRecovery } from "../error/errorRecovery";
-import { logger } from "../telemetry/logger"; // NEW
+import { logger } from "../telemetry/logger";
 
 function logTelemetrySkippedRuns(skippedByReason: Record<string, number>) {
     if (Object.keys(skippedByReason).length === 0) return;
@@ -88,7 +89,7 @@ export async function runSmart() {
                 if (paraInfo.hasText) {
                     sel = paraRange;
                     scope = "selection";
-                    logger.info("Auto-expanded to paragraph"); // NEW
+                    logger.info("Auto-expanded to paragraph");
                 }
             }
 
@@ -169,8 +170,37 @@ export async function applyFromPreview(scope: "selection" | "document") {
             const ui = getSettingsFromUi();
             const opts: OoxmlOptions = getOoxmlOptionsFromUi();
 
+            // Check for Interactive Modifications
+            const interactive = state.preview.interactiveDiff;
+            const hasManualChanges = interactive && interactive.hasRejections();
+
             if (scope === "selection") {
                 const range = context.document.getSelection();
+
+                // 1. PATH: Manual Changes (Text Insert)
+                // Ako korisnik ima "odbijene" izmene, moramo da rekonstruišemo tekst.
+                // Pošto ne možemo lako da pečujemo OOXML, ubacujemo plain text.
+                // Ovo je trade-off: gubi se formatiranje, ali korisnik dobija tačno ono što želi.
+                if (hasManualChanges) {
+                    const finalCustomText = interactive!.buildResult();
+
+                    setStatus(t("status_applying_preview"), "info");
+
+                    // Insert as plain text (Word will inherit current style of the paragraph)
+                    range.insertText(finalCustomText, Word.InsertLocation.replace);
+                    await context.sync();
+
+                    setStatus(t("status_preview_applied") + " (Plain Text)", "success");
+
+                    // Refresh stats manually since we bypassed pipeline
+                    state.lastStatsTitle = t("stats_header_preview");
+                    state.lastStatsText =
+                        "Primenjene ručne izmene.\nNapomena: Formatiranje možda nije očuvano jer su korišćene interaktivne izmene.";
+                    refreshStats();
+                    return;
+                }
+
+                // 2. PATH: Standard Cached OOXML (Full Fidelity)
                 const ooxml = range.getOoxml();
                 range.load("text");
                 await context.sync();
@@ -247,6 +277,7 @@ export async function applyFromPreview(scope: "selection" | "document") {
                 return;
             }
 
+            // Document Scope (uvek ide kroz pipeline, interactive preview za ceo dok nije podržan u ovom obimu)
             const { result, extras } = await applyPipeline(context, "document", ui, opts);
 
             if (!result) {

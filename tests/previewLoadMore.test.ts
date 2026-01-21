@@ -14,17 +14,16 @@ vi.mock("../src/taskpane/app/word/apply", () => ({
     applyFromPreview: vi.fn(async () => undefined),
 }));
 
+// Mock diffRenderer to avoid complex DOM parsing in test
+vi.mock("../src/taskpane/app/preview/diffRenderer", () => ({
+    renderInteractiveDiffHtml: () => "<div>DIFF</div>",
+    renderSideBySideWithHighlights: () => "<div>SIDE</div>",
+}));
+
 function setupModalSkeletonDom() {
     document.body.innerHTML = `
     <div id="modalOverlay">
       <div id="modal">
-        <h3 id="modalTitle"></h3>
-        <div id="modalText"></div>
-        <textarea id="modalInput"></textarea>
-        <div class="modal-actions">
-          <button id="modalCancel"></button>
-          <button id="modalOk"></button>
-        </div>
       </div>
     </div>
   `;
@@ -41,11 +40,9 @@ beforeEach(() => {
         schemaVersion: 2,
         profile: "custom",
         userWordsCustom: [],
-
         theme: "auto",
         customSubstitutions: "",
-        dialect: "none", // <--- DODATO OVDE
-
+        dialect: "none",
         confirmWholeDoc: true,
         includeHeadersFooters: false,
         includeFootnotes: false,
@@ -77,20 +74,25 @@ beforeEach(() => {
     state.preview.original = paras.slice(0, state.preview.shownCount).join("\n");
     state.preview.converted = state.preview.original;
     state.preview.mode = "diff";
+    state.preview.interactiveDiff = null; // Reset
 });
 
 describe("previewModal - load more (document preview)", () => {
     it("clicking 'Učitaj još' increases shownCount and updates title (via data-testid)", async () => {
         showPreviewModal();
 
-        const okBtn = document.getElementById("modalOk") as HTMLButtonElement;
-        expect(okBtn).toBeTruthy();
-        expect(okBtn.disabled).toBe(false);
+        // CHANGE: Target 'previewLoadMoreBtn' instead of 'modalOk'
+        const loadMoreBtn = document.getElementById("previewLoadMoreBtn") as HTMLButtonElement;
+
+        expect(loadMoreBtn).toBeTruthy();
+        expect(loadMoreBtn.style.display).not.toBe("none");
 
         const before = state.preview.shownCount;
 
-        await (okBtn.onclick as unknown as () => Promise<void>)();
+        // Trigger click
+        await (loadMoreBtn.onclick as unknown as () => Promise<void>)();
 
+        // Verification
         expect(state.preview.shownCount).toBeGreaterThan(before);
         expect(state.preview.shownCount).toBe(
             Math.min(state.preview.allParagraphs.length, before + PREVIEW_BATCH)
