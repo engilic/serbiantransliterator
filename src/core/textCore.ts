@@ -8,7 +8,7 @@ import { cyrillicToLatin, detectMajorityScript, latinToCyrillic } from "./serbia
 
 // Importuj tip za WASM (load_dictionary mora biti definisan u wasm-shim.d.ts)
 type WasmModule = typeof import("../wasm-core/pkg") & {
-    load_dictionary: (mode: string, json: string) => void
+    load_dictionary: (mode: string, json: string) => void;
 };
 
 let wasmModule: WasmModule | null = null;
@@ -25,7 +25,7 @@ export async function initWasm() {
         try {
             const [resE2I, resI2E] = await Promise.all([
                 fetch("assets/dict_e2i.json"),
-                fetch("assets/dict_i2e.json")
+                fetch("assets/dict_i2e.json"),
             ]);
 
             if (resE2I.ok) {
@@ -43,11 +43,9 @@ export async function initWasm() {
             } else {
                 console.warn("Failed to fetch dict_i2e.json");
             }
-
         } catch (dictErr) {
             console.warn("Failed to load dictionaries", dictErr);
         }
-
     } catch (e) {
         console.warn("WASM load failed, falling back to JS", e);
     }
