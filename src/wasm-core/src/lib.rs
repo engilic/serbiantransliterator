@@ -1,8 +1,44 @@
 use wasm_bindgen::prelude::*;
+use std::collections::HashMap;
+use std::sync::Mutex;
+use once_cell::sync::Lazy;
 
-mod dictionary;
+// Globalno skladište za rečnik: Map<Mode, Map<Word, Replacement>>
+// Primer: "ekavica_to_ijekavica" -> { "lepo": "lijepo", ... }
+static DICTIONARY: Lazy<Mutex<HashMap<String, HashMap<String, String>>>> = Lazy::new(|| {
+    Mutex::new(HashMap::new())
+});
 
-// Funkcija koja čuva veliko slovo
+// Ovu funkciju zove JS da ubaci JSON podatke
+#[wasm_bindgen]
+pub fn load_dictionary(mode: &str, json_data: &str) -> Result<(), JsValue> {
+    let data: HashMap<String, String> = serde_json::from_str(json_data)
+        .map_err(|e| JsValue::from_str(&format!("JSON error: {}", e)))?;
+
+    let mut global_dict = DICTIONARY.lock().map_err(|_| JsValue::from_str("Mutex poisoned"))?;
+    
+    // Ubaci mapu pod odgovarajući ključ ("ekavica_to_ijekavica" ili "ijekavica_to_ekavica")
+    // Mapiramo kratki mod "e2i" u pun naziv ako treba, ili koristimo pun naziv direktno.
+    let key = match mode {
+        "e2i" => "ekavica_to_ijekavica",
+        "i2e" => "ijekavica_to_ekavica",
+        _ => mode
+    };
+    
+    global_dict.insert(key.to_string(), data);
+    
+    Ok(())
+}
+
+fn lookup_word(mode: &str, word: &str) -> Option<String> {
+    let dict = DICTIONARY.lock().ok()?;
+    let map = dict.get(mode)?;
+    // Tražimo reč (case-sensitive u mapi, ali ulaz je već lowercase-ovan pre poziva ako treba, 
+    // mada u match_case logici radimo sa originalom. 
+    // Ovde pretpostavljamo da su ključevi u JSON-u mala slova.)
+    map.get(&word.to_lowercase()).cloned()
+}
+
 fn match_case(original: &str, replacement: &str) -> String {
     let mut chars_orig = original.chars();
     let first = chars_orig.next();
@@ -11,7 +47,11 @@ fn match_case(original: &str, replacement: &str) -> String {
         if f.is_uppercase() {
             let mut chars_repl = replacement.chars();
             if let Some(r) = chars_repl.next() {
-                return format!("{}{}", r.to_uppercase(), chars_repl.as_str());
+                // Ako je original velikim slovom, i zamenu počni velikim
+                // Ostatak zamene ostaje kako jeste (obično mala slova)
+                let mut res = r.to_uppercase().to_string();
+                res.push_str(chars_repl.as_str());
+                return res;
             }
         }
     }
@@ -38,15 +78,11 @@ pub fn convert_dialect(text: &str, mode: &str) -> String {
         }
         let word: String = chars[start..i].iter().collect();
 
-        // Koristi dictionary mod
-        let replacement = match mode {
-            "ekavica_to_ijekavica" => dictionary::get_ekavica_to_ijekavica(&word),
-            "ijekavica_to_ekavica" => dictionary::get_ijekavica_to_ekavica(&word),
-            _ => None
-        };
+        // Koristi lookup u HashMap-i
+        let replacement = lookup_word(mode, &word);
 
         if let Some(repl) = replacement {
-            result.push_str(&match_case(&word, repl));
+            result.push_str(&match_case(&word, &repl));
         } else {
             result.push_str(&word);
         }
@@ -54,9 +90,6 @@ pub fn convert_dialect(text: &str, mode: &str) -> String {
 
     result
 }
-
-// ... (to_cyrillic i to_latin ostaju isti kao pre, kopiraj ih iz prethodnog fajla ako trebaju)
-// Ali evo ih za svaki slučaj da imaš ceo fajl:
 
 #[wasm_bindgen]
 pub fn to_cyrillic(text: &str) -> String {
