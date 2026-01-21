@@ -6,13 +6,30 @@ import { fixSerbianQuotes } from "./quotes";
 import { collectProtectedRanges, splitByRanges, type CurlyProtection } from "./protect";
 import { cyrillicToLatin, detectMajorityScript, latinToCyrillic } from "./serbian";
 
-// === OFFLINE IMPORT (Bundle-ovani rečnici) ===
-import dictE2I from "../static/assets/dict_e2i.json";
-import dictI2E from "../static/assets/dict_i2e.json";
+// === BINARY IMPORT (Zero-Copy Optimization) ===
+// Ovi fajlovi se učitavaju kao Base64 stringovi zahvaljujući webpack 'asset/inline' pravilu.
+// @ts-expect-error (Binary import requires custom loader definition which TS might miss in linting context)
+import dictE2IBin from "../static/assets/dict_e2i.bin";
+// @ts-expect-error
+import dictI2EBin from "../static/assets/dict_i2e.bin";
 
-// Importuj tip za WASM
+// Helper za Base64 -> Uint8Array konverziju
+function base64ToUint8Array(base64: string): Uint8Array {
+    // Data URI format može biti "data:application/octet-stream;base64,AAAA..." ili čist base64
+    const raw = base64.split(",")[1] || base64;
+    const binaryString = atob(raw);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes;
+}
+
+// Importuj tip za WASM (sa novom binarnom funkcijom)
 type WasmModule = typeof import("../wasm-core/pkg") & {
-    load_dictionary: (mode: string, json: string) => void;
+    load_dictionary: (mode: string, json: string) => void; // Stara (json)
+    load_dictionary_bin: (mode: string, data: Uint8Array) => void; // Nova (binarna)
 };
 
 let wasmModule: WasmModule | null = null;
@@ -20,23 +37,28 @@ const isDictLoaded = { e2i: false, i2e: false };
 
 export async function initWasm() {
     try {
+        // 1. Učitaj WASM modul
         const module = await import("../wasm-core/pkg");
         wasmModule = module as unknown as WasmModule;
         console.log("WASM module loaded successfully");
 
-        // === SINHRONO UČITAVANJE (OFFLINE) ===
+        // 2. Učitaj binarne rečnike SINHRONO (Zero-Copy ish)
         try {
             if (wasmModule) {
-                wasmModule.load_dictionary("e2i", JSON.stringify(dictE2I));
+                // Ekavica -> Ijekavica
+                const bytesE2I = base64ToUint8Array(dictE2IBin);
+                wasmModule.load_dictionary_bin("e2i", bytesE2I);
                 isDictLoaded.e2i = true;
-                console.log("Dictionary E2I loaded (offline bundle)");
+                console.log(`Dictionary E2I loaded (binary, ${bytesE2I.length} bytes)`);
 
-                wasmModule.load_dictionary("i2e", JSON.stringify(dictI2E));
+                // Ijekavica -> Ekavica
+                const bytesI2E = base64ToUint8Array(dictI2EBin);
+                wasmModule.load_dictionary_bin("i2e", bytesI2E);
                 isDictLoaded.i2e = true;
-                console.log("Dictionary I2E loaded (offline bundle)");
+                console.log(`Dictionary I2E loaded (binary, ${bytesI2E.length} bytes)`);
             }
         } catch (dictErr) {
-            console.error("Failed to load embedded dictionaries", dictErr);
+            console.error("Failed to load embedded binary dictionaries", dictErr);
         }
     } catch (e) {
         console.warn("WASM load failed, falling back to JS", e);
@@ -290,12 +312,20 @@ function applyCustomSubstitutions(text: string, subs?: Record<string, string>): 
     return out;
 }
 
+// WASM Dialect application (with safety checks)
 function applyDialect(text: string, dialect?: Dialect): string {
     if (!dialect || dialect === "none") return text;
     if (!wasmModule) return text;
 
-    if (dialect === "ekavica_to_ijekavica" && !isDictLoaded.e2i) return text;
-    if (dialect === "ijekavica_to_ekavica" && !isDictLoaded.i2e) return text;
+    // Safety check: da li je rečnik učitan?
+    if (dialect === "ekavica_to_ijekavica" && !isDictLoaded.e2i) {
+        console.warn("Skipping dialect conversion: E2I dict not loaded.");
+        return text;
+    }
+    if (dialect === "ijekavica_to_ekavica" && !isDictLoaded.i2e) {
+        console.warn("Skipping dialect conversion: I2E dict not loaded.");
+        return text;
+    }
 
     return wasmModule.convert_dialect(text, dialect);
 }
