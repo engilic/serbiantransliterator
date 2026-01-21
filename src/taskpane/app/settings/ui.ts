@@ -75,10 +75,29 @@ function addSub() {
     const src = srcInput.value.trim();
     const dest = destInput.value.trim();
 
-    if (!src || !dest) return;
+    // Validacija 1: Prazna polja
+    if (!src || !dest) {
+        if (!src) highlightError(srcInput);
+        if (!dest) highlightError(destInput);
+        return;
+    }
+
+    // Validacija 2: Spreči "->" unutar ključa ili vrednosti (to je separator)
+    if (src.includes("->") || dest.includes("->")) {
+        alert("Simbol '->' je rezervisan za separator i ne može biti deo reči.");
+        return;
+    }
 
     const newLine = `${src} -> ${dest}`;
     const current = area.value.trim();
+
+    // Provera duplikata (jednostavna)
+    if (current.includes(src + " ->")) {
+        // Već postoji pravilo za ovaj izvor
+        alert(`Pravilo za reč '${src}' već postoji. Obrišite staro pre dodavanja novog.`);
+        return;
+    }
+
     area.value = current ? current + "\n" + newLine : newLine;
 
     area.dispatchEvent(new Event("change")); // Trigger save
@@ -88,6 +107,17 @@ function addSub() {
     srcInput.focus();
 
     renderSubsList();
+}
+
+// Helper za vizuelni error (dodaj iznad addSub ili na dnu fajla)
+function highlightError(el: HTMLElement) {
+    const original = el.style.borderColor;
+    el.style.borderColor = "var(--error-color)";
+    el.classList.add("shake"); // Opciono ako imaš animaciju, ili samo boja
+    setTimeout(() => {
+        el.style.borderColor = original;
+        el.classList.remove("shake");
+    }, 1000);
 }
 
 function removeSub(lineToRemove: string) {
