@@ -16,13 +16,33 @@ export function setStatus(msg: string, type: "info" | "success" | "error" | "neu
               ? "var(--success-color)"
               : "var(--text-color)";
 
-    // Reset animacije
     el.classList.remove("fade-in");
-    void el.offsetWidth; // trigger reflow
+    void el.offsetWidth;
     el.classList.add("fade-in");
 }
 
+// NEW: Progress Bar Control
+export function setProgress(percent: number | null) {
+    const container = document.getElementById("progressContainer");
+    const bar = document.getElementById("progressBar");
+
+    if (!container || !bar) return;
+
+    if (percent === null) {
+        // Sakrij bar
+        container.style.display = "none";
+        bar.style.width = "0%";
+    } else {
+        // Prikaži i ažuriraj
+        container.style.display = "block";
+        // Osiguraj da je između 0 i 100
+        const safePercent = Math.max(0, Math.min(100, percent));
+        bar.style.width = `${safePercent}%`;
+    }
+}
+
 export function refreshStats() {
+    // ... (ostaje isto kao pre) ...
     const box = document.getElementById("statsBox") as HTMLDivElement | null;
     if (!box) return;
 
@@ -40,7 +60,6 @@ export function refreshStats() {
         if (title) title.innerText = titleText;
         if (text) text.innerText = bodyText;
 
-        // Animiraj i stats box kad se pojavi
         box.classList.remove("fade-in");
         void box.offsetWidth;
         box.classList.add("fade-in");

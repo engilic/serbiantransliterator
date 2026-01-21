@@ -6,50 +6,40 @@ import { fixSerbianQuotes } from "./quotes";
 import { collectProtectedRanges, splitByRanges, type CurlyProtection } from "./protect";
 import { cyrillicToLatin, detectMajorityScript, latinToCyrillic } from "./serbian";
 
-// Dodajemo flag za stanje rečnika
-let isDictLoaded = { e2i: false, i2e: false };
+// === OFFLINE IMPORT (Bundle-ovani rečnici) ===
+// Putanja prilagođena tvojoj strukturi: src/core -> src/static/assets
+import dictE2I from "../static/assets/dict_e2i.json";
+import dictI2E from "../static/assets/dict_i2e.json";
 
-// Importuj tip za WASM (load_dictionary mora biti definisan u wasm-shim.d.ts)
+// Importuj tip za WASM
 type WasmModule = typeof import("../wasm-core/pkg") & {
     load_dictionary: (mode: string, json: string) => void;
 };
 
 let wasmModule: WasmModule | null = null;
+// Flagovi za stanje rečnika (sada su uvek true ako je import uspeo, ali ostavljamo logiku za svaki slučaj)
+const isDictLoaded = { e2i: false, i2e: false };
 
 export async function initWasm() {
     try {
+        // 1. Učitaj WASM modul
         const module = await import("../wasm-core/pkg");
         wasmModule = module as unknown as WasmModule;
         console.log("WASM module loaded successfully");
 
-        // Reset flagova
-        isDictLoaded = { e2i: false, i2e: false };
-
+        // 2. Učitaj rečnike SINHRONO iz bundle-a (Offline)
         try {
-            const [resE2I, resI2E] = await Promise.all([
-                fetch("assets/dict_e2i.json"),
-                fetch("assets/dict_i2e.json"),
-            ]);
-
-            if (resE2I.ok) {
-                const json = await resE2I.text();
-                wasmModule?.load_dictionary("e2i", json);
+            if (wasmModule) {
+                wasmModule.load_dictionary("e2i", JSON.stringify(dictE2I));
                 isDictLoaded.e2i = true;
-                console.log("Dictionary E2I loaded");
-            } else {
-                console.warn("Failed to fetch dict_e2i.json");
-            }
+                console.log("Dictionary E2I loaded (offline bundle)");
 
-            if (resI2E.ok) {
-                const json = await resI2E.text();
-                wasmModule?.load_dictionary("i2e", json);
+                wasmModule.load_dictionary("i2e", JSON.stringify(dictI2E));
                 isDictLoaded.i2e = true;
-                console.log("Dictionary I2E loaded");
-            } else {
-                console.warn("Failed to fetch dict_i2e.json");
+                console.log("Dictionary I2E loaded (offline bundle)");
             }
         } catch (dictErr) {
-            console.warn("Failed to load dictionaries", dictErr);
+            console.error("Failed to load embedded dictionaries", dictErr);
         }
     } catch (e) {
         console.warn("WASM load failed, falling back to JS", e);
@@ -303,18 +293,18 @@ function applyCustomSubstitutions(text: string, subs?: Record<string, string>): 
     return out;
 }
 
-// WASM Dialect application
+// WASM Dialect application (with safe offline checks)
 function applyDialect(text: string, dialect?: Dialect): string {
     if (!dialect || dialect === "none") return text;
-    if (!wasmModule) return text;
+    if (!wasmModule) return text; // JS Fallback does not support dialects yet
 
     // Safety check: da li je rečnik učitan?
     if (dialect === "ekavica_to_ijekavica" && !isDictLoaded.e2i) {
-        console.warn("Skipping dialect conversion: E2I dict not ready.");
+        console.warn("Skipping dialect conversion: E2I dict not loaded.");
         return text;
     }
     if (dialect === "ijekavica_to_ekavica" && !isDictLoaded.i2e) {
-        console.warn("Skipping dialect conversion: I2E dict not ready.");
+        console.warn("Skipping dialect conversion: I2E dict not loaded.");
         return text;
     }
 
