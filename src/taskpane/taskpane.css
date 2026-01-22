@@ -1139,3 +1139,31 @@ button:active:not(:disabled) {
         background: var(--neutral-light);
     }
 }
+
+/* === WEB MODE DROP ZONE === */
+.drop-zone {
+    border: 2px dashed var(--border-color);
+    border-radius: 8px;
+    padding: 30px;
+    text-align: center;
+    background-color: var(--neutral-lighter);
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 10px;
+}
+
+.drop-zone:hover,
+.drop-zone.hover {
+    border-color: var(--primary-color);
+    background-color: rgba(15, 108, 189, 0.05);
+}
+
+.drop-icon {
+    font-size: 32px;
+    margin-bottom: 10px;
+}
+
+.drop-text {
+    color: var(--text-color);
+    font-weight: 500;
+}
