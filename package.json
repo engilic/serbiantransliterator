@@ -7,9 +7,6 @@
         "npm": ">=8.0.0"
     },
     "scripts": {
-        "dictionaries": "cd src/wasm-core && cargo run --bin compiler",
-        "build:wasm": "cd src/wasm-core && wasm-pack build --target web --out-dir pkg",
-        "dev:prepare": "npm run dictionaries && npm run build:wasm",
         "build": "webpack --mode production",
         "dev-server": "webpack serve --mode development",
         "sideload:word": "office-addin-dev-settings sideload manifest.xml --app word",
@@ -35,7 +32,7 @@
         "typecheck": "tsc --noEmit",
         "serve:dist": "http-server dist -p 4173 -c-1",
         "clean": "rimraf dist",
-        "deploy": "npm run dev:prepare && wrangler pages deploy dist --project-name=serbiantransliterator",
+        "deploy": "npm run build && wrangler pages deploy dist --project-name=serbiantransliterator",
         "check:conflicts": "node scripts/checkConflicts.cjs",
         "prepare": "husky install",
         "check:i18n:ts": "node scripts/checkUserFacingStrings.cjs",
@@ -50,7 +47,7 @@
         "test:integration": "npm run test:e2e",
         "build:analyze": "webpack --mode production --stats-json && webpack-bundle-analyzer dist/stats.json",
         "clean:dist": "rimraf dist coverage .vitest",
-        "prepare:dev": "npm ci && npm run dev:prepare",
+        "prepare:dev": "npm ci && npm run build",
         "audit:deps": "npm audit --production",
         "update:check": "npm outdated"
     },
@@ -76,7 +73,6 @@
         "@vitest/coverage-v8": "^4.0.17",
         "@wasm-tool/wasm-pack-plugin": "^1.7.0",
         "babel-loader": "^9.1.3",
-        "cheerio": "^1.0.0-rc.12",
         "concurrently": "^9.2.1",
         "copy-webpack-plugin": "^11.0.0",
         "cross-env": "^10.1.0",
@@ -90,7 +86,6 @@
         "jsdom": "^22.1.0",
         "lint-staged": "^16.2.7",
         "mini-css-extract-plugin": "^2.10.0",
-        "node-fetch": "^3.3.2",
         "office-addin-debugging": "^6.0.6",
         "office-addin-dev-certs": "^2.0.6",
         "office-addin-dev-settings": "^3.0.6",
