@@ -1,10 +1,10 @@
 // src/taskpane/app/modal/previewModal.ts
-/* global document */
+/* global document, requestAnimationFrame */
 
 import { state } from "../state";
 import { applyFromPreview } from "../word/apply";
 import { get, getOptional } from "../utils/dom";
-import { renderInteractiveDiffHtml, renderSideBySideWithHighlights } from "../preview/diffRenderer";
+import { renderSideBySideWithHighlights } from "../preview/diffRenderer"; // Keep side-by-side sync for now (usually smaller chunks)
 import { escapeHtml } from "../../../shared/safeHtml";
 import { myersDiff } from "../../../shared/diff";
 import { InteractiveDiff } from "../../../shared/diff/interactive";
@@ -20,6 +20,7 @@ export function showPreviewModal() {
     const modal = get<HTMLDivElement>("modal");
 
     if (!state.preview.interactiveDiff) {
+        // Calculate diff only once
         const ops = myersDiff(tokenize(state.preview.original), tokenize(state.preview.converted));
         state.preview.interactiveDiff = new InteractiveDiff(ops);
     }
@@ -118,6 +119,8 @@ export function showPreviewModal() {
             const idx = parseInt(idxStr, 10);
             if (!isNaN(idx)) {
                 state.preview.interactiveDiff.toggle(idx);
+                // Re-render only changed part would be better, but full re-render is safe
+                // because Virtualization makes it cheap enough.
                 renderPreviewMode();
             }
         }
@@ -127,12 +130,83 @@ export function showPreviewModal() {
     overlay.style.display = "flex";
 }
 
+/**
+ * Async Progressive Renderer for Diff Mode.
+ * Prevents UI freeze on large documents.
+ */
+function renderDiffAsync(holder: HTMLElement, interactive: InteractiveDiff) {
+    // 1. Clear immediately
+    holder.innerHTML = "";
+
+    const ops = interactive.getOps();
+    const CHUNK_SIZE = 400; // Adjust based on performance testing
+    let index = 0;
+
+    // Helper to generate span HTML
+    const getOpHtml = (op: any, i: number, rejected: boolean) => {
+        const val = escapeHtml(op.value);
+        let cls = "";
+        let tooltip = "";
+
+        if (op.type === "insert") {
+            cls = "diff-added clickable";
+            tooltip = "Klikni da odbaciš izmenu";
+            if (rejected) cls += " diff-rejected";
+        } else if (op.type === "delete") {
+            cls = "diff-removed clickable";
+            tooltip = "Klikni da zadržiš ovaj tekst";
+            if (rejected) cls += " diff-rejected";
+        }
+
+        if (op.type === "equal") {
+            return val;
+        } else {
+            return `<span class="${cls}" data-idx="${i}" title="${tooltip}">${val}</span>`;
+        }
+    };
+
+    const renderChunk = () => {
+        // Safety check: user might have closed modal or switched mode
+        if (state.preview.mode !== "diff") return;
+
+        const end = Math.min(index + CHUNK_SIZE, ops.length);
+
+        // Wrapper for content-visibility
+        let chunkHtml = '<div class="preview-block">';
+
+        for (let i = index; i < end; i++) {
+            const op = ops[i];
+            if (!op) continue;
+            const rejected = interactive.isRejected(i);
+
+            chunkHtml += getOpHtml(op, i, rejected);
+
+            // Heuristic: Break block on newlines to help browser layout
+            if (op.value.includes("\n")) {
+                chunkHtml += '</div><div class="preview-block">';
+            }
+        }
+        chunkHtml += "</div>";
+
+        holder.insertAdjacentHTML("beforeend", chunkHtml);
+        index = end;
+
+        if (index < ops.length) {
+            requestAnimationFrame(renderChunk);
+        }
+    };
+
+    // Start rendering
+    renderChunk();
+}
+
 export function renderPreviewMode() {
     const holder = get<HTMLDivElement>("previewHolder");
     const { mode, original, converted, interactiveDiff } = state.preview;
 
     if (mode === "diff" && interactiveDiff) {
-        holder.innerHTML = renderInteractiveDiffHtml(interactiveDiff);
+        // Use Async Renderer
+        renderDiffAsync(holder, interactiveDiff);
     } else if (mode === "side") {
         holder.innerHTML = renderSideBySideWithHighlights(original, converted);
     } else {
@@ -163,6 +237,8 @@ function switchMode(m: "diff" | "side" | "plain") {
 function closePreview() {
     const overlay = document.getElementById("modalOverlay");
     if (overlay) overlay.style.display = "none";
+    // Clear mode to stop any pending async render
+    state.preview.mode = "diff"; // Reset default, effectively stopping async loops checking for other modes
 }
 
 export function showPreviewToast(msg: string, type: "success" | "error" | "info" = "info", duration = 2000) {

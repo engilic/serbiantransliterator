@@ -46,6 +46,57 @@ describe("word/statsText", () => {
         expect(s.text).toBeTruthy();
     });
 
+    // --- NEW: Coverage for Proofing branches ---
+    it("uključuje proofing statistiku kada je enabled", () => {
+        const stats = makeStats(10);
+        stats.proofing = {
+            enabled: true,
+            targetLang: "sr-Cyrl-RS",
+            changedRuns: 5,
+            skippedRuns: 2,
+            skippedByReason: { noWordSpans: 1, missingOriginal: 1 },
+        };
+
+        const text = buildApplyStatsText({ type: "Lat → Ćir", stats }, "selection");
+
+        expect(text).toContain("Proofing language:");
+        expect(text).toContain("target: sr-Cyrl-RS");
+        expect(text).toContain("noWordSpans: 1");
+    });
+
+    // --- NEW: Coverage for Document Extras branches ---
+    it("uključuje extras statistiku za document scope (H/F, Fusnote)", () => {
+        const stats = makeStats(100);
+        const extras = {
+            headersFootersProcessed: 5,
+            footnotesProcessed: 3,
+            endnotesProcessed: 0,
+            footnotesSupported: true,
+            endnotesSupported: false, // Target branch: endnotes not supported
+        };
+
+        const text = buildApplyStatsText({ type: "Lat → Ćir", stats }, "document", extras);
+
+        expect(text).toContain("Header/Footer: 5");
+        expect(text).toContain("Fusnote: 3");
+        // Endnotes supported: false branch
+        expect(text).toContain("Endnote podržane: NE");
+    });
+
+    it("pokazuje 'Fusnote podržane: NE' ako nisu podržane", () => {
+        const stats = makeStats(100);
+        const extras = {
+            headersFootersProcessed: 0,
+            footnotesProcessed: 0,
+            endnotesProcessed: 0,
+            footnotesSupported: false, // Target branch
+            endnotesSupported: true,
+        };
+
+        const text = buildApplyStatsText({ type: "Lat → Ćir", stats }, "document", extras);
+        expect(text).toContain("Fusnote podržane: NE");
+    });
+
     // ---- pluralization SR ----
 
     it("pluralization (sr): 1", () => {
