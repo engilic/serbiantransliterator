@@ -6,17 +6,34 @@ import { fixSerbianQuotes } from "./quotes";
 import { collectProtectedRanges, splitByRanges, type CurlyProtection } from "./protect";
 import { cyrillicToLatin, detectMajorityScript, latinToCyrillic } from "./serbian";
 
-// === OFFLINE IMPORT (Bundle-ovani rečnici) ===
-import dictE2I from "../static/assets/dict_e2i.json";
-import dictI2E from "../static/assets/dict_i2e.json";
-
 // Importuj tip za WASM
 type WasmModule = typeof import("../wasm-core/pkg") & {
+    load_dictionary_bin: (mode: string, bin_data: Uint8Array) => void;
+    // Opciono, ako i dalje koristimo JSON fallback negde (verovatno ne, ali da ne pukne tipizacija)
     load_dictionary: (mode: string, json: string) => void;
 };
 
 let wasmModule: WasmModule | null = null;
 const isDictLoaded = { e2i: false, i2e: false };
+
+// Helper za učitavanje binarnih rečnika
+async function loadBinaryDict(filename: string, mode: "e2i" | "i2e") {
+    if (!wasmModule) return;
+    try {
+        const response = await fetch(filename);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const buffer = await response.arrayBuffer();
+        const bytes = new Uint8Array(buffer);
+
+        wasmModule.load_dictionary_bin(mode, bytes);
+        console.log(`Dictionary ${mode} loaded from ${filename} (${bytes.length} bytes)`);
+
+        isDictLoaded[mode] = true;
+    } catch (e) {
+        console.warn(`Failed to load dictionary ${mode} from ${filename}`, e);
+    }
+}
 
 export async function initWasm() {
     try {
@@ -24,22 +41,16 @@ export async function initWasm() {
         wasmModule = module as unknown as WasmModule;
         console.log("WASM module loaded successfully");
 
-        // === SINHRONO UČITAVANJE (OFFLINE) ===
-        try {
-            if (wasmModule) {
-                wasmModule.load_dictionary("e2i", JSON.stringify(dictE2I));
-                isDictLoaded.e2i = true;
-                console.log("Dictionary E2I loaded (offline bundle)");
+        // === ASINHRONO UČITAVANJE (Zero-Copy Binary) ===
+        // Paralelno učitavamo oba rečnika da ne blokiramo
+        const p1 = loadBinaryDict("assets/dict_e2i.bin", "e2i");
+        const p2 = loadBinaryDict("assets/dict_i2e.bin", "i2e");
 
-                wasmModule.load_dictionary("i2e", JSON.stringify(dictI2E));
-                isDictLoaded.i2e = true;
-                console.log("Dictionary I2E loaded (offline bundle)");
-            }
-        } catch (dictErr) {
-            console.error("Failed to load embedded dictionaries", dictErr);
-        }
+        // Ne moramo await-ovati ako ne želimo da blokiramo start,
+        // ali za stabilnost dijalekata bolje je sačekati (brzo je, par ms).
+        await Promise.all([p1, p2]);
     } catch (e) {
-        console.warn("WASM load failed, falling back to JS", e);
+        console.warn("WASM load failed, falling back to JS regex only", e);
     }
 }
 

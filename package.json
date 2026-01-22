@@ -7,8 +7,9 @@
         "npm": ">=8.0.0"
     },
     "scripts": {
-        "build": "webpack --mode production",
-        "dev-server": "webpack serve --mode development",
+        "compile:dicts": "cd src/wasm-core && cargo run --bin compiler && cd ../..",
+        "build": "npm run compile:dicts && webpack --mode production",
+        "dev-server": "npm run compile:dicts && webpack serve --mode development",
         "sideload:word": "office-addin-dev-settings sideload manifest.xml --app word",
         "sideload:word:wait": "wait-on --timeout 60000 https://localhost:3000/taskpane.html && npm run sideload:word",
         "dev": "concurrently -k \"npm:dev-server\" \"npm:sideload:word:wait\"",
