@@ -1,0 +1,15 @@
+{
+  "name": "serbian-transliterator-wasm",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "serbian_transliterator_wasm_bg.wasm",
+    "serbian_transliterator_wasm.js",
+    "serbian_transliterator_wasm.d.ts"
+  ],
+  "main": "serbian_transliterator_wasm.js",
+  "types": "serbian_transliterator_wasm.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
