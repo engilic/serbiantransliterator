@@ -1,24 +1,14 @@
-// src/wasm-core/src/lib.rs
 use wasm_bindgen::prelude::*;
 use std::collections::HashMap;
 use std::sync::Mutex;
 use once_cell::sync::Lazy;
 
-// --- STORAGE ---
-
-// Dijalekti (E2I / I2E)
+// Globalno skladište
 static DICTIONARY: Lazy<Mutex<HashMap<String, HashMap<String, String>>>> = Lazy::new(|| {
     Mutex::new(HashMap::new())
 });
 
-// Gramatička pravila (NOVO)
-static GRAMMAR_RULES: Lazy<Mutex<HashMap<String, String>>> = Lazy::new(|| {
-    Mutex::new(HashMap::new())
-});
-
-// --- LOADERS ---
-
-// JSON Loader (za dev/test - dijalekti)
+// JSON Loader (za dev/test)
 #[wasm_bindgen]
 pub fn load_dictionary(mode: &str, json_data: &str) -> Result<(), JsValue> {
     let data: HashMap<String, String> = serde_json::from_str(json_data)
@@ -27,7 +17,7 @@ pub fn load_dictionary(mode: &str, json_data: &str) -> Result<(), JsValue> {
     Ok(())
 }
 
-// Binary Loader (za prod - dijalekti)
+// Binary Loader (za prod - Zero Copy)
 #[wasm_bindgen]
 pub fn load_dictionary_bin(mode: &str, bin_data: &[u8]) -> Result<(), JsValue> {
     let data: HashMap<String, String> = bincode::deserialize(bin_data)
@@ -47,20 +37,51 @@ fn insert_data(mode: &str, data: HashMap<String, String>) -> Result<(), JsValue>
     Ok(())
 }
 
-// NOVO: Binary Loader za Gramatiku
-#[wasm_bindgen]
-pub fn load_grammar_rules_bin(bin_data: &[u8]) -> Result<(), JsValue> {
-    let data: HashMap<String, String> = bincode::deserialize(bin_data)
-        .map_err(|e| JsValue::from_str(&format!("Bincode error: {}", e)))?;
-    
-    let mut guard = GRAMMAR_RULES.lock().map_err(|_| JsValue::from_str("Mutex poisoned"))?;
-    *guard = data;
-    Ok(())
+// === SMART STEMMING LOGIC ===
+
+// Najčešći srpski sufiksi (poređani po dužini)
+const SUFFIXES: &[&str] = &[
+    "ima", "om", "em", "im", "ih", "og", "eg", "uj", // 2-3 slova
+    "a", "e", "i", "o", "u"                          // 1 slovo
+];
+
+fn try_smart_lookup(map: &HashMap<String, String>, word: &str) -> Option<String> {
+    let word_lower = word.to_lowercase();
+
+    // 1. Probaj tačan pogodak (najbrže)
+    if let Some(res) = map.get(&word_lower) {
+        return Some(match_case(word, res));
+    }
+
+    // 2. Probaj skidanje sufiksa (Stemming)
+    if word_lower.chars().count() < 4 {
+        return None;
+    }
+
+    for suffix in SUFFIXES {
+        if word_lower.ends_with(suffix) {
+            let root_len = word_lower.len() - suffix.len();
+            let root = &word_lower[..root_len];
+
+            if root.chars().count() < 3 {
+                continue;
+            }
+
+            if let Some(root_translation) = map.get(root) {
+                // NAŠLI SMO KOREN!
+                // Rekonstruiši: prevedeni koren + originalni sufiks
+                let mut result = root_translation.clone();
+                result.push_str(suffix);
+                return Some(match_case(word, &result));
+            }
+        }
+    }
+
+    None
 }
 
-// --- LOGIC ---
+// === END SMART LOGIC ===
 
-// Helper za očuvanje velikog slova (Neznam -> Ne znam)
 fn match_case(original: &str, replacement: &str) -> String {
     let mut chars_orig = original.chars();
     let first = chars_orig.next();
@@ -76,90 +97,6 @@ fn match_case(original: &str, replacement: &str) -> String {
         }
     }
     replacement.to_string()
-}
-
-// NOVO: Apply Grammar Logic
-#[wasm_bindgen]
-pub fn apply_grammar(text: &str) -> String {
-    let guard = GRAMMAR_RULES.lock().unwrap();
-    if guard.is_empty() {
-        return text.to_string(); 
-    }
-
-    let mut result = String::with_capacity(text.len());
-    let mut word_start = None;
-    
-    for (i, c) in text.char_indices() {
-        if c.is_alphabetic() {
-            if word_start.is_none() {
-                word_start = Some(i);
-            }
-        } else {
-            // Kraj reči
-            if let Some(start) = word_start {
-                let word = &text[start..i];
-                let lower = word.to_lowercase();
-                
-                if let Some(replacement) = guard.get(&lower) {
-                    result.push_str(&match_case(word, replacement));
-                } else {
-                    result.push_str(word);
-                }
-                word_start = None;
-            }
-            result.push(c); // Interpunkcija/razmak
-        }
-    }
-    
-    // Poslednja reč
-    if let Some(start) = word_start {
-        let word = &text[start..];
-        let lower = word.to_lowercase();
-        if let Some(replacement) = guard.get(&lower) {
-            result.push_str(&match_case(word, replacement));
-        } else {
-            result.push_str(word);
-        }
-    }
-    
-    result
-}
-
-// --- DIALECT LOGIC (Postojeće) ---
-
-const SUFFIXES: &[&str] = &[
-    "ima", "om", "em", "im", "ih", "og", "eg", "uj", 
-    "a", "e", "i", "o", "u"
-];
-
-fn try_smart_lookup(map: &HashMap<String, String>, word: &str) -> Option<String> {
-    let word_lower = word.to_lowercase();
-
-    if let Some(res) = map.get(&word_lower) {
-        return Some(match_case(word, res));
-    }
-
-    if word_lower.chars().count() < 4 {
-        return None;
-    }
-
-    for suffix in SUFFIXES {
-        if word_lower.ends_with(suffix) {
-            let root_len = word_lower.len() - suffix.len();
-            let root = &word_lower[..root_len];
-
-            if root.chars().count() < 3 {
-                continue;
-            }
-
-            if let Some(root_translation) = map.get(root) {
-                let mut result = root_translation.clone();
-                result.push_str(suffix);
-                return Some(match_case(word, &result));
-            }
-        }
-    }
-    None
 }
 
 #[wasm_bindgen]
@@ -185,6 +122,7 @@ pub fn convert_dialect(text: &str, mode: &str) -> String {
         }
         let word: String = chars[start..i].iter().collect();
 
+        // Koristi SMART lookup
         let replacement = if let Some(map) = map_opt {
             try_smart_lookup(map, &word)
         } else {
@@ -199,8 +137,6 @@ pub fn convert_dialect(text: &str, mode: &str) -> String {
     }
     result
 }
-
-// --- TRANSLITERATION LOGIC (Postojeće) ---
 
 #[wasm_bindgen]
 pub fn to_cyrillic(text: &str) -> String {
