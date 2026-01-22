@@ -9,15 +9,11 @@ fn main() {
     println!("Compiling dictionaries...");
     compile("dict_e2i");
     compile("dict_i2e");
-    
-    // NOVO: Kompajliraj gramatička pravila
-    compile("grammar_rules");
-    
+    // UKLONJENO: compile("grammar_rules");
     println!("Done!");
 }
 
 fn compile(name: &str) {
-    // Putanje relativne u odnosu na src/wasm-core root (gde se pokreće cargo run)
     let json_path = format!("../../src/static/assets/{}.json", name);
     let bin_path = format!("../../src/static/assets/{}.bin", name);
 
@@ -34,8 +30,6 @@ fn compile(name: &str) {
     file.read_to_string(&mut data).expect("Unable to read string");
 
     let map: HashMap<String, String> = serde_json::from_str(&data).expect("Invalid JSON");
-    
-    // bincode serijalizacija (brza i mala)
     let encoded: Vec<u8> = bincode::serialize(&map).expect("Serialization failed");
 
     let mut out = File::create(&bin_path).expect("Unable to create bin file");

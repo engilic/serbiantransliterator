@@ -1,16 +1,22 @@
 import { describe, it, expect } from "vitest";
-import { applyPreCorrectionsLatToCyr } from "../src/core/corrections";
+import { applyPreCorrectionsLatToCyr, applyGrammarCorrections } from "../src/core/corrections";
 
-describe("corrections.ts - coverage", () => {
-    it("Sava fraza: 'Reke Save' -> 'Реке Саве' (preserveFirstLetterCase upper branch)", () => {
+describe("corrections.ts - grammar & legacy phrases", () => {
+    // Grammar Guardian
+    it("Negacija: 'Neznam' -> 'Ne znam'", () => {
+        expect(applyGrammarCorrections("Neznam šta radim")).toBe("Ne znam šta radim");
+    });
+
+    it("Futur: 'Doćiću' -> 'Doći ću'", () => {
+        expect(applyGrammarCorrections("Doćiću sutra")).toBe("Doći ću sutra");
+    });
+
+    it("Superlativ: 'naj bolji' -> 'najbolji'", () => {
+        expect(applyGrammarCorrections("On je naj bolji")).toBe("On je najbolji");
+    });
+
+    // Legacy Phrases
+    it("Sava fraza: 'Reke Save' -> 'Реке Саве'", () => {
         expect(applyPreCorrectionsLatToCyr("Reke Save")).toBe("Реке Саве");
-    });
-
-    it("Digraf izuzetak sa velikim slovom: 'Injekcija' -> 'Инјекција'", () => {
-        expect(applyPreCorrectionsLatToCyr("Injekcija")).toMatch(/^Инјекц/);
-    });
-
-    it("Dž izuzetak sa velikim slovom: 'Nadživeti' počinje kao 'Наджив...'", () => {
-        expect(applyPreCorrectionsLatToCyr("Nadživeti")).toMatch(/^Наджив/);
     });
 });

@@ -1,16 +1,22 @@
 // src/core/textCore.ts
 
-import { ALWAYS_LATIN_PHRASES, ALWAYS_LATIN_TOKENS_STRICT, ALWAYS_LATIN_TOKENS_AMBIGUOUS } from "./rules";
-import { applyPreCorrectionsLatToCyr } from "./corrections";
+import {
+    ALWAYS_LATIN_PHRASES,
+    ALWAYS_LATIN_TOKENS_STRICT,
+    ALWAYS_LATIN_TOKENS_AMBIGUOUS,
+    isForeignWord,
+    isRomanNumeral,
+    isHashLike,
+} from "./rules";
+import { applyPreCorrectionsLatToCyr, applyGrammarCorrections } from "./corrections";
 import { fixSerbianQuotes } from "./quotes";
 import { collectProtectedRanges, splitByRanges, type CurlyProtection } from "./protect";
 import { cyrillicToLatin, detectMajorityScript, latinToCyrillic } from "./serbian";
+import { checkException } from "./exceptions";
 
-// === OFFLINE IMPORT (Bundle-ovani rečnici) ===
 import dictE2I from "../static/assets/dict_e2i.json";
 import dictI2E from "../static/assets/dict_i2e.json";
 
-// Importuj tip za WASM
 type WasmModule = typeof import("../wasm-core/pkg") & {
     load_dictionary: (mode: string, json: string) => void;
 };
@@ -24,16 +30,12 @@ export async function initWasm() {
         wasmModule = module as unknown as WasmModule;
         console.log("WASM module loaded successfully");
 
-        // === SINHRONO UČITAVANJE (OFFLINE) ===
         try {
             if (wasmModule) {
                 wasmModule.load_dictionary("e2i", JSON.stringify(dictE2I));
                 isDictLoaded.e2i = true;
-                console.log("Dictionary E2I loaded (offline bundle)");
-
                 wasmModule.load_dictionary("i2e", JSON.stringify(dictI2E));
                 isDictLoaded.i2e = true;
-                console.log("Dictionary I2E loaded (offline bundle)");
             }
         } catch (dictErr) {
             console.error("Failed to load embedded dictionaries", dictErr);
@@ -58,85 +60,13 @@ export interface CoreOptions {
 
 const normKey = (s: string) => s.normalize("NFC").toLowerCase();
 
-const SR_ALLOWED = new Set(
-    (
-        "abcčćdđefghijklmnoprsštuvzž" +
-        "ABCČĆDĐEFGHIJKLMNOPRSŠTUVZŽ" +
-        "абвгдђежзијклљмнњопрстћуфхцчџш" +
-        "АБВГДЂЕЖЗИЈКЛЉМНЊОПРСТЋУФХЦЧЏШ" +
-        "0123456789-_'’"
-    ).split("")
-);
-
-const STRONG_FOREIGN = /[QWXYqwxy]/;
-const ROMAN = /^[IVXLCDM]+$/;
-const RULERS = new Set([
-    "petar",
-    "aleksandar",
-    "nikola",
-    "milan",
-    "đorđe",
-    "jovan",
-    "uroš",
-    "stefan",
-    "lazar",
-    "luj",
-    "čarls",
-    "elizabeta",
-    "filip",
-    "papa",
-    "pavle",
-    "patrijarh",
-    "tom",
-    "grupa",
-    "zona",
-    "korpus",
-    "armija",
-    "deo",
-    "knjiga",
-    "stav",
-    "član",
-    "sprat",
-]);
-const CATEGORY_PREFIX = [
-    "razred",
-    "kategorij",
-    "grupa",
-    "zona",
-    "korpus",
-    "armija",
-    "deo",
-    "tom",
-    "knjiga",
-    "stav",
-    "član",
-    "svetski",
-    "sprat",
-    "vek",
-    "rat",
-];
-
-function hasForeignLetter(token: string): boolean {
-    for (const ch of token) {
-        if (/\p{L}/u.test(ch) && !SR_ALLOWED.has(ch)) return true;
-    }
-    return false;
-}
-
-function isMixedCaseBrandy(token: string): boolean {
-    return /[a-zčćđšž]+[A-ZČĆĐŠŽ]/.test(token);
-}
-
-function isHashLike(token: string): boolean {
-    return token.length > 6 && /^\d/.test(token) && /[A-Za-z]/.test(token);
-}
-
 type Tok = { type: "word" | "other"; value: string };
 
 function isLetterOrDigit(ch: string): boolean {
     return /\p{L}|\p{N}/u.test(ch);
 }
 
+// Improved tokenizer
 function tokenize(text: string): Tok[] {
     const out: Tok[] = [];
     let i = 0;
@@ -146,138 +76,31 @@ function tokenize(text: string): Tok[] {
         if (last && last.type === type) last.value += value;
         else out.push({ type, value });
     };
+
     while (i < text.length) {
         const ch = text[i];
         if (!ch) break;
-        const prev = i > 0 ? text[i - 1] : "";
-        const next = i + 1 < text.length ? text[i + 1] : "";
-        const isJoiner =
-            ch === "-" ||
-            ch === "‑" ||
-            ch === "‐" ||
-            ch === "‒" ||
-            ch === "–" ||
-            ch === "—" ||
-            ch === "'" ||
-            ch === "’" ||
-            ch === "." ||
-            ch === "+" ||
-            ch === "#" ||
-            ch === "/";
-        const joinerOk =
-            isJoiner &&
-            ((ch === "." && (isLetterOrDigit(next) || (isLetterOrDigit(prev) && isLetterOrDigit(next)))) ||
-                ((ch === "+" || ch === "#") && (isLetterOrDigit(prev) || isLetterOrDigit(next))) ||
-                (ch === "/" && isLetterOrDigit(prev) && isLetterOrDigit(next)) ||
-                ((ch === "-" ||
-                    ch === "‑" ||
-                    ch === "‐" ||
-                    ch === "‒" ||
-                    ch === "–" ||
-                    ch === "—" ||
-                    ch === "'" ||
-                    ch === "’") &&
-                    (isLetterOrDigit(prev) || isLetterOrDigit(next))));
-        if (isLetterOrDigit(ch) || joinerOk) push("word", ch);
+
+        // POPRAVKA: Uklonjen "_" da bi se snake_case razdvajao na reči (USER_NAME -> USER + _ + NAME)
+        // Crtica "-" ostaje jer je deo srpskih složenica (npr. spomen-ploča).
+        let isWordChar = isLetterOrDigit(ch) || ch === "-";
+
+        // Specijalna logika za tačku (Node.js, .NET)
+        if (ch === ".") {
+            const prev = i > 0 ? text[i - 1] : "";
+            const next = i + 1 < text.length ? text[i + 1] : "";
+            const prevOk = prev && isLetterOrDigit(prev);
+            const nextOk = next && isLetterOrDigit(next);
+            if ((prevOk && nextOk) || (!prevOk && nextOk)) {
+                isWordChar = true;
+            }
+        }
+
+        if (isWordChar) push("word", ch);
         else push("other", ch);
         i++;
     }
     return out;
-}
-
-function prevNextWord(tokens: Tok[], idx: number): { prev?: string; next?: string } {
-    let prev: string | undefined;
-    let next: string | undefined;
-    for (let i = idx - 1; i >= 0; i--) {
-        const tok = tokens[i];
-        if (tok && tok.type === "word") {
-            prev = tok.value;
-            break;
-        }
-    }
-    for (let i = idx + 1; i < tokens.length; i++) {
-        const tok = tokens[i];
-        if (tok && tok.type === "word") {
-            next = tok.value;
-            break;
-        }
-    }
-    return { prev, next };
-}
-
-function getPrevWord(tokens: Tok[], idx: number, n: number): string | undefined {
-    let seen = 0;
-    for (let i = idx - 1; i >= 0; i--) {
-        const t = tokens[i];
-        if (t?.type === "word") {
-            seen++;
-            if (seen === n) return t.value;
-        }
-    }
-    return undefined;
-}
-
-function getNextWord(tokens: Tok[], idx: number, n: number): string | undefined {
-    let seen = 0;
-    for (let i = idx + 1; i < tokens.length; i++) {
-        const t = tokens[i];
-        if (t?.type === "word") {
-            seen++;
-            if (seen === n) return t.value;
-        }
-    }
-    return undefined;
-}
-
-function isAlphaNumModelToken(tok: string): boolean {
-    return /\d/.test(tok) && /\p{L}/u.test(tok);
-}
-
-function isPureNumberToken(tok: string): boolean {
-    return /^\d+$/u.test(tok);
-}
-
-function shouldProtectRomanToken(tokens: Tok[], idx: number): boolean {
-    const t = tokens[idx];
-    if (!t) return false;
-    if (t.type !== "word") return false;
-    const v = t.value;
-    if (!ROMAN.test(v)) return false;
-    if (v !== v.toUpperCase()) return false;
-    if (v.length > 8) return false;
-    const { prev, next } = prevNextWord(tokens, idx);
-    const prevKey = prev ? normKey(prev) : "";
-    const nextKey = next ? normKey(next) : "";
-    if (prevKey && RULERS.has(prevKey)) return true;
-    if (nextKey && CATEGORY_PREFIX.some((p) => nextKey.startsWith(p))) return true;
-    return false;
-}
-
-function shouldProtectAmbiguousBrandToken(tokens: Tok[], idx: number): boolean {
-    const t = tokens[idx];
-    if (!t || t.type !== "word") return false;
-    const tokLower = normKey(t.value);
-    if (!ALWAYS_LATIN_TOKENS_AMBIGUOUS.has(tokLower)) return false;
-    const prev1 = getPrevWord(tokens, idx, 1);
-    const prev2 = getPrevWord(tokens, idx, 2);
-    const next1 = getNextWord(tokens, idx, 1);
-    const next2 = getNextWord(tokens, idx, 2);
-    const p1 = prev1 ? normKey(prev1) : "";
-    const p2 = prev2 ? normKey(prev2) : "";
-    const n1 = next1 ? normKey(next1) : "";
-    const n2 = next2 ? normKey(next2) : "";
-    if (p1 && ALWAYS_LATIN_TOKENS_STRICT.has(p1)) return true;
-    if (p2 && ALWAYS_LATIN_TOKENS_STRICT.has(p2)) return true;
-    if (n1 && ALWAYS_LATIN_TOKENS_STRICT.has(n1)) return true;
-    if (n2 && ALWAYS_LATIN_TOKENS_STRICT.has(n2)) return true;
-    if (prev1 && isAlphaNumModelToken(prev1)) return true;
-    if (next1 && isAlphaNumModelToken(next1)) return true;
-    if ((prev1 && isPureNumberToken(prev1)) || (next1 && isPureNumberToken(next1))) return false;
-    return false;
-}
-
-export function detectScript(text: string): "latin" | "cyrillic" {
-    return detectMajorityScript(text);
 }
 
 function applyCustomSubstitutions(text: string, subs?: Record<string, string>): string {
@@ -293,53 +116,82 @@ function applyCustomSubstitutions(text: string, subs?: Record<string, string>): 
 function applyDialect(text: string, dialect?: Dialect): string {
     if (!dialect || dialect === "none") return text;
     if (!wasmModule) return text;
-
     if (dialect === "ekavica_to_ijekavica" && !isDictLoaded.e2i) return text;
     if (dialect === "ijekavica_to_ekavica" && !isDictLoaded.i2e) return text;
-
     return wasmModule.convert_dialect(text, dialect);
+}
+
+export function detectScript(text: string): "latin" | "cyrillic" {
+    return detectMajorityScript(text);
 }
 
 function convertUnprotectedSegment(segment: string, toCyrillic: boolean, options?: CoreOptions): string {
     const userProtected = options?.userProtected ?? [];
     const protectBrands = options?.protectBrands !== false;
     const userProtectedLower = new Set(userProtected.map((w) => normKey(w)));
+
     const toks = tokenize(segment);
     let out = "";
+
+    let lastTokenWasProtected = false;
+
     for (let i = 0; i < toks.length; i++) {
         const t = toks[i];
-        if (!t) continue;
+
         if (t.type !== "word") {
             out += t.value;
-            continue;
-        }
-        const tok = t.value;
-        const tokLower = normKey(tok);
-        if (userProtectedLower.has(tokLower)) {
-            out += tok;
-            continue;
-        }
-        if (toCyrillic && shouldProtectRomanToken(toks, i)) {
-            out += tok;
-            continue;
-        }
-        if (protectBrands && ALWAYS_LATIN_TOKENS_STRICT.has(tokLower)) {
-            out += tok;
-            continue;
-        }
-        if (protectBrands && shouldProtectAmbiguousBrandToken(toks, i)) {
-            out += tok;
-            continue;
-        }
-        if (STRONG_FOREIGN.test(tok) || hasForeignLetter(tok) || isMixedCaseBrandy(tok) || isHashLike(tok)) {
-            out += tok;
+            if (t.value.trim().length > 0) {
+                lastTokenWasProtected = false;
+            }
             continue;
         }
 
-        if (wasmModule) {
-            out += toCyrillic ? wasmModule.to_cyrillic(tok) : wasmModule.to_latin(tok);
+        const tok = t.value;
+        const tokLower = normKey(tok);
+        let shouldProtect = false;
+        let isNeutral = false;
+
+        if (userProtectedLower.has(tokLower)) {
+            shouldProtect = true;
+        } else if (toCyrillic) {
+            const exc = checkException(tok);
+            if (exc) {
+                out += exc;
+                lastTokenWasProtected = false;
+                continue;
+            }
+
+            if (protectBrands) {
+                if (ALWAYS_LATIN_TOKENS_STRICT.has(tokLower)) {
+                    shouldProtect = true;
+                } else if (ALWAYS_LATIN_TOKENS_AMBIGUOUS.has(tokLower) && lastTokenWasProtected) {
+                    shouldProtect = true;
+                } else if (isForeignWord(tok)) {
+                    shouldProtect = true;
+                } else if (isRomanNumeral(tok)) {
+                    shouldProtect = true;
+                } else if (isHashLike(tok)) {
+                    shouldProtect = true;
+                } else if (/^\d+$/.test(tok)) {
+                    isNeutral = true;
+                }
+            }
+        }
+
+        if (shouldProtect) {
+            out += tok;
+            lastTokenWasProtected = true;
         } else {
-            out += toCyrillic ? latinToCyrillic(tok) : cyrillicToLatin(tok);
+            if (isNeutral) {
+                out += tok;
+            } else {
+                if (wasmModule) {
+                    out += toCyrillic ? wasmModule.to_cyrillic(tok) : wasmModule.to_latin(tok);
+                } else {
+                    out += toCyrillic ? latinToCyrillic(tok) : cyrillicToLatin(tok);
+                }
+                lastTokenWasProtected = false;
+            }
         }
     }
     return out;
@@ -370,22 +222,34 @@ export function convertPlainText(
         toCyr = false;
         label = "Ćir → Lat";
     }
+
+    let processedText = text.normalize("NFC");
+
+    if (toCyr) {
+        processedText = applyGrammarCorrections(processedText);
+    }
+
     const userProtectedPhrases = userProtected.filter((x) => /\s/.test(x));
-    const protectedRanges = collectProtectedRanges(text, {
+
+    const protectedRanges = collectProtectedRanges(processedText, {
         protectBrands,
         brandPhrases: protectBrands ? ALWAYS_LATIN_PHRASES : [],
         userProtectedPhrases,
         preserveCodeBlocks,
         curlyProtection,
     });
-    const parts = splitByRanges(text, protectedRanges);
+
+    const parts = splitByRanges(processedText, protectedRanges);
     const outParts: string[] = [];
+
     for (const part of parts) {
         if (part.protected) {
             outParts.push(part.text);
             continue;
         }
-        let seg = part.text.normalize("NFC");
+
+        let seg = part.text;
+
         if (toCyr) seg = applyPreCorrectionsLatToCyr(seg);
 
         if (options?.dialect && options.dialect !== "none") {
@@ -393,13 +257,17 @@ export function convertPlainText(
         }
 
         seg = convertUnprotectedSegment(seg, toCyr, options);
+
         if (toCyr && options?.applySerbianQuotes !== false) {
             seg = fixSerbianQuotes(seg);
         }
+
         if (options?.customSubstitutions) {
             seg = applyCustomSubstitutions(seg, options.customSubstitutions);
         }
+
         outParts.push(seg);
     }
+
     return { text: outParts.join(""), type: label };
 }

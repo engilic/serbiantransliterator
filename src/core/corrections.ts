@@ -1,14 +1,64 @@
+// src/core/corrections.ts
+
+// Helper za očuvanje velikog slova
 function preserveFirstLetterCase(input: string, replacement: string): string {
     if (!input) return replacement;
-
     const firstChar = input[0];
     if (!firstChar) return replacement;
-
-    const firstReplChar = replacement[0];
-    if (!firstReplChar) return replacement;
-
     const isUpper = firstChar === firstChar.toUpperCase();
-    return isUpper ? firstReplChar.toUpperCase() + replacement.slice(1) : replacement;
+    return isUpper ? replacement.charAt(0).toUpperCase() + replacement.slice(1) : replacement;
+}
+
+// 1. NEGACIJE (glagoli se pišu odvojeno)
+const NEGATIONS_MAP: Record<string, string> = {
+    neznam: "ne znam",
+    nemogu: "ne mogu",
+    neželim: "ne želim",
+    nevolim: "ne volim",
+    neradim: "ne radim",
+    neverujem: "ne verujem",
+    nevidim: "ne vidim",
+    nebi: "ne bi",
+    nebih: "ne bih",
+    nebismo: "ne bismo",
+    nebiste: "ne biste",
+    sumlja: "sumnja", // česta greška
+    hvali: "fali", // česta greška (kad znači nedostaje)
+};
+
+// 2. FUTUR I (spojeno vs odvojeno)
+// Pravilo: ako se infinitiv završava na -ći, piše se odvojeno od ću/ćeš/će.
+const FUTURE_RE = /\b([a-zčćđšž]+ći)(ću|ćeš|će|ćemo|ćete|će)\b/gi;
+
+// 3. SUPERLATIV (uvek spojeno)
+const SUPERLATIVE_RE = /\b(naj)\s+([a-zčćđšž]+)\b/gi;
+
+export function applyGrammarCorrections(text: string): string {
+    let out = text;
+
+    // 1. Negacije i česte greške
+    const negKeys = Object.keys(NEGATIONS_MAP).join("|");
+    const negRe = new RegExp(`\\b(${negKeys})\\b`, "gi");
+
+    out = out.replace(negRe, (match) => {
+        const lower = match.toLowerCase();
+        const repl = NEGATIONS_MAP[lower];
+        if (repl) return preserveFirstLetterCase(match, repl);
+        return match;
+    });
+
+    // 2. Futur (doćiću -> doći ću)
+    out = out.replace(FUTURE_RE, (_m, inf, suf) => {
+        return `${inf} ${suf}`;
+    });
+
+    // 3. Superlativ (naj bolji -> najbolji)
+    out = out.replace(SUPERLATIVE_RE, (_m, prefix, adj) => {
+        // prefix je "naj", adj je "bolji"
+        return `${prefix}${adj.toLowerCase()}`;
+    });
+
+    return out;
 }
 
 export function applyPreCorrectionsLatToCyr(segment: string): string {
@@ -31,23 +81,6 @@ export function applyPreCorrectionsLatToCyr(segment: string): string {
         const repl = savaMap[phrase];
         if (!repl) continue;
         text = text.replace(new RegExp(phrase, "gi"), (m) => preserveFirstLetterCase(m, repl));
-    }
-
-    // “nj” nije uvek digraf (injekcija, konjunkcija…)
-    // “dž” nije uvek digraf (nadživeti, podžanr…)
-    const exceptions = [
-        { l: "injekc", c: "инјекц" },
-        { l: "injekt", c: "инјект" },
-        { l: "konjug", c: "конјуг" },
-        { l: "konjunk", c: "конјунк" },
-        { l: "anjon", c: "анјон" },
-        { l: "katjon", c: "катјон" },
-        { l: "nadživ", c: "наджив" },
-        { l: "podžanr", c: "поджанр" },
-    ];
-
-    for (const p of exceptions) {
-        text = text.replace(new RegExp(p.l, "gi"), (m) => preserveFirstLetterCase(m, p.c));
     }
 
     return text;

@@ -3,13 +3,15 @@
   "type": "module",
   "version": "0.1.0",
   "files": [
-    "serbian_transliterator_wasm_bg.wasm",
-    "serbian_transliterator_wasm.js",
-    "serbian_transliterator_wasm.d.ts"
+    "index_bg.wasm",
+    "index.js",
+    "index_bg.js",
+    "index.d.ts"
   ],
-  "main": "serbian_transliterator_wasm.js",
-  "types": "serbian_transliterator_wasm.d.ts",
+  "main": "index.js",
+  "types": "index.d.ts",
   "sideEffects": [
+    "./index.js",
     "./snippets/*"
   ]
 }

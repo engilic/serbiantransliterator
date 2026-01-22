@@ -1,15 +1,11 @@
 /* tslint:disable */
 /* eslint-disable */
 
-export function apply_grammar(text: string): string;
-
 export function convert_dialect(text: string, mode: string): string;
 
 export function load_dictionary(mode: string, json_data: string): void;
 
 export function load_dictionary_bin(mode: string, bin_data: Uint8Array): void;
-
-export function load_grammar_rules_bin(bin_data: Uint8Array): void;
 
 export function to_cyrillic(text: string): string;
 
@@ -19,11 +15,9 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
-    readonly apply_grammar: (a: number, b: number, c: number) => void;
     readonly convert_dialect: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly load_dictionary: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly load_dictionary_bin: (a: number, b: number, c: number, d: number, e: number) => void;
-    readonly load_grammar_rules_bin: (a: number, b: number, c: number) => void;
     readonly to_cyrillic: (a: number, b: number, c: number) => void;
     readonly to_latin: (a: number, b: number, c: number) => void;
     readonly __wbindgen_add_to_stack_pointer: (a: number) => number;

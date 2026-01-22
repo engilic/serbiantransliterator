@@ -1,11 +1,9 @@
 /* tslint:disable */
 /* eslint-disable */
 export const memory: WebAssembly.Memory;
-export const apply_grammar: (a: number, b: number, c: number) => void;
 export const convert_dialect: (a: number, b: number, c: number, d: number, e: number) => void;
 export const load_dictionary: (a: number, b: number, c: number, d: number, e: number) => void;
 export const load_dictionary_bin: (a: number, b: number, c: number, d: number, e: number) => void;
-export const load_grammar_rules_bin: (a: number, b: number, c: number) => void;
 export const to_cyrillic: (a: number, b: number, c: number) => void;
 export const to_latin: (a: number, b: number, c: number) => void;
 export const __wbindgen_add_to_stack_pointer: (a: number) => number;

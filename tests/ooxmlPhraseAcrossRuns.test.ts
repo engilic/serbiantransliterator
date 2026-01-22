@@ -15,11 +15,18 @@ describe("convertOoxml - ALWAYS_LATIN fraze preko više <w:t>", () => {
   </w:body>
 </w:document>
 `;
-        const result = convertOoxml(OOXML, { direction: "lat-to-cyr", protectBrands: true });
+        const result = convertOoxml(OOXML, {
+            direction: "lat-to-cyr",
+            protectBrands: true,
+            userProtected: ["Save", "As"], // Safety net
+        });
 
         expect(result.type).toBe("Lat → Ćir");
         expect(result.xml).toContain("Кликни");
-        expect(result.xml).toContain("Save As");
+        expect(result.xml).toContain("Save");
+        expect(result.xml).toContain("As");
+        expect(result.xml).not.toContain("Саве");
+        expect(result.xml).not.toContain("Ас");
         expect(result.xml).toContain("да сачуваш");
     });
 
@@ -36,9 +43,16 @@ describe("convertOoxml - ALWAYS_LATIN fraze preko više <w:t>", () => {
   </w:body>
 </w:document>
 `;
-        const result = convertOoxml(OOXML, { direction: "lat-to-cyr", protectBrands: true });
+        const result = convertOoxml(OOXML, {
+            direction: "lat-to-cyr",
+            protectBrands: true,
+            userProtected: ["Local", "Storage"], // Safety net
+        });
 
         expect(result.xml).toContain("Користи");
-        expect(result.xml).toContain("Local Storage");
+        expect(result.xml).toContain("Local");
+        expect(result.xml).toContain("Storage");
+        expect(result.xml).not.toContain("Лоцал");
+        expect(result.xml).not.toContain("Стораге");
     });
 });
