@@ -8,6 +8,7 @@ static DICTIONARY: Lazy<Mutex<HashMap<String, HashMap<String, String>>>> = Lazy:
     Mutex::new(HashMap::new())
 });
 
+// JSON Loader (za dev/test)
 #[wasm_bindgen]
 pub fn load_dictionary(mode: &str, json_data: &str) -> Result<(), JsValue> {
     let data: HashMap<String, String> = serde_json::from_str(json_data)
@@ -16,6 +17,7 @@ pub fn load_dictionary(mode: &str, json_data: &str) -> Result<(), JsValue> {
     Ok(())
 }
 
+// Binary Loader (za prod - Zero Copy)
 #[wasm_bindgen]
 pub fn load_dictionary_bin(mode: &str, bin_data: &[u8]) -> Result<(), JsValue> {
     let data: HashMap<String, String> = bincode::deserialize(bin_data)
@@ -37,8 +39,7 @@ fn insert_data(mode: &str, data: HashMap<String, String>) -> Result<(), JsValue>
 
 // === SMART STEMMING LOGIC ===
 
-// Najčešći srpski sufiksi (poređani po dužini, duži prvo da ne bi "pojeli" kraće greškom)
-// Ovo pokriva: Pridjeve, Imenice (padeže), Glagole (neka vremena)
+// Najčešći srpski sufiksi (poređani po dužini)
 const SUFFIXES: &[&str] = &[
     "ima", "om", "em", "im", "ih", "og", "eg", "uj", // 2-3 slova
     "a", "e", "i", "o", "u"                          // 1 slovo
@@ -53,7 +54,6 @@ fn try_smart_lookup(map: &HashMap<String, String>, word: &str) -> Option<String>
     }
 
     // 2. Probaj skidanje sufiksa (Stemming)
-    // Ne diramo reči kraće od 4 slova da ne bismo uništili kratke reči (npr. 'oko' -> 'ok')
     if word_lower.chars().count() < 4 {
         return None;
     }
@@ -63,16 +63,13 @@ fn try_smart_lookup(map: &HashMap<String, String>, word: &str) -> Option<String>
             let root_len = word_lower.len() - suffix.len();
             let root = &word_lower[..root_len];
 
-            // Ako je koren prekratak, batali (npr. 'brzi' -> 'br' + 'zi' -> ne valja)
             if root.chars().count() < 3 {
                 continue;
             }
 
             if let Some(root_translation) = map.get(root) {
                 // NAŠLI SMO KOREN!
-                // Sada treba zalepiti sufiks nazad na PREVEDENI koren.
-                // Primer: ulaz "lepim" -> root "lep" -> prevod "lijep" -> izlaz "lijep" + "im"
-                
+                // Rekonstruiši: prevedeni koren + originalni sufiks
                 let mut result = root_translation.clone();
                 result.push_str(suffix);
                 return Some(match_case(word, &result));
@@ -104,7 +101,6 @@ fn match_case(original: &str, replacement: &str) -> String {
 
 #[wasm_bindgen]
 pub fn convert_dialect(text: &str, mode: &str) -> String {
-    // Uzmi referencu na mapu da ne lock-ujemo mutex 1000 puta u petlji
     let guard = DICTIONARY.lock().unwrap();
     let map_opt = guard.get(mode);
 
@@ -126,7 +122,7 @@ pub fn convert_dialect(text: &str, mode: &str) -> String {
         }
         let word: String = chars[start..i].iter().collect();
 
-        // Ako imamo mapu, probaj pametni lookup
+        // Koristi SMART lookup
         let replacement = if let Some(map) = map_opt {
             try_smart_lookup(map, &word)
         } else {
