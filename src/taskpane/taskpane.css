@@ -676,13 +676,10 @@ button:active:not(:disabled) {
     overflow-y: auto;
 }
 
-/* === VISION 2026: NATIVE VIRTUALIZATION === */
-/* Ključna klasa za performanse na 500+ strana */
 .preview-block {
     content-visibility: auto;
-    contain-intrinsic-size: 80px; /* Aproksimacija visine bloka */
+    contain-intrinsic-size: 80px;
     contain: layout paint style;
-    /* Mali razmak da se vizuelno odvoje blokovi učitavanja */
     border-bottom: 1px dashed rgba(0, 0, 0, 0.05);
     padding-bottom: 2px;
     margin-bottom: 2px;
@@ -693,7 +690,7 @@ button:active:not(:disabled) {
 }
 
 .diff-changed {
-    background-color: #fff4ce; /* light yellow */
+    background-color: #fff4ce;
     border-bottom: 2px solid #fce100;
     color: #000;
     padding: 0 1px;
@@ -754,7 +751,7 @@ button:active:not(:disabled) {
     background-color: #f0f8ff;
 }
 
-/* NEW: Custom Subs UI */
+/* Custom Subs UI */
 .subs-add-row {
     display: flex;
     align-items: center;
@@ -771,7 +768,7 @@ button:active:not(:disabled) {
     background: var(--input-bg);
     color: var(--text-color);
     font-size: 13px;
-    min-width: 0; /* fix flex overflow */
+    min-width: 0;
 }
 
 .arrow {
@@ -946,7 +943,7 @@ button:active:not(:disabled) {
     min-width: 120px;
 }
 
-/* ===== Always-visible language picker (under main buttons) ===== */
+/* Language picker */
 .lang-row {
     display: flex;
     align-items: flex-start;
@@ -1010,7 +1007,7 @@ button:active:not(:disabled) {
     box-shadow: 0 0 2px rgba(0, 0, 0, 0.2);
 }
 
-/* Rejected (Ignored) Diff States */
+/* Rejected Diff States */
 .diff-added.diff-rejected {
     background-color: transparent;
     border-color: transparent;
@@ -1020,15 +1017,13 @@ button:active:not(:disabled) {
 }
 
 .diff-removed.diff-rejected {
-    /* Rejected deletion means "Keep original" */
     background-color: transparent;
     border-color: transparent;
     color: var(--text-color);
     text-decoration: none;
-    border-bottom: 2px solid var(--success-color); /* Indicator that it's kept */
+    border-bottom: 2px solid var(--success-color);
 }
 
-/* Dark mode adjustments */
 @media (prefers-color-scheme: dark) {
     .diff-added.diff-rejected {
         color: #666;
@@ -1046,7 +1041,7 @@ button:active:not(:disabled) {
     background-color: var(--neutral-light);
     border-radius: 2px;
     overflow: hidden;
-    margin-bottom: 8px; /* Razmak od status poruke */
+    margin-bottom: 8px;
 }
 
 .progress-bar {
@@ -1054,4 +1049,93 @@ button:active:not(:disabled) {
     background-color: var(--success-color);
     width: 0%;
     transition: width 0.3s ease-out;
+}
+
+/* === ONBOARDING TOUR === */
+.tour-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(3px);
+    z-index: 2000; /* Iznad svega */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.tour-card {
+    background: var(--bg-color);
+    width: 90%;
+    max-width: 360px;
+    padding: 24px;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    text-align: center;
+    position: relative;
+    border: 1px solid var(--border-color);
+}
+
+.tour-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: transparent;
+    border: none;
+    font-size: 20px;
+    color: var(--disabled-text);
+    cursor: pointer;
+}
+
+.tour-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    display: block;
+}
+
+.tour-card h3 {
+    margin: 0 0 12px 0;
+    color: var(--primary-color);
+    font-size: 20px;
+}
+
+.tour-card p {
+    margin: 0 0 24px 0;
+    color: var(--text-color);
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.tour-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 20px;
+}
+
+.tour-dots {
+    display: flex;
+    gap: 6px;
+}
+
+.dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--border-color);
+    transition: background-color 0.2s;
+}
+
+.dot.active {
+    background-color: var(--primary-color);
+    transform: scale(1.2);
+}
+
+@media (prefers-color-scheme: dark) {
+    .tour-card {
+        background: var(--neutral-light);
+    }
 }
