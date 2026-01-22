@@ -244,7 +244,6 @@
 
                     <div class="hint" data-i18n="opt_format_dates_hint"></div>
 
-                    <!-- NEW: Dialect -->
                     <div class="field-row" style="margin-top: 15px">
                         <div class="field-label" data-i18n="opt_dialect_label"></div>
                         <select id="optDialect" data-i18n-attr="aria-label:opt_dialect_aria">
@@ -254,7 +253,6 @@
                         </select>
                     </div>
 
-                    <!-- NEW: Custom Subs UI -->
                     <div class="field-row" style="margin-top: 15px">
                         <div class="field-label" data-i18n="opt_custom_subs_label"></div>
 
@@ -278,11 +276,9 @@
 
                         <!-- List -->
                         <div id="subsContainer" class="subs-container">
-                            <!-- Items will be injected here via JS -->
                             <div class="subs-empty hint" data-i18n="subs_list_empty"></div>
                         </div>
 
-                        <!-- Hidden textarea for storage persistence compatibility -->
                         <textarea id="optCustomSubstitutions" style="display: none"></textarea>
                     </div>
                 </div>
@@ -383,7 +379,6 @@
                 <div class="hint" data-i18n="tags_hint"></div>
             </div>
 
-            <!-- PROGRESS BAR CONTAINER -->
             <div id="progressContainer" class="progress-container" style="display: none">
                 <div id="progressBar" class="progress-bar"></div>
             </div>
@@ -416,6 +411,34 @@
                 <div class="modal-actions">
                     <button id="modalCancel" type="button"></button>
                     <button id="modalOk" class="btn-primary" type="button"></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ONBOARDING TOUR OVERLAY -->
+        <div id="tourOverlay" class="tour-overlay" style="display: none">
+            <div class="tour-card">
+                <!-- Koristimo data-i18n-attr za title -->
+                <button
+                    id="tourCloseBtn"
+                    class="tour-close"
+                    data-i18n-attr="title:btn_close"
+                    aria-hidden="true"
+                >
+                    ×
+                </button>
+
+                <div class="tour-image">
+                    <!-- Emoji je OK, skripta se žalila na kontekst oko njega -->
+                    <div id="tourIcon" class="tour-icon">👋</div>
+                </div>
+
+                <h3 id="tourTitle"></h3>
+                <p id="tourText"></p>
+
+                <div class="tour-footer">
+                    <div class="tour-dots" id="tourDots"></div>
+                    <button id="tourActionBtn" class="btn-primary"></button>
                 </div>
             </div>
         </div>

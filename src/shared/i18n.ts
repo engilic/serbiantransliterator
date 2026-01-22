@@ -89,7 +89,7 @@ const SR_RS = {
     opt_format_dates: "Formatiraj datume (npr. 21.10.2023.)",
     opt_format_dates_hint: "Ova opcija menja sadržaj (nije samo preslovljavanje).",
 
-    // CUSTOM SUBS UI KEYS (Fixed missing keys)
+    // CUSTOM SUBS UI KEYS
     opt_custom_subs_label: "Custom Substitutions (Izvor -> Cilj)",
     opt_custom_subs_placeholder: "vreme -> vrijeme\nlepo -> lijepo",
     opt_custom_subs_hint: "Jedno pravilo po liniji. Primenjuje se na kraju.",
@@ -232,6 +232,20 @@ const SR_RS = {
     error_selection_lost: "Selekcija je izgubljena. Molimo selektujte ponovo.",
     perf_slow_operation: "Operacija traje duže od očekivanog...",
     perf_very_slow_warning: "Obrada je veoma spora. Razmislite o podeli dokumenta.",
+
+    // ONBOARDING
+    tour_skip: "Preskoči",
+    tour_next: "Dalje",
+    tour_finish: "Kreni!",
+    tour_step1_title: "Dobrodošli! 👋",
+    tour_step1_text:
+        "Izaberite <b>Profil</b> (npr. IT, Pravo) da automatski zaštitite stručne termine od prevođenja.",
+    tour_step2_title: "Vaše Reči 🛡️",
+    tour_step2_text:
+        "Imena firmi i specifične reči dodajte u <b>Zaštićeno</b>. One će uvek ostati u originalnom pismu.",
+    tour_step3_title: "Pregled pre Primene 👁️",
+    tour_step3_text:
+        "Koristite dugme <b>PREGLED</b> da vidite i izaberete izmene pre nego što ih primenite u dokumentu.",
 };
 
 // =========================
@@ -294,7 +308,7 @@ const EN_US: Record<TranslationKey, string> = {
     opt_format_dates: "Format dates (e.g. 21.10.2023.)",
     opt_format_dates_hint: "This option changes content (not just transliteration).",
 
-    // CUSTOM SUBS (Fixed missing keys)
+    // CUSTOM SUBS
     opt_custom_subs_label: "Custom Substitutions (Source -> Dest)",
     opt_custom_subs_placeholder: "vreme -> vrijeme\nlepo -> lijepo",
     opt_custom_subs_hint: "One rule per line. Applied last.",
@@ -437,6 +451,20 @@ const EN_US: Record<TranslationKey, string> = {
     error_selection_lost: "Selection lost. Please select again.",
     perf_slow_operation: "Operation is taking longer than expected...",
     perf_very_slow_warning: "Processing is very slow. Consider splitting the document.",
+
+    // ONBOARDING
+    tour_skip: "Skip",
+    tour_next: "Next",
+    tour_finish: "Let's go!",
+    tour_step1_title: "Welcome! 👋",
+    tour_step1_text:
+        "Choose a <b>Profile</b> (e.g. IT, Legal) to automatically protect technical terms from transliteration.",
+    tour_step2_title: "Your Words 🛡️",
+    tour_step2_text:
+        "Add company names and specific words to <b>Protected</b>. They will always remain in the original script.",
+    tour_step3_title: "Preview First 👁️",
+    tour_step3_text:
+        "Use the <b>PREVIEW</b> button to inspect and select changes before applying them to the document.",
 };
 
 // Mapa svih prevoda

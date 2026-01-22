@@ -8,8 +8,9 @@ import { runWithUiLock } from "./uiLock";
 import { runSmart } from "./word/apply";
 import { closeModal } from "./modal/modal";
 import { modalManager } from "./modal/modalManager";
-import { logger } from "./telemetry/logger"; // NEW
-import { showPreviewToast } from "./modal/previewModal"; // Koristimo toast da javimo useru
+import { logger } from "./telemetry/logger";
+import { showPreviewToast } from "./modal/previewModal";
+import { initOnboarding } from "./onboarding/tour"; // <--- NOVI IMPORT
 
 export function initTaskpane() {
     // 1) UI init (settings load + bind dugmad + tags + listeners)
@@ -38,6 +39,9 @@ export function initTaskpane() {
     window.addEventListener("beforeunload", () => {
         cleanupEventHandlers();
     });
+
+    // 7) Start Onboarding (ako nije viđen)
+    initOnboarding(); // <--- POKREĆEMO TOUR
 }
 
 function setupKeyboardShortcuts() {
