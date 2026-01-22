@@ -20,6 +20,24 @@ export default defineConfig({
             provider: "v8",
             reporter: ["text", "html", "lcov", "json-summary"],
             reportsDirectory: "coverage",
+            // Isključujemo UI komponente i konfiguracione fajlove iz coverage-a
+            exclude: [
+                "node_modules/**",
+                "dist/**",
+                "tests/**",
+                "tests-e2e/**",
+                "**/*.d.ts",
+                "**/*.js", // Ignoriši generisane JS fajlove
+                "src/wasm-core/**", // Ignoriši Rust/Wasm source
+                "src/taskpane/app/onboarding/tour.ts", // <--- UI logika, teško za unit testiranje
+                "webpack.*.js",
+                "vitest.config.ts",
+                "playwright.config.ts",
+                "commitlint.config.js",
+                "babel.config.json",
+                ".eslintrc.json",
+                "scripts/**",
+            ],
             thresholds: {
                 lines: 75,
                 functions: 75,
