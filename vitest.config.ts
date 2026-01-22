@@ -28,7 +28,10 @@ export default defineConfig({
                 "**/*.d.ts",
                 "**/*.js",
                 "src/wasm-core/**",
-                "src/taskpane/app/onboarding/tour.ts", // <--- OVO MORA BITI TU
+                "src/taskpane/app/onboarding/tour.ts",
+                // === NOVO: ISKLJUČI WEB BATCH MODE ===
+                "src/taskpane/app/web/**",
+                // ===================================
                 "webpack.*.js",
                 "vitest.config.ts",
                 "playwright.config.ts",

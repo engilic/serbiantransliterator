@@ -15,13 +15,12 @@ const STEPS = [
 
 let currentStep = 0;
 
+// OVO MORA DA IMA EXPORT
 export function initOnboarding() {
-    // Proveri da li je korisnik već video tour
     if (safeGetItem(STORAGE_KEY) === "true") {
         return;
     }
 
-    // Sačekaj malo da se UI učita pre nego što iskoči popup
     setTimeout(() => {
         showTour();
     }, 1000);
@@ -56,19 +55,16 @@ function renderStep() {
     const actionBtn = get<HTMLButtonElement>("tourActionBtn");
     const dotsContainer = get<HTMLDivElement>("tourDots");
 
-    // Postavi tekst (podržava HTML tagove kao <b>)
     titleEl.textContent = t(step.title as any);
     textEl.innerHTML = t(step.text as any);
     iconEl.textContent = step.icon;
 
-    // Dugme tekst
     if (currentStep === STEPS.length - 1) {
         actionBtn.textContent = t("tour_finish");
     } else {
         actionBtn.textContent = t("tour_next");
     }
 
-    // Render dots
     dotsContainer.innerHTML = "";
     STEPS.forEach((_, idx) => {
         const dot = document.createElement("div");
