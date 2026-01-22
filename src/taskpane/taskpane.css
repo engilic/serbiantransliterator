@@ -676,6 +676,18 @@ button:active:not(:disabled) {
     overflow-y: auto;
 }
 
+/* === VISION 2026: NATIVE VIRTUALIZATION === */
+/* Ključna klasa za performanse na 500+ strana */
+.preview-block {
+    content-visibility: auto;
+    contain-intrinsic-size: 80px; /* Aproksimacija visine bloka */
+    contain: layout paint style;
+    /* Mali razmak da se vizuelno odvoje blokovi učitavanja */
+    border-bottom: 1px dashed rgba(0, 0, 0, 0.05);
+    padding-bottom: 2px;
+    margin-bottom: 2px;
+}
+
 .preview-single-pane {
     height: 100%;
 }
