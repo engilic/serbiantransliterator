@@ -16,9 +16,8 @@
             <div class="sk-line" style="width: 70%"></div>
         </div>
 
-        <% const fs = require('fs'); const path = require('path'); // Koristimo process.cwd() koji pokazuje na
-        root projekta gde je webpack.config.js const root = process.cwd(); const resolve = (p) =>
-        path.join(root, 'src', 'taskpane', p); %> <%=
+        <% const fs = require('fs'); const path = require('path'); const root = process.cwd(); const resolve =
+        (p) => path.join(root, 'src', 'taskpane', p); %> <%=
         fs.readFileSync(resolve('components/header/header.html')) %>
 
         <main id="appMain" role="main" style="display: none">
