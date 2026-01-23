@@ -82,6 +82,7 @@
         "css-loader": "^7.1.2",
         "eslint": "^8.57.0",
         "eslint-plugin-office-addins": "^3.0.3",
+        "fast-check": "^4.5.3",
         "html-loader": "^5.1.0",
         "html-webpack-plugin": "^5.6.6",
         "http-server": "^14.1.1",
