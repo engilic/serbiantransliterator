@@ -1,5 +1,5 @@
 // src/taskpane/app/init.ts
-/* global Office, window, document */
+/* global Office, window, document, navigator */
 
 import { state } from "./state";
 import { initUi } from "./settings/ui";
@@ -12,6 +12,17 @@ import { logger } from "./telemetry/logger";
 import { showPreviewToast } from "./modal/previewModal";
 import { initOnboarding } from "./onboarding/tour";
 import { initWasm } from "../../core/textCore";
+
+function registerServiceWorker() {
+    if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+            navigator.serviceWorker
+                .register("./sw.js")
+                .then((reg) => console.log("SW registered: ", reg.scope))
+                .catch((err) => console.log("SW registration failed: ", err));
+        });
+    }
+}
 
 export function initTaskpane(isWebMode = false) {
     // 0) Global Error Handler (Telemetry Flight Recorder)
@@ -38,7 +49,7 @@ export function initTaskpane(isWebMode = false) {
     // 3) Pokreni učitavanje WASM-a (i rečnika) u pozadini
     initWasm().catch((e) => console.error("WASM init failed:", e));
 
-    // 4) Debug logs export (skriveni trigger na verziji)
+    // 4) Debug logs export
     setupDebugTrigger();
 
     // 5) Cleanup on unload
@@ -46,16 +57,18 @@ export function initTaskpane(isWebMode = false) {
         cleanupEventHandlers();
     });
 
-    // 6) Start Onboarding (ako nije viđen)
+    // 6) Start Onboarding
     try {
         initOnboarding();
     } catch (e) {
         console.warn("Onboarding failed to init", e);
     }
 
-    // === AKO JE WEB MODE, PRESKOČI OFFICE API POZIVE ===
+    // === AKO JE WEB MODE ===
     if (isWebMode) {
         console.log("Skipping Office API initialization for Web Mode");
+        // Registruj PWA Service Worker (Offline Support)
+        registerServiceWorker();
         return;
     }
 
@@ -79,7 +92,6 @@ export function initTaskpane(isWebMode = false) {
 }
 
 function setupKeyboardShortcuts() {
-    // ... (ostaje isto)
     document.addEventListener("keydown", (e) => {
         if (e.key === "Escape") {
             if (modalManager.isOpen()) {
@@ -99,7 +111,6 @@ function setupKeyboardShortcuts() {
 }
 
 function setupDebugTrigger() {
-    // ... (ostaje isto)
     const versionEl = document.querySelector(".version");
     if (!versionEl) return;
 
@@ -108,7 +119,7 @@ function setupDebugTrigger() {
         clicks++;
         if (clicks >= 5) {
             clicks = 0;
-            const logs = await logger.exportLogsFull(); // Koristimo novu full export funkciju
+            const logs = await logger.exportLogsFull();
             try {
                 await navigator.clipboard.writeText(logs);
                 showPreviewToast("Debug logs copied to clipboard!", "success", 3000);
@@ -120,7 +131,6 @@ function setupDebugTrigger() {
 }
 
 function cleanupEventHandlers() {
-    // ... (ostaje isto)
     if (state.selectionChangeHandler) {
         try {
             Office.context.document.removeHandlerAsync(Office.EventType.DocumentSelectionChanged, {

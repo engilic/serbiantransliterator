@@ -11,6 +11,7 @@ module.exports = {
         polyfill: ["core-js/stable", "regenerator-runtime/runtime"],
         taskpane: ["./src/taskpane/taskpane.ts"],
         commands: ["./src/commands/commands.ts"],
+        sw: "./src/sw.ts", // <--- PWA SERVICE WORKER
     },
     resolve: {
         extensions: [".ts", ".html", ".js"],
@@ -25,14 +26,6 @@ module.exports = {
                 use: "babel-loader",
                 exclude: /node_modules/,
             },
-            // UKLONJEN html-loader da bi <%= appVersion %> radilo
-            /*
-            {
-                test: /\.html$/,
-                use: "html-loader",
-                exclude: /node_modules/,
-            },
-            */
             {
                 test: /\.css$/i,
                 use: [MiniCssExtractPlugin.loader, "css-loader"],
@@ -59,7 +52,7 @@ module.exports = {
             template: "./src/taskpane/taskpane.html",
             chunks: ["polyfill", "taskpane"],
             templateParameters: {
-                appVersion: pkg.version, // Ovo se ubacuje u <%= appVersion %>
+                appVersion: pkg.version,
             },
             minify: {
                 collapseWhitespace: true,
@@ -86,6 +79,12 @@ module.exports = {
                 { from: "src/static/support.html", to: "support.html", noErrorOnMissing: true },
                 { from: "src/static/privacy.html", to: "privacy.html", noErrorOnMissing: true },
                 { from: "src/static/_headers", to: "_headers", toType: "file", noErrorOnMissing: true },
+                // PWA Manifest
+                {
+                    from: "src/static/manifest.webmanifest",
+                    to: "manifest.webmanifest",
+                    noErrorOnMissing: true,
+                },
             ],
         }),
         new WasmPackPlugin({
