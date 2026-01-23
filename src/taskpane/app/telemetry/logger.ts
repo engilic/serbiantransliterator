@@ -1,4 +1,5 @@
 // src/taskpane/app/telemetry/logger.ts
+import { addLog, getAllLogs } from "./db";
 
 export type LogLevel = "info" | "warn" | "error";
 
@@ -9,30 +10,27 @@ export interface LogEntry {
     data?: unknown;
 }
 
-/**
- * Logger that keeps the last N entries in memory (breadcrumbs)
- * to provide context when an error occurs.
- */
 export class BreadcrumbLogger {
-    private logs: LogEntry[] = [];
-    private readonly MAX_LOGS = 50;
+    // Čuvamo mali buffer u memoriji za trenutni prikaz/brzinu
+    private memoryLogs: LogEntry[] = [];
+    private readonly MAX_MEM_LOGS = 50;
 
     public info(message: string, data?: unknown) {
-        this.add("info", message, data);
+        this.emit("info", message, data);
         console.info(`[INFO] ${message}`, data || "");
     }
 
     public warn(message: string, data?: unknown) {
-        this.add("warn", message, data);
+        this.emit("warn", message, data);
         console.warn(`[WARN] ${message}`, data || "");
     }
 
     public error(message: string, error?: unknown) {
-        this.add("error", message, error);
+        this.emit("error", message, error);
         console.error(`[ERROR] ${message}`, error || "");
     }
 
-    private add(level: LogLevel, message: string, data?: unknown) {
+    private emit(level: LogLevel, message: string, data?: unknown) {
         const entry: LogEntry = {
             timestamp: Date.now(),
             level,
@@ -40,10 +38,14 @@ export class BreadcrumbLogger {
             data: this.serializeData(data),
         };
 
-        this.logs.push(entry);
-        if (this.logs.length > this.MAX_LOGS) {
-            this.logs.shift();
+        // 1. Memory Buffer
+        this.memoryLogs.push(entry);
+        if (this.memoryLogs.length > this.MAX_MEM_LOGS) {
+            this.memoryLogs.shift();
         }
+
+        // 2. Persistent Storage (Fire & Forget)
+        addLog(level, message, entry.data);
     }
 
     private serializeData(data: unknown): unknown {
@@ -55,7 +57,6 @@ export class BreadcrumbLogger {
             };
         }
         try {
-            // Simple circular reference protection could go here
             return JSON.parse(JSON.stringify(data));
         } catch {
             return String(data);
@@ -63,20 +64,38 @@ export class BreadcrumbLogger {
     }
 
     /**
-     * Export logs for bug reporting.
+     * Export all logs from DB (async)
      */
-    public exportLogs(): string {
-        return this.logs
-            .map((l) => {
-                const date = new Date(l.timestamp).toISOString();
-                const dataStr = l.data ? ` | ${JSON.stringify(l.data)}` : "";
-                return `[${date}] [${l.level.toUpperCase()}] ${l.message}${dataStr}`;
-            })
-            .join("\n");
+    public async exportLogsFull(): Promise<string> {
+        try {
+            const dbLogs = await getAllLogs();
+            if (!dbLogs || dbLogs.length === 0) {
+                return this.exportLogs(); // Fallback to memory logs
+            }
+
+            return dbLogs
+                .map((l) => {
+                    const date = new Date(l.timestamp).toISOString();
+                    const dataStr = l.data ? ` | ${JSON.stringify(l.data)}` : "";
+                    return `[${date}] [${l.level.toUpperCase()}] ${l.message}${dataStr}`;
+                })
+                .join("\n");
+        } catch (e) {
+            console.error("Failed to read DB logs", e);
+            return this.exportLogs();
+        }
     }
 
-    public clear() {
-        this.logs = [];
+    /**
+     * Export memory logs (sync fallback)
+     */
+    public exportLogs(): string {
+        return this.memoryLogs
+            .map(
+                (l) =>
+                    `[${new Date(l.timestamp).toISOString()}] ${l.message} ${l.data ? JSON.stringify(l.data) : ""}`
+            )
+            .join("\n");
     }
 }
 

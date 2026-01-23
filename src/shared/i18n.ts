@@ -1,34 +1,26 @@
 // src/shared/i18n.ts
 
+// ... (getSerbianPluralForm, getEnglishPluralForm, types ostaju isti) ...
+
 // Pomocne funkcije za srpsku gramatiku (jednina/dvojina/množina)
 function getSerbianPluralForm(n: number): "one" | "few" | "many" {
     const n100 = n % 100;
     const n10 = n % 10;
-
-    // 11-14 uvek množina (npr. 11 čvorova, 12 čvorova...)
     if (n100 >= 5 && n100 <= 20) return "many";
-    // 1 je jednina (npr. 1 čvor)
     if (n10 === 1) return "one";
-    // 2, 3, 4 su dvojina (npr. 2 čvora)
     if (n10 >= 2 && n10 <= 4) return "few";
-    // sve ostalo je množina (0, 5, 6...)
     return "many";
 }
 
 function getEnglishPluralForm(n: number): "one" | "many" {
-    // Engleski ima samo jedninu i množinu
     return n === 1 ? "one" : "many";
 }
 
 export type TranslationKey = keyof typeof SR_RS;
 export type Language = "sr" | "en";
 
-// Trenutni aktivni jezik (default je srpski)
 let currentLang: Language = "sr";
 
-// =========================
-// SRPSKI (Izvor)
-// =========================
 const SR_RS = {
     app_title: "Serbian Transliterator",
     ui_version_prefix: "v",
@@ -43,7 +35,7 @@ const SR_RS = {
     section_direction: "SMER",
     dir_auto: "Auto",
     dir_to_ascii: "Ošišana latinica",
-    dir_to_ascii_short: "ASCII Lat", // <--- NOVO
+    dir_to_ascii_short: "ASCII Lat",
     dir_lat_to_cyr: "Lat → Ćir",
     dir_cyr_to_lat: "Ćir → Lat",
     section_options: "OPCIJE",
@@ -70,14 +62,11 @@ const SR_RS = {
     opt_ui_language_en: "English",
     opt_ui_language_auto: "Auto (Office/browser)",
     opt_ui_language_hint: "Menja jezik UI-ja. Default je srpski. Auto prati Office/browser jezik.",
-
-    // THEME
     ui_theme_label: "Tema / Theme",
     ui_theme_aria: "Izbor teme",
     ui_theme_auto: "Auto",
     ui_theme_light: "Svetla ☀️",
     ui_theme_dark: "Tamna 🌙",
-
     opt_curly_label_before: "Zaštita ",
     opt_curly_label_after: " blokova",
     opt_curly_aria: "Zaštita vitičastih zagrada",
@@ -89,24 +78,19 @@ const SR_RS = {
     opt_set_proofing_language: "Postavi jezik provere (sr-Cyrl / sr-Latn)",
     opt_format_dates: "Formatiraj datume (npr. 21.10.2023.)",
     opt_format_dates_hint: "Ova opcija menja sadržaj (nije samo preslovljavanje).",
-
-    // CUSTOM SUBS UI KEYS
     opt_custom_subs_label: "Custom Substitutions (Izvor -> Cilj)",
     opt_custom_subs_placeholder: "vreme -> vrijeme\nlepo -> lijepo",
     opt_custom_subs_hint: "Jedno pravilo po liniji. Primenjuje se na kraju.",
     subs_list_empty: "Nema definisanih zamena.",
     subs_input_src: "Izvor (npr. lepo)",
     subs_input_dest: "Cilj (npr. lijepo)",
-    subs_input_src_short: "izvor", // <--- NOVO
-    subs_input_dest_short: "cilj", // <--- NOVO
-
-    // DIALECT
+    subs_input_src_short: "izvor",
+    subs_input_dest_short: "cilj",
     opt_dialect_label: "Dijalekt / Pismo",
     opt_dialect_aria: "Izbor dijalekta",
     opt_dialect_none: "Samo preslovljavanje (Standard)",
     opt_dialect_ei: "Ekavica → Ijekavica (beta)",
     opt_dialect_ie: "Ijekavica → Ekavica (beta)",
-
     section_protected: "ZAŠTIĆENO",
     btn_add_word_title: "Dodaj reč",
     btn_clear_custom: "Moje",
@@ -249,11 +233,12 @@ const SR_RS = {
     tour_step3_title: "Pregled pre Primene 👁️",
     tour_step3_text:
         "Koristite dugme <b>PREGLED</b> da vidite i izaberete izmene pre nego što ih primenite u dokumentu.",
+
+    // NOVI KLJUČEVI ZA SUPPORT
+    lbl_support: "Podrška",
+    btn_export_logs: "Sačuvaj logove (Debug)",
 };
 
-// =========================
-// ENGLESKI (Prevod)
-// =========================
 const EN_US: Record<TranslationKey, string> = {
     app_title: "Serbian Transliterator",
     ui_version_prefix: "v",
@@ -268,7 +253,7 @@ const EN_US: Record<TranslationKey, string> = {
     section_direction: "DIRECTION",
     dir_auto: "Auto",
     dir_to_ascii: "ASCII Latin",
-    dir_to_ascii_short: "ASCII Lat", // <--- NOVO
+    dir_to_ascii_short: "ASCII Lat",
     dir_lat_to_cyr: "Lat → Cyr",
     dir_cyr_to_lat: "Cyr → Lat",
     section_options: "OPTIONS",
@@ -311,24 +296,19 @@ const EN_US: Record<TranslationKey, string> = {
     opt_set_proofing_language: "Set proofing language (sr-Cyrl / sr-Latn)",
     opt_format_dates: "Format dates (e.g. 21.10.2023.)",
     opt_format_dates_hint: "This option changes content (not just transliteration).",
-
-    // CUSTOM SUBS
     opt_custom_subs_label: "Custom Substitutions (Source -> Dest)",
     opt_custom_subs_placeholder: "vreme -> vrijeme\nlepo -> lijepo",
     opt_custom_subs_hint: "One rule per line. Applied last.",
     subs_list_empty: "No substitutions defined.",
     subs_input_src: "Source (e.g. lepo)",
     subs_input_dest: "Dest (e.g. lijepo)",
-    subs_input_src_short: "src", // <--- NOVO
-    subs_input_dest_short: "dest", // <--- NOVO
-
-    // DIALECT
+    subs_input_src_short: "src",
+    subs_input_dest_short: "dest",
     opt_dialect_label: "Dialect / Script",
     opt_dialect_aria: "Dialect selection",
     opt_dialect_none: "Transliteration only (Standard)",
     opt_dialect_ei: "Ekavica → Ijekavica (beta)",
     opt_dialect_ie: "Ijekavica → Ekavica (beta)",
-
     section_protected: "PROTECTED",
     btn_add_word_title: "Add word",
     btn_clear_custom: "Mine",
@@ -471,9 +451,12 @@ const EN_US: Record<TranslationKey, string> = {
     tour_step3_title: "Preview First 👁️",
     tour_step3_text:
         "Use the <b>PREVIEW</b> button to inspect and select changes before applying them to the document.",
+
+    // SUPPORT
+    lbl_support: "Support",
+    btn_export_logs: "Save logs (Debug)",
 };
 
-// Mapa svih prevoda
 const TRANSLATIONS: Record<Language, typeof SR_RS> = {
     sr: SR_RS,
     en: EN_US,
@@ -489,10 +472,6 @@ export function getLanguage(): Language {
     return currentLang;
 }
 
-/**
- * Glavna funkcija za prevod.
- * Primer: t("status_done_selection", type, time)
- */
 export function t(key: TranslationKey, ...args: (string | number)[]): string {
     const dict = TRANSLATIONS[currentLang] || SR_RS;
     let str = dict[key] || SR_RS[key] || key;
@@ -506,11 +485,6 @@ export function t(key: TranslationKey, ...args: (string | number)[]): string {
     return str;
 }
 
-/**
- * Funkcija za pluralizaciju (npr. statistika čvorova).
- * Koristi specifične ključeve iz rečnika (npr. stats_line_nodes_changed_one)
- * ili se vraća na osnovni ključ ako specifični ne postoji.
- */
 export function tPlural(key: TranslationKey, count: number): string {
     const dict = TRANSLATIONS[currentLang] || SR_RS;
 
@@ -524,15 +498,9 @@ export function tPlural(key: TranslationKey, count: number): string {
         if (dict[specificKey]) return t(specificKey, count);
     }
 
-    // Fallback: ako nema specifičnog prevoda za plural formu, koristi osnovni ključ
-    // i pokušaj da zameni {0} sa brojem.
     return t(key, count);
 }
 
-/**
- * Runtime + type-guard: proveri da li je proizvoljan string validan TranslationKey.
- * Koristi se za data-i18n/data-i18n-attr input iz DOM-a (string).
- */
 export function isTranslationKey(k: string): k is TranslationKey {
     return Object.prototype.hasOwnProperty.call(SR_RS, k);
 }
