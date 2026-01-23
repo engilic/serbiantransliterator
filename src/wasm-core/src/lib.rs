@@ -9,6 +9,7 @@ use aho_corasick::AhoCorasick;
 struct DictionaryStore {
     fst: Map<Vec<u8>>,
     values: Vec<u8>,
+    suffixes: Vec<String>, // Dinamički sufiksi učitani iz binara
 }
 
 static DICTIONARIES: Lazy<Mutex<HashMap<String, DictionaryStore>>> = Lazy::new(|| {
@@ -39,7 +40,7 @@ const SYSTEM_EXCEPTIONS: &[(&str, &str)] = &[
     ("obale Save", "обале Саве"),
 ];
 
-// Inicijalizacija Replacera (zove se iz JS-a, npr. u initWasm ili kad se promene opcije)
+// Inicijalizacija Replacera
 #[wasm_bindgen]
 pub fn init_replacer(custom_json: &str) -> Result<(), JsValue> {
     let custom_map: HashMap<String, String> = if custom_json.is_empty() {
@@ -52,7 +53,7 @@ pub fn init_replacer(custom_json: &str) -> Result<(), JsValue> {
     let mut patterns: Vec<String> = Vec::new();
     let mut replacements = Vec::new();
 
-    // 1. Dodaj sistemske izuzetke (konvertuj &str u String)
+    // 1. Dodaj sistemske izuzetke
     for (pat, rep) in SYSTEM_EXCEPTIONS {
         patterns.push(pat.to_string());
         replacements.push(rep.to_string());
@@ -70,7 +71,6 @@ pub fn init_replacer(custom_json: &str) -> Result<(), JsValue> {
         return Ok(());
     }
 
-    // Kreiraj Aho-Corasick automat
     let ac = AhoCorasick::builder()
         .ascii_case_insensitive(false) 
         .match_kind(aho_corasick::MatchKind::LeftmostFirst)
@@ -95,29 +95,51 @@ pub fn apply_replacements(text: &str) -> String {
     }
 }
 
-// Binary Loader (FST)
+// Binary Loader (FST + Suffixes)
 #[wasm_bindgen]
 pub fn load_dictionary_bin(mode: &str, bin_data: &[u8]) -> Result<(), JsValue> {
-    if bin_data.len() < 8 {
-        return Err(JsValue::from_str("Invalid binary format (too short)"));
-    }
+    // Format: [FST_LEN 8b][FST][VAL_LEN 8b][VAL][SUF_LEN 8b][SUF]
+    let mut cursor = 0;
 
+    // 1. FST
+    if bin_data.len() < cursor + 8 { return Err(JsValue::from_str("Invalid bin (FST len)")); }
     let mut len_bytes = [0u8; 8];
-    len_bytes.copy_from_slice(&bin_data[0..8]);
+    len_bytes.copy_from_slice(&bin_data[cursor..cursor+8]);
     let fst_len = u64::from_le_bytes(len_bytes) as usize;
+    cursor += 8;
 
-    if bin_data.len() < 8 + fst_len {
-        return Err(JsValue::from_str("Invalid FST length"));
-    }
-
-    let fst_bytes = bin_data[8..8 + fst_len].to_vec();
-    let values_bytes = bin_data[8 + fst_len..].to_vec();
+    if bin_data.len() < cursor + fst_len { return Err(JsValue::from_str("Invalid bin (FST body)")); }
+    let fst_bytes = bin_data[cursor..cursor+fst_len].to_vec();
+    cursor += fst_len;
 
     let fst = Map::new(fst_bytes).map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    // 2. Values
+    if bin_data.len() < cursor + 8 { return Err(JsValue::from_str("Invalid bin (Val len)")); }
+    len_bytes.copy_from_slice(&bin_data[cursor..cursor+8]);
+    let val_len = u64::from_le_bytes(len_bytes) as usize;
+    cursor += 8;
+
+    if bin_data.len() < cursor + val_len { return Err(JsValue::from_str("Invalid bin (Val body)")); }
+    let values_bytes = bin_data[cursor..cursor+val_len].to_vec();
+    cursor += val_len;
+
+    // 3. Suffixes
+    if bin_data.len() < cursor + 8 { return Err(JsValue::from_str("Invalid bin (Suf len)")); }
+    len_bytes.copy_from_slice(&bin_data[cursor..cursor+8]);
+    let suf_len = u64::from_le_bytes(len_bytes) as usize;
+    cursor += 8;
+
+    if bin_data.len() < cursor + suf_len { return Err(JsValue::from_str("Invalid bin (Suf body)")); }
+    let suf_bytes = &bin_data[cursor..cursor+suf_len];
+    
+    let suffixes: Vec<String> = serde_json::from_slice(suf_bytes)
+        .map_err(|e| JsValue::from_str(&format!("Suffix decode error: {}", e)))?;
 
     let store = DictionaryStore {
         fst,
         values: values_bytes,
+        suffixes,
     };
 
     let mut global = DICTIONARIES.lock().map_err(|_| JsValue::from_str("Mutex poisoned"))?;
@@ -275,12 +297,7 @@ pub fn to_latin(text: &str) -> String {
     result
 }
 
-// === DIALECT LOGIC (FST) ===
-
-const SUFFIXES: &[&str] = &[
-    "ima", "om", "em", "im", "ih", "og", "eg", "uj", 
-    "a", "e", "i", "o", "u"
-];
+// === DIALECT LOGIC (Data-Driven Morphology) ===
 
 fn get_value_from_store(store: &DictionaryStore, offset: u64) -> Option<String> {
     let start = offset as usize;
@@ -298,17 +315,19 @@ fn get_value_from_store(store: &DictionaryStore, offset: u64) -> Option<String> 
 fn try_smart_lookup(store: &DictionaryStore, word: &str) -> Option<String> {
     let word_lower = word.to_lowercase();
 
+    // 1. Direct Lookup
     if let Some(offset) = store.fst.get(&word_lower) {
         if let Some(res) = get_value_from_store(store, offset) {
             return Some(match_case(word, &res));
         }
     }
 
+    // 2. Stemming (Dynamic Suffixes)
     if word_lower.chars().count() < 4 {
         return None;
     }
 
-    for suffix in SUFFIXES {
+    for suffix in &store.suffixes {
         if word_lower.ends_with(suffix) {
             let root_len = word_lower.len() - suffix.len();
             let root = &word_lower[..root_len];
