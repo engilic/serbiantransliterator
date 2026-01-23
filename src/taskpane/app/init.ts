@@ -14,32 +14,39 @@ import { initOnboarding } from "./onboarding/tour";
 import { initWasm } from "../../core/textCore";
 
 export function initTaskpane(isWebMode = false) {
-    // 0) Ukloni Skeleton Loader i prikaži aplikaciju
+    // 0) Global Error Handler (Telemetry Flight Recorder)
+    window.onerror = (msg, url, line, col, error) => {
+        logger.error("Global Error: " + msg, { url, line, col, stack: error?.stack });
+    };
+
+    window.onunhandledrejection = (event) => {
+        logger.error("Unhandled Rejection: " + event.reason);
+    };
+
+    // 1) UI Cleanup (Skeleton)
     const skeleton = document.getElementById("skeleton");
     const main = document.getElementById("appMain");
 
-    // Dodajemo malu pauzu da bi skeleton bio vidljiv bar trenutak (da ne trepne prebrzo)
-    // ili da bi tranzicija bila glatka.
     setTimeout(() => {
         if (skeleton) skeleton.style.display = "none";
-        if (main) main.style.display = "flex"; // Main je flex kontejner
+        if (main) main.style.display = "flex";
     }, 100);
 
-    // 1) UI init (settings load + bind dugmad + tags + listeners)
+    // 2) UI init (settings load + bind dugmad + tags + listeners)
     initUi();
 
-    // 2) Pokreni učitavanje WASM-a
+    // 3) Pokreni učitavanje WASM-a (i rečnika) u pozadini
     initWasm().catch((e) => console.error("WASM init failed:", e));
 
-    // 5) Debug logs export
+    // 4) Debug logs export (skriveni trigger na verziji)
     setupDebugTrigger();
 
-    // 6) Cleanup on unload
+    // 5) Cleanup on unload
     window.addEventListener("beforeunload", () => {
         cleanupEventHandlers();
     });
 
-    // 7) Start Onboarding
+    // 6) Start Onboarding (ako nije viđen)
     try {
         initOnboarding();
     } catch (e) {
@@ -52,7 +59,7 @@ export function initTaskpane(isWebMode = false) {
         return;
     }
 
-    // 3) Selection change handler (SAMO ZA WORD)
+    // 7) Selection change handler (SAMO ZA WORD)
     state.selectionChangeHandler = () => {
         onSelectionChange();
     };
@@ -64,16 +71,16 @@ export function initTaskpane(isWebMode = false) {
         );
     }
 
-    // 4) Initial button state
+    // 8) Initial button state (SAMO ZA WORD)
     void checkSelectionAndUpdateButtons();
 
-    // 5) Keyboard Shortcuts
+    // 9) Keyboard Shortcuts
     setupKeyboardShortcuts();
 }
 
 function setupKeyboardShortcuts() {
+    // ... (ostaje isto)
     document.addEventListener("keydown", (e) => {
-        // ESC: Close modal / preview
         if (e.key === "Escape") {
             if (modalManager.isOpen()) {
                 e.preventDefault();
@@ -81,8 +88,6 @@ function setupKeyboardShortcuts() {
             }
             return;
         }
-
-        // Ctrl+Enter (or Cmd+Enter): Run Smart Apply
         if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
             const runBtn = document.getElementById("runBtn") as HTMLButtonElement | null;
             if (runBtn && !runBtn.disabled && !modalManager.isOpen()) {
@@ -94,6 +99,7 @@ function setupKeyboardShortcuts() {
 }
 
 function setupDebugTrigger() {
+    // ... (ostaje isto)
     const versionEl = document.querySelector(".version");
     if (!versionEl) return;
 
@@ -102,7 +108,7 @@ function setupDebugTrigger() {
         clicks++;
         if (clicks >= 5) {
             clicks = 0;
-            const logs = logger.exportLogs();
+            const logs = await logger.exportLogsFull(); // Koristimo novu full export funkciju
             try {
                 await navigator.clipboard.writeText(logs);
                 showPreviewToast("Debug logs copied to clipboard!", "success", 3000);
@@ -114,6 +120,7 @@ function setupDebugTrigger() {
 }
 
 function cleanupEventHandlers() {
+    // ... (ostaje isto)
     if (state.selectionChangeHandler) {
         try {
             Office.context.document.removeHandlerAsync(Office.EventType.DocumentSelectionChanged, {
@@ -124,7 +131,6 @@ function cleanupEventHandlers() {
         }
         state.selectionChangeHandler = null;
     }
-
     if (state.selectionTimeout) {
         clearTimeout(state.selectionTimeout);
         state.selectionTimeout = null;

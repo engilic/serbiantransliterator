@@ -26,6 +26,8 @@ import { initUiI18n, getUiLanguagePreference, setUiLanguagePreference, asUiLangP
 import { checkSelectionAndUpdateButtons } from "../selection";
 import { get, getOptional } from "../utils/dom";
 
+import { logger } from "../telemetry/logger";
+
 function applyTheme(theme: AppTheme) {
     if (theme === "light") {
         document.documentElement.setAttribute("data-theme", "light");
@@ -222,6 +224,7 @@ function bindButtons() {
     get<HTMLButtonElement>("runBtn").onclick = () => runWithUiLock(runSmart);
     get<HTMLButtonElement>("previewBtn").onclick = () => runWithUiLock(runPreview);
 
+    // Legacy export/import buttons might be hidden, but we bind them just in case
     const exportBtn = getOptional<HTMLButtonElement>("exportBtn");
     if (exportBtn) exportBtn.onclick = exportSettingsAsDownload;
 
@@ -234,6 +237,31 @@ function bindButtons() {
         const ok = await confirmInPanel(unsafeHtml(t("msg_reset_confirm")));
         if (ok) resetSettings();
     };
+
+    // NOVO: Telemetry Export Button
+    const exportLogsBtn = getOptional<HTMLButtonElement>("exportLogsBtn");
+    if (exportLogsBtn) {
+        exportLogsBtn.onclick = async () => {
+            try {
+                // Importujemo dinamički da izbegnemo kružne reference ako je logger heavy
+                // Ali ovde je logger već importovan na vrhu fajla, pa koristimo direktno.
+                // Uverite se da je: import { logger } from "../telemetry/logger"; na vrhu.
+                const logs = await logger.exportLogsFull();
+                const blob = new Blob([logs], { type: "text/plain" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `serbian-transliterator-logs-${new Date().toISOString().slice(0, 10)}.txt`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } catch (e) {
+                console.error("Export failed", e);
+                alert("Export error: " + e);
+            }
+        };
+    }
 }
 
 function saveSettings() {
