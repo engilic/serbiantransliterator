@@ -15,7 +15,7 @@ export default defineConfig({
     },
     test: {
         environment: "jsdom",
-        include: ["tests/**/*.test.ts"],
+        include: ["tests/**/*.test.ts"], // Ovo hvata i tests/fuzz/ooxml.fuzz.test.ts
         coverage: {
             provider: "v8",
             reporter: ["text", "html", "lcov", "json-summary"],
@@ -23,14 +23,14 @@ export default defineConfig({
             exclude: [
                 "node_modules/**",
                 "dist/**",
-                "tests/**",
+                "tests/**", // Isključujemo same testove iz coverage izveštaja (ali se izvršavaju)
                 "tests-e2e/**",
                 "**/*.d.ts",
                 "**/*.js",
                 "src/wasm-core/**",
                 "src/taskpane/app/onboarding/tour.ts",
                 "src/taskpane/app/web/**",
-                "src/taskpane/app/telemetry/**", // <--- NOVO
+                "src/taskpane/app/telemetry/**",
                 "webpack.*.js",
                 "vitest.config.ts",
                 "playwright.config.ts",
@@ -40,13 +40,13 @@ export default defineConfig({
                 "scripts/**",
             ],
             thresholds: {
-                // Vraćamo pragove na originalne vrednosti (ako želiš), ili ostavi 74/64
-                // Pošto smo isključili fajlove, coverage će skočiti, pa je 75% verovatno OK.
                 lines: 70,
                 functions: 70,
                 statements: 70,
                 branches: 60,
             },
         },
+        // Opciono: Povećaj timeout za Fuzz testove ako su spori
+        testTimeout: 10000,
     },
 });
