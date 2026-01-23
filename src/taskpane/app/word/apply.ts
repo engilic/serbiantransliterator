@@ -65,37 +65,25 @@ export async function runSmart() {
         await Word.run(async (context) => {
             let sel = context.document.getSelection();
             sel.load("text");
+            // Ne učitavamo "paragraphs" jer ne koristimo Smart Expand
             await context.sync();
 
             const selInfo = analyzeSelectionText(sel.text);
 
+            // Ako je selektovano samo prazno (npr. space), to je greška korisnika
             if (selInfo.isJustWhitespace) {
                 showModalInfo(t("modal_title_error"), unsafeHtml(t("msg_empty_selection")));
                 setStatus(t("status_error_prefix", t("msg_empty_selection").split("<")[0]), "error");
                 return;
             }
 
+            // Ako ima teksta -> Selekcija. Ako nema -> Dokument.
             let scope: "selection" | "document" = selInfo.hasText ? "selection" : "document";
-
-            if (scope === "document") {
-                const firstPara = sel.paragraphs.getFirst();
-                const paraRange = firstPara.getRange();
-
-                paraRange.load("text");
-                await context.sync();
-
-                const paraInfo = analyzeSelectionText(paraRange.text);
-
-                if (paraInfo.hasText) {
-                    sel = paraRange;
-                    scope = "selection";
-                    logger.info("Auto-expanded to paragraph");
-                }
-            }
 
             const ui = getSettingsFromUi();
             const opts = getOoxmlOptionsFromUi();
 
+            // PITAJ KORISNIKA SAMO AKO JE DOKUMENT SCOPE
             if (scope === "document" && ui.confirmWholeDoc) {
                 const ok = await confirmInPanel(unsafeHtml(t("msg_confirm_whole_doc")));
                 if (!ok) {
@@ -131,6 +119,7 @@ export async function runSmart() {
                     endnotesSupported: true,
                 };
             } else {
+                // DOCUMENT SCOPE: Pipeline (Chunking + Extras)
                 const r = await applyPipeline(context, "document", ui, opts);
                 result = r.result;
                 extras = r.extras;
@@ -170,37 +159,24 @@ export async function applyFromPreview(scope: "selection" | "document") {
             const ui = getSettingsFromUi();
             const opts: OoxmlOptions = getOoxmlOptionsFromUi();
 
-            // Check for Interactive Modifications
             const interactive = state.preview.interactiveDiff;
             const hasManualChanges = interactive && interactive.hasRejections();
 
             if (scope === "selection") {
                 const range = context.document.getSelection();
 
-                // 1. PATH: Manual Changes (Text Insert)
-                // Ako korisnik ima "odbijene" izmene, moramo da rekonstruišemo tekst.
-                // Pošto ne možemo lako da pečujemo OOXML, ubacujemo plain text.
-                // Ovo je trade-off: gubi se formatiranje, ali korisnik dobija tačno ono što želi.
                 if (hasManualChanges) {
                     const finalCustomText = interactive!.buildResult();
-
                     setStatus(t("status_applying_preview"), "info");
-
-                    // Insert as plain text (Word will inherit current style of the paragraph)
                     range.insertText(finalCustomText, Word.InsertLocation.replace);
                     await context.sync();
-
                     setStatus(t("status_preview_applied") + " (Plain Text)", "success");
-
-                    // Refresh stats manually since we bypassed pipeline
                     state.lastStatsTitle = t("stats_header_preview");
-                    state.lastStatsText =
-                        "Primenjene ručne izmene.\nNapomena: Formatiranje možda nije očuvano jer su korišćene interaktivne izmene.";
+                    state.lastStatsText = "Primenjene ručne izmene.";
                     refreshStats();
                     return;
                 }
 
-                // 2. PATH: Standard Cached OOXML (Full Fidelity)
                 const ooxml = range.getOoxml();
                 range.load("text");
                 await context.sync();
@@ -244,7 +220,6 @@ export async function applyFromPreview(scope: "selection" | "document") {
                     range.insertOoxml(state.preview.convertedOoxml!, Word.InsertLocation.replace);
                     await context.sync();
                     setStatus(t("status_preview_applied"), "success");
-
                     const s = buildPreviewAppliedStats();
                     state.lastStatsTitle = s.title;
                     state.lastStatsText = s.text;
@@ -270,14 +245,13 @@ export async function applyFromPreview(scope: "selection" | "document") {
 
                 const time = result.stats.timingMs.toFixed(0);
                 setStatus(t("status_done_selection", result.type, time), "success");
-
                 state.lastStatsTitle = buildApplyStatsTitle(result);
                 state.lastStatsText = buildApplyStatsText(result, "selection");
                 refreshStats();
                 return;
             }
 
-            // Document Scope (uvek ide kroz pipeline, interactive preview za ceo dok nije podržan u ovom obimu)
+            // Document Scope
             const { result, extras } = await applyPipeline(context, "document", ui, opts);
 
             if (!result) {
@@ -293,7 +267,6 @@ export async function applyFromPreview(scope: "selection" | "document") {
             const extraInfo = buildDocumentExtraStatus(ui, extras);
 
             setStatus(t("status_done_document", result.type, time, extraInfo), "success");
-
             state.lastStatsTitle = buildApplyStatsTitle(result);
             state.lastStatsText = buildApplyStatsText(result, "document", extras);
             refreshStats();
