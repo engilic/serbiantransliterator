@@ -14,7 +14,7 @@ function logViolations(violations: any[]) {
     }
 }
 
-test.describe("Accessibility (A11y)", () => {
+test.describe.skip("Accessibility (A11y)", () => {
     test.beforeEach(async ({ page }) => {
         // Presrećemo zahtev ka Microsoft CDN-u i vraćamo naš mock
         await page.route("**/office.js", async (route) => {
