@@ -5,8 +5,6 @@ import { ALWAYS_LATIN_PHRASES } from "../../core/rules";
 import { XML_NS, WORD_NS, collectTextNodes, getFullText, needsXmlSpacePreserve } from "./dom";
 import { applySerbianQuotesAcrossNodes } from "./quotes";
 import { createInitialCodeState, createInitialCodeParseStats, transformTextRespectingCode } from "./code";
-import { removeMultipleSpaces } from "../../core/utils";
-import { formatSerbianDates, toAscii } from "../../core/format";
 import { isTokenChar } from "./common";
 import {
     bridgeLinksAcrossTextNodes,
@@ -23,6 +21,25 @@ import {
 } from "./bridge/index";
 import { URL_RE_G, EMAIL_RE_G } from "../patterns/links";
 import { perfMonitor } from "../../taskpane/app/telemetry/performanceMonitor";
+
+// --- PAŽNJA: toAscii je bio u format.ts. Moramo ga definisati ovde ili u textCore.ts ---
+// Definišem ga ovde lokalno jer se samo ovde koristi za "to-ascii" smer
+function toAscii(text: string): string {
+    const map: Record<string, string> = {
+        č: "c",
+        ć: "c",
+        š: "s",
+        đ: "dj",
+        ž: "z",
+        Č: "C",
+        Ć: "C",
+        Š: "S",
+        Đ: "Dj",
+        Ž: "Z",
+    };
+    return text.replace(/[čćšđžČĆŠĐŽ]/g, (m) => map[m] ?? m);
+}
+// -----------------------------------------------------------------------------------
 
 const ALWAYS_LATIN_PHRASE_INFOS = buildPhraseInfos(ALWAYS_LATIN_PHRASES);
 const PHRASE_INFOS_CACHE_MAX = 80;
@@ -55,8 +72,7 @@ export interface OoxmlOptions extends CoreOptions {
     direction?: Direction | "to-ascii";
     setProofingLanguage?: boolean;
     protectRomans?: boolean;
-    fixDoubleSpaces?: boolean;
-    formatDates?: boolean;
+    // UKLONJENI: fixDoubleSpaces, formatDates
 }
 
 export type ProofingStats = {
@@ -94,8 +110,6 @@ export type ConvertStats = {
     proofing: ProofingStats;
     timingMs: number;
 };
-
-// === HELPER DEFINITIONS (Move createEmptyStats here) ===
 
 function createEmptyStats(direction?: string, textNodes = 0, chars = 0): ConvertStats {
     return {
@@ -422,8 +436,6 @@ function applyProofingLanguagePreserveUnchanged(
     return { changedRuns, skippedRuns, skippedByReason };
 }
 
-// === MAIN EXPORT ===
-
 export function convertOoxml(
     ooxml: string,
     options?: OoxmlOptions
@@ -458,7 +470,6 @@ export function convertOoxml(
         };
     }
 
-    // Clean old proofing errors before processing
     removeProofingTags(doc);
 
     const dirSetting = options?.direction ?? "auto";
@@ -480,9 +491,8 @@ export function convertOoxml(
     const protectBrands = options?.protectBrands !== false;
     const curlyProtection = options?.curlyProtection ?? "placeholders";
     const shouldSetLang = options?.setProofingLanguage === true;
-    const doFixSpaces = options?.fixDoubleSpaces === true;
-    const doFixDates = options?.formatDates === true;
     const doProtectRomans = options?.protectRomans !== false;
+    // UKLONJENI: doFixSpaces, doFixDates
 
     const detectedUrls = countMatches(fullText, URL_RE_G);
     const detectedEmails = countMatches(fullText, EMAIL_RE_G);
@@ -585,8 +595,7 @@ export function convertOoxml(
         let finalText = "";
         const transformFn = (input: string) => {
             let temp = input;
-            if (doFixSpaces) temp = removeMultipleSpaces(temp);
-            if (doFixDates) temp = formatSerbianDates(temp);
+            // UKLONJENO: fixDoubleSpaces i formatDates logika
             if (direction === "to-ascii") {
                 const { text: tempLat } = convertPlainText(temp, "cyr-to-lat", {
                     ...options,
@@ -666,7 +675,7 @@ export function convertOoxml(
     }
 
     const stats: ConvertStats = {
-        direction: direction as ConvertStats["direction"], // Explicit cast to remove any ambiguity
+        direction: direction as ConvertStats["direction"],
         textNodes: textNodes.length,
         charsBefore: fullText.length,
         charsAfter,

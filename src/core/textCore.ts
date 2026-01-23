@@ -1,7 +1,7 @@
 // src/core/textCore.ts
 
 import { ALWAYS_LATIN_PHRASES, ALWAYS_LATIN_TOKENS_STRICT, ALWAYS_LATIN_TOKENS_AMBIGUOUS } from "./rules";
-import { applyPreCorrectionsLatToCyr } from "./corrections";
+import { applyPreCorrectionsLatToCyr } from "./corrections"; // <--- VRACENO
 import { fixSerbianQuotes } from "./quotes";
 import { collectProtectedRanges, splitByRanges, type CurlyProtection } from "./protect";
 import { cyrillicToLatin, detectMajorityScript, latinToCyrillic } from "./serbian";
@@ -9,14 +9,14 @@ import { cyrillicToLatin, detectMajorityScript, latinToCyrillic } from "./serbia
 // Importuj tip za WASM
 type WasmModule = typeof import("../wasm-core/pkg") & {
     load_dictionary_bin: (mode: string, bin_data: Uint8Array) => void;
-    // Opciono, ako i dalje koristimo JSON fallback negde (verovatno ne, ali da ne pukne tipizacija)
-    load_dictionary: (mode: string, json: string) => void;
+    to_cyrillic: (text: string) => string;
+    to_latin: (text: string) => string;
+    convert_dialect: (text: string, mode: string) => string;
 };
 
 let wasmModule: WasmModule | null = null;
 const isDictLoaded = { e2i: false, i2e: false };
 
-// Helper za učitavanje binarnih rečnika
 async function loadBinaryDict(filename: string, mode: "e2i" | "i2e") {
     if (!wasmModule) return;
     try {
@@ -41,13 +41,8 @@ export async function initWasm() {
         wasmModule = module as unknown as WasmModule;
         console.log("WASM module loaded successfully");
 
-        // === ASINHRONO UČITAVANJE (Zero-Copy Binary) ===
-        // Paralelno učitavamo oba rečnika da ne blokiramo
         const p1 = loadBinaryDict("assets/dict_e2i.bin", "e2i");
         const p2 = loadBinaryDict("assets/dict_i2e.bin", "i2e");
-
-        // Ne moramo await-ovati ako ne želimo da blokiramo start,
-        // ali za stabilnost dijalekata bolje je sačekati (brzo je, par ms).
         await Promise.all([p1, p2]);
     } catch (e) {
         console.warn("WASM load failed, falling back to JS regex only", e);
@@ -397,6 +392,8 @@ export function convertPlainText(
             continue;
         }
         let seg = part.text.normalize("NFC");
+
+        // PRIMENA LINGVISTIČKIH KOREKCIJA (Tanjug, Injekcija...)
         if (toCyr) seg = applyPreCorrectionsLatToCyr(seg);
 
         if (options?.dialect && options.dialect !== "none") {

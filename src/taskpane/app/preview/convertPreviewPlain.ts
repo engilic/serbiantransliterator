@@ -1,12 +1,28 @@
-﻿// src/taskpane/app/preview/convertPreviewPlain.ts
+// src/taskpane/app/preview/convertPreviewPlain.ts
 
 import { convertPlainText, type Direction } from "../../../core/textCore";
-import { removeMultipleSpaces } from "../../../core/utils";
 import { createInitialCodeState, transformTextRespectingCode } from "../../../shared/ooxml/code";
-import { formatSerbianDates, toAscii } from "../../../core/format";
+// UKLONJENI importi: formatSerbianDates, removeMultipleSpaces, toAscii
 import { normalizeWeirdBreaks } from "../selection";
 
 import type { UiSettings } from "../types";
+
+// Lokalni toAscii (pošto smo obrisali format.ts)
+function toAscii(text: string): string {
+    const map: Record<string, string> = {
+        č: "c",
+        ć: "c",
+        š: "s",
+        đ: "dj",
+        ž: "z",
+        Č: "C",
+        Ć: "C",
+        Š: "S",
+        Đ: "Dj",
+        Ž: "Z",
+    };
+    return text.replace(/[čćšđžČĆŠĐŽ]/g, (m) => map[m] ?? m);
+}
 
 export function convertTextForPreviewPlain(
     input: string,
@@ -15,11 +31,14 @@ export function convertTextForPreviewPlain(
 ): { out: string; type: string } {
     let temp = normalizeWeirdBreaks(input ?? "");
 
+    // Pošto smo izbacili fixDoubleSpaces i formatDates, transformFn je sada identitet (samo vraća input)
+    // Ali ako imamo preserveCodeBlocks, i dalje moramo da parsiramo kod.
+    // Zato zadržavamo strukturu, ali transformFn ne radi ništa osim što postoji.
+
     const applyFixesOutsideCode = (txt: string) => {
-        let t = txt;
-        if (s.fixDoubleSpaces) t = removeMultipleSpaces(t);
-        if (s.formatDates) t = formatSerbianDates(t);
-        return t;
+        // Ovde je ranije bilo removeMultipleSpaces i formatDates.
+        // Sada samo vraćamo tekst.
+        return txt;
     };
 
     if (s.preserveCodeBlocks) {
@@ -39,8 +58,6 @@ export function convertTextForPreviewPlain(
         protectBrands: s.protectBrands,
         applySerbianQuotes: s.applySerbianQuotes,
         preserveCodeBlocks: s.preserveCodeBlocks,
-
-        // NEW:
         curlyProtection: s.curlyProtection,
     };
 

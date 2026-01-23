@@ -28,9 +28,6 @@ export interface UiSettings {
 
     curlyProtection: CurlyProtectionUi;
 
-    fixDoubleSpaces: boolean;
-    formatDates: boolean;
-
     confirmWholeDoc: boolean;
     includeHeadersFooters: boolean;
     includeFootnotes: boolean;

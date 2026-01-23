@@ -1,4 +1,4 @@
-﻿import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "vitest";
 import { convertTextForPreviewPlain } from "../src/taskpane/app/preview/convertPreviewPlain";
 
 function baseSettings() {
@@ -38,13 +38,5 @@ describe("preview/convertPreviewPlain", () => {
 
         const { out } = convertTextForPreviewPlain("Ovo je {USER_NAME} test", s as any, []);
         expect(out).toBe("Ово је {УСЕР_НАМЕ} тест");
-    });
-
-    it("formatDates works in preview plain path", () => {
-        const s = baseSettings();
-        s.formatDates = true;
-
-        const { out } = convertTextForPreviewPlain("Datum: 10/21/2023", s as any, []);
-        expect(out).toBe("Датум: 21.10.2023.");
     });
 });

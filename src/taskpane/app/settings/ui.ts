@@ -263,8 +263,6 @@ function applySettingsToUi(s: UiSettings) {
     if (curlySel) curlySel.value = s.curlyProtection;
 
     setCheckValue("optShowStats", s.showStats);
-    setCheckValue("optFixDoubleSpaces", s.fixDoubleSpaces);
-    setCheckValue("optFormatDates", s.formatDates);
 
     setRadioValue("direction", s.direction);
 
@@ -305,8 +303,6 @@ function updateResetButtonState() {
         "protectRomans",
         "setProofingLanguage",
         "curlyProtection",
-        "fixDoubleSpaces",
-        "formatDates",
         "showStats",
         "theme",
         "customSubstitutions",
@@ -350,8 +346,6 @@ function changeProfile(profile: ProfilePreset) {
             if (data.protectRomans !== undefined) setCheckValue("optProtectRomans", data.protectRomans);
             if (data.setProofingLanguage !== undefined)
                 setCheckValue("optSetProofingLanguage", data.setProofingLanguage);
-            if (data.fixDoubleSpaces !== undefined) setCheckValue("optFixDoubleSpaces", data.fixDoubleSpaces);
-            if (data.formatDates !== undefined) setCheckValue("optFormatDates", data.formatDates);
             if (data.confirmWholeDoc !== undefined) setCheckValue("optConfirmWholeDoc", data.confirmWholeDoc);
 
             const curlySel = getOptional<HTMLSelectElement>("optCurlyProtection");
@@ -389,8 +383,6 @@ function setupInputListeners() {
         "optSetProofingLanguage",
         "optCurlyProtection",
         "optShowStats",
-        "optFixDoubleSpaces",
-        "optFormatDates",
         "optIncludeHeadersFooters",
         "optIncludeFootnotes",
         "optIncludeEndnotes",
