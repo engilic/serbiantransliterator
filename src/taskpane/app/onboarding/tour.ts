@@ -2,7 +2,7 @@
 /* global document */
 
 import { safeGetItem, safeSetItem } from "../../../shared/storage/safeLocalStorage";
-import { t } from "../../../shared/i18n";
+import { t, type TranslationKey } from "../../../shared/i18n"; // FIX: import type
 import { get } from "../utils/dom";
 
 const STORAGE_KEY = "serbiantransliterator.tour.seen.v1";
@@ -55,8 +55,8 @@ function renderStep() {
     const actionBtn = get<HTMLButtonElement>("tourActionBtn");
     const dotsContainer = get<HTMLDivElement>("tourDots");
 
-    titleEl.textContent = t(step.title as any);
-    textEl.innerHTML = t(step.text as any);
+    titleEl.textContent = t(step.title as TranslationKey); // FIX: Cast to TranslationKey
+    textEl.innerHTML = t(step.text as TranslationKey); // FIX: Cast to TranslationKey
     iconEl.textContent = step.icon;
 
     if (currentStep === STEPS.length - 1) {

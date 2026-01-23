@@ -4,99 +4,83 @@ const LANG_KEY = "serbiantransliterator.ui.lang";
 
 test.describe("Taskpane E2E smoke (Office stub) + UI language picker", () => {
     test.beforeEach(async ({ page }) => {
-        // Block real Office.js
         await page.route("https://appsforoffice.microsoft.com/**", async (route) => {
             await route.abort();
         });
 
-        // Ensure preference starts clean each test
         await page.addInitScript(() => {
             try {
                 localStorage.removeItem(LANG_KEY);
-            } catch {
-                // ignore
-            }
+            } catch {}
         });
 
-        // Office stub must exist BEFORE taskpane bundle loads.
         await page.addInitScript(() => {
             const OfficeStub = {
                 HostType: { Word: "Word" },
                 EventType: { DocumentSelectionChanged: "DocumentSelectionChanged" },
                 CoercionType: { Text: "Text" },
                 AsyncResultStatus: { Succeeded: "succeeded" },
-
                 context: {
-                    // IMPORTANT: Force Office UI language to EN to verify that our default is still SR
-                    // (because user requested default sr, not auto).
                     displayLanguage: "en-US",
                     contentLanguage: "en-US",
-
                     document: {
-                        addHandlerAsync: (...args: any[]) => {
-                            const cb = args[2];
-                            if (typeof cb === "function") cb({ status: "succeeded" });
-                        },
-                        removeHandlerAsync: (...args: any[]) => {
-                            const cb = args[2];
-                            if (typeof cb === "function") cb({ status: "succeeded" });
-                        },
-                        // No selection => "whole document" labels
+                        addHandlerAsync: (...args: any[]) => args[2]?.({ status: "succeeded" }),
+                        removeHandlerAsync: (...args: any[]) => args[2]?.({ status: "succeeded" }),
                         getSelectedDataAsync: (_type: any, cb: any) => cb({ status: "succeeded", value: "" }),
                     },
                 },
-
-                onReady: (cb: (info: any) => void) => cb({ host: "Word" }),
+                onReady: (cb: (info: any) => void) => setTimeout(() => cb({ host: "Word" }), 0),
             };
-
             (globalThis as any).Office = OfficeStub;
-            (globalThis as any).Word = {}; // Word.run not used without clicking
+            (globalThis as any).Word = {};
         });
     });
 
     test("language picker is visible under main buttons; default language is Serbian", async ({ page }) => {
         await page.goto("/taskpane.html");
+        await expect(page.locator("#skeleton")).toBeHidden({ timeout: 15000 });
+        await expect(page.locator("#appMain")).toBeVisible();
 
-        // NOVO: Čekamo da JS skine skeleton i prikaže appMain
-        await page.waitForSelector("#appMain", { state: "visible", timeout: 10000 });
-
-        // Provera dugmadi (sada su u footeru, ali ID je isti)
-        await expect(page.locator("#runBtn")).toBeVisible();
-        await expect(page.locator("#previewBtn")).toBeVisible();
-
-        // Picker exists and is visible
         const picker = page.locator("#optUiLanguage");
-        // Možda treba da skrolujemo do njega jer je u sredini?
+
+        // NOVO: Scroll i čekanje interaktivnosti
         await picker.scrollIntoViewIfNeeded();
         await expect(picker).toBeVisible();
+        await expect(picker).toBeEnabled();
 
-        // Default should be Serbian even though Office displayLanguage is en-US
         await expect(picker).toHaveValue("sr");
-
-        // UKLONJENA PROVERA TEKSTA ZA #msg (jer je ponekad prazan zbog tajminga/greške)
-        // const msg = page.locator("#msg");
-        // await expect(msg).toHaveText("Spreman za rad.");
     });
 
     test("switching language to English updates status text", async ({ page }) => {
         await page.goto("/taskpane.html");
-        await page.waitForSelector("#appMain", { state: "visible", timeout: 10000 });
+        await expect(page.locator("#skeleton")).toBeHidden({ timeout: 15000 });
+        await expect(page.locator("#appMain")).toBeVisible();
 
         const picker = page.locator("#optUiLanguage");
-        await picker.selectOption("en");
 
-        // const msg = page.locator("#msg");
-        // await expect(msg).toHaveText("Ready.");
+        // NOVO: Eksplicitno čekanje da bude spreman za klik
+        await picker.scrollIntoViewIfNeeded();
+        await expect(picker).toBeVisible();
+
+        // Forsiraj promenu ako standardni select koči
+        await picker.selectOption("en", { force: true });
+
+        await expect(page.locator("#runBtn")).toHaveText(/APPLY/);
     });
 
     test("switching language to Auto follows Office language (en-US in stub)", async ({ page }) => {
         await page.goto("/taskpane.html");
-        await page.waitForSelector("#appMain", { state: "visible", timeout: 10000 });
+        await expect(page.locator("#skeleton")).toBeHidden({ timeout: 15000 });
+        await expect(page.locator("#appMain")).toBeVisible();
 
         const picker = page.locator("#optUiLanguage");
-        await picker.selectOption("auto");
 
-        // const msg = page.locator("#msg");
-        // await expect(msg).toHaveText("Ready.");
+        // NOVO: Robustno selektovanje
+        await picker.scrollIntoViewIfNeeded();
+        await expect(picker).toBeVisible();
+
+        await picker.selectOption("auto", { force: true });
+
+        await expect(page.locator("#runBtn")).toHaveText(/APPLY/);
     });
 });

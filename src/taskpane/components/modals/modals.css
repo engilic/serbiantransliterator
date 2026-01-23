@@ -1,0 +1,134 @@
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(2px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+    animation: fadeIn 0.2s;
+}
+.modal {
+    background: var(--colorNeutralBackground1);
+    color: var(--colorNeutralForeground1);
+    padding: 24px;
+    border-radius: var(--radius8);
+    width: 90%;
+    max-width: 480px;
+    box-shadow: var(--shadow4);
+    border: 1px solid var(--colorNeutralStroke2);
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+}
+.modal.wide {
+    max-width: 750px;
+    height: 80vh;
+}
+.modal h2,
+.modal h3 {
+    margin: 0 0 16px 0;
+    font-size: 18px;
+    color: var(--colorNeutralForeground1);
+}
+.modal-content {
+    overflow-y: auto;
+    margin-bottom: 24px;
+    flex: 1;
+}
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+.preview-text-pane {
+    background: var(--colorNeutralBackground3);
+    border: 1px solid var(--colorNeutralStroke2);
+    padding: 16px;
+    border-radius: 6px;
+    font-family: "Consolas", monospace;
+    overflow-y: auto;
+    color: var(--colorNeutralForeground1);
+}
+.preview-sticky-header {
+    position: sticky;
+    top: 0;
+    background: var(--colorNeutralBackground1);
+    border-bottom: 1px solid var(--colorNeutralStroke2);
+    padding-bottom: 12px;
+    margin-bottom: 12px;
+    z-index: 5;
+}
+.preview-header-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+}
+.preview-title {
+    font-weight: 700;
+    color: var(--colorBrandForeground1);
+}
+.preview-close-btn {
+    background: transparent;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: var(--colorNeutralForeground1);
+}
+.tour-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 2000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    animation: fadeIn 0.3s;
+}
+.tour-card {
+    background: var(--colorNeutralBackground1);
+    width: 90%;
+    max-width: 360px;
+    padding: 24px;
+    border-radius: 12px;
+    text-align: center;
+    position: relative;
+    color: var(--colorNeutralForeground1);
+}
+.tour-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: transparent;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: var(--colorNeutralForeground1);
+}
+.tour-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+}
+.tour-dots {
+    display: flex;
+    gap: 6px;
+}
+.dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--colorNeutralStroke2);
+}
+.dot.active {
+    background: var(--colorBrandBackground);
+}
+.tour-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 20px;
+}

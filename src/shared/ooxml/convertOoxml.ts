@@ -594,7 +594,7 @@ export function convertOoxml(
         if (original === "") continue;
         let finalText = "";
         const transformFn = (input: string) => {
-            let temp = input;
+            const temp = input;
             // UKLONJENO: fixDoubleSpaces i formatDates logika
             if (direction === "to-ascii") {
                 const { text: tempLat } = convertPlainText(temp, "cyr-to-lat", {

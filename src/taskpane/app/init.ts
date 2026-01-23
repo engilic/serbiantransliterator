@@ -34,7 +34,7 @@ export function initTaskpane(isWebMode = false) {
         logger.error("Unhandled Rejection: " + event.reason);
     };
 
-    // 1) UI Cleanup (Skeleton)
+    // 1) UI Cleanup (Skeleton) - Reveal UI asap
     const skeleton = document.getElementById("skeleton");
     const main = document.getElementById("appMain");
 
@@ -44,10 +44,18 @@ export function initTaskpane(isWebMode = false) {
     }, 100);
 
     // 2) UI init (settings load + bind dugmad + tags + listeners)
-    initUi();
+    try {
+        initUi();
+    } catch (e) {
+        console.error("UI Init failed:", e);
+        logger.error("UI Init failed", e);
+    }
 
     // 3) Pokreni učitavanje WASM-a (i rečnika) u pozadini
-    initWasm().catch((e) => console.error("WASM init failed:", e));
+    initWasm().catch((e) => {
+        console.error("WASM init failed:", e);
+        logger.error("WASM init failed", e);
+    });
 
     // 4) Debug logs export
     setupDebugTrigger();
@@ -78,14 +86,23 @@ export function initTaskpane(isWebMode = false) {
     };
 
     if (Office.context && Office.context.document) {
-        Office.context.document.addHandlerAsync(
-            Office.EventType.DocumentSelectionChanged,
-            state.selectionChangeHandler
-        );
+        try {
+            Office.context.document.addHandlerAsync(
+                Office.EventType.DocumentSelectionChanged,
+                state.selectionChangeHandler
+            );
+        } catch (e) {
+            console.warn("Failed to add selection handler:", e);
+        }
     }
 
     // 8) Initial button state (SAMO ZA WORD)
-    void checkSelectionAndUpdateButtons();
+    // Wrap in try-catch/void to ensure it doesn't block main thread
+    try {
+        void checkSelectionAndUpdateButtons();
+    } catch (e) {
+        console.warn("Initial selection check failed:", e);
+    }
 
     // 9) Keyboard Shortcuts
     setupKeyboardShortcuts();

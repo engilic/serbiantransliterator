@@ -8,7 +8,7 @@ interface TelemetryDB extends DBSchema {
             timestamp: number;
             level: string;
             message: string;
-            data?: any;
+            data?: unknown; // FIX: any -> unknown
         };
         indexes: { "by-time": number };
     };
@@ -26,7 +26,8 @@ export async function initDB() {
     });
 }
 
-export async function addLog(level: string, message: string, data?: any) {
+export async function addLog(level: string, message: string, data?: unknown) {
+    // FIX: any -> unknown
     try {
         const db = await initDB();
         // Ograniči veličinu: Ako ima više od 1000 logova, obriši stare

@@ -2,24 +2,26 @@
 
 Sve značajne promene u projektu će biti dokumentovane u ovom fajlu.
 
-## [1.0.0] - 2026-01-21
+## [1.0.0] - 2026-01-23
 
-### Dodato (Added)
+**Official Production Release.**
 
-- **Offline Mode:** Rečnici za dijalekte su sada ugrađeni u aplikaciju. Internet nije potreban za konverziju.
-- **Progress Bar:** Vizuelni prikaz napretka pri obradi velikih dokumenata.
-- **Dijalekti:** Konverzija Ekavica ↔ Ijekavica (pokreće Rust/WASM engine).
-- **Chunking:** Pametna obrada velikih dokumenata u delovima (ne blokira Word UI).
-- **Custom Substitutions:** Mogućnost definisanja sopstvenih pravila za zamenu teksta.
-- **Interaktivni Preview:** Pregled izmena sa mogućnošću odbacivanja pojedinačnih promena.
+### 🚀 Glavne Funkcije
 
-### Izmenjeno (Changed)
+- **Hybrid Core Engine:** Rust + WebAssembly (WASM) arhitektura za maksimalne performanse.
+- **100% Offline:** Svi rečnici su ugrađeni. Internet konekcija nije potrebna.
+- **Smart Chunking:** Obrada dokumenata od 500+ strana bez blokiranja Word-a.
+- **Web Batch Mode:** Drag & Drop obrada `.docx` fajlova direktno u pregledaču (PWA).
+- **Interactive Preview:** Napredni pregled izmena (Diff) sa mogućnošću odbacivanja promena pre primene.
 
-- Optimizovan algoritam za prepoznavanje "Code Block" sekcija.
-- Unapređen UI za tamnu temu (Dark Mode).
-- Ažurirana "Privacy Policy" stranica - potvrda da podaci ne napuštaju uređaj.
+### 🛡️ Sigurnost i Stabilnost
 
-### Ispravljeno (Fixed)
+- **Privacy First:** Podaci se obrađuju lokalno (u memoriji). Nema slanja na server.
+- **Smart Guard:** Automatska zaštita programskog koda, e-mailova, URL-ova i brendova (npr. iPhone, Windows).
+- **Error Recovery:** Automatski oporavak od grešaka i "Flight Recorder" telemetrija (lokalno u IndexedDB).
 
-- Rešen problem sa blokiranjem UI-a kod dokumenata većih od 100 strana.
-- Ispravljeno procesiranje naslova (Header) i fusnota.
+### 💅 Korisničko Iskustvo
+
+- **Dark Mode:** Potpuna podrška za sistemsku tamnu temu.
+- **Onboarding Tour:** Interaktivni vodič za nove korisnike.
+- **Custom Substitutions:** Mogućnost definisanja sopstvenih pravila za zamenu.

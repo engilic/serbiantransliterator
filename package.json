@@ -1,6 +1,7 @@
 {
     "name": "serbian-transliterator",
     "version": "1.0.0",
+    "description": "Offline-first Word add-in for Serbian transliteration (Lat <-> Cyr) powered by Rust/WASM.",
     "license": "MIT",
     "engines": {
         "node": ">=18.0.0",
@@ -11,51 +12,22 @@
         "build": "npm run compile:dicts && webpack --mode production",
         "dev-server": "npm run compile:dicts && webpack serve --mode development",
         "sideload:word": "office-addin-dev-settings sideload manifest.xml --app word",
-        "sideload:word:wait": "wait-on --timeout 60000 https://localhost:3000/taskpane.html && npm run sideload:word",
-        "dev": "concurrently -k \"npm:dev-server\" \"npm:sideload:word:wait\"",
-        "noop": "node -e \"process.exit(0)\"",
-        "debug:enable": "office-addin-debugging start manifest.xml --no-sideload --dev-server \"npm run noop\" --dev-server-port 3000",
-        "debug:run": "npm run debug:enable && npm run sideload:word:wait",
-        "start:debug": "concurrently -k \"npm:dev-server\" \"npm:debug:run\"",
-        "start": "npm run start:debug",
-        "stop": "office-addin-debugging stop manifest.xml",
+        "start": "npm run dev-server",
         "validate": "office-addin-manifest validate manifest.xml",
         "validate:prod": "office-addin-manifest validate manifest.prod.xml",
         "test": "cross-env VITE_CJS_IGNORE_WARNING=1 vitest run",
-        "test:watch": "cross-env VITE_CJS_IGNORE_WARNING=1 vitest",
         "test:coverage": "cross-env VITE_CJS_IGNORE_WARNING=1 vitest run --coverage",
         "test:e2e": "playwright test",
-        "test:ci": "npm run format:check && npm run typecheck && npm run lint && npm run test:coverage && npm run build && npm run validate && npm run validate:prod && npm run test:e2e",
-        "format": "prettier . --write",
-        "format:check": "prettier . --check",
         "lint": "eslint src/**/*.ts --max-warnings 0",
         "lint:fix": "eslint src/**/*.ts --fix",
         "typecheck": "tsc --noEmit",
         "serve:dist": "http-server dist -p 4173 -c-1",
-        "clean": "rimraf dist",
-        "deploy": "npm run build && wrangler pages deploy dist --project-name=serbiantransliterator",
+        "clean": "rimraf dist coverage",
         "check:conflicts": "node scripts/checkConflicts.cjs",
-        "prepare": "husky install",
+        "check:i18n": "npm run check:i18n:ts && npm run check:i18n:html",
         "check:i18n:ts": "node scripts/checkUserFacingStrings.cjs",
         "check:i18n:html": "node scripts/checkTaskpaneHtmlI18n.cjs",
-        "check:i18n": "npm run check:i18n:ts && npm run check:i18n:html",
-        "audit:high": "npm audit --audit-level=high",
-        "ai:pack": "pwsh -NoProfile -ExecutionPolicy Bypass -File ./poruke-za-ai.ps1 -base . -outDir . -clean",
-        "test:perf": "vitest run tests/performanceMonitor.test.ts tests/errorRecovery.test.ts tests/modalManager.test.ts",
-        "export:perf": "node -e \"console.log(require('./dist/taskpane.js').perfMonitor.exportCsv())\"",
-        "analyze:bundle": "webpack-bundle-analyzer dist/stats.json",
-        "test:unit": "cross-env VITE_CJS_IGNORE_WARNING=1 vitest run --coverage",
-        "test:integration": "npm run test:e2e",
-        "build:analyze": "webpack --mode production --stats-json && webpack-bundle-analyzer dist/stats.json",
-        "clean:dist": "rimraf dist coverage .vitest",
-        "prepare:dev": "npm ci && npm run build",
-        "audit:deps": "npm audit --production",
-        "update:check": "npm outdated"
-    },
-    "lint-staged": {
-        "**/*.{ts,js,cjs,mjs,json,css,md,html}": [
-            "prettier --write"
-        ]
+        "prepare": "husky install"
     },
     "dependencies": {
         "core-js": "^3.37.1",
@@ -103,13 +75,11 @@
         "webpack": "^5.91.0",
         "webpack-cli": "^5.1.4",
         "webpack-dev-server": "^5.2.3",
-        "webpack-merge": "^6.0.1",
-        "wrangler": "^4.59.3"
+        "webpack-merge": "^6.0.1"
     },
-    "overrides": {
-        "esbuild": "0.27.2",
-        "tmp": "0.2.5",
-        "rimraf": "^5.0.5",
-        "undici": "6.23.0"
+    "lint-staged": {
+        "**/*.{ts,js,cjs,mjs,json,css,md,html}": [
+            "prettier --write"
+        ]
     }
 }

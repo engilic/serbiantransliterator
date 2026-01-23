@@ -6,7 +6,7 @@ import { applyFromPreview } from "../word/apply";
 import { get, getOptional } from "../utils/dom";
 import { renderSideBySideWithHighlights } from "../preview/diffRenderer"; // Keep side-by-side sync for now (usually smaller chunks)
 import { escapeHtml } from "../../../shared/safeHtml";
-import { myersDiff } from "../../../shared/diff";
+import { myersDiff, type DiffOp } from "../../../shared/diff"; // Added type DiffOp
 import { InteractiveDiff } from "../../../shared/diff/interactive";
 import { PREVIEW_BATCH } from "../preview/constants";
 import { convertTextForPreviewPlain } from "../preview/convertPreviewPlain";
@@ -143,7 +143,8 @@ function renderDiffAsync(holder: HTMLElement, interactive: InteractiveDiff) {
     let index = 0;
 
     // Helper to generate span HTML
-    const getOpHtml = (op: any, i: number, rejected: boolean) => {
+    const getOpHtml = (op: DiffOp, i: number, rejected: boolean) => {
+        // FIX: typed op
         const val = escapeHtml(op.value);
         let cls = "";
         let tooltip = "";

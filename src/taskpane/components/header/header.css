@@ -1,0 +1,26 @@
+header {
+    background: var(--colorNeutralBackground1);
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--colorNeutralStroke1);
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+.header-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+}
+header h1 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--colorBrandForeground1);
+}
+.version {
+    font-size: 10px;
+    opacity: 0.8;
+    color: var(--colorNeutralForeground3);
+    padding-top: 2px;
+}

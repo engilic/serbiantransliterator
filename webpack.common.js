@@ -1,6 +1,6 @@
 /* eslint-disable no-undef */
 const path = require("path");
-const pkg = require("./package.json");
+// pkg je obrisan jer se ne koristi
 const CopyWebpackPlugin = require("copy-webpack-plugin");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
@@ -11,7 +11,7 @@ module.exports = {
         polyfill: ["core-js/stable", "regenerator-runtime/runtime"],
         taskpane: ["./src/taskpane/taskpane.ts"],
         commands: ["./src/commands/commands.ts"],
-        sw: "./src/sw.ts", // <--- PWA SERVICE WORKER
+        sw: "./src/sw.ts",
     },
     resolve: {
         extensions: [".ts", ".html", ".js"],
@@ -29,6 +29,31 @@ module.exports = {
             {
                 test: /\.css$/i,
                 use: [MiniCssExtractPlugin.loader, "css-loader"],
+            },
+            {
+                test: /\.html$/,
+                use: [
+                    {
+                        loader: "html-loader",
+                        options: {
+                            // Isključujemo sources da ne bi pokušavao da resolve-uje slike
+                            sources: false,
+                            // Preprocessor koji dozvoljava EJS sintaksu <%= ... %>
+                            preprocessor: (content, _loaderContext) => {
+                                let result = content;
+                                // Jednostavna zamena za require include-ove
+                                // Ovo radi replace pre nego što html-loader parsira
+                                result = result.replace(/<%= require\('(.+?)'\) %>/g, (match, filepath) => {
+                                    const absolutePath = path.resolve(_loaderContext.context, filepath);
+                                    // Koristimo fs da učitamo fajl sinhrono
+                                    return _loaderContext.fs.readFileSync(absolutePath, "utf8");
+                                });
+                                return result;
+                            },
+                        },
+                    },
+                ],
+                exclude: /node_modules/,
             },
             {
                 test: /\.(png|jpg|gif|ico)$/,
@@ -51,9 +76,6 @@ module.exports = {
             filename: "taskpane.html",
             template: "./src/taskpane/taskpane.html",
             chunks: ["polyfill", "taskpane"],
-            templateParameters: {
-                appVersion: pkg.version,
-            },
             minify: {
                 collapseWhitespace: true,
                 removeComments: true,
@@ -79,7 +101,6 @@ module.exports = {
                 { from: "src/static/support.html", to: "support.html", noErrorOnMissing: true },
                 { from: "src/static/privacy.html", to: "privacy.html", noErrorOnMissing: true },
                 { from: "src/static/_headers", to: "_headers", toType: "file", noErrorOnMissing: true },
-                // PWA Manifest
                 {
                     from: "src/static/manifest.webmanifest",
                     to: "manifest.webmanifest",
