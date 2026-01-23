@@ -1,6 +1,5 @@
 /* eslint-disable no-undef */
 const path = require("path");
-const pkg = require("./package.json");
 const CopyWebpackPlugin = require("copy-webpack-plugin");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
@@ -11,7 +10,7 @@ module.exports = {
         polyfill: ["core-js/stable", "regenerator-runtime/runtime"],
         taskpane: ["./src/taskpane/taskpane.ts"],
         commands: ["./src/commands/commands.ts"],
-        sw: "./src/sw.ts", // <--- PWA SERVICE WORKER
+        sw: "./src/sw.ts",
     },
     resolve: {
         extensions: [".ts", ".html", ".js"],
@@ -30,6 +29,11 @@ module.exports = {
                 test: /\.css$/i,
                 use: [MiniCssExtractPlugin.loader, "css-loader"],
             },
+            // UKLONJEN html-loader za .html fajlove
+            // HtmlWebpackPlugin će sam procesirati template koristeći lodash (EJS)
+            // Ako nam treba html-loader za import html-a u JS, možemo ga vratiti ali moramo exclude-ovati template fajlove.
+            // Za sada ga sklanjamo da bismo osigurali da template radi.
+
             {
                 test: /\.(png|jpg|gif|ico)$/,
                 type: "asset/resource",
@@ -51,9 +55,6 @@ module.exports = {
             filename: "taskpane.html",
             template: "./src/taskpane/taskpane.html",
             chunks: ["polyfill", "taskpane"],
-            templateParameters: {
-                appVersion: pkg.version,
-            },
             minify: {
                 collapseWhitespace: true,
                 removeComments: true,
@@ -79,7 +80,6 @@ module.exports = {
                 { from: "src/static/support.html", to: "support.html", noErrorOnMissing: true },
                 { from: "src/static/privacy.html", to: "privacy.html", noErrorOnMissing: true },
                 { from: "src/static/_headers", to: "_headers", toType: "file", noErrorOnMissing: true },
-                // PWA Manifest
                 {
                     from: "src/static/manifest.webmanifest",
                     to: "manifest.webmanifest",

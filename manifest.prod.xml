@@ -5,7 +5,7 @@
 	<ProviderName>Jugoslav Ilić</ProviderName>
 	<DefaultLocale>sr-Latn-RS</DefaultLocale>
 	<DisplayName DefaultValue="Serbian Transliterator"/>
-	<Description DefaultValue="Preslovljavanje srpskog teksta (latinica ↔ ćirilica) u Word dokumentu."/>
+	<Description DefaultValue="Preslovljavanje srpskog teksta (latinica ↔ ćirilica) u Word dokumentu. Radi offline."/>
 	<IconUrl DefaultValue="https://serbiantransliterator.pages.dev/assets/icon-32.png"/>
 	<HighResolutionIconUrl DefaultValue="https://serbiantransliterator.pages.dev/assets/icon-64.png"/>
 	<SupportUrl DefaultValue="https://serbiantransliterator.pages.dev/support.html"/>
@@ -82,4 +82,4 @@
 			</bt:LongStrings>
 		</Resources>
 	</VersionOverrides>
-</OfficeApp> 
+</OfficeApp>

@@ -63,7 +63,7 @@ function buildDocumentExtraStatus(ui: UiSettings, extras: ExtrasSummary): string
 export async function runSmart() {
     try {
         await Word.run(async (context) => {
-            let sel = context.document.getSelection();
+            const sel = context.document.getSelection();
             sel.load("text");
             // Ne učitavamo "paragraphs" jer ne koristimo Smart Expand
             await context.sync();
@@ -78,7 +78,7 @@ export async function runSmart() {
             }
 
             // Ako ima teksta -> Selekcija. Ako nema -> Dokument.
-            let scope: "selection" | "document" = selInfo.hasText ? "selection" : "document";
+            const scope: "selection" | "document" = selInfo.hasText ? "selection" : "document";
 
             const ui = getSettingsFromUi();
             const opts = getOoxmlOptionsFromUi();

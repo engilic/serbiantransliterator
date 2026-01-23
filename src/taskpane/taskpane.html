@@ -4,362 +4,50 @@
         <meta charset="UTF-8" />
         <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title data-i18n="app_title"></title>
+        <title data-i18n="app_title">Serbian Transliterator</title>
         <link rel="manifest" href="manifest.webmanifest" />
         <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
     </head>
     <body>
-        <div id="skeleton">
+        <div id="skeleton" aria-hidden="true">
             <div class="sk-line" style="width: 40%"></div>
             <div class="sk-rect"></div>
             <div class="sk-rect" style="height: 150px"></div>
             <div class="sk-line" style="width: 70%"></div>
         </div>
 
-        <header>
-            <div class="header-content">
-                <h1 data-i18n="app_title"></h1>
-                <div class="version"><span data-i18n="ui_version_prefix"></span><%= appVersion %></div>
-            </div>
-        </header>
+        <% const fs = require('fs'); const path = require('path'); const root = process.cwd(); const resolve =
+        (p) => path.join(root, 'src', 'taskpane', p); %> <%=
+        fs.readFileSync(resolve('components/header/header.html')) %>
 
-        <main id="appMain" style="display: none">
-            <!-- PROFIL -->
-            <div class="section fade-in">
-                <div class="section-header">
-                    <div class="section-title" data-i18n="section_profile"></div>
-                    <button id="resetBtn" class="mini-btn" type="button" disabled>
-                        <svg viewBox="0 0 24 24">
-                            <path
-                                d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"
-                            />
-                        </svg>
-                        <span data-i18n="btn_reset_factory"></span>
-                    </button>
-                </div>
-                <select id="profilePreset" data-i18n-attr="aria-label:profile_select_aria">
-                    <option value="custom" data-i18n="profile_custom"></option>
-                    <option value="it" data-i18n="profile_it"></option>
-                    <option value="finance" data-i18n="profile_finance"></option>
-                    <option value="medical" data-i18n="profile_medical"></option>
-                    <option value="legal" data-i18n="profile_legal"></option>
-                    <option value="marketing" data-i18n="profile_marketing"></option>
-                    <option value="journalism" data-i18n="profile_journalism"></option>
-                </select>
-            </div>
+        <main id="appMain" role="main" style="display: none">
+            <%= fs.readFileSync(resolve('components/settings/profile.html')) %> <%=
+            fs.readFileSync(resolve('components/settings/direction.html')) %> <%=
+            fs.readFileSync(resolve('components/settings/options.html')) %> <%=
+            fs.readFileSync(resolve('components/advanced/advanced.html')) %> <%=
+            fs.readFileSync(resolve('components/settings/protected.html')) %>
 
-            <!-- SMER (2x2 grid) -->
-            <div class="section fade-in">
-                <div class="section-header">
-                    <div class="section-title" data-i18n="section_direction"></div>
-                </div>
-                <div class="direction-row">
-                    <label
-                        ><input type="radio" id="dirAuto" name="direction" value="auto" checked /><span
-                            data-i18n="dir_auto"
-                        ></span
-                    ></label>
-                    <label
-                        ><input type="radio" id="dirToAscii" name="direction" value="to-ascii" /><span
-                            data-i18n="dir_to_ascii_short"
-                        ></span
-                    ></label>
-                    <label
-                        ><input type="radio" id="dirLatToCyr" name="direction" value="lat-to-cyr" /><span
-                            data-i18n="dir_lat_to_cyr"
-                        ></span
-                    ></label>
-                    <label
-                        ><input type="radio" id="dirCyrToLat" name="direction" value="cyr-to-lat" /><span
-                            data-i18n="dir_cyr_to_lat"
-                        ></span
-                    ></label>
-                </div>
-
-                <div style="margin-top: 15px">
-                    <div class="lang-group">
-                        <div class="lang-label" data-i18n="opt_ui_language_label"></div>
-                        <select id="optUiLanguage">
-                            <option value="sr" data-i18n="opt_ui_language_sr"></option>
-                            <option value="en" data-i18n="opt_ui_language_en"></option>
-                            <option value="auto" data-i18n="opt_ui_language_auto"></option>
-                        </select>
-                    </div>
-                    <div class="lang-group" style="margin-top: 10px">
-                        <div class="lang-label" data-i18n="ui_theme_label"></div>
-                        <select id="optTheme">
-                            <option value="auto" data-i18n="ui_theme_auto"></option>
-                            <option value="light" data-i18n="ui_theme_light"></option>
-                            <option value="dark" data-i18n="ui_theme_dark"></option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-
-            <!-- OPTIONS -->
-            <div class="section fade-in">
-                <div class="section-title" data-i18n="section_options" style="margin-bottom: 10px"></div>
-                <label
-                    ><input type="checkbox" id="optConfirmWholeDoc" checked /><span
-                        data-i18n="opt_confirm_whole_doc"
-                    ></span
-                ></label>
-                <label
-                    ><input type="checkbox" id="optIncludeHeadersFooters" /><span
-                        data-i18n="opt_include_headers_footers"
-                    ></span
-                ></label>
-                <label
-                    ><input type="checkbox" id="optIncludeFootnotes" /><span
-                        data-i18n="opt_include_footnotes"
-                    ></span
-                ></label>
-                <label
-                    ><input type="checkbox" id="optIncludeEndnotes" /><span
-                        data-i18n="opt_include_endnotes"
-                    ></span
-                ></label>
-                <label
-                    ><input type="checkbox" id="optProtectBrands" checked /><span
-                        data-i18n="opt_protect_brands"
-                    ></span
-                ></label>
-                <label
-                    ><input type="checkbox" id="optSerbianQuotes" checked /><span
-                        data-i18n="opt_smart_quotes"
-                    ></span
-                ></label>
-                <label
-                    ><input type="checkbox" id="optPreserveCodeBlocks" checked /><span
-                        data-i18n="opt_preserve_code_before"
-                    ></span
-                    ><code data-i18n="ui_inline_code_word"></code
-                    ><span data-i18n="opt_preserve_code_between"></span
-                    ><code data-i18n="ui_block_code_word"></code
-                    ><span data-i18n="opt_preserve_code_after"></span
-                ></label>
-                <label
-                    ><input type="checkbox" id="optShowStats" /><span data-i18n="opt_show_stats"></span
-                ></label>
-            </div>
-
-            <!-- ADVANCED -->
-            <div class="section fade-in">
-                <div class="section-header">
-                    <div class="section-title" data-i18n="section_advanced"></div>
-                    <button
-                        id="toggleAdvancedBtn"
-                        class="mini-btn"
-                        type="button"
-                        aria-expanded="false"
-                        data-i18n="btn_toggle_advanced"
-                    ></button>
-                </div>
-
-                <div id="advancedSettings" class="advanced-settings">
-                    <div class="field-row">
-                        <div class="field-label">
-                            <span data-i18n="opt_curly_label_before"></span><code>{...}</code>
-                        </div>
-                        <select id="optCurlyProtection">
-                            <option value="placeholders" data-i18n="opt_curly_placeholders"></option>
-                            <option value="all" data-i18n="opt_curly_all"></option>
-                            <option value="none" data-i18n="opt_curly_none"></option>
-                        </select>
-                    </div>
-
-                    <label
-                        ><input type="checkbox" id="optProtectRomans" checked /><span
-                            data-i18n="opt_protect_romans"
-                        ></span
-                    ></label>
-                    <label
-                        ><input type="checkbox" id="optSetProofingLanguage" checked /><span
-                            data-i18n="opt_set_proofing_language"
-                        ></span
-                    ></label>
-
-                    <div class="field-row" style="margin-top: 15px">
-                        <div class="field-label" data-i18n="opt_dialect_label"></div>
-                        <select id="optDialect">
-                            <option value="none" data-i18n="opt_dialect_none"></option>
-                            <option value="ekavica_to_ijekavica" data-i18n="opt_dialect_ei"></option>
-                            <option value="ijekavica_to_ekavica" data-i18n="opt_dialect_ie"></option>
-                        </select>
-                    </div>
-
-                    <div class="field-row" style="margin-top: 15px">
-                        <div class="field-label" data-i18n="opt_custom_subs_label"></div>
-                        <div class="subs-add-row">
-                            <input
-                                type="text"
-                                id="subSrc"
-                                class="sub-input"
-                                data-i18n-attr="placeholder:subs_input_src_short"
-                            />
-                            <span class="arrow">→</span>
-                            <input
-                                type="text"
-                                id="subDest"
-                                class="sub-input"
-                                data-i18n-attr="placeholder:subs_input_dest_short"
-                            />
-                            <button id="addSubBtn" class="mini-btn success" type="button">+</button>
-                        </div>
-                        <div id="subsContainer" class="subs-container">
-                            <div class="subs-empty hint" data-i18n="subs_list_empty"></div>
-                        </div>
-                        <textarea id="optCustomSubstitutions" style="display: none"></textarea>
-                    </div>
-                </div>
-            </div>
-
-            <!-- PROTECTED -->
-            <div class="section fade-in">
-                <div class="section-header">
-                    <div class="section-title" data-i18n="section_protected"></div>
-                    <div class="header-actions">
-                        <button
-                            id="clearCustomBtn"
-                            class="mini-btn danger"
-                            type="button"
-                            data-i18n-attr="title:btn_clear_custom_title"
-                        >
-                            <svg viewBox="0 0 24 24">
-                                <path
-                                    d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
-                                />
-                            </svg>
-                            <span data-i18n="btn_clear_custom"></span>
-                        </button>
-                        <button
-                            id="clearPresetBtn"
-                            class="mini-btn"
-                            type="button"
-                            data-i18n-attr="title:btn_clear_preset_title"
-                        >
-                            <svg viewBox="0 0 24 24">
-                                <path
-                                    d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-2 .89-2 2v11c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zM10 4h4v2h-4V4zm10 15H4V8h16v11z"
-                                />
-                            </svg>
-                            <span data-i18n="btn_clear_preset"></span>
-                        </button>
-                        <button
-                            id="clearAllBtn"
-                            class="mini-btn danger"
-                            type="button"
-                            data-i18n-attr="title:btn_clear_all_title"
-                        >
-                            <svg viewBox="0 0 24 24">
-                                <path
-                                    d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
-                                />
-                            </svg>
-                            <span data-i18n="btn_clear_all"></span>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="tags-filter-container">
-                    <input
-                        type="text"
-                        id="tagFilterInput"
-                        class="tag-filter-input"
-                        data-i18n-attr="placeholder:tags_filter_placeholder,aria-label:tags_filter_aria"
-                    />
-                </div>
-
-                <div style="display: flex; gap: 8px; margin-bottom: 8px">
-                    <input
-                        type="text"
-                        id="tagInput"
-                        class="sub-input"
-                        autocomplete="off"
-                        data-i18n-attr="placeholder:tags_input_placeholder"
-                    />
-                    <button id="addTagBtn" class="mini-btn success" type="button" disabled>+</button>
-                </div>
-
-                <div class="tags-container" id="tagsContainer">
-                    <div class="tags-list" id="tagsList"></div>
-                </div>
-                <div class="hint" data-i18n="tags_hint"></div>
-
-                <textarea id="userWordsCustom" style="display: none"></textarea>
-                <textarea id="userWordsPreset" style="display: none"></textarea>
-            </div>
-
-            <div id="progressContainer" class="progress-container" style="display: none">
+            <div
+                id="progressContainer"
+                class="progress-container"
+                style="display: none"
+                role="progressbar"
+                aria-valuemin="0"
+                aria-valuemax="100"
+            >
                 <div id="progressBar" class="progress-bar"></div>
             </div>
-            <div id="statsBox" style="display: none">
+            <div id="statsBox" style="display: none" aria-live="polite">
                 <div id="statsTitle"></div>
                 <pre id="statsText"></pre>
             </div>
         </main>
 
-        <!-- FIXED BOTTOM AREA -->
-        <div id="msg"></div>
+        <div id="msg" role="status" aria-live="polite"></div>
 
-        <div class="app-footer">
-            <a href="support.html" target="_blank" data-i18n="footer_help"></a> •
-            <a href="privacy.html" target="_blank" data-i18n="footer_privacy"></a> •
-            <span data-i18n="footer_copyright"></span>
-        </div>
-
-        <!-- STICKY FOOTER -->
-        <div class="sticky-footer" id="stickyFooter">
-            <button id="previewBtn" class="secondary-btn" type="button">
-                <span data-i18n="ui_btn_preview"></span>
-                <!-- VRAĆENO: -->
-                <div class="btn-sub" data-i18n="ui_sub_preview_selection"></div>
-            </button>
-            <button id="runBtn" class="primary-btn" type="button">
-                <span data-i18n="ui_btn_run"></span>
-                <!-- VRAĆENO: -->
-                <div class="btn-sub" data-i18n="ui_sub_run_selection"></div>
-            </button>
-        </div>
-
-        <!-- Modals -->
-        <div id="modalOverlay" class="modal-overlay" role="dialog" aria-modal="true">
-            <div id="modal" class="modal">
-                <h3 id="modalTitle"></h3>
-                <div class="modal-content">
-                    <div id="modalText"></div>
-                    <textarea id="modalInput" rows="5"></textarea>
-                </div>
-                <div class="modal-actions">
-                    <button id="modalCancel" class="secondary-btn" type="button"></button>
-                    <button id="modalOk" class="primary-btn" type="button"></button>
-                </div>
-            </div>
-        </div>
-
-        <div id="tourOverlay" class="tour-overlay" style="display: none">
-            <div class="tour-card">
-                <button
-                    id="tourCloseBtn"
-                    class="tour-close"
-                    data-i18n-attr="title:btn_close"
-                    aria-hidden="true"
-                >
-                    ×
-                </button>
-
-                <div class="tour-image">
-                    <div id="tourIcon" class="tour-icon">👋</div>
-                </div>
-
-                <h3 id="tourTitle"></h3>
-                <p id="tourText"></p>
-
-                <div class="tour-footer">
-                    <div class="tour-dots" id="tourDots"></div>
-                    <button id="tourActionBtn" class="primary-btn"></button>
-                </div>
-            </div>
-        </div>
+        <%= fs.readFileSync(resolve('components/footer/footer.html')) %> <%=
+        fs.readFileSync(resolve('components/footer/sticky-footer.html')) %> <%=
+        fs.readFileSync(resolve('components/modals/confirm-modal.html')) %> <%=
+        fs.readFileSync(resolve('components/modals/tour-modal.html')) %>
     </body>
 </html>
