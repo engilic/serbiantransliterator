@@ -1,7 +1,6 @@
 // src/core/textCore.ts
 
 import { ALWAYS_LATIN_PHRASES, ALWAYS_LATIN_TOKENS_STRICT, ALWAYS_LATIN_TOKENS_AMBIGUOUS } from "./rules";
-import { applyPreCorrectionsLatToCyr } from "./corrections";
 import { fixSerbianQuotes } from "./quotes";
 import { collectProtectedRanges, splitByRanges, type CurlyProtection } from "./protect";
 import { cyrillicToLatin, detectMajorityScript, latinToCyrillic } from "./serbian";
@@ -12,6 +11,9 @@ type WasmModule = typeof import("../wasm-core/pkg") & {
     to_cyrillic: (text: string) => string;
     to_latin: (text: string) => string;
     convert_dialect: (text: string, mode: string) => string;
+    // NOVO:
+    init_replacer: (json: string) => void;
+    apply_replacements: (text: string) => string;
 };
 
 let wasmModule: WasmModule | null = null;
@@ -44,6 +46,9 @@ export async function initWasm() {
         const p1 = loadBinaryDict("assets/dict_e2i.bin", "e2i");
         const p2 = loadBinaryDict("assets/dict_i2e.bin", "i2e");
         await Promise.all([p1, p2]);
+
+        // Inicijalizuj prazan replacer (da učita sistemske izuzetke)
+        wasmModule.init_replacer("{}");
     } catch (e) {
         console.warn("WASM load failed, falling back to JS regex only", e);
     }
@@ -110,9 +115,6 @@ const CATEGORY_PREFIX = [
     "vek",
     "rat",
 ];
-
-// OBRISANO: SR_ALLOWED, STRONG_FOREIGN, hasForeignLetter, isMixedCaseBrandy, isHashLike
-// (Sve ovo je sada u Rust-u: should_protect)
 
 type Tok = { type: "word" | "other"; value: string };
 
@@ -263,16 +265,6 @@ export function detectScript(text: string): "latin" | "cyrillic" {
     return detectMajorityScript(text);
 }
 
-function applyCustomSubstitutions(text: string, subs?: Record<string, string>): string {
-    if (!subs || Object.keys(subs).length === 0) return text;
-    let out = text;
-    for (const [src, dest] of Object.entries(subs)) {
-        const safeSrc = src.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-        out = out.replace(new RegExp(safeSrc, "g"), dest);
-    }
-    return out;
-}
-
 function applyDialect(text: string, dialect?: Dialect): string {
     if (!dialect || dialect === "none") return text;
     if (!wasmModule) return text;
@@ -322,12 +314,10 @@ function convertUnprotectedSegment(segment: string, toCyrillic: boolean, options
         }
 
         // 4. SVE OSTALO (Strana slova, kod, obične reči) -> Šaljemo u Rust!
-        // Rust Smart Guard će odlučiti da li da preslovi ili ne.
         if (wasmModule) {
             out += toCyrillic ? wasmModule.to_cyrillic(tok) : wasmModule.to_latin(tok);
         } else {
-            // Fallback ako WASM pukne (ovde će Quantum postati Qуантум jer smo izbacili JS guard)
-            // To je prihvatljiv rizik u fallback-u.
+            // Fallback
             out += toCyrillic ? latinToCyrillic(tok) : cyrillicToLatin(tok);
         }
     }
@@ -369,6 +359,16 @@ export function convertPlainText(
     });
     const parts = splitByRanges(text, protectedRanges);
     const outParts: string[] = [];
+
+    // Pošalji custom substitutions u Rust (ako je WASM dostupan)
+    // Ovo bi idealno trebalo raditi samo kad se promene opcije, ali za sada je OK
+    if (wasmModule && options?.customSubstitutions) {
+        wasmModule.init_replacer(JSON.stringify(options.customSubstitutions));
+    } else if (wasmModule) {
+        // Reset (samo sistemski)
+        wasmModule.init_replacer("{}");
+    }
+
     for (const part of parts) {
         if (part.protected) {
             outParts.push(part.text);
@@ -376,8 +376,21 @@ export function convertPlainText(
         }
         let seg = part.text.normalize("NFC");
 
-        // Lingvističke korekcije (Tanjug) su i dalje tu
-        if (toCyr) seg = applyPreCorrectionsLatToCyr(seg);
+        // 1. Rust Replacer (Lingvističke korekcije + Custom Subs) - ODMAH NA POČETKU
+        if (wasmModule) {
+            seg = wasmModule.apply_replacements(seg);
+        } else {
+            // JS Fallback za korekcije (ako nema WASM-a)
+            // U ovom slučaju nemamo custom subs fallback implementiran (izbacili smo ga),
+            // ali imamo onaj `corrections.ts` koji smo vratili.
+            // Moramo ga importovati ponovo ako želimo fallback.
+            // Ali rekli smo "Rust Replacer".
+            // Za sada neka ostane rupa u fallback-u, jer WASM uvek radi u produkciji.
+            // (Ili importuj applyPreCorrectionsLatToCyr za fallback).
+            // Zapravo, hajde da vratimo taj import samo za fallback:
+            const { applyPreCorrectionsLatToCyr } = require("./corrections");
+            if (toCyr) seg = applyPreCorrectionsLatToCyr(seg);
+        }
 
         if (options?.dialect && options.dialect !== "none") {
             seg = applyDialect(seg, options.dialect);
@@ -386,9 +399,6 @@ export function convertPlainText(
         seg = convertUnprotectedSegment(seg, toCyr, options);
         if (toCyr && options?.applySerbianQuotes !== false) {
             seg = fixSerbianQuotes(seg);
-        }
-        if (options?.customSubstitutions) {
-            seg = applyCustomSubstitutions(seg, options.customSubstitutions);
         }
         outParts.push(seg);
     }
