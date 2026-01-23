@@ -16,20 +16,17 @@
             <div class="sk-line" style="width: 70%"></div>
         </div>
 
-        <%= compilation.inputFileSystem.readFileSync(require.resolve('./components/header/header.html')) %>
+        <% const fs = require('fs'); const path = require('path'); // Koristimo process.cwd() koji pokazuje na
+        root projekta gde je webpack.config.js const root = process.cwd(); const resolve = (p) =>
+        path.join(root, 'src', 'taskpane', p); %> <%=
+        fs.readFileSync(resolve('components/header/header.html')) %>
 
         <main id="appMain" role="main" style="display: none">
-            <%=
-            compilation.inputFileSystem.readFileSync(require.resolve('./components/settings/profile.html')) %>
-            <%=
-            compilation.inputFileSystem.readFileSync(require.resolve('./components/settings/direction.html'))
-            %> <%=
-            compilation.inputFileSystem.readFileSync(require.resolve('./components/settings/options.html')) %>
-            <%=
-            compilation.inputFileSystem.readFileSync(require.resolve('./components/advanced/advanced.html'))
-            %> <%=
-            compilation.inputFileSystem.readFileSync(require.resolve('./components/settings/protected.html'))
-            %>
+            <%= fs.readFileSync(resolve('components/settings/profile.html')) %> <%=
+            fs.readFileSync(resolve('components/settings/direction.html')) %> <%=
+            fs.readFileSync(resolve('components/settings/options.html')) %> <%=
+            fs.readFileSync(resolve('components/advanced/advanced.html')) %> <%=
+            fs.readFileSync(resolve('components/settings/protected.html')) %>
 
             <div
                 id="progressContainer"
@@ -49,12 +46,9 @@
 
         <div id="msg" role="status" aria-live="polite"></div>
 
-        <%= compilation.inputFileSystem.readFileSync(require.resolve('./components/footer/footer.html')) %>
-        <%=
-        compilation.inputFileSystem.readFileSync(require.resolve('./components/footer/sticky-footer.html')) %>
-        <%=
-        compilation.inputFileSystem.readFileSync(require.resolve('./components/modals/confirm-modal.html')) %>
-        <%= compilation.inputFileSystem.readFileSync(require.resolve('./components/modals/tour-modal.html'))
-        %>
+        <%= fs.readFileSync(resolve('components/footer/footer.html')) %> <%=
+        fs.readFileSync(resolve('components/footer/sticky-footer.html')) %> <%=
+        fs.readFileSync(resolve('components/modals/confirm-modal.html')) %> <%=
+        fs.readFileSync(resolve('components/modals/tour-modal.html')) %>
     </body>
 </html>

@@ -1,6 +1,5 @@
 /* eslint-disable no-undef */
 const path = require("path");
-// pkg je obrisan jer se ne koristi
 const CopyWebpackPlugin = require("copy-webpack-plugin");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
@@ -30,31 +29,11 @@ module.exports = {
                 test: /\.css$/i,
                 use: [MiniCssExtractPlugin.loader, "css-loader"],
             },
-            {
-                test: /\.html$/,
-                use: [
-                    {
-                        loader: "html-loader",
-                        options: {
-                            // Isključujemo sources da ne bi pokušavao da resolve-uje slike
-                            sources: false,
-                            // Preprocessor koji dozvoljava EJS sintaksu <%= ... %>
-                            preprocessor: (content, _loaderContext) => {
-                                let result = content;
-                                // Jednostavna zamena za require include-ove
-                                // Ovo radi replace pre nego što html-loader parsira
-                                result = result.replace(/<%= require\('(.+?)'\) %>/g, (match, filepath) => {
-                                    const absolutePath = path.resolve(_loaderContext.context, filepath);
-                                    // Koristimo fs da učitamo fajl sinhrono
-                                    return _loaderContext.fs.readFileSync(absolutePath, "utf8");
-                                });
-                                return result;
-                            },
-                        },
-                    },
-                ],
-                exclude: /node_modules/,
-            },
+            // UKLONJEN html-loader za .html fajlove
+            // HtmlWebpackPlugin će sam procesirati template koristeći lodash (EJS)
+            // Ako nam treba html-loader za import html-a u JS, možemo ga vratiti ali moramo exclude-ovati template fajlove.
+            // Za sada ga sklanjamo da bismo osigurali da template radi.
+
             {
                 test: /\.(png|jpg|gif|ico)$/,
                 type: "asset/resource",
