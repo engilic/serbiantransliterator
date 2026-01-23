@@ -13,6 +13,7 @@
         "dev-server": "npm run compile:dicts && webpack serve --mode development",
         "sideload:word": "office-addin-dev-settings sideload manifest.xml --app word",
         "start": "npm run dev-server",
+        "dev": "concurrently --kill-others \"npm run start\" \"wait-on https://localhost:3000/taskpane.html && npm run sideload:word\"",
         "validate": "office-addin-manifest validate manifest.xml",
         "validate:prod": "office-addin-manifest validate manifest.prod.xml",
         "test": "cross-env VITE_CJS_IGNORE_WARNING=1 vitest run",
