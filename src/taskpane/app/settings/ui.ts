@@ -26,6 +26,8 @@ import { initUiI18n, getUiLanguagePreference, setUiLanguagePreference, asUiLangP
 import { checkSelectionAndUpdateButtons } from "../selection";
 import { get, getOptional } from "../utils/dom";
 
+import { logger } from "../telemetry/logger";
+
 function applyTheme(theme: AppTheme) {
     if (theme === "light") {
         document.documentElement.setAttribute("data-theme", "light");
