@@ -68,4 +68,3 @@ jobs:
 
             - name: E2E smoke (Playwright)
               run: npm run test:e2e
- 
