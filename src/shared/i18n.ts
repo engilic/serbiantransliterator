@@ -43,6 +43,7 @@ const SR_RS = {
     section_direction: "SMER",
     dir_auto: "Auto",
     dir_to_ascii: "Ošišana latinica",
+    dir_to_ascii_short: "ASCII Lat", // <--- NOVO
     dir_lat_to_cyr: "Lat → Ćir",
     dir_cyr_to_lat: "Ćir → Lat",
     section_options: "OPCIJE",
@@ -96,6 +97,8 @@ const SR_RS = {
     subs_list_empty: "Nema definisanih zamena.",
     subs_input_src: "Izvor (npr. lepo)",
     subs_input_dest: "Cilj (npr. lijepo)",
+    subs_input_src_short: "izvor", // <--- NOVO
+    subs_input_dest_short: "cilj", // <--- NOVO
 
     // DIALECT
     opt_dialect_label: "Dijalekt / Pismo",
@@ -265,6 +268,7 @@ const EN_US: Record<TranslationKey, string> = {
     section_direction: "DIRECTION",
     dir_auto: "Auto",
     dir_to_ascii: "ASCII Latin",
+    dir_to_ascii_short: "ASCII Lat", // <--- NOVO
     dir_lat_to_cyr: "Lat → Cyr",
     dir_cyr_to_lat: "Cyr → Lat",
     section_options: "OPTIONS",
@@ -315,6 +319,8 @@ const EN_US: Record<TranslationKey, string> = {
     subs_list_empty: "No substitutions defined.",
     subs_input_src: "Source (e.g. lepo)",
     subs_input_dest: "Dest (e.g. lijepo)",
+    subs_input_src_short: "src", // <--- NOVO
+    subs_input_dest_short: "dest", // <--- NOVO
 
     // DIALECT
     opt_dialect_label: "Dialect / Script",

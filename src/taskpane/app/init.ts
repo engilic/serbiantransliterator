@@ -11,18 +11,27 @@ import { modalManager } from "./modal/modalManager";
 import { logger } from "./telemetry/logger";
 import { showPreviewToast } from "./modal/previewModal";
 import { initOnboarding } from "./onboarding/tour";
-// Dodajemo import za initWasm
 import { initWasm } from "../../core/textCore";
 
 export function initTaskpane(isWebMode = false) {
+    // 0) Ukloni Skeleton Loader i prikaži aplikaciju
+    const skeleton = document.getElementById("skeleton");
+    const main = document.getElementById("appMain");
+
+    // Dodajemo malu pauzu da bi skeleton bio vidljiv bar trenutak (da ne trepne prebrzo)
+    // ili da bi tranzicija bila glatka.
+    setTimeout(() => {
+        if (skeleton) skeleton.style.display = "none";
+        if (main) main.style.display = "flex"; // Main je flex kontejner
+    }, 100);
+
     // 1) UI init (settings load + bind dugmad + tags + listeners)
     initUi();
 
-    // 2) Pokreni učitavanje WASM-a (i rečnika) u pozadini
-    // Ovo je ključno da bi Smart Guard radio kad korisnik klikne na dugme
+    // 2) Pokreni učitavanje WASM-a
     initWasm().catch((e) => console.error("WASM init failed:", e));
 
-    // 5) Debug logs export (ovo radi svuda)
+    // 5) Debug logs export
     setupDebugTrigger();
 
     // 6) Cleanup on unload
@@ -55,7 +64,7 @@ export function initTaskpane(isWebMode = false) {
         );
     }
 
-    // 4) Initial button state (SAMO ZA WORD)
+    // 4) Initial button state
     void checkSelectionAndUpdateButtons();
 
     // 5) Keyboard Shortcuts
