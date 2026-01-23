@@ -1,27 +1,103 @@
 use wasm_bindgen::prelude::*;
 use std::sync::Mutex;
 use once_cell::sync::Lazy;
-use fst::Map; // Dodali smo fst
+use fst::Map;
+use std::collections::HashMap;
+use aho_corasick::AhoCorasick;
 
 // Struktura koja drži učitani rečnik (Zero-Copy wrapper)
-// Ne možemo držati 'static referencu na JS podatke lako, pa moramo kopirati podatke u Rust Heap
-// ali samo jednom pri učitavanju.
-// (Pravi Zero-Copy iz JS memorije je moguć ali rizičan zbog GC-a, ovo je safe varijanta)
 struct DictionaryStore {
-    fst: Map<Vec<u8>>, // FST struktura
-    values: Vec<u8>,   // Raw string data
+    fst: Map<Vec<u8>>,
+    values: Vec<u8>,
 }
 
 static DICTIONARIES: Lazy<Mutex<HashMap<String, DictionaryStore>>> = Lazy::new(|| {
     Mutex::new(HashMap::new())
 });
 
-use std::collections::HashMap; // Treba nam i dalje za registry (e2i -> DictionaryStore)
+// === GLOBALNI REPLACER (Aho-Corasick) ===
+static REPLACER: Lazy<Mutex<Option<(AhoCorasick, Vec<String>)>>> = Lazy::new(|| {
+    Mutex::new(None)
+});
 
-// Binary Loader (Novi format)
+// SISTEMSKI IZUZECI (Lingvistička pravila koja odstupaju od standardne transliteracije)
+const SYSTEM_EXCEPTIONS: &[(&str, &str)] = &[
+    ("Tanjug", "Танјуг"), ("tanjug", "танјуг"),
+    ("Injekc", "Инјекц"), ("injekc", "инјекц"),
+    ("Injekt", "Инјект"), ("injekt", "инјект"),
+    ("Konjug", "Конјуг"), ("konjug", "конјуг"),
+    ("Konjunk", "Конјунк"), ("konjunk", "конјунк"),
+    ("Anjon", "Анјон"),   ("anjon", "анјон"),
+    ("Katjon", "Катјон"), ("katjon", "катјон"),
+    ("Nadživ", "Наджив"), ("nadživ", "наджив"),
+    ("Podžanr", "Поджанр"), ("podžanr", "поджанр"),
+    ("reke Save", "реке Саве"),
+    ("duž Save", "дуж Саве"),
+    ("ka Savi", "ка Сави"),
+    ("na Savi", "на Сави"),
+    ("ušća Save", "ушћа Саве"),
+    ("obale Save", "обале Саве"),
+];
+
+// Inicijalizacija Replacera (zove se iz JS-a, npr. u initWasm ili kad se promene opcije)
+#[wasm_bindgen]
+pub fn init_replacer(custom_json: &str) -> Result<(), JsValue> {
+    let custom_map: HashMap<String, String> = if custom_json.is_empty() {
+        HashMap::new()
+    } else {
+        serde_json::from_str(custom_json)
+            .map_err(|e| JsValue::from_str(&format!("JSON error: {}", e)))?
+    };
+
+    let mut patterns: Vec<String> = Vec::new();
+    let mut replacements = Vec::new();
+
+    // 1. Dodaj sistemske izuzetke (konvertuj &str u String)
+    for (pat, rep) in SYSTEM_EXCEPTIONS {
+        patterns.push(pat.to_string());
+        replacements.push(rep.to_string());
+    }
+
+    // 2. Dodaj korisničke zamene
+    for (pat, rep) in custom_map {
+        patterns.push(pat);
+        replacements.push(rep);
+    }
+
+    if patterns.is_empty() {
+        let mut global = REPLACER.lock().unwrap();
+        *global = None;
+        return Ok(());
+    }
+
+    // Kreiraj Aho-Corasick automat
+    let ac = AhoCorasick::builder()
+        .ascii_case_insensitive(false) 
+        .match_kind(aho_corasick::MatchKind::LeftmostFirst)
+        .build(&patterns)
+        .map_err(|e| JsValue::from_str(&format!("AC error: {}", e)))?;
+
+    let mut global = REPLACER.lock().unwrap();
+    *global = Some((ac, replacements));
+
+    Ok(())
+}
+
+// Primena zamena na tekst
+#[wasm_bindgen]
+pub fn apply_replacements(text: &str) -> String {
+    let guard = REPLACER.lock().unwrap();
+    
+    if let Some((ac, replacements)) = &*guard {
+        ac.replace_all(text, replacements)
+    } else {
+        text.to_string()
+    }
+}
+
+// Binary Loader (FST)
 #[wasm_bindgen]
 pub fn load_dictionary_bin(mode: &str, bin_data: &[u8]) -> Result<(), JsValue> {
-    // Format: [LEN 8b][FST...][VALUES...]
     if bin_data.len() < 8 {
         return Err(JsValue::from_str("Invalid binary format (too short)"));
     }
@@ -37,7 +113,6 @@ pub fn load_dictionary_bin(mode: &str, bin_data: &[u8]) -> Result<(), JsValue> {
     let fst_bytes = bin_data[8..8 + fst_len].to_vec();
     let values_bytes = bin_data[8 + fst_len..].to_vec();
 
-    // Verifikuj i učitaj FST
     let fst = Map::new(fst_bytes).map_err(|e| JsValue::from_str(&e.to_string()))?;
 
     let store = DictionaryStore {
@@ -55,7 +130,7 @@ pub fn load_dictionary_bin(mode: &str, bin_data: &[u8]) -> Result<(), JsValue> {
     Ok(())
 }
 
-// === SMART GUARD (Ostaje isto) ===
+// === SMART GUARD LOGIC ===
 fn should_protect(word: &str) -> bool {
     let mut has_foreign = false;
     let mut has_underscore = false;
@@ -82,24 +157,21 @@ fn should_protect(word: &str) -> bool {
     false
 }
 
-// === CONVERSION (to_cyrillic/to_latin - Ostaju isti) ===
-// (Kopiraj funkcije process_word_to_cyr, to_cyrillic, to_latin od prošli put, nisu se menjale)
-// Da ne bih ponavljao ogroman kod, pretpostavljam da ih imaš.
-// Ako treba, reci da ponovim ceo fajl.
+// === CONVERSION LOGIC ===
 
-// Ovde ću staviti placeholder za te funkcije da kod bude validan
 fn process_word_to_cyr(result: &mut String, word: &str) {
     if should_protect(word) {
         result.push_str(word);
         return;
     }
-    // ... stara logika mapiranja ...
-    // (Skraćeno radi preglednosti, ali ti treba ceo kod)
+
     let chars: Vec<char> = word.chars().collect();
     let len = chars.len();
     let mut i = 0;
+
     while i < len {
         let c = chars[i];
+        
         if i + 1 < len {
             let next = chars[i + 1];
             let pair = format!("{}{}", c, next);
@@ -113,6 +185,7 @@ fn process_word_to_cyr(result: &mut String, word: &str) {
                 _ => {}
             }
         }
+
         let mapped = match c {
             'A' => 'А', 'a' => 'а', 'B' => 'Б', 'b' => 'б', 'V' => 'В', 'v' => 'в',
             'G' => 'Г', 'g' => 'г', 'D' => 'Д', 'd' => 'д', 'Đ' => 'Ђ', 'đ' => 'ђ',
@@ -135,6 +208,7 @@ pub fn to_cyrillic(text: &str) -> String {
     let mut result = String::with_capacity(text.len());
     let mut current_word = String::new();
     let mut in_word = false;
+
     for c in text.chars() {
         if c.is_alphanumeric() || c == '_' {
             in_word = true;
@@ -160,6 +234,7 @@ pub fn to_latin(text: &str) -> String {
     let chars: Vec<char> = text.chars().collect();
     let len = chars.len();
     let mut i = 0;
+
     while i < len {
         let c = chars[i];
         match c {
@@ -200,19 +275,17 @@ pub fn to_latin(text: &str) -> String {
     result
 }
 
-// === DIALECT LOGIC (FST UPGRADE) ===
+// === DIALECT LOGIC (FST) ===
 
 const SUFFIXES: &[&str] = &[
     "ima", "om", "em", "im", "ih", "og", "eg", "uj", 
     "a", "e", "i", "o", "u"
 ];
 
-// Helper: čita string iz values buffera na datoj poziciji
 fn get_value_from_store(store: &DictionaryStore, offset: u64) -> Option<String> {
     let start = offset as usize;
     if start >= store.values.len() { return None; }
     
-    // Čitaj do null byte-a
     let mut end = start;
     while end < store.values.len() && store.values[end] != 0 {
         end += 1;
@@ -225,14 +298,12 @@ fn get_value_from_store(store: &DictionaryStore, offset: u64) -> Option<String> 
 fn try_smart_lookup(store: &DictionaryStore, word: &str) -> Option<String> {
     let word_lower = word.to_lowercase();
 
-    // 1. FST Lookup (O(len)) - Munjevito
     if let Some(offset) = store.fst.get(&word_lower) {
         if let Some(res) = get_value_from_store(store, offset) {
             return Some(match_case(word, &res));
         }
     }
 
-    // 2. Stemming (Suffix)
     if word_lower.chars().count() < 4 {
         return None;
     }
@@ -244,7 +315,6 @@ fn try_smart_lookup(store: &DictionaryStore, word: &str) -> Option<String> {
 
             if root.chars().count() < 3 { continue; }
 
-            // FST Lookup za root
             if let Some(offset) = store.fst.get(root) {
                 if let Some(root_translation) = get_value_from_store(store, offset) {
                     let mut result = root_translation;
