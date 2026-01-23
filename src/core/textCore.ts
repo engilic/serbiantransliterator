@@ -1,6 +1,7 @@
 // src/core/textCore.ts
 
 import { ALWAYS_LATIN_PHRASES, ALWAYS_LATIN_TOKENS_STRICT, ALWAYS_LATIN_TOKENS_AMBIGUOUS } from "./rules";
+import { applyPreCorrectionsLatToCyr } from "./corrections"; // <--- IMPORT NA VRHU
 import { fixSerbianQuotes } from "./quotes";
 import { collectProtectedRanges, splitByRanges, type CurlyProtection } from "./protect";
 import { cyrillicToLatin, detectMajorityScript, latinToCyrillic } from "./serbian";
@@ -11,7 +12,6 @@ type WasmModule = typeof import("../wasm-core/pkg") & {
     to_cyrillic: (text: string) => string;
     to_latin: (text: string) => string;
     convert_dialect: (text: string, mode: string) => string;
-    // NOVO:
     init_replacer: (json: string) => void;
     apply_replacements: (text: string) => string;
 };
@@ -47,7 +47,6 @@ export async function initWasm() {
         const p2 = loadBinaryDict("assets/dict_i2e.bin", "i2e");
         await Promise.all([p1, p2]);
 
-        // Inicijalizuj prazan replacer (da učita sistemske izuzetke)
         wasmModule.init_replacer("{}");
     } catch (e) {
         console.warn("WASM load failed, falling back to JS regex only", e);
@@ -291,13 +290,10 @@ function convertUnprotectedSegment(segment: string, toCyrillic: boolean, options
         const tok = t.value;
         const tokLower = normKey(tok);
 
-        // 1. User Protected (Najveći prioritet)
         if (userProtectedLower.has(tokLower)) {
             out += tok;
             continue;
         }
-
-        // 2. Brendovi (iPhone Pro) - ovo ostaje u TS jer zahteva kontekst (prev/next)
         if (protectBrands && ALWAYS_LATIN_TOKENS_STRICT.has(tokLower)) {
             out += tok;
             continue;
@@ -306,18 +302,14 @@ function convertUnprotectedSegment(segment: string, toCyrillic: boolean, options
             out += tok;
             continue;
         }
-
-        // 3. Rimski brojevi (kontekstualno) - ostaje u TS
         if (toCyrillic && shouldProtectRomanToken(toks, i)) {
             out += tok;
             continue;
         }
 
-        // 4. SVE OSTALO (Strana slova, kod, obične reči) -> Šaljemo u Rust!
         if (wasmModule) {
             out += toCyrillic ? wasmModule.to_cyrillic(tok) : wasmModule.to_latin(tok);
         } else {
-            // Fallback
             out += toCyrillic ? latinToCyrillic(tok) : cyrillicToLatin(tok);
         }
     }
@@ -360,12 +352,9 @@ export function convertPlainText(
     const parts = splitByRanges(text, protectedRanges);
     const outParts: string[] = [];
 
-    // Pošalji custom substitutions u Rust (ako je WASM dostupan)
-    // Ovo bi idealno trebalo raditi samo kad se promene opcije, ali za sada je OK
     if (wasmModule && options?.customSubstitutions) {
         wasmModule.init_replacer(JSON.stringify(options.customSubstitutions));
     } else if (wasmModule) {
-        // Reset (samo sistemski)
         wasmModule.init_replacer("{}");
     }
 
@@ -376,19 +365,10 @@ export function convertPlainText(
         }
         let seg = part.text.normalize("NFC");
 
-        // 1. Rust Replacer (Lingvističke korekcije + Custom Subs) - ODMAH NA POČETKU
         if (wasmModule) {
             seg = wasmModule.apply_replacements(seg);
         } else {
-            // JS Fallback za korekcije (ako nema WASM-a)
-            // U ovom slučaju nemamo custom subs fallback implementiran (izbacili smo ga),
-            // ali imamo onaj `corrections.ts` koji smo vratili.
-            // Moramo ga importovati ponovo ako želimo fallback.
-            // Ali rekli smo "Rust Replacer".
-            // Za sada neka ostane rupa u fallback-u, jer WASM uvek radi u produkciji.
-            // (Ili importuj applyPreCorrectionsLatToCyr za fallback).
-            // Zapravo, hajde da vratimo taj import samo za fallback:
-            const { applyPreCorrectionsLatToCyr } = require("./corrections");
+            // JS Fallback (bez require!)
             if (toCyr) seg = applyPreCorrectionsLatToCyr(seg);
         }
 
