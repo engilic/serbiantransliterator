@@ -27,6 +27,8 @@
         "check:i18n": "npm run check:i18n:ts && npm run check:i18n:html",
         "check:i18n:ts": "node scripts/checkUserFacingStrings.cjs",
         "check:i18n:html": "node scripts/checkTaskpaneHtmlI18n.cjs",
+        "format:check": "prettier --check .",
+        "audit:high": "npm audit --audit-level=high",
         "prepare": "husky install"
     },
     "dependencies": {
