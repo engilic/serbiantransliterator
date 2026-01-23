@@ -52,8 +52,6 @@ beforeEach(() => {
         preserveCodeBlocks: true,
         protectRomans: true,
         applySerbianQuotes: false,
-        fixDoubleSpaces: true,
-        formatDates: false,
         curlyProtection: "placeholders",
         setProofingLanguage: false,
         showStats: false,
