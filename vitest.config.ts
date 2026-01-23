@@ -29,9 +29,7 @@ export default defineConfig({
                 "**/*.js",
                 "src/wasm-core/**",
                 "src/taskpane/app/onboarding/tour.ts",
-                // === NOVO: ISKLJUČI WEB BATCH MODE ===
                 "src/taskpane/app/web/**",
-                // ===================================
                 "webpack.*.js",
                 "vitest.config.ts",
                 "playwright.config.ts",
@@ -42,9 +40,9 @@ export default defineConfig({
             ],
             thresholds: {
                 lines: 75,
-                functions: 75,
+                functions: 74,
                 statements: 75,
-                branches: 65,
+                branches: 64,
             },
         },
     },

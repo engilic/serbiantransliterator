@@ -6,16 +6,21 @@ import { initUi } from "./settings/ui";
 import { onSelectionChange, checkSelectionAndUpdateButtons } from "./selection";
 import { runWithUiLock } from "./uiLock";
 import { runSmart } from "./word/apply";
-import { closeModal } from "./modal/modal"; // <--- BIO JE IMPORT ALI MOŽDA NEKORIŠĆEN GORE?
+import { closeModal } from "./modal/modal";
 import { modalManager } from "./modal/modalManager";
 import { logger } from "./telemetry/logger";
 import { showPreviewToast } from "./modal/previewModal";
-// Ako TS viče da ne može da nađe ovo, proveri da li fajl postoji!
 import { initOnboarding } from "./onboarding/tour";
+// Dodajemo import za initWasm
+import { initWasm } from "../../core/textCore";
 
 export function initTaskpane(isWebMode = false) {
     // 1) UI init (settings load + bind dugmad + tags + listeners)
     initUi();
+
+    // 2) Pokreni učitavanje WASM-a (i rečnika) u pozadini
+    // Ovo je ključno da bi Smart Guard radio kad korisnik klikne na dugme
+    initWasm().catch((e) => console.error("WASM init failed:", e));
 
     // 5) Debug logs export (ovo radi svuda)
     setupDebugTrigger();
@@ -38,7 +43,7 @@ export function initTaskpane(isWebMode = false) {
         return;
     }
 
-    // 2) Selection change handler (SAMO ZA WORD)
+    // 3) Selection change handler (SAMO ZA WORD)
     state.selectionChangeHandler = () => {
         onSelectionChange();
     };
@@ -50,10 +55,10 @@ export function initTaskpane(isWebMode = false) {
         );
     }
 
-    // 3) Initial button state (SAMO ZA WORD)
+    // 4) Initial button state (SAMO ZA WORD)
     void checkSelectionAndUpdateButtons();
 
-    // 4) Keyboard Shortcuts
+    // 5) Keyboard Shortcuts
     setupKeyboardShortcuts();
 }
 
@@ -63,7 +68,7 @@ function setupKeyboardShortcuts() {
         if (e.key === "Escape") {
             if (modalManager.isOpen()) {
                 e.preventDefault();
-                closeModal(); // <--- OVO JE KORIŠĆENO
+                closeModal();
             }
             return;
         }

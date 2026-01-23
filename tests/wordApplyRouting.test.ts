@@ -121,15 +121,24 @@ describe("word/apply.runSmart - routing (stubbed Word.run)", () => {
         expect(setStatus).toHaveBeenCalledWith(expect.stringContaining("Završeno"), "success");
     });
 
-    it("no selection + paragraph text => Smart Expand to paragraph + inline logic", async () => {
-        // Selection empty, Para text "Paragraf"
-        const { paraRangeMock } = makeWordStub("", "Paragraf");
+    it("no selection + paragraph text => Treats as Document Scope (no more Smart Expand)", async () => {
+        // Selection empty, Para text "Paragraf".
+        // Pošto smo izbacili Smart Expand, ovo sada pita za ceo dokument.
+        makeWordStub("", "Paragraf");
+
+        (confirmInPanel as any).mockResolvedValue(true);
+
         await runSmart();
 
-        // "Paragraf" -> "Параграф" => insertOoxml called
-        expect(paraRangeMock.insertOoxml).toHaveBeenCalled();
-        expect(confirmInPanel).not.toHaveBeenCalled();
-        expect(setStatus).toHaveBeenCalledWith(expect.stringContaining("Završeno"), "success");
+        // Očekujemo da pita
+        expect(confirmInPanel).toHaveBeenCalled();
+        // I da pozove pipeline za dokument
+        expect(applyPipeline).toHaveBeenCalledWith(
+            expect.anything(),
+            "document",
+            expect.anything(),
+            expect.anything()
+        );
     });
 
     it("no selection + paragraph empty + confirm => Document scope (applyPipeline)", async () => {

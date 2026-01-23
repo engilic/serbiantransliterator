@@ -1,7 +1,7 @@
 // src/core/textCore.ts
 
 import { ALWAYS_LATIN_PHRASES, ALWAYS_LATIN_TOKENS_STRICT, ALWAYS_LATIN_TOKENS_AMBIGUOUS } from "./rules";
-import { applyPreCorrectionsLatToCyr } from "./corrections"; // <--- VRACENO
+import { applyPreCorrectionsLatToCyr } from "./corrections";
 import { fixSerbianQuotes } from "./quotes";
 import { collectProtectedRanges, splitByRanges, type CurlyProtection } from "./protect";
 import { cyrillicToLatin, detectMajorityScript, latinToCyrillic } from "./serbian";
@@ -64,17 +64,6 @@ export interface CoreOptions {
 
 const normKey = (s: string) => s.normalize("NFC").toLowerCase();
 
-const SR_ALLOWED = new Set(
-    (
-        "abcčćdđefghijklmnoprsštuvzž" +
-        "ABCČĆDĐEFGHIJKLMNOPRSŠTUVZŽ" +
-        "абвгдђежзијклљмнњопрстћуфхцчџш" +
-        "АБВГДЂЕЖЗИЈКЛЉМНЊОПРСТЋУФХЦЧЏШ" +
-        "0123456789-_'’"
-    ).split("")
-);
-
-const STRONG_FOREIGN = /[QWXYqwxy]/;
 const ROMAN = /^[IVXLCDM]+$/;
 const RULERS = new Set([
     "petar",
@@ -122,20 +111,8 @@ const CATEGORY_PREFIX = [
     "rat",
 ];
 
-function hasForeignLetter(token: string): boolean {
-    for (const ch of token) {
-        if (/\p{L}/u.test(ch) && !SR_ALLOWED.has(ch)) return true;
-    }
-    return false;
-}
-
-function isMixedCaseBrandy(token: string): boolean {
-    return /[a-zčćđšž]+[A-ZČĆĐŠŽ]/.test(token);
-}
-
-function isHashLike(token: string): boolean {
-    return token.length > 6 && /^\d/.test(token) && /[A-Za-z]/.test(token);
-}
+// OBRISANO: SR_ALLOWED, STRONG_FOREIGN, hasForeignLetter, isMixedCaseBrandy, isHashLike
+// (Sve ovo je sada u Rust-u: should_protect)
 
 type Tok = { type: "word" | "other"; value: string };
 
@@ -321,14 +298,14 @@ function convertUnprotectedSegment(segment: string, toCyrillic: boolean, options
         }
         const tok = t.value;
         const tokLower = normKey(tok);
+
+        // 1. User Protected (Najveći prioritet)
         if (userProtectedLower.has(tokLower)) {
             out += tok;
             continue;
         }
-        if (toCyrillic && shouldProtectRomanToken(toks, i)) {
-            out += tok;
-            continue;
-        }
+
+        // 2. Brendovi (iPhone Pro) - ovo ostaje u TS jer zahteva kontekst (prev/next)
         if (protectBrands && ALWAYS_LATIN_TOKENS_STRICT.has(tokLower)) {
             out += tok;
             continue;
@@ -337,14 +314,20 @@ function convertUnprotectedSegment(segment: string, toCyrillic: boolean, options
             out += tok;
             continue;
         }
-        if (STRONG_FOREIGN.test(tok) || hasForeignLetter(tok) || isMixedCaseBrandy(tok) || isHashLike(tok)) {
+
+        // 3. Rimski brojevi (kontekstualno) - ostaje u TS
+        if (toCyrillic && shouldProtectRomanToken(toks, i)) {
             out += tok;
             continue;
         }
 
+        // 4. SVE OSTALO (Strana slova, kod, obične reči) -> Šaljemo u Rust!
+        // Rust Smart Guard će odlučiti da li da preslovi ili ne.
         if (wasmModule) {
             out += toCyrillic ? wasmModule.to_cyrillic(tok) : wasmModule.to_latin(tok);
         } else {
+            // Fallback ako WASM pukne (ovde će Quantum postati Qуантум jer smo izbacili JS guard)
+            // To je prihvatljiv rizik u fallback-u.
             out += toCyrillic ? latinToCyrillic(tok) : cyrillicToLatin(tok);
         }
     }
@@ -393,7 +376,7 @@ export function convertPlainText(
         }
         let seg = part.text.normalize("NFC");
 
-        // PRIMENA LINGVISTIČKIH KOREKCIJA (Tanjug, Injekcija...)
+        // Lingvističke korekcije (Tanjug) su i dalje tu
         if (toCyr) seg = applyPreCorrectionsLatToCyr(seg);
 
         if (options?.dialect && options.dialect !== "none") {

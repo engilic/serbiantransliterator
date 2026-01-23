@@ -8,7 +8,7 @@ static DICTIONARY: Lazy<Mutex<HashMap<String, HashMap<String, String>>>> = Lazy:
     Mutex::new(HashMap::new())
 });
 
-// JSON Loader (za dev/test)
+// JSON Loader
 #[wasm_bindgen]
 pub fn load_dictionary(mode: &str, json_data: &str) -> Result<(), JsValue> {
     let data: HashMap<String, String> = serde_json::from_str(json_data)
@@ -17,7 +17,7 @@ pub fn load_dictionary(mode: &str, json_data: &str) -> Result<(), JsValue> {
     Ok(())
 }
 
-// Binary Loader (za prod - Zero Copy)
+// Binary Loader
 #[wasm_bindgen]
 pub fn load_dictionary_bin(mode: &str, bin_data: &[u8]) -> Result<(), JsValue> {
     let data: HashMap<String, String> = bincode::deserialize(bin_data)
@@ -37,111 +37,93 @@ fn insert_data(mode: &str, data: HashMap<String, String>) -> Result<(), JsValue>
     Ok(())
 }
 
-// === SMART STEMMING LOGIC ===
+// === SMART GUARD LOGIC ===
 
-// Najčešći srpski sufiksi (poređani po dužini)
-const SUFFIXES: &[&str] = &[
-    "ima", "om", "em", "im", "ih", "og", "eg", "uj", // 2-3 slova
-    "a", "e", "i", "o", "u"                          // 1 slovo
-];
+// Proverava da li reč treba zaštititi (strani jezik, kod, simboli)
+fn should_protect(word: &str) -> bool {
+    let mut has_foreign = false;
+    let mut has_uppercase = false;
+    let mut has_underscore = false;
+    let mut has_digit = false;
 
-fn try_smart_lookup(map: &HashMap<String, String>, word: &str) -> Option<String> {
-    let word_lower = word.to_lowercase();
-
-    // 1. Probaj tačan pogodak (najbrže)
-    if let Some(res) = map.get(&word_lower) {
-        return Some(match_case(word, res));
-    }
-
-    // 2. Probaj skidanje sufiksa (Stemming)
-    if word_lower.chars().count() < 4 {
-        return None;
-    }
-
-    for suffix in SUFFIXES {
-        if word_lower.ends_with(suffix) {
-            let root_len = word_lower.len() - suffix.len();
-            let root = &word_lower[..root_len];
-
-            if root.chars().count() < 3 {
-                continue;
-            }
-
-            if let Some(root_translation) = map.get(root) {
-                // NAŠLI SMO KOREN!
-                // Rekonstruiši: prevedeni koren + originalni sufiks
-                let mut result = root_translation.clone();
-                result.push_str(suffix);
-                return Some(match_case(word, &result));
+    for c in word.chars() {
+        // Dozvoljena srpska slova (oba pisma + cifre + osnovni interpunkcijski)
+        match c {
+            // Srpska latinica
+            'a'..='z' | 'A'..='Z' |
+            'č' | 'ć' | 'đ' | 'š' | 'ž' |
+            'Č' | 'Ć' | 'Đ' | 'Š' | 'Ž' => {
+                if c.is_uppercase() { has_uppercase = true; }
+                // Provera za strana slova u ASCII opsegu (q, w, x, y)
+                if matches!(c, 'q' | 'w' | 'x' | 'y' | 'Q' | 'W' | 'X' | 'Y') {
+                    has_foreign = true; 
+                }
+            },
+            // Srpska ćirilica (opseg)
+            '\u{0400}'..='\u{04FF}' => {}, // Osnovni ćirilični blok
+            // Cifre i simboli
+            '0'..='9' => { has_digit = true; },
+            '_' => { has_underscore = true; },
+            '-' | '.' | '\'' => {}, // Dozvoljeni veznici
+            _ => { 
+                // Bilo šta drugo (nemački umlaut, francuski akcenti, emoji...) -> STRANO
+                has_foreign = true; 
             }
         }
     }
 
-    None
-}
+    if has_foreign { return true; }
 
-// === END SMART LOGIC ===
-
-fn match_case(original: &str, replacement: &str) -> String {
-    let mut chars_orig = original.chars();
-    let first = chars_orig.next();
+    // Code Patterns:
+    // snake_case (ima donju crtu)
+    if has_underscore { return true; }
     
-    if let Some(f) = first {
-        if f.is_uppercase() {
-            let mut chars_repl = replacement.chars();
-            if let Some(r) = chars_repl.next() {
-                let mut res = r.to_uppercase().to_string();
-                res.push_str(chars_repl.as_str());
-                return res;
-            }
-        }
-    }
-    replacement.to_string()
+    // camelCase (ima veliko slovo ali nije na početku - gruba heuristika)
+    // Ovde možemo biti pametniji, ali za MVP:
+    // Ako ima cifru u sredini reči -> verovatno kod (npr. mp3, x86)
+    if has_digit { return true; }
+
+    false
 }
 
-#[wasm_bindgen]
-pub fn convert_dialect(text: &str, mode: &str) -> String {
-    let guard = DICTIONARY.lock().unwrap();
-    let map_opt = guard.get(mode);
-
-    let mut result = String::with_capacity(text.len());
-    let chars: Vec<char> = text.chars().collect();
-    let len = chars.len();
-    let mut i = 0;
-
-    while i < len {
-        if !chars[i].is_alphabetic() {
-            result.push(chars[i]);
-            i += 1;
-            continue;
-        }
-
-        let start = i;
-        while i < len && chars[i].is_alphabetic() {
-            i += 1;
-        }
-        let word: String = chars[start..i].iter().collect();
-
-        // Koristi SMART lookup
-        let replacement = if let Some(map) = map_opt {
-            try_smart_lookup(map, &word)
-        } else {
-            None
-        };
-
-        if let Some(repl) = replacement {
-            result.push_str(&repl);
-        } else {
-            result.push_str(&word);
-        }
-    }
-    result
-}
+// === CONVERSION LOGIC ===
 
 #[wasm_bindgen]
 pub fn to_cyrillic(text: &str) -> String {
     let mut result = String::with_capacity(text.len());
-    let chars: Vec<char> = text.chars().collect();
+    
+    // Tokenizacija "peške" da bismo primenili Smart Guard
+    let mut current_word = String::new();
+    let mut in_word = false;
+
+    for c in text.chars() {
+        if c.is_alphanumeric() || c == '_' {
+            in_word = true;
+            current_word.push(c);
+        } else {
+            if in_word {
+                process_word_to_cyr(&mut result, &current_word);
+                current_word.clear();
+                in_word = false;
+            }
+            result.push(c);
+        }
+    }
+    // Flush last word
+    if in_word {
+        process_word_to_cyr(&mut result, &current_word);
+    }
+
+    result
+}
+
+fn process_word_to_cyr(result: &mut String, word: &str) {
+    if should_protect(word) {
+        result.push_str(word);
+        return;
+    }
+
+    let chars: Vec<char> = word.chars().collect();
     let len = chars.len();
     let mut i = 0;
 
@@ -177,11 +159,11 @@ pub fn to_cyrillic(text: &str) -> String {
         result.push(mapped);
         i += 1;
     }
-    result
 }
 
 #[wasm_bindgen]
 pub fn to_latin(text: &str) -> String {
+    // Ćirilica -> Latinica je obično bezbedna, ali primenjujemo guard ako ima mešanih pisama
     let mut result = String::with_capacity(text.len());
     let chars: Vec<char> = text.chars().collect();
     let len = chars.len();
@@ -223,6 +205,109 @@ pub fn to_latin(text: &str) -> String {
             _ => result.push(c),
         }
         i += 1;
+    }
+    result
+}
+
+// === DIALECT LOGIC ===
+
+// Najčešći srpski sufiksi (poređani po dužini)
+const SUFFIXES: &[&str] = &[
+    "ima", "om", "em", "im", "ih", "og", "eg", "uj", // 2-3 slova
+    "a", "e", "i", "o", "u"                          // 1 slovo
+];
+
+fn try_smart_lookup(map: &HashMap<String, String>, word: &str) -> Option<String> {
+    let word_lower = word.to_lowercase();
+
+    // 1. Probaj tačan pogodak (najbrže)
+    if let Some(res) = map.get(&word_lower) {
+        return Some(match_case(word, res));
+    }
+
+    // 2. Probaj skidanje sufiksa (Stemming)
+    if word_lower.chars().count() < 4 {
+        return None;
+    }
+
+    for suffix in SUFFIXES {
+        if word_lower.ends_with(suffix) {
+            let root_len = word_lower.len() - suffix.len();
+            let root = &word_lower[..root_len];
+
+            if root.chars().count() < 3 {
+                continue;
+            }
+
+            if let Some(root_translation) = map.get(root) {
+                // NAŠLI SMO KOREN!
+                let mut result = root_translation.clone();
+                result.push_str(suffix);
+                return Some(match_case(word, &result));
+            }
+        }
+    }
+
+    None
+}
+
+fn match_case(original: &str, replacement: &str) -> String {
+    let mut chars_orig = original.chars();
+    let first = chars_orig.next();
+    
+    if let Some(f) = first {
+        if f.is_uppercase() {
+            let mut chars_repl = replacement.chars();
+            if let Some(r) = chars_repl.next() {
+                let mut res = r.to_uppercase().to_string();
+                res.push_str(chars_repl.as_str());
+                return res;
+            }
+        }
+    }
+    replacement.to_string()
+}
+
+#[wasm_bindgen]
+pub fn convert_dialect(text: &str, mode: &str) -> String {
+    let guard = DICTIONARY.lock().unwrap();
+    let map_opt = guard.get(mode);
+
+    let mut result = String::with_capacity(text.len());
+    let chars: Vec<char> = text.chars().collect();
+    let len = chars.len();
+    let mut i = 0;
+
+    while i < len {
+        if !chars[i].is_alphabetic() {
+            result.push(chars[i]);
+            i += 1;
+            continue;
+        }
+
+        let start = i;
+        while i < len && chars[i].is_alphabetic() {
+            i += 1;
+        }
+        let word: String = chars[start..i].iter().collect();
+
+        // I ovde primeni zaštitu!
+        if should_protect(&word) {
+            result.push_str(&word);
+            continue;
+        }
+
+        let replacement = if let Some(map) = map_opt {
+            try_smart_lookup(map, &word)
+        } else {
+            None
+        };
+
+        if let Some(repl) = replacement {
+            result.push_str(&repl);
+        } else {
+            result.push_str(&word);
+        }
     }
     result
 }
