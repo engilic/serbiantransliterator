@@ -25,11 +25,14 @@ module.exports = {
                 use: "babel-loader",
                 exclude: /node_modules/,
             },
+            // UKLONJEN html-loader da bi <%= appVersion %> radilo
+            /*
             {
                 test: /\.html$/,
                 use: "html-loader",
                 exclude: /node_modules/,
             },
+            */
             {
                 test: /\.css$/i,
                 use: [MiniCssExtractPlugin.loader, "css-loader"],
@@ -41,7 +44,6 @@ module.exports = {
                     filename: "assets/[name][ext]",
                 },
             },
-            // === CRITICAL FIX: Binary Loader ===
             {
                 test: /\.bin$/,
                 type: "asset/inline",
@@ -57,7 +59,7 @@ module.exports = {
             template: "./src/taskpane/taskpane.html",
             chunks: ["polyfill", "taskpane"],
             templateParameters: {
-                appVersion: pkg.version,
+                appVersion: pkg.version, // Ovo se ubacuje u <%= appVersion %>
             },
             minify: {
                 collapseWhitespace: true,
@@ -79,6 +81,7 @@ module.exports = {
             patterns: [
                 { from: "assets/*", to: "assets/[name][ext]" },
                 { from: "manifest*.xml", to: "[name][ext]" },
+                { from: "src/static/assets", to: "assets", noErrorOnMissing: true },
                 { from: "src/static/index.html", to: "index.html", noErrorOnMissing: true },
                 { from: "src/static/support.html", to: "support.html", noErrorOnMissing: true },
                 { from: "src/static/privacy.html", to: "privacy.html", noErrorOnMissing: true },

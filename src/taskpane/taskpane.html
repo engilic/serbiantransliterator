@@ -4,101 +4,38 @@
         <meta charset="UTF-8" />
         <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-
         <title data-i18n="app_title"></title>
-
         <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
     </head>
-
     <body>
+        <div id="skeleton">
+            <div class="sk-line" style="width: 40%"></div>
+            <div class="sk-rect"></div>
+            <div class="sk-rect" style="height: 150px"></div>
+            <div class="sk-line" style="width: 70%"></div>
+        </div>
+
         <header>
             <div class="header-content">
                 <h1 data-i18n="app_title"></h1>
-
-                <div class="version" aria-hidden="true">
-                    <span data-i18n="ui_version_prefix"></span><%= appVersion %>
-                </div>
+                <div class="version"><span data-i18n="ui_version_prefix"></span><%= appVersion %></div>
             </div>
         </header>
 
-        <main>
-            <div class="section">
-                <div class="button-group">
-                    <button id="runBtn" type="button"></button>
-                    <button id="previewBtn" type="button"></button>
-                </div>
-
-                <!-- Languages & Theme Row -->
-                <div class="lang-row">
-                    <div class="lang-group">
-                        <div class="lang-label" data-i18n="opt_ui_language_label"></div>
-                        <select id="optUiLanguage" data-i18n-attr="aria-label:opt_ui_language_aria">
-                            <option value="sr" data-i18n="opt_ui_language_sr"></option>
-                            <option value="en" data-i18n="opt_ui_language_en"></option>
-                            <option value="auto" data-i18n="opt_ui_language_auto"></option>
-                        </select>
-                    </div>
-
-                    <div class="lang-group">
-                        <div class="lang-label" data-i18n="ui_theme_label"></div>
-                        <select id="optTheme" data-i18n-attr="aria-label:ui_theme_aria">
-                            <option value="auto" data-i18n="ui_theme_auto"></option>
-                            <option value="light" data-i18n="ui_theme_light"></option>
-                            <option value="dark" data-i18n="ui_theme_dark"></option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="settings-row">
-                    <div class="section-title" data-i18n="section_settings"></div>
-
-                    <div class="settings-actions">
-                        <button
-                            id="exportBtn"
-                            class="mini-btn"
-                            type="button"
-                            data-i18n-attr="title:btn_export_title"
-                        >
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M4 10l8-8 8 8h-5v10h-6v-10z" />
-                                <path d="M0 0h24v24H0z" fill="none" />
-                            </svg>
-                            <span data-i18n="btn_export"></span>
-                        </button>
-
-                        <button
-                            id="importBtn"
-                            class="mini-btn"
-                            type="button"
-                            data-i18n-attr="title:btn_import_title"
-                        >
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M20 14l-8 8-8-8h5v-10h6v10z" />
-                                <path d="M0 0h24v24H0z" fill="none" />
-                            </svg>
-                            <span data-i18n="btn_import"></span>
-                        </button>
-                    </div>
-                </div>
-
-                <input type="file" id="fileInput" accept=".json" style="display: none" />
-            </div>
-
-            <div class="section">
+        <main id="appMain" style="display: none">
+            <!-- PROFIL -->
+            <div class="section fade-in">
                 <div class="section-header">
                     <div class="section-title" data-i18n="section_profile"></div>
-
                     <button id="resetBtn" class="mini-btn" type="button" disabled>
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <svg viewBox="0 0 24 24">
                             <path
                                 d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"
                             />
-                            <path d="M0 0h24v24H0z" fill="none" />
                         </svg>
                         <span data-i18n="btn_reset_factory"></span>
                     </button>
                 </div>
-
                 <select id="profilePreset" data-i18n-attr="aria-label:profile_select_aria">
                     <option value="custom" data-i18n="profile_custom"></option>
                     <option value="it" data-i18n="profile_it"></option>
@@ -110,132 +47,140 @@
                 </select>
             </div>
 
-            <div class="section">
+            <!-- SMER (2x2 grid) -->
+            <div class="section fade-in">
                 <div class="section-header">
                     <div class="section-title" data-i18n="section_direction"></div>
                 </div>
-
                 <div class="direction-row">
-                    <label>
-                        <input type="radio" id="dirAuto" name="direction" value="auto" checked />
-                        <span data-i18n="dir_auto"></span>
-                    </label>
+                    <label
+                        ><input type="radio" id="dirAuto" name="direction" value="auto" checked /><span
+                            data-i18n="dir_auto"
+                        ></span
+                    ></label>
+                    <label
+                        ><input type="radio" id="dirToAscii" name="direction" value="to-ascii" /><span
+                            data-i18n="dir_to_ascii_short"
+                        ></span
+                    ></label>
+                    <label
+                        ><input type="radio" id="dirLatToCyr" name="direction" value="lat-to-cyr" /><span
+                            data-i18n="dir_lat_to_cyr"
+                        ></span
+                    ></label>
+                    <label
+                        ><input type="radio" id="dirCyrToLat" name="direction" value="cyr-to-lat" /><span
+                            data-i18n="dir_cyr_to_lat"
+                        ></span
+                    ></label>
+                </div>
 
-                    <label>
-                        <input type="radio" id="dirToAscii" name="direction" value="to-ascii" />
-                        <span data-i18n="dir_to_ascii"></span>
-                    </label>
-
-                    <label>
-                        <input type="radio" id="dirLatToCyr" name="direction" value="lat-to-cyr" />
-                        <span data-i18n="dir_lat_to_cyr"></span>
-                    </label>
-
-                    <label>
-                        <input type="radio" id="dirCyrToLat" name="direction" value="cyr-to-lat" />
-                        <span data-i18n="dir_cyr_to_lat"></span>
-                    </label>
+                <div style="margin-top: 15px">
+                    <div class="lang-group">
+                        <div class="lang-label" data-i18n="opt_ui_language_label"></div>
+                        <select id="optUiLanguage">
+                            <option value="sr" data-i18n="opt_ui_language_sr"></option>
+                            <option value="en" data-i18n="opt_ui_language_en"></option>
+                            <option value="auto" data-i18n="opt_ui_language_auto"></option>
+                        </select>
+                    </div>
+                    <div class="lang-group" style="margin-top: 10px">
+                        <div class="lang-label" data-i18n="ui_theme_label"></div>
+                        <select id="optTheme">
+                            <option value="auto" data-i18n="ui_theme_auto"></option>
+                            <option value="light" data-i18n="ui_theme_light"></option>
+                            <option value="dark" data-i18n="ui_theme_dark"></option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
-            <div class="section">
-                <div class="section-title" data-i18n="section_options"></div>
-
-                <label>
-                    <input type="checkbox" id="optConfirmWholeDoc" checked />
-                    <span data-i18n="opt_confirm_whole_doc"></span>
-                </label>
-
-                <label>
-                    <input type="checkbox" id="optIncludeHeadersFooters" />
-                    <span data-i18n="opt_include_headers_footers"></span>
-                </label>
-
-                <label>
-                    <input type="checkbox" id="optIncludeFootnotes" />
-                    <span data-i18n="opt_include_footnotes"></span>
-                </label>
-
-                <label>
-                    <input type="checkbox" id="optIncludeEndnotes" />
-                    <span data-i18n="opt_include_endnotes"></span>
-                </label>
-
-                <label>
-                    <input type="checkbox" id="optProtectBrands" checked />
-                    <span data-i18n="opt_protect_brands"></span>
-                </label>
-
-                <label>
-                    <input type="checkbox" id="optSerbianQuotes" checked />
-                    <span data-i18n="opt_smart_quotes"></span>
-                </label>
-
-                <label>
-                    <input type="checkbox" id="optPreserveCodeBlocks" checked />
-                    <span data-i18n="opt_preserve_code_before"></span
+            <!-- OPTIONS -->
+            <div class="section fade-in">
+                <div class="section-title" data-i18n="section_options" style="margin-bottom: 10px"></div>
+                <label
+                    ><input type="checkbox" id="optConfirmWholeDoc" checked /><span
+                        data-i18n="opt_confirm_whole_doc"
+                    ></span
+                ></label>
+                <label
+                    ><input type="checkbox" id="optIncludeHeadersFooters" /><span
+                        data-i18n="opt_include_headers_footers"
+                    ></span
+                ></label>
+                <label
+                    ><input type="checkbox" id="optIncludeFootnotes" /><span
+                        data-i18n="opt_include_footnotes"
+                    ></span
+                ></label>
+                <label
+                    ><input type="checkbox" id="optIncludeEndnotes" /><span
+                        data-i18n="opt_include_endnotes"
+                    ></span
+                ></label>
+                <label
+                    ><input type="checkbox" id="optProtectBrands" checked /><span
+                        data-i18n="opt_protect_brands"
+                    ></span
+                ></label>
+                <label
+                    ><input type="checkbox" id="optSerbianQuotes" checked /><span
+                        data-i18n="opt_smart_quotes"
+                    ></span
+                ></label>
+                <label
+                    ><input type="checkbox" id="optPreserveCodeBlocks" checked /><span
+                        data-i18n="opt_preserve_code_before"
+                    ></span
                     ><code data-i18n="ui_inline_code_word"></code
                     ><span data-i18n="opt_preserve_code_between"></span
                     ><code data-i18n="ui_block_code_word"></code
-                    ><span data-i18n="opt_preserve_code_after"></span>
-                </label>
-
-                <label>
-                    <input type="checkbox" id="optShowStats" />
-                    <span data-i18n="opt_show_stats"></span>
-                </label>
+                    ><span data-i18n="opt_preserve_code_after"></span
+                ></label>
+                <label
+                    ><input type="checkbox" id="optShowStats" /><span data-i18n="opt_show_stats"></span
+                ></label>
             </div>
 
-            <!-- UKLONJENA SEKCIJA KOREKCIJA (optFixDoubleSpaces) -->
-
-            <div class="section">
+            <!-- ADVANCED -->
+            <div class="section fade-in">
                 <div class="section-header">
                     <div class="section-title" data-i18n="section_advanced"></div>
-
-                    <div class="header-actions">
-                        <button
-                            id="toggleAdvancedBtn"
-                            class="mini-btn"
-                            type="button"
-                            aria-expanded="false"
-                            data-i18n-attr="title:btn_toggle_advanced_title"
-                        >
-                            <span data-i18n="btn_toggle_advanced"></span>
-                        </button>
-                    </div>
+                    <button
+                        id="toggleAdvancedBtn"
+                        class="mini-btn"
+                        type="button"
+                        aria-expanded="false"
+                        data-i18n="btn_toggle_advanced"
+                    ></button>
                 </div>
 
                 <div id="advancedSettings" class="advanced-settings">
                     <div class="field-row">
                         <div class="field-label">
-                            <span data-i18n="opt_curly_label_before"></span><code>{...}</code
-                            ><span data-i18n="opt_curly_label_after"></span>
+                            <span data-i18n="opt_curly_label_before"></span><code>{...}</code>
                         </div>
-
-                        <select id="optCurlyProtection" data-i18n-attr="aria-label:opt_curly_aria">
+                        <select id="optCurlyProtection">
                             <option value="placeholders" data-i18n="opt_curly_placeholders"></option>
                             <option value="all" data-i18n="opt_curly_all"></option>
                             <option value="none" data-i18n="opt_curly_none"></option>
                         </select>
-
-                        <div class="hint" data-i18n="opt_curly_hint"></div>
                     </div>
 
-                    <label>
-                        <input type="checkbox" id="optProtectRomans" checked />
-                        <span data-i18n="opt_protect_romans"></span>
-                    </label>
-
-                    <label>
-                        <input type="checkbox" id="optSetProofingLanguage" checked />
-                        <span data-i18n="opt_set_proofing_language"></span>
-                    </label>
-
-                    <!-- UKLONJEN optFormatDates -->
+                    <label
+                        ><input type="checkbox" id="optProtectRomans" checked /><span
+                            data-i18n="opt_protect_romans"
+                        ></span
+                    ></label>
+                    <label
+                        ><input type="checkbox" id="optSetProofingLanguage" checked /><span
+                            data-i18n="opt_set_proofing_language"
+                        ></span
+                    ></label>
 
                     <div class="field-row" style="margin-top: 15px">
                         <div class="field-label" data-i18n="opt_dialect_label"></div>
-                        <select id="optDialect" data-i18n-attr="aria-label:opt_dialect_aria">
+                        <select id="optDialect">
                             <option value="none" data-i18n="opt_dialect_none"></option>
                             <option value="ekavica_to_ijekavica" data-i18n="opt_dialect_ei"></option>
                             <option value="ijekavica_to_ekavica" data-i18n="opt_dialect_ie"></option>
@@ -244,98 +189,71 @@
 
                     <div class="field-row" style="margin-top: 15px">
                         <div class="field-label" data-i18n="opt_custom_subs_label"></div>
-
-                        <!-- Add New -->
                         <div class="subs-add-row">
                             <input
                                 type="text"
                                 id="subSrc"
-                                data-i18n-attr="placeholder:subs_input_src"
                                 class="sub-input"
+                                data-i18n-attr="placeholder:subs_input_src_short"
                             />
                             <span class="arrow">→</span>
                             <input
                                 type="text"
                                 id="subDest"
-                                data-i18n-attr="placeholder:subs_input_dest"
                                 class="sub-input"
+                                data-i18n-attr="placeholder:subs_input_dest_short"
                             />
-                            <button id="addSubBtn" class="mini-btn" type="button">+</button>
+                            <button id="addSubBtn" class="mini-btn success" type="button">+</button>
                         </div>
-
-                        <!-- List -->
                         <div id="subsContainer" class="subs-container">
                             <div class="subs-empty hint" data-i18n="subs_list_empty"></div>
                         </div>
-
                         <textarea id="optCustomSubstitutions" style="display: none"></textarea>
                     </div>
                 </div>
             </div>
 
-            <div class="section">
+            <!-- PROTECTED -->
+            <div class="section fade-in">
                 <div class="section-header">
                     <div class="section-title" data-i18n="section_protected"></div>
-
                     <div class="header-actions">
                         <button
-                            id="addTagBtn"
-                            class="icon-btn btn-add"
-                            type="button"
-                            disabled
-                            data-i18n-attr="title:btn_add_word_title"
-                        >
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path
-                                    d="M18 10h-4V6c0-1.1-.9-2-2-2s-2 .9-2 2v4H6c-1.1 0-2 .9-2 2s.9 2 2 2h4v4c0 1.1.9 2 2 2s2-.9 2-2v-4h4c1.1 0 2-.9 2-2s-.9-2-2-2z"
-                                />
-                                <path d="M0 0h24v24H0z" fill="none" />
-                            </svg>
-                        </button>
-
-                        <button
                             id="clearCustomBtn"
-                            class="mini-btn"
+                            class="mini-btn danger"
                             type="button"
                             data-i18n-attr="title:btn_clear_custom_title"
                         >
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <svg viewBox="0 0 24 24">
                                 <path
                                     d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
                                 />
-                                <path d="M0 0h24v24H0z" fill="none" />
                             </svg>
                             <span data-i18n="btn_clear_custom"></span>
                         </button>
-
                         <button
                             id="clearPresetBtn"
                             class="mini-btn"
                             type="button"
                             data-i18n-attr="title:btn_clear_preset_title"
                         >
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M0 0h24v24H0z" fill="none" />
-                                <path d="M14 6V4h-4v2h4zM4 8v11h16V8H4zm10-2V4h-4v2h4z" opacity=".3" />
+                            <svg viewBox="0 0 24 24">
                                 <path
                                     d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-2 .89-2 2v11c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zM10 4h4v2h-4V4zm10 15H4V8h16v11z"
                                 />
                             </svg>
                             <span data-i18n="btn_clear_preset"></span>
                         </button>
-
                         <button
                             id="clearAllBtn"
-                            class="mini-btn"
+                            class="mini-btn danger"
                             type="button"
-                            disabled
                             data-i18n-attr="title:btn_clear_all_title"
                         >
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <svg viewBox="0 0 24 24">
                                 <path
                                     d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
                                 />
-                                <path d="M0 0h24v24H0z" fill="none" />
                             </svg>
                             <span data-i18n="btn_clear_all"></span>
                         </button>
@@ -351,60 +269,73 @@
                     />
                 </div>
 
-                <div class="tags-container" id="tagsContainer">
-                    <div class="tags-list" id="tagsList"></div>
+                <div style="display: flex; gap: 8px; margin-bottom: 8px">
                     <input
                         type="text"
                         id="tagInput"
-                        class="tag-input"
+                        class="sub-input"
                         autocomplete="off"
                         data-i18n-attr="placeholder:tags_input_placeholder"
                     />
+                    <button id="addTagBtn" class="mini-btn success" type="button" disabled>+</button>
                 </div>
+
+                <div class="tags-container" id="tagsContainer">
+                    <div class="tags-list" id="tagsList"></div>
+                </div>
+                <div class="hint" data-i18n="tags_hint"></div>
 
                 <textarea id="userWordsCustom" style="display: none"></textarea>
                 <textarea id="userWordsPreset" style="display: none"></textarea>
-
-                <div class="hint" data-i18n="tags_hint"></div>
             </div>
 
             <div id="progressContainer" class="progress-container" style="display: none">
                 <div id="progressBar" class="progress-bar"></div>
             </div>
-
-            <div id="msg"></div>
-
             <div id="statsBox" style="display: none">
                 <div id="statsTitle"></div>
                 <pre id="statsText"></pre>
             </div>
         </main>
 
-        <footer>
-            <a href="support.html" target="_blank" rel="noopener noreferrer" data-i18n="footer_help"></a>
-            <span aria-hidden="true"> • </span>
-            <a href="privacy.html" target="_blank" rel="noopener noreferrer" data-i18n="footer_privacy"></a>
-            <span aria-hidden="true"> • </span>
-            <span class="copyright" data-i18n="footer_copyright"></span>
-        </footer>
+        <!-- FIXED BOTTOM AREA -->
+        <div id="msg"></div>
 
+        <div class="app-footer">
+            <a href="support.html" target="_blank" data-i18n="footer_help"></a> •
+            <a href="privacy.html" target="_blank" data-i18n="footer_privacy"></a> •
+            <span data-i18n="footer_copyright"></span>
+        </div>
+
+        <!-- STICKY FOOTER -->
+        <div class="sticky-footer" id="stickyFooter">
+            <button id="previewBtn" class="secondary-btn" type="button">
+                <span data-i18n="ui_btn_preview"></span>
+                <!-- VRAĆENO: -->
+                <div class="btn-sub" data-i18n="ui_sub_preview_selection"></div>
+            </button>
+            <button id="runBtn" class="primary-btn" type="button">
+                <span data-i18n="ui_btn_run"></span>
+                <!-- VRAĆENO: -->
+                <div class="btn-sub" data-i18n="ui_sub_run_selection"></div>
+            </button>
+        </div>
+
+        <!-- Modals -->
         <div id="modalOverlay" class="modal-overlay" role="dialog" aria-modal="true">
             <div id="modal" class="modal">
                 <h3 id="modalTitle"></h3>
-
                 <div class="modal-content">
                     <div id="modalText"></div>
                     <textarea id="modalInput" rows="5"></textarea>
                 </div>
-
                 <div class="modal-actions">
-                    <button id="modalCancel" type="button"></button>
-                    <button id="modalOk" class="btn-primary" type="button"></button>
+                    <button id="modalCancel" class="secondary-btn" type="button"></button>
+                    <button id="modalOk" class="primary-btn" type="button"></button>
                 </div>
             </div>
         </div>
 
-        <!-- ONBOARDING TOUR OVERLAY -->
         <div id="tourOverlay" class="tour-overlay" style="display: none">
             <div class="tour-card">
                 <button
@@ -425,7 +356,7 @@
 
                 <div class="tour-footer">
                     <div class="tour-dots" id="tourDots"></div>
-                    <button id="tourActionBtn" class="btn-primary"></button>
+                    <button id="tourActionBtn" class="primary-btn"></button>
                 </div>
             </div>
         </div>

@@ -24,16 +24,18 @@ import { initAdvancedSettingsToggle } from "./advanced";
 
 import { initUiI18n, getUiLanguagePreference, setUiLanguagePreference, asUiLangPref } from "../i18n/uiI18n";
 import { checkSelectionAndUpdateButtons } from "../selection";
-import { get, getOptional } from "../utils/dom"; // NEW DOM helper
+import { get, getOptional } from "../utils/dom";
 
 function applyTheme(theme: AppTheme) {
-    document.documentElement.setAttribute("data-theme", theme);
-    if (theme === "auto") {
+    if (theme === "light") {
+        document.documentElement.setAttribute("data-theme", "light");
+    } else if (theme === "dark") {
+        document.documentElement.setAttribute("data-theme", "dark");
+    } else {
         document.documentElement.removeAttribute("data-theme");
     }
 }
 
-// NEW: Custom Subs Logic
 function renderSubsList() {
     const area = get<HTMLTextAreaElement>("optCustomSubstitutions");
     const container = get<HTMLDivElement>("subsContainer");
@@ -71,18 +73,17 @@ function addSub() {
     const srcInput = get<HTMLInputElement>("subSrc");
     const destInput = get<HTMLInputElement>("subDest");
     const area = get<HTMLTextAreaElement>("optCustomSubstitutions");
+    const addSubBtn = get<HTMLButtonElement>("addSubBtn");
 
     const src = srcInput.value.trim();
     const dest = destInput.value.trim();
 
-    // Validacija 1: Prazna polja
     if (!src || !dest) {
         if (!src) highlightError(srcInput);
         if (!dest) highlightError(destInput);
         return;
     }
 
-    // Validacija 2: Spreči "->" unutar ključa ili vrednosti (to je separator)
     if (src.includes("->") || dest.includes("->")) {
         alert("Simbol '->' je rezervisan za separator i ne može biti deo reči.");
         return;
@@ -91,32 +92,29 @@ function addSub() {
     const newLine = `${src} -> ${dest}`;
     const current = area.value.trim();
 
-    // Provera duplikata (jednostavna)
     if (current.includes(src + " ->")) {
-        // Već postoji pravilo za ovaj izvor
         alert(`Pravilo za reč '${src}' već postoji. Obrišite staro pre dodavanja novog.`);
         return;
     }
 
     area.value = current ? current + "\n" + newLine : newLine;
-
-    area.dispatchEvent(new Event("change")); // Trigger save
+    area.dispatchEvent(new Event("change"));
 
     srcInput.value = "";
     destInput.value = "";
     srcInput.focus();
 
+    // Disable button again
+    addSubBtn.disabled = true;
+
     renderSubsList();
 }
 
-// Helper za vizuelni error (dodaj iznad addSub ili na dnu fajla)
 function highlightError(el: HTMLElement) {
     const original = el.style.borderColor;
-    el.style.borderColor = "var(--error-color)";
-    el.classList.add("shake"); // Opciono ako imaš animaciju, ili samo boja
+    el.style.borderColor = "var(--colorStatusDangerForeground)";
     setTimeout(() => {
         el.style.borderColor = original;
-        el.classList.remove("shake");
     }, 1000);
 }
 
@@ -164,8 +162,21 @@ export function initUi() {
     bindButtons();
     setupInputListeners();
 
-    // Bind Subs UI
-    get<HTMLButtonElement>("addSubBtn").onclick = addSub;
+    // CUSTOM SUBS UI INIT
+    const addSubBtn = get<HTMLButtonElement>("addSubBtn");
+    addSubBtn.onclick = addSub;
+    addSubBtn.disabled = true; // Initially disabled
+
+    const subSrc = get<HTMLInputElement>("subSrc");
+    const subDest = get<HTMLInputElement>("subDest");
+
+    const checkSubInputs = () => {
+        addSubBtn.disabled = !(subSrc.value.trim() && subDest.value.trim());
+    };
+
+    subSrc.oninput = checkSubInputs;
+    subDest.oninput = checkSubInputs;
+
     renderSubsList();
 
     get<HTMLSelectElement>("profilePreset").onchange = (e) => {
@@ -196,7 +207,7 @@ function initLanguagePicker() {
         const pref = asUiLangPref(sel.value);
         setUiLanguagePreference(pref);
         renderTags();
-        renderSubsList(); // Re-render subs to update empty text
+        renderSubsList();
         refreshStats();
         setStatus(t("status_ready"), "neutral");
         try {
@@ -210,10 +221,13 @@ function initLanguagePicker() {
 function bindButtons() {
     get<HTMLButtonElement>("runBtn").onclick = () => runWithUiLock(runSmart);
     get<HTMLButtonElement>("previewBtn").onclick = () => runWithUiLock(runPreview);
-    get<HTMLButtonElement>("exportBtn").onclick = exportSettingsAsDownload;
+
+    const exportBtn = getOptional<HTMLButtonElement>("exportBtn");
+    if (exportBtn) exportBtn.onclick = exportSettingsAsDownload;
 
     const fileInput = get<HTMLInputElement>("fileInput");
-    get<HTMLButtonElement>("importBtn").onclick = () => fileInput.click();
+    const importBtn = getOptional<HTMLButtonElement>("importBtn");
+    if (importBtn) importBtn.onclick = () => fileInput.click();
     fileInput.onchange = handleFileImport;
 
     get<HTMLButtonElement>("resetBtn").onclick = async () => {
@@ -239,9 +253,6 @@ function resetSettings() {
     applySettingsToUi(newSettings);
     changeProfile("custom");
     state.isApplyingProfile = false;
-
-    state.presetWordsSet.clear();
-    renderTags();
 
     saveSettings();
     refreshStats();
@@ -270,17 +281,14 @@ function applySettingsToUi(s: UiSettings) {
     setCheckValue("optIncludeFootnotes", s.includeFootnotes);
     setCheckValue("optIncludeEndnotes", s.includeEndnotes);
 
-    // Theme
     const themeSel = getOptional<HTMLSelectElement>("optTheme");
     if (themeSel) themeSel.value = s.theme || "auto";
     applyTheme(s.theme || "auto");
 
-    // Custom Subs
     const subArea = getOptional<HTMLTextAreaElement>("optCustomSubstitutions");
     if (subArea) subArea.value = s.customSubstitutions || "";
-    renderSubsList(); // Update UI list
+    renderSubsList();
 
-    // NEW: Dialect
     const dialectSel = getOptional<HTMLSelectElement>("optDialect");
     if (dialectSel) dialectSel.value = s.dialect || "none";
 
@@ -398,7 +406,6 @@ function setupInputListeners() {
         const el = getOptional<HTMLElement>(id);
         if (!el) return;
 
-        // Input or Select or Textarea
         (el as GlobalEventHandlers).onchange = () => {
             if (id !== "optShowStats") invalidatePreviewCache();
             if (!state.isApplyingProfile) switchToCustomIfManual();
