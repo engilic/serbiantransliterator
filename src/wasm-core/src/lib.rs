@@ -1,135 +1,105 @@
 use wasm_bindgen::prelude::*;
-use std::collections::HashMap;
 use std::sync::Mutex;
 use once_cell::sync::Lazy;
+use fst::Map; // Dodali smo fst
 
-// Globalno skladište
-static DICTIONARY: Lazy<Mutex<HashMap<String, HashMap<String, String>>>> = Lazy::new(|| {
+// Struktura koja drži učitani rečnik (Zero-Copy wrapper)
+// Ne možemo držati 'static referencu na JS podatke lako, pa moramo kopirati podatke u Rust Heap
+// ali samo jednom pri učitavanju.
+// (Pravi Zero-Copy iz JS memorije je moguć ali rizičan zbog GC-a, ovo je safe varijanta)
+struct DictionaryStore {
+    fst: Map<Vec<u8>>, // FST struktura
+    values: Vec<u8>,   // Raw string data
+}
+
+static DICTIONARIES: Lazy<Mutex<HashMap<String, DictionaryStore>>> = Lazy::new(|| {
     Mutex::new(HashMap::new())
 });
 
-// JSON Loader
-#[wasm_bindgen]
-pub fn load_dictionary(mode: &str, json_data: &str) -> Result<(), JsValue> {
-    let data: HashMap<String, String> = serde_json::from_str(json_data)
-        .map_err(|e| JsValue::from_str(&format!("JSON error: {}", e)))?;
-    insert_data(mode, data)?;
-    Ok(())
-}
+use std::collections::HashMap; // Treba nam i dalje za registry (e2i -> DictionaryStore)
 
-// Binary Loader
+// Binary Loader (Novi format)
 #[wasm_bindgen]
 pub fn load_dictionary_bin(mode: &str, bin_data: &[u8]) -> Result<(), JsValue> {
-    let data: HashMap<String, String> = bincode::deserialize(bin_data)
-        .map_err(|e| JsValue::from_str(&format!("Bincode error: {}", e)))?;
-    insert_data(mode, data)?;
-    Ok(())
-}
+    // Format: [LEN 8b][FST...][VALUES...]
+    if bin_data.len() < 8 {
+        return Err(JsValue::from_str("Invalid binary format (too short)"));
+    }
 
-fn insert_data(mode: &str, data: HashMap<String, String>) -> Result<(), JsValue> {
-    let mut global_dict = DICTIONARY.lock().map_err(|_| JsValue::from_str("Mutex poisoned"))?;
+    let mut len_bytes = [0u8; 8];
+    len_bytes.copy_from_slice(&bin_data[0..8]);
+    let fst_len = u64::from_le_bytes(len_bytes) as usize;
+
+    if bin_data.len() < 8 + fst_len {
+        return Err(JsValue::from_str("Invalid FST length"));
+    }
+
+    let fst_bytes = bin_data[8..8 + fst_len].to_vec();
+    let values_bytes = bin_data[8 + fst_len..].to_vec();
+
+    // Verifikuj i učitaj FST
+    let fst = Map::new(fst_bytes).map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    let store = DictionaryStore {
+        fst,
+        values: values_bytes,
+    };
+
+    let mut global = DICTIONARIES.lock().map_err(|_| JsValue::from_str("Mutex poisoned"))?;
     let key = match mode {
         "e2i" => "ekavica_to_ijekavica",
         "i2e" => "ijekavica_to_ekavica",
         _ => mode
     };
-    global_dict.insert(key.to_string(), data);
+    global.insert(key.to_string(), store);
     Ok(())
 }
 
-// === SMART GUARD LOGIC ===
-
-// Proverava da li reč treba zaštititi (strani jezik, kod, simboli)
+// === SMART GUARD (Ostaje isto) ===
 fn should_protect(word: &str) -> bool {
     let mut has_foreign = false;
-    let mut has_uppercase = false;
     let mut has_underscore = false;
     let mut has_digit = false;
 
     for c in word.chars() {
-        // Dozvoljena srpska slova (oba pisma + cifre + osnovni interpunkcijski)
         match c {
-            // Srpska latinica
             'a'..='z' | 'A'..='Z' |
             'č' | 'ć' | 'đ' | 'š' | 'ž' |
             'Č' | 'Ć' | 'Đ' | 'Š' | 'Ž' => {
-                if c.is_uppercase() { has_uppercase = true; }
-                // Provera za strana slova u ASCII opsegu (q, w, x, y)
                 if matches!(c, 'q' | 'w' | 'x' | 'y' | 'Q' | 'W' | 'X' | 'Y') {
                     has_foreign = true; 
                 }
             },
-            // Srpska ćirilica (opseg)
-            '\u{0400}'..='\u{04FF}' => {}, // Osnovni ćirilični blok
-            // Cifre i simboli
+            '\u{0400}'..='\u{04FF}' => {},
             '0'..='9' => { has_digit = true; },
             '_' => { has_underscore = true; },
-            '-' | '.' | '\'' => {}, // Dozvoljeni veznici
-            _ => { 
-                // Bilo šta drugo (nemački umlaut, francuski akcenti, emoji...) -> STRANO
-                has_foreign = true; 
-            }
+            '-' | '.' | '\'' => {},
+            _ => { has_foreign = true; }
         }
     }
 
-    if has_foreign { return true; }
-
-    // Code Patterns:
-    // snake_case (ima donju crtu)
-    if has_underscore { return true; }
-    
-    // camelCase (ima veliko slovo ali nije na početku - gruba heuristika)
-    // Ovde možemo biti pametniji, ali za MVP:
-    // Ako ima cifru u sredini reči -> verovatno kod (npr. mp3, x86)
-    if has_digit { return true; }
-
+    if has_foreign || has_underscore || has_digit { return true; }
     false
 }
 
-// === CONVERSION LOGIC ===
+// === CONVERSION (to_cyrillic/to_latin - Ostaju isti) ===
+// (Kopiraj funkcije process_word_to_cyr, to_cyrillic, to_latin od prošli put, nisu se menjale)
+// Da ne bih ponavljao ogroman kod, pretpostavljam da ih imaš.
+// Ako treba, reci da ponovim ceo fajl.
 
-#[wasm_bindgen]
-pub fn to_cyrillic(text: &str) -> String {
-    let mut result = String::with_capacity(text.len());
-    
-    // Tokenizacija "peške" da bismo primenili Smart Guard
-    let mut current_word = String::new();
-    let mut in_word = false;
-
-    for c in text.chars() {
-        if c.is_alphanumeric() || c == '_' {
-            in_word = true;
-            current_word.push(c);
-        } else {
-            if in_word {
-                process_word_to_cyr(&mut result, &current_word);
-                current_word.clear();
-                in_word = false;
-            }
-            result.push(c);
-        }
-    }
-    // Flush last word
-    if in_word {
-        process_word_to_cyr(&mut result, &current_word);
-    }
-
-    result
-}
-
+// Ovde ću staviti placeholder za te funkcije da kod bude validan
 fn process_word_to_cyr(result: &mut String, word: &str) {
     if should_protect(word) {
         result.push_str(word);
         return;
     }
-
+    // ... stara logika mapiranja ...
+    // (Skraćeno radi preglednosti, ali ti treba ceo kod)
     let chars: Vec<char> = word.chars().collect();
     let len = chars.len();
     let mut i = 0;
-
     while i < len {
         let c = chars[i];
-        
         if i + 1 < len {
             let next = chars[i + 1];
             let pair = format!("{}{}", c, next);
@@ -143,7 +113,6 @@ fn process_word_to_cyr(result: &mut String, word: &str) {
                 _ => {}
             }
         }
-
         let mapped = match c {
             'A' => 'А', 'a' => 'а', 'B' => 'Б', 'b' => 'б', 'V' => 'В', 'v' => 'в',
             'G' => 'Г', 'g' => 'г', 'D' => 'Д', 'd' => 'д', 'Đ' => 'Ђ', 'đ' => 'ђ',
@@ -162,13 +131,35 @@ fn process_word_to_cyr(result: &mut String, word: &str) {
 }
 
 #[wasm_bindgen]
+pub fn to_cyrillic(text: &str) -> String {
+    let mut result = String::with_capacity(text.len());
+    let mut current_word = String::new();
+    let mut in_word = false;
+    for c in text.chars() {
+        if c.is_alphanumeric() || c == '_' {
+            in_word = true;
+            current_word.push(c);
+        } else {
+            if in_word {
+                process_word_to_cyr(&mut result, &current_word);
+                current_word.clear();
+                in_word = false;
+            }
+            result.push(c);
+        }
+    }
+    if in_word {
+        process_word_to_cyr(&mut result, &current_word);
+    }
+    result
+}
+
+#[wasm_bindgen]
 pub fn to_latin(text: &str) -> String {
-    // Ćirilica -> Latinica je obično bezbedna, ali primenjujemo guard ako ima mešanih pisama
     let mut result = String::with_capacity(text.len());
     let chars: Vec<char> = text.chars().collect();
     let len = chars.len();
     let mut i = 0;
-
     while i < len {
         let c = chars[i];
         match c {
@@ -209,23 +200,39 @@ pub fn to_latin(text: &str) -> String {
     result
 }
 
-// === DIALECT LOGIC ===
+// === DIALECT LOGIC (FST UPGRADE) ===
 
-// Najčešći srpski sufiksi (poređani po dužini)
 const SUFFIXES: &[&str] = &[
-    "ima", "om", "em", "im", "ih", "og", "eg", "uj", // 2-3 slova
-    "a", "e", "i", "o", "u"                          // 1 slovo
+    "ima", "om", "em", "im", "ih", "og", "eg", "uj", 
+    "a", "e", "i", "o", "u"
 ];
 
-fn try_smart_lookup(map: &HashMap<String, String>, word: &str) -> Option<String> {
+// Helper: čita string iz values buffera na datoj poziciji
+fn get_value_from_store(store: &DictionaryStore, offset: u64) -> Option<String> {
+    let start = offset as usize;
+    if start >= store.values.len() { return None; }
+    
+    // Čitaj do null byte-a
+    let mut end = start;
+    while end < store.values.len() && store.values[end] != 0 {
+        end += 1;
+    }
+    
+    let slice = &store.values[start..end];
+    Some(String::from_utf8_lossy(slice).to_string())
+}
+
+fn try_smart_lookup(store: &DictionaryStore, word: &str) -> Option<String> {
     let word_lower = word.to_lowercase();
 
-    // 1. Probaj tačan pogodak (najbrže)
-    if let Some(res) = map.get(&word_lower) {
-        return Some(match_case(word, res));
+    // 1. FST Lookup (O(len)) - Munjevito
+    if let Some(offset) = store.fst.get(&word_lower) {
+        if let Some(res) = get_value_from_store(store, offset) {
+            return Some(match_case(word, &res));
+        }
     }
 
-    // 2. Probaj skidanje sufiksa (Stemming)
+    // 2. Stemming (Suffix)
     if word_lower.chars().count() < 4 {
         return None;
     }
@@ -235,15 +242,15 @@ fn try_smart_lookup(map: &HashMap<String, String>, word: &str) -> Option<String>
             let root_len = word_lower.len() - suffix.len();
             let root = &word_lower[..root_len];
 
-            if root.chars().count() < 3 {
-                continue;
-            }
+            if root.chars().count() < 3 { continue; }
 
-            if let Some(root_translation) = map.get(root) {
-                // NAŠLI SMO KOREN!
-                let mut result = root_translation.clone();
-                result.push_str(suffix);
-                return Some(match_case(word, &result));
+            // FST Lookup za root
+            if let Some(offset) = store.fst.get(root) {
+                if let Some(root_translation) = get_value_from_store(store, offset) {
+                    let mut result = root_translation;
+                    result.push_str(suffix);
+                    return Some(match_case(word, &result));
+                }
             }
         }
     }
@@ -270,8 +277,8 @@ fn match_case(original: &str, replacement: &str) -> String {
 
 #[wasm_bindgen]
 pub fn convert_dialect(text: &str, mode: &str) -> String {
-    let guard = DICTIONARY.lock().unwrap();
-    let map_opt = guard.get(mode);
+    let guard = DICTIONARIES.lock().unwrap();
+    let store_opt = guard.get(mode);
 
     let mut result = String::with_capacity(text.len());
     let chars: Vec<char> = text.chars().collect();
@@ -291,14 +298,13 @@ pub fn convert_dialect(text: &str, mode: &str) -> String {
         }
         let word: String = chars[start..i].iter().collect();
 
-        // I ovde primeni zaštitu!
         if should_protect(&word) {
             result.push_str(&word);
             continue;
         }
 
-        let replacement = if let Some(map) = map_opt {
-            try_smart_lookup(map, &word)
+        let replacement = if let Some(store) = store_opt {
+            try_smart_lookup(store, &word)
         } else {
             None
         };
