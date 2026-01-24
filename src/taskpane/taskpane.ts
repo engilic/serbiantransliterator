@@ -1,6 +1,6 @@
 /* global Office, window, document */
 
-// UI Components (Refactored CSS imports)
+// UI Components
 import "./global.css";
 import "./components/header/header.css";
 import "./components/settings/settings.css";
@@ -13,6 +13,8 @@ import pkg from "../../package.json";
 
 import { initTaskpane } from "./app";
 import { initWebModeUi } from "./app/web/ui";
+// NEW: Importujemo klijenta za workere
+import { workerClient } from "./worker/client";
 
 Office.onReady(async (info) => {
     try {
@@ -27,6 +29,11 @@ Office.onReady(async (info) => {
         if (verEl) {
             verEl.textContent = pkg.version;
         }
+
+        // NEW: Preload Worker in background (Startuje thread, učitava WASM i rečnike)
+        // Ovo radimo odmah da bi sve bilo spremno kad korisnik klikne na dugme.
+        console.log("🚀 Spawning Worker Pool...");
+        workerClient.init().catch((err) => console.error("Worker Init Failed:", err));
 
         if (isWebMode) {
             console.log("🌍 Web Mode Activated");
