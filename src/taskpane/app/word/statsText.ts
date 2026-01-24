@@ -33,7 +33,7 @@ export function buildApplyStatsText(result: ResultLike, scope: ApplyScope, extra
         `${t("stats_line_scope", scopeLabel(scope))}\n` +
         `${tPlural("stats_line_nodes_changed", result.stats.textNodes)}\n` +
         // Manual simple string for now, or add to i18n
-        `Chars: ${chars}\n` +
+        `${t("stats_line_chars", chars)}\n` +
         `${t("stats_line_time_ms", time)}\n` +
         `${t("stats_section_bridges")}\n` +
         `${t("stats_bridge_line", "links", bridges.links)}\n` +
