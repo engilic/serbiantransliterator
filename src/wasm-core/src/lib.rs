@@ -95,6 +95,13 @@ pub fn apply_replacements(text: &str) -> String {
     }
 }
 
+// Helper za čitanje 8 bajtova (u64)
+fn read_u64(slice: &[u8]) -> u64 {
+    let mut bytes = [0u8; 8];
+    bytes.copy_from_slice(slice);
+    u64::from_le_bytes(bytes)
+}
+
 // Binary Loader (FST + Suffixes)
 #[wasm_bindgen]
 pub fn load_dictionary_bin(mode: &str, bin_data: &[u8]) -> Result<(), JsValue> {
@@ -103,9 +110,7 @@ pub fn load_dictionary_bin(mode: &str, bin_data: &[u8]) -> Result<(), JsValue> {
 
     // 1. FST
     if bin_data.len() < cursor + 8 { return Err(JsValue::from_str("Invalid bin (FST len)")); }
-    let mut len_bytes = [0u8; 8];
-    len_bytes.copy_from_slice(&bin_data[cursor..cursor+8]);
-    let fst_len = u64::from_le_bytes(len_bytes) as usize;
+    let fst_len = read_u64(&bin_data[cursor..cursor+8]) as usize;
     cursor += 8;
 
     if bin_data.len() < cursor + fst_len { return Err(JsValue::from_str("Invalid bin (FST body)")); }
@@ -116,8 +121,7 @@ pub fn load_dictionary_bin(mode: &str, bin_data: &[u8]) -> Result<(), JsValue> {
 
     // 2. Values
     if bin_data.len() < cursor + 8 { return Err(JsValue::from_str("Invalid bin (Val len)")); }
-    len_bytes.copy_from_slice(&bin_data[cursor..cursor+8]);
-    let val_len = u64::from_le_bytes(len_bytes) as usize;
+    let val_len = read_u64(&bin_data[cursor..cursor+8]) as usize;
     cursor += 8;
 
     if bin_data.len() < cursor + val_len { return Err(JsValue::from_str("Invalid bin (Val body)")); }
@@ -126,8 +130,7 @@ pub fn load_dictionary_bin(mode: &str, bin_data: &[u8]) -> Result<(), JsValue> {
 
     // 3. Suffixes
     if bin_data.len() < cursor + 8 { return Err(JsValue::from_str("Invalid bin (Suf len)")); }
-    len_bytes.copy_from_slice(&bin_data[cursor..cursor+8]);
-    let suf_len = u64::from_le_bytes(len_bytes) as usize;
+    let suf_len = read_u64(&bin_data[cursor..cursor+8]) as usize;
     cursor += 8;
 
     if bin_data.len() < cursor + suf_len { return Err(JsValue::from_str("Invalid bin (Suf body)")); }
