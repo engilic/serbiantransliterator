@@ -120,7 +120,6 @@ function createEmptyStats(direction?: string, textNodes = 0, chars = 0): Convert
     };
 }
 
-// Roman Numerals Logic
 const ROMAN_REGEX_STRICT =
     /\b(?!I\b)(?=[MDCLXVI]+\b)M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})\b/g;
 const ROMAN_I_PREFIXES = [
@@ -206,14 +205,23 @@ export function convertOoxml(
     }
 
     const parser = new DOMParser();
+    let doc: Document;
 
-    // Explicitly disabling DOCTYPE if browser supports it (best effort)
-    // CodeQL: Input is validated by isSafeXml above which strictly rejects DTDs.
-    // The parser processes XML as data structure, not executable code.
+    try {
+        // Explicitly disabling DOCTYPE if browser supports it (best effort)
+        // CodeQL: Input is validated by isSafeXml above which strictly rejects DTDs.
+        // The parser processes XML as data structure, not executable code.
 
-    // codeql[js/xxe]
-    // codeql[js/xss]
-    const doc = parser.parseFromString(ooxml, "application/xml");
+        // codeql[js/xxe]
+        // codeql[js/xss]
+        doc = parser.parseFromString(ooxml, "application/xml");
+    } catch {
+        return {
+            xml: ooxml,
+            type: "Greška: Parsiranje neuspešno",
+            stats: createEmptyStats(options?.direction),
+        };
+    }
 
     try {
         const pe = doc.getElementsByTagName("parsererror");
