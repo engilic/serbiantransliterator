@@ -1,7 +1,7 @@
 // src/core/textCore.ts
 
 import { ALWAYS_LATIN_PHRASES, ALWAYS_LATIN_TOKENS_STRICT, ALWAYS_LATIN_TOKENS_AMBIGUOUS } from "./rules";
-import { applyPreCorrectionsLatToCyr } from "./corrections"; // <--- IMPORT NA VRHU
+import { applyPreCorrectionsLatToCyr } from "./corrections";
 import { fixSerbianQuotes } from "./quotes";
 import { collectProtectedRanges, splitByRanges, type CurlyProtection } from "./protect";
 import { cyrillicToLatin, detectMajorityScript, latinToCyrillic } from "./serbian";
@@ -24,13 +24,9 @@ async function loadBinaryDict(filename: string, mode: "e2i" | "i2e") {
     try {
         const response = await fetch(filename);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
         const buffer = await response.arrayBuffer();
         const bytes = new Uint8Array(buffer);
-
         wasmModule.load_dictionary_bin(mode, bytes);
-        console.log(`Dictionary ${mode} loaded from ${filename} (${bytes.length} bytes)`);
-
         isDictLoaded[mode] = true;
     } catch (e) {
         console.warn(`Failed to load dictionary ${mode} from ${filename}`, e);
@@ -41,15 +37,12 @@ export async function initWasm() {
     try {
         const module = await import("../wasm-core/pkg");
         wasmModule = module as unknown as WasmModule;
-        console.log("WASM module loaded successfully");
-
         const p1 = loadBinaryDict("assets/dict_e2i.bin", "e2i");
         const p2 = loadBinaryDict("assets/dict_i2e.bin", "i2e");
         await Promise.all([p1, p2]);
-
         wasmModule.init_replacer("{}");
     } catch (e) {
-        console.warn("WASM load failed, falling back to JS regex only", e);
+        console.warn("WASM load failed", e);
     }
 }
 
@@ -260,6 +253,18 @@ function shouldProtectAmbiguousBrandToken(tokens: Tok[], idx: number): boolean {
     return false;
 }
 
+// [GALAXY MODE] Smart Heuristics
+function shouldProtectHeuristic(word: string): boolean {
+    // MixedCase check (npr. "iCloud", "JavaScript", "myVariable")
+    if (word.length < 3) return false;
+
+    const slice = word.slice(1);
+    const hasUpper = /[A-ZČĆŽŠĐ]/.test(slice);
+    const hasLower = /[a-zčćžšđ]/.test(slice);
+
+    return hasUpper && hasLower;
+}
+
 export function detectScript(text: string): "latin" | "cyrillic" {
     return detectMajorityScript(text);
 }
@@ -295,6 +300,11 @@ function convertUnprotectedSegment(segment: string, toCyrillic: boolean, options
             continue;
         }
         if (protectBrands && ALWAYS_LATIN_TOKENS_STRICT.has(tokLower)) {
+            out += tok;
+            continue;
+        }
+        // [GALAXY MODE] Aktiviraj heuristiku
+        if (protectBrands && shouldProtectHeuristic(tok)) {
             out += tok;
             continue;
         }

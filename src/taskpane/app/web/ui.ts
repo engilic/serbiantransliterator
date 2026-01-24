@@ -1,33 +1,58 @@
 // src/taskpane/app/web/ui.ts
-/* global document, navigator */
+/* global document, navigator, window */
 
 import { processDocxFile } from "./batch";
 import { t } from "../../../shared/i18n";
 import { showModalInfo } from "../modal/modal";
 import { html } from "../../../shared/safeHtml";
-import { convertPlainText } from "../../../core/textCore";
+import { convertPlainText, type Direction, type CoreOptions } from "../../../core/textCore";
 import { getSettingsFromUi } from "../settings/getters";
 import { state } from "../state";
+
+interface FileSystemFileHandle {
+    kind: "file";
+    name: string;
+    getFile(): Promise<File>;
+}
+
+interface LaunchParams {
+    files: FileSystemFileHandle[];
+}
+
+interface LaunchQueue {
+    setConsumer(callback: (launchParams: LaunchParams) => Promise<void>): void;
+}
+
+interface WindowWithLaunchQueue extends Window {
+    launchQueue?: LaunchQueue;
+}
+
+// [GALAXY MODE] Rekurzivna transliteracija DOM stabla (čuva stilove)
+// [FIX] EXPORTED FOR TESTS
+export function transliterateDomNode(node: Node, dir: Direction, coreOpts: CoreOptions) {
+    if (node.nodeType === Node.TEXT_NODE) {
+        const original = node.textContent || "";
+        if (original.trim()) {
+            const { text } = convertPlainText(original, dir, coreOpts);
+            node.textContent = text;
+        }
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+        const tagName = (node as Element).tagName.toLowerCase();
+        if (tagName !== "script" && tagName !== "style") {
+            node.childNodes.forEach((child) => transliterateDomNode(child, dir, coreOpts));
+        }
+    }
+}
 
 export function initWebModeUi() {
     console.log("🚀 Initializing Web Mode UI...");
 
     const main = document.querySelector("main");
-    if (!main) {
-        console.error("WebUI: <main> tag not found!");
-        return;
-    }
-
+    if (!main) return;
     const firstSection = main.querySelector(".section");
-    if (!firstSection) {
-        console.error("WebUI: .section not found!");
-        return;
-    }
-
+    if (!firstSection) return;
     const btnGroup = firstSection.querySelector(".button-group") as HTMLElement | null;
-    if (btnGroup) {
-        btnGroup.style.display = "none";
-    }
+    if (btnGroup) btnGroup.style.display = "none";
 
     if (!document.querySelector(".drop-zone")) {
         const dropZone = document.createElement("div");
@@ -35,17 +60,19 @@ export function initWebModeUi() {
         dropZone.innerHTML = `
             <div class="drop-icon">📂</div>
             <div class="drop-text">${t("web_drop_title")}<br>${t("web_drop_subtitle")}</div>
-            <input type="file" id="webFileInput" accept=".docx" style="display:none">
+            <input type="file" id="webFileInput" accept=".docx" multiple style="display:none">
         `;
 
         const clipboardSection = document.createElement("div");
         clipboardSection.className = "section fade-in";
         clipboardSection.style.marginTop = "16px";
+
         clipboardSection.innerHTML = `
             <div class="section-header">
                 <div class="section-title">${t("web_clipboard_header")}</div>
             </div>
-            <textarea id="webTextInput" class="web-clipboard-area" placeholder="${t("web_clipboard_placeholder")}"></textarea>
+            <div id="webRichInput" class="web-clipboard-area rich-input" contenteditable="true" 
+                 data-placeholder="${t("web_clipboard_placeholder")}"></div>
             <div class="web-actions">
                 <button id="webConvertBtn" class="primary-btn" style="max-width: 200px;">${t("web_clipboard_convert")}</button>
                 <button id="webCopyBtn" class="secondary-btn" style="max-width: 200px; display:none;">${t("web_clipboard_copy")}</button>
@@ -55,13 +82,11 @@ export function initWebModeUi() {
         firstSection.insertBefore(dropZone, firstSection.firstChild);
         firstSection.insertBefore(clipboardSection, firstSection.firstChild);
 
-        // --- Event Listeners ---
         const input = dropZone.querySelector("#webFileInput") as HTMLInputElement;
         dropZone.onclick = () => input.click();
         input.onchange = () => {
-            if (input.files?.length) processDocxFile(input.files[0]);
+            if (input.files?.length) handleFiles(input.files);
         };
-
         dropZone.ondragover = (e) => {
             e.preventDefault();
             dropZone.classList.add("hover");
@@ -73,12 +98,22 @@ export function initWebModeUi() {
             if (e.dataTransfer?.files?.length) handleFiles(e.dataTransfer.files);
         };
 
-        const textArea = clipboardSection.querySelector("#webTextInput") as HTMLTextAreaElement;
+        const richInput = clipboardSection.querySelector("#webRichInput") as HTMLDivElement;
         const convertBtn = clipboardSection.querySelector("#webConvertBtn") as HTMLButtonElement;
         const copyBtn = clipboardSection.querySelector("#webCopyBtn") as HTMLButtonElement;
 
+        richInput.addEventListener("input", () => {
+            // [FIX] textContent fallback
+            const txt = richInput.innerText || richInput.textContent || "";
+            if (txt.trim() === "") richInput.classList.add("empty");
+            else richInput.classList.remove("empty");
+        });
+        richInput.classList.add("empty");
+
         convertBtn.onclick = () => {
-            const text = textArea.value;
+            // [FIX] textContent fallback for JSDOM/Test
+            const text = richInput.innerText || richInput.textContent || "";
+
             if (!text.trim()) {
                 showModalInfo(t("modal_title_error"), html`${t("msg_enter_text")}`);
                 return;
@@ -91,7 +126,7 @@ export function initWebModeUi() {
             if (dir === "auto") dir = "auto";
 
             const coreOpts = {
-                userProtected: userProtected,
+                userProtected,
                 protectBrands: uiSettings.protectBrands,
                 applySerbianQuotes: uiSettings.applySerbianQuotes,
                 preserveCodeBlocks: uiSettings.preserveCodeBlocks,
@@ -99,11 +134,10 @@ export function initWebModeUi() {
             };
 
             try {
-                const { text: result } = convertPlainText(text, dir as any, coreOpts);
-                textArea.value = result;
+                transliterateDomNode(richInput, dir as Direction, coreOpts);
 
-                textArea.style.borderColor = "var(--colorStatusSuccessForeground)";
-                setTimeout(() => (textArea.style.borderColor = ""), 500);
+                richInput.style.borderColor = "var(--colorStatusSuccessForeground)";
+                setTimeout(() => (richInput.style.borderColor = ""), 500);
 
                 convertBtn.style.display = "none";
                 copyBtn.style.display = "inline-flex";
@@ -115,42 +149,50 @@ export function initWebModeUi() {
         };
 
         copyBtn.onclick = async () => {
-            await navigator.clipboard.writeText(textArea.value);
-            copyBtn.innerText = t("web_clipboard_copied");
-            setTimeout(() => {
-                copyBtn.style.display = "none";
-                convertBtn.style.display = "inline-flex";
-                copyBtn.innerText = t("web_clipboard_copy");
-                textArea.setAttribute("placeholder", t("web_clipboard_ready"));
-            }, 1500);
-        };
-    }
+            try {
+                const htmlBlob = new Blob([richInput.innerHTML], { type: "text/html" });
+                // [FIX] textContent fallback
+                const txt = richInput.innerText || richInput.textContent || "";
+                const textBlob = new Blob([txt], { type: "text/plain" });
 
-    // [GOD MODE] PWA File Handling API (Launch with file)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if ("launchQueue" in window && "files" in (window as any).launchQueue) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (window as any).launchQueue.setConsumer(async (launchParams: any) => {
-            if (!launchParams.files.length) return;
-            const fileHandle = launchParams.files[0];
-            const file = await fileHandle.getFile();
-            if (file.name.endsWith(".docx")) {
-                processDocxFile(file);
+                const item = new ClipboardItem({ "text/html": htmlBlob, "text/plain": textBlob });
+                await navigator.clipboard.write([item]);
+
+                copyBtn.innerText = t("web_clipboard_copied");
+                setTimeout(() => {
+                    copyBtn.style.display = "none";
+                    convertBtn.style.display = "inline-flex";
+                    copyBtn.innerText = t("web_clipboard_copy");
+                }, 1500);
+            } catch (e) {
+                // [FIX] textContent fallback
+                const txt = richInput.innerText || richInput.textContent || "";
+                await navigator.clipboard.writeText(txt);
+                copyBtn.innerText = t("web_clipboard_copied") + " (Plain)";
             }
-        });
+        };
+
+        const titleEl = document.querySelector(".section-title");
+        if (titleEl) {
+            const baseTitle = titleEl.textContent;
+            richInput.addEventListener("input", () => {
+                // [FIX] textContent fallback
+                const txt = richInput.innerText || richInput.textContent || "";
+                const len = txt.length;
+                if (len > 0) titleEl.textContent = `${baseTitle} (${len} chars)`;
+                else titleEl.textContent = baseTitle;
+            });
+        }
     }
 
-    // [GOD MODE] Live Character Count za Clipboard
-    const textArea = document.getElementById("webTextInput") as HTMLTextAreaElement | null;
-    const titleEl = document.querySelector(".section-title");
-    if (textArea && titleEl) {
-        const baseTitle = titleEl.textContent;
-        textArea.addEventListener("input", () => {
-            const len = textArea.value.length;
-            if (len > 0) {
-                titleEl.textContent = `${baseTitle} (${len} chars)`;
-            } else {
-                titleEl.textContent = baseTitle;
+    const win = window as WindowWithLaunchQueue;
+    if (win.launchQueue) {
+        win.launchQueue.setConsumer(async (launchParams: LaunchParams) => {
+            if (!launchParams.files.length) return;
+            for (const fileHandle of launchParams.files) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const file = await (fileHandle as any).getFile();
+                if (file.name.endsWith(".docx")) await processDocxFile(file);
             }
         });
     }
@@ -158,14 +200,15 @@ export function initWebModeUi() {
     console.log("✅ Web Mode UI injected successfully.");
 }
 
-function handleFiles(files: FileList) {
-    const file = files[0];
-    if (!file) return;
-
-    if (!file.name.endsWith(".docx")) {
-        showModalInfo(t("modal_title_error"), html`${t("web_drop_invalid_file")}`);
-        return;
+async function handleFiles(files: FileList) {
+    const fileArray = Array.from(files);
+    let hasInvalid = false;
+    for (const file of fileArray) {
+        if (!file.name.endsWith(".docx")) {
+            hasInvalid = true;
+            continue;
+        }
+        await processDocxFile(file);
     }
-
-    processDocxFile(file);
+    if (hasInvalid) showModalInfo(t("modal_title_error"), html`${t("web_drop_invalid_file")}`);
 }
