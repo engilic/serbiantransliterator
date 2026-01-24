@@ -1,5 +1,4 @@
 import { convertPlainText, type Direction, type CoreOptions, detectScript } from "../../core/textCore";
-import { ALWAYS_LATIN_PHRASES } from "../../core/rules";
 import { XML_NS, collectTextNodes, getFullText, needsXmlSpacePreserve } from "./dom";
 import { applySerbianQuotesAcrossNodes } from "./quotes";
 import { createInitialCodeState, createInitialCodeParseStats, transformTextRespectingCode } from "./code";
@@ -7,7 +6,6 @@ import {
     bridgeLinksAcrossTextNodes,
     bridgeAlwaysLatinTokensAcrossTextNodes,
     bridgeExactTokensAcrossTextNodes,
-    buildPhraseInfos,
     bridgePhrasesAcrossTextNodes,
     bridgeDigraphsAcrossTextNodes,
     bridgeSpacesAcrossTextNodes,
@@ -15,178 +13,29 @@ import {
     bridgeBracedPlaceholdersAcrossTextNodes,
     markCyrAllCapsDigraphHints,
     LAT_ALLCAPS_HINT,
+    buildPhraseInfos,
 } from "./bridge/index";
 import { URL_RE_G, EMAIL_RE_G } from "../patterns/links";
 import { perfMonitor } from "../../taskpane/app/telemetry/performanceMonitor";
 
-import { isSafeXml, removeProofingTags, findAncestor, countMatches, toAscii } from "./converterUtils";
-
+import { removeProofingTags, findAncestor, countMatches, toAscii } from "./converterUtils";
+import { parseSafeOoxml } from "./xmlParser";
+import { createEmptyStats, type ConvertStats } from "./stats";
+import { getCachedPhraseInfos, ALWAYS_LATIN_PHRASE_INFOS } from "./phraseCache";
+import { ROMAN_REGEX_STRICT, ROMAN_I_REGEX } from "./roman";
 import {
     applyProofingLanguagePreserveUnchanged,
     targetLangForDirection,
     type ProofingApplyResult,
 } from "./proofing";
 
-// --- Phrase Cache ---
-const ALWAYS_LATIN_PHRASE_INFOS = buildPhraseInfos(ALWAYS_LATIN_PHRASES);
-const PHRASE_INFOS_CACHE_MAX = 80;
-const phraseInfosCache = new Map<string, ReturnType<typeof buildPhraseInfos>>();
-
-function normalizePhraseForKey(p: string): string {
-    return p.normalize("NFC").replace(/\s+/g, " ").trim().toLowerCase();
-}
-
-function phrasesCacheKey(phrases: string[]): string {
-    const norm = phrases.map(normalizePhraseForKey).filter(Boolean);
-    const uniqSorted = Array.from(new Set(norm)).sort();
-    return JSON.stringify(uniqSorted);
-}
-
-function getCachedPhraseInfos(phrases: string[]) {
-    const key = phrasesCacheKey(phrases);
-    const hit = phraseInfosCache.get(key);
-    if (hit) return hit;
-    const infos = buildPhraseInfos(phrases);
-    phraseInfosCache.set(key, infos);
-    if (phraseInfosCache.size > PHRASE_INFOS_CACHE_MAX) {
-        const firstKey = phraseInfosCache.keys().next().value as string | undefined;
-        if (firstKey) phraseInfosCache.delete(firstKey);
-    }
-    return infos;
-}
-
-// --- Types ---
 export interface OoxmlOptions extends CoreOptions {
     direction?: Direction | "to-ascii";
     setProofingLanguage?: boolean;
     protectRomans?: boolean;
 }
 
-export type ProofingStats = {
-    enabled: boolean;
-    targetLang: "sr-Cyrl-RS" | "sr-Latn-RS" | null;
-} & ProofingApplyResult;
-
-export type ConvertStats = {
-    direction: Direction | "to-ascii";
-    textNodes: number;
-    charsBefore: number;
-    charsAfter: number;
-    detected: { urls: number; emails: number };
-    code: {
-        fenceMarkersSeen: number;
-        inlineTicksSeen: number;
-        endedInFence: boolean;
-        endedInInline: boolean;
-    };
-    bridges: {
-        links: number;
-        placeholders: number;
-        brandPhrases: number;
-        brandTokens: number;
-        digraphs: number;
-        userPhrases: number;
-        userTokens: number;
-        allCapsHints: number;
-        spaces: number;
-        ambiguousBrandSuffix: number;
-    };
-    proofing: ProofingStats;
-    timingMs: number;
-};
-
-function createEmptyStats(direction?: string, textNodes = 0, chars = 0): ConvertStats {
-    return {
-        direction: (direction as ConvertStats["direction"]) || "auto",
-        textNodes,
-        charsBefore: chars,
-        charsAfter: chars,
-        detected: { urls: 0, emails: 0 },
-        code: { fenceMarkersSeen: 0, inlineTicksSeen: 0, endedInFence: false, endedInInline: false },
-        bridges: {
-            links: 0,
-            placeholders: 0,
-            brandPhrases: 0,
-            brandTokens: 0,
-            digraphs: 0,
-            userPhrases: 0,
-            userTokens: 0,
-            allCapsHints: 0,
-            spaces: 0,
-            ambiguousBrandSuffix: 0,
-        },
-        proofing: { enabled: false, targetLang: null, changedRuns: 0, skippedRuns: 0, skippedByReason: {} },
-        timingMs: 0,
-    };
-}
-
-const ROMAN_REGEX_STRICT =
-    /\b(?!I\b)(?=[MDCLXVI]+\b)M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})\b/g;
-const ROMAN_I_PREFIXES = [
-    "Petar",
-    "Aleksandar",
-    "Pavle",
-    "Đorđe",
-    "Djordje",
-    "Milan",
-    "Miloš",
-    "Milos",
-    "Katarina",
-    "Elizabeta",
-    "Viktorija",
-    "Marija",
-    "Ana",
-    "Luj",
-    "Šarl",
-    "Sarl",
-    "Anri",
-    "Filip",
-    "Felipe",
-    "Huan",
-    "Karlos",
-    "Viljem",
-    "Fridrih",
-    "Oskar",
-    "Gustav",
-    "Erik",
-    "Jovan",
-    "Jozef",
-    "Benedikt",
-    "Pije",
-    "Lav",
-    "Grgur",
-    "Klement",
-    "Inoćentije",
-    "Nikola",
-    "Napoleon",
-    "Konstantin",
-    "Stefan",
-    "Uroš",
-    "Uros",
-    "Dušan",
-    "Dusan",
-    "Član",
-    "Clan",
-    "Glava",
-    "Deo",
-    "Stav",
-    "Tačka",
-    "Tacka",
-    "Odeljak",
-    "Aneks",
-    "Klasa",
-    "Grupa",
-    "Tom",
-    "Knjiga",
-    "Sveska",
-    "Partija",
-    "Zona",
-    "Sektor",
-    "Svetski rat",
-    "Boj",
-    "Put",
-];
-const ROMAN_I_REGEX = new RegExp(`\\b(${ROMAN_I_PREFIXES.join("|")})\\s+I\\b`, "g");
+export { ConvertStats }; // Re-export for consumers
 
 export function convertOoxml(
     ooxml: string,
@@ -195,30 +44,13 @@ export function convertOoxml(
     const t0 = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
     const ooxmlSizeKb = Math.round(ooxml.length / 1024);
 
-    // SECURITY GUARD: Reject XML with DTDs to prevent XXE
-    if (!isSafeXml(ooxml)) {
+    // SECURITY & PARSING (Izolovano u xmlParser.ts)
+    const doc = parseSafeOoxml(ooxml);
+
+    if (!doc) {
         return {
             xml: "",
-            type: "Greška: Nebezbedan XML",
-            stats: createEmptyStats(options?.direction),
-        };
-    }
-
-    const parser = new DOMParser();
-    let doc: Document;
-
-    try {
-        // Explicitly disabling DOCTYPE if browser supports it (best effort)
-        // CodeQL: Input is validated by isSafeXml above which strictly rejects DTDs.
-        // The parser processes XML as data structure, not executable code.
-
-        // codeql[js/xxe]
-        // codeql[js/xss]
-        doc = parser.parseFromString(ooxml, "application/xml");
-    } catch {
-        return {
-            xml: ooxml,
-            type: "Greška: Parsiranje neuspešno",
+            type: "Greška: Nebezbedan ili nevalidan XML",
             stats: createEmptyStats(options?.direction),
         };
     }
@@ -333,7 +165,7 @@ export function convertOoxml(
     }
 
     // --- Proofing Prep (Before Conversion) ---
-    let proofing: ProofingStats = {
+    let proofing: import("./stats").ProofingStats = {
         enabled: false,
         targetLang: null,
         changedRuns: 0,
