@@ -22,7 +22,7 @@
         {
             "action": "/index.html",
             "accept": {
-                "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [ ".docx" ]
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"]
             }
         }
     ]
