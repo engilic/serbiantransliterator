@@ -5,8 +5,8 @@ import { processDocxFile } from "./batch";
 import { t } from "../../../shared/i18n";
 import { showModalInfo } from "../modal/modal";
 import { html } from "../../../shared/safeHtml";
-import { convertPlainText } from "../../../core/textCore"; // Koristimo direktno core za tekst
-import { getSettingsFromUi } from "../settings/getters"; // Da čita podešavanja iz UI-a
+import { convertPlainText } from "../../../core/textCore";
+import { getSettingsFromUi } from "../settings/getters";
 import { state } from "../state";
 
 export function initWebModeUi() {
@@ -29,7 +29,6 @@ export function initWebModeUi() {
         btnGroup.style.display = "none";
     }
 
-    // 1. Drop Zone (ako već ne postoji)
     if (!document.querySelector(".drop-zone")) {
         const dropZone = document.createElement("div");
         dropZone.className = "drop-zone fade-in";
@@ -39,7 +38,6 @@ export function initWebModeUi() {
             <input type="file" id="webFileInput" accept=".docx" style="display:none">
         `;
 
-        // 2. [MAX FEATURE] Clipboard Area
         const clipboardSection = document.createElement("div");
         clipboardSection.className = "section fade-in";
         clipboardSection.style.marginTop = "16px";
@@ -54,20 +52,16 @@ export function initWebModeUi() {
             </div>
         `;
 
-        // Ubacujemo redom: Clipboard pa DropZone
         firstSection.insertBefore(dropZone, firstSection.firstChild);
         firstSection.insertBefore(clipboardSection, firstSection.firstChild);
 
         // --- Event Listeners ---
-
-        // File Input
         const input = dropZone.querySelector("#webFileInput") as HTMLInputElement;
         dropZone.onclick = () => input.click();
         input.onchange = () => {
             if (input.files?.length) processDocxFile(input.files[0]);
         };
 
-        // Drag & Drop
         dropZone.ondragover = (e) => {
             e.preventDefault();
             dropZone.classList.add("hover");
@@ -79,7 +73,6 @@ export function initWebModeUi() {
             if (e.dataTransfer?.files?.length) handleFiles(e.dataTransfer.files);
         };
 
-        // Clipboard Logic
         const textArea = clipboardSection.querySelector("#webTextInput") as HTMLTextAreaElement;
         const convertBtn = clipboardSection.querySelector("#webConvertBtn") as HTMLButtonElement;
         const copyBtn = clipboardSection.querySelector("#webCopyBtn") as HTMLButtonElement;
@@ -91,12 +84,9 @@ export function initWebModeUi() {
                 return;
             }
 
-            // Čitaj podešavanja iz UI-a (smer, zaštita, itd.)
             const uiSettings = getSettingsFromUi();
             const userProtected = [...Array.from(state.customWordsSet), ...Array.from(state.presetWordsSet)];
 
-            // Koristimo convertPlainText direktno (brže od workera za kratak tekst)
-            // Ali moramo paziti na smer.
             let dir = uiSettings.direction;
             if (dir === "auto") dir = "auto";
 
@@ -109,15 +99,12 @@ export function initWebModeUi() {
             };
 
             try {
-                // Pozivamo core direktno
                 const { text: result } = convertPlainText(text, dir as any, coreOpts);
                 textArea.value = result;
 
-                // Vizuelna povratna informacija
                 textArea.style.borderColor = "var(--colorStatusSuccessForeground)";
                 setTimeout(() => (textArea.style.borderColor = ""), 500);
 
-                // Prikaži copy dugme
                 convertBtn.style.display = "none";
                 copyBtn.style.display = "inline-flex";
                 copyBtn.innerText = t("web_clipboard_copy");
@@ -133,13 +120,39 @@ export function initWebModeUi() {
             setTimeout(() => {
                 copyBtn.style.display = "none";
                 convertBtn.style.display = "inline-flex";
-                // Opciono: ne čistimo tekst da korisnik može opet nešto da uradi
-                // textArea.value = "";
                 copyBtn.innerText = t("web_clipboard_copy");
-                // Reset placeholder
                 textArea.setAttribute("placeholder", t("web_clipboard_ready"));
             }, 1500);
         };
+    }
+
+    // [GOD MODE] PWA File Handling API (Launch with file)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if ("launchQueue" in window && "files" in (window as any).launchQueue) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (window as any).launchQueue.setConsumer(async (launchParams: any) => {
+            if (!launchParams.files.length) return;
+            const fileHandle = launchParams.files[0];
+            const file = await fileHandle.getFile();
+            if (file.name.endsWith(".docx")) {
+                processDocxFile(file);
+            }
+        });
+    }
+
+    // [GOD MODE] Live Character Count za Clipboard
+    const textArea = document.getElementById("webTextInput") as HTMLTextAreaElement | null;
+    const titleEl = document.querySelector(".section-title");
+    if (textArea && titleEl) {
+        const baseTitle = titleEl.textContent;
+        textArea.addEventListener("input", () => {
+            const len = textArea.value.length;
+            if (len > 0) {
+                titleEl.textContent = `${baseTitle} (${len} chars)`;
+            } else {
+                titleEl.textContent = baseTitle;
+            }
+        });
     }
 
     console.log("✅ Web Mode UI injected successfully.");

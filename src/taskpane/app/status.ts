@@ -11,17 +11,30 @@ export function setStatus(msg: string, type: "info" | "success" | "error" | "neu
     el.innerText = msg;
     el.style.color =
         type === "error"
-            ? "var(--error-color)"
+            ? "var(--colorStatusDangerForeground)"
             : type === "success"
-              ? "var(--success-color)"
-              : "var(--text-color)";
+              ? "var(--colorStatusSuccessForeground)"
+              : "var(--colorNeutralForeground1)";
 
+    // Reset animacije
     el.classList.remove("fade-in");
     void el.offsetWidth;
     el.classList.add("fade-in");
+
+    // [GOD MODE] Trigger Pulse on Success
+    if (type === "success") {
+        triggerSuccessPulse();
+    }
 }
 
-// NEW: Progress Bar Control
+function triggerSuccessPulse() {
+    const progressBar = document.getElementById("progressBar");
+    if (progressBar) {
+        progressBar.classList.add("success-pulse");
+        setTimeout(() => progressBar.classList.remove("success-pulse"), 500);
+    }
+}
+
 export function setProgress(percent: number | null) {
     const container = document.getElementById("progressContainer");
     const bar = document.getElementById("progressBar");
@@ -42,7 +55,6 @@ export function setProgress(percent: number | null) {
 }
 
 export function refreshStats() {
-    // ... (ostaje isto kao pre) ...
     const box = document.getElementById("statsBox") as HTMLDivElement | null;
     if (!box) return;
 
