@@ -85,6 +85,7 @@ body {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    scroll-behavior: smooth;
 }
 
 #skeleton {
@@ -258,4 +259,55 @@ main {
 
 ::-webkit-scrollbar-thumb:hover {
     background: var(--colorNeutralForeground3);
+}
+
+/* [GOD MODE] Glassmorphism & Premium Textures */
+.preview-sticky-header,
+.sticky-footer,
+.modal,
+.section-header {
+    background: rgba(255, 255, 255, 0.85) !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+[data-theme="dark"] .preview-sticky-header,
+[data-theme="dark"] .sticky-footer,
+[data-theme="dark"] .modal,
+[data-theme="dark"] .section-header {
+    background: rgba(41, 41, 41, 0.85) !important;
+}
+
+/* [GOD MODE] Success Pulse Animation */
+@keyframes successPulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(16, 108, 189, 0.4);
+    }
+
+    70% {
+        box-shadow: 0 0 0 10px rgba(16, 108, 189, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(16, 108, 189, 0);
+    }
+}
+
+.primary-btn:active {
+    transform: scale(0.97);
+}
+
+.success-pulse {
+    animation: successPulse 0.5s ease-out;
+}
+
+/* Poliranje ivica */
+.modal,
+.section,
+.drop-zone,
+.web-clipboard-area {
+    border: 1px solid var(--colorNeutralStroke1);
+    box-shadow:
+        0 1px 2px rgba(0, 0, 0, 0.05),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
