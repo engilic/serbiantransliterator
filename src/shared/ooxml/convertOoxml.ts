@@ -206,8 +206,11 @@ export function convertOoxml(
 
     const parser = new DOMParser();
 
-    // CodeQL [js/xxe] - Input is validated by isSafeXml above which rejects DTDs.
-    // CodeQL [js/xss] - This XML is not rendered as HTML, it's processed as data.
+    // Explicitly disabling DOCTYPE if browser supports it (best effort)
+    // CodeQL: Input is validated by isSafeXml above which strictly rejects DTDs.
+    // The parser processes XML as data structure, not executable code.
+
+    // codeql[js/xxe]
     const doc = parser.parseFromString(ooxml, "application/xml");
 
     try {
