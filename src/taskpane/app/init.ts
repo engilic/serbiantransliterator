@@ -12,6 +12,7 @@ import { logger } from "./telemetry/logger";
 import { showPreviewToast } from "./modal/previewModal";
 import { initOnboarding } from "./onboarding/tour";
 import { initWasm } from "../../core/textCore";
+import { t } from "../../shared/i18n";
 
 function registerServiceWorker() {
     if ("serviceWorker" in navigator) {
@@ -139,7 +140,7 @@ function setupDebugTrigger() {
             const logs = await logger.exportLogsFull();
             try {
                 await navigator.clipboard.writeText(logs);
-                showPreviewToast("Debug logs copied to clipboard!", "success", 3000);
+                showPreviewToast(t("preview_toast_debug_logs_copied"), "success", 3000);
             } catch (e) {
                 logger.error("Copy failed", e);
             }

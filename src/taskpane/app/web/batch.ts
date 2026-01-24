@@ -7,30 +7,23 @@ import { getOoxmlOptionsFromUi } from "../settings/getters";
 import { setStatus, setProgress } from "../status";
 import { t } from "../../../shared/i18n";
 
-// Fajlovi unutar .docx koje treba procesirati
-const TARGET_XML_FILES = [
-    "word/document.xml",
-    "word/footnotes.xml",
-    "word/endnotes.xml",
-    // Headers & Footers (regex match kasnije)
-];
+const TARGET_XML_FILES = ["word/document.xml", "word/footnotes.xml", "word/endnotes.xml"];
 
 export async function processDocxFile(file: File) {
+    const t0 = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+
     setStatus(t("status_processing"), "info");
-    setProgress(10); // Start
+    setProgress(10);
 
     try {
-        // 1. Učitaj fajl kao ArrayBuffer
         const arrayBuffer = await readFileAsArrayBuffer(file);
 
-        // 2. Unzip
         const zip = await JSZip.loadAsync(arrayBuffer);
         const opts = getOoxmlOptionsFromUi();
 
         let processedCount = 0;
         const filesToProcess: string[] = [];
 
-        // 3. Identifikuj fajlove za obradu
         zip.forEach((relativePath) => {
             if (
                 relativePath === "word/document.xml" ||
@@ -43,15 +36,12 @@ export async function processDocxFile(file: File) {
             }
         });
 
-        // 4. Obrada (u seriji da ne blokiramo UI previše, mada je JSZip async)
         for (const path of filesToProcess) {
             const xmlContent = await zip.file(path)?.async("string");
             if (!xmlContent) continue;
 
-            // Konverzija
             const result = convertOoxml(xmlContent, opts);
 
-            // Ako ima izmena, upiši nazad u ZIP
             if (result.type !== "Nema teksta") {
                 zip.file(path, result.xml);
                 processedCount++;
@@ -60,16 +50,19 @@ export async function processDocxFile(file: File) {
 
         setProgress(80);
 
-        // 5. Generiši novi .docx
         const outBlob = await zip.generateAsync({
             type: "blob",
             mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         });
 
         setProgress(100);
-        setStatus(t("status_done_document", "Web Mode", "0", ""), "success");
 
-        // 6. Trigger Download
+        const t1 = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+        const ms = Math.max(0, Math.round(t1 - t0));
+
+        const msg = t("status_done_document", t("ui_web_mode"), ms, "");
+        setStatus(msg, "success");
+
         downloadBlob(outBlob, `PRESLOVLJENO_${file.name}`);
 
         setTimeout(() => setProgress(null), 1000);

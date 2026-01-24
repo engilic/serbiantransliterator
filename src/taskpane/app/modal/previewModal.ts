@@ -10,6 +10,7 @@ import { myersDiff, type DiffOp } from "../../../shared/diff";
 import { InteractiveDiff } from "../../../shared/diff/interactive";
 import { PREVIEW_BATCH } from "../preview/constants";
 import { convertTextForPreviewPlain } from "../preview/convertPreviewPlain";
+import { t } from "../../../shared/i18n";
 
 function tokenize(text: string): string[] {
     return text.split(/([ \t\n\r]+)/).filter((x) => x);
@@ -42,11 +43,11 @@ function renderDiffAsync(holder: HTMLElement, interactive: InteractiveDiff, sess
 
         if (op.type === "insert") {
             cls = "diff-added clickable";
-            tooltip = "Klikni da odbaciš izmenu";
+            tooltip = t("preview_diff_tip_insert");
             if (rejected) cls += " diff-rejected";
         } else if (op.type === "delete") {
             cls = "diff-removed clickable";
-            tooltip = "Klikni da zadržiš ovaj tekst";
+            tooltip = t("preview_diff_tip_delete");
             if (rejected) cls += " diff-rejected";
         }
 
@@ -114,21 +115,21 @@ export function showPreviewModal() {
         <div class="preview-header-row">
             <div class="preview-title" data-testid="previewTitleText">${escapeHtml(state.preview.titleText)}</div>
             <div class="preview-header-right">
-                <button class="preview-close-btn" id="previewCloseX" title="Zatvori">&times;</button>
+                <button class="preview-close-btn" id="previewCloseX" title="${t("preview_close_title")}">&times;</button>
                 <div class="preview-header-buttons">
-                    <button id="modalOk" class="btn-primary" type="button">PRIMENI</button>
+                    <button id="modalOk" class="btn-primary" type="button">${t("preview_btn_apply")}</button>
                 </div>
             </div>
         </div>
         <div class="button-group" style="margin-top:8px; justify-content: flex-start;">
-            <button id="pBtnDiff" class="mini-btn ${state.preview.mode === "diff" ? "active" : ""}">Razlike</button>
-            <button id="pBtnSide" class="mini-btn ${state.preview.mode === "side" ? "active" : ""}">Pre/Posle</button>
-            <button id="pBtnPlain" class="mini-btn ${state.preview.mode === "plain" ? "active" : ""}">Rezultat</button>
+            <button id="pBtnDiff" class="mini-btn ${state.preview.mode === "diff" ? "active" : ""}">${t("preview_btn_diff")}</button>
+            <button id="pBtnSide" class="mini-btn ${state.preview.mode === "side" ? "active" : ""}">${t("preview_btn_side")}</button>
+            <button id="pBtnPlain" class="mini-btn ${state.preview.mode === "plain" ? "active" : ""}">${t("preview_btn_plain")}</button>
         </div>
       </div>
       <div id="previewHolder" class="preview-text-pane"></div>
       
-      ${showLoadMore ? `<div style="margin-top:10px; text-align:center"><button id="previewLoadMoreBtn" class="mini-btn">Učitaj još</button></div>` : ""}
+      ${showLoadMore ? `<div style="margin-top:10px; text-align:center"><button id="previewLoadMoreBtn" class="mini-btn">${t("btn_load_more")}</button></div>` : ""}
       
       <div id="previewToast" class="preview-toast"></div>
     `;
