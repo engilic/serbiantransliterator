@@ -19,7 +19,7 @@ import {
 import { URL_RE_G, EMAIL_RE_G } from "../patterns/links";
 import { perfMonitor } from "../../taskpane/app/telemetry/performanceMonitor";
 
-import { isSafeXml, removeProofingTags, countMatches, toAscii } from "./converterUtils";
+import { isSafeXml, removeProofingTags, findAncestor, countMatches, toAscii } from "./converterUtils";
 
 import {
     applyProofingLanguagePreserveUnchanged,
@@ -317,7 +317,7 @@ export function convertOoxml(
         }
     }
 
-    // --- Proofing ---
+    // --- Proofing Prep (Before Conversion) ---
     let proofing: ProofingStats = {
         enabled: false,
         targetLang: null,
@@ -326,37 +326,17 @@ export function convertOoxml(
         skippedByReason: {},
     };
 
+    let originalRunText: Map<Element, string> | null = null;
+
     if (shouldSetLang) {
-        const target = targetLangForDirection(direction);
-        if (target) {
-            const originalRunText = new Map<Element, string>();
-            // Collect original texts BEFORE modification (but on run level, not per node)
-            // findAncestor is now imported
-            // But wait, the logic was: we need to map Run -> Text.
-            // Since we extracted the complex proofing logic, we need to gather data OR let proofing.ts handle it.
-            // Let's look at proofing.ts again. It takes `originalRunText`.
-            // So we must build it here.
+        originalRunText = new Map<Element, string>();
+        const seenRuns = new WeakSet<Element>();
 
-            // To avoid circular dependency with findAncestor being used here and there,
-            // we import findAncestor from converterUtils.
-
-            // Optimization: Only build map if target exists
-            const seenRuns = new WeakSet<Element>();
-            // Import findAncestor from converterUtils
-            const { findAncestor } = require("./converterUtils"); // Dynamic require to ensure access? No, top level import is fine.
-
-            // Hmm, `findAncestor` is imported at top.
-            for (const t of textNodes) {
-                const run = findAncestor(t, "r");
-                if (!run) continue;
-                if (!seenRuns.has(run)) seenRuns.add(run);
-                originalRunText.set(run, (originalRunText.get(run) ?? "") + (t.textContent ?? ""));
-            }
-
-            // Now apply proofing logic (which modifies DOM) AFTER conversion?
-            // NO! The original logic applied proofing by comparing Original vs Final text.
-            // BUT `originalRunText` must be captured NOW (before conversion modifies textNodes).
-            // AND `applyProofing...` must be called AFTER conversion loop.
+        for (const t of textNodes) {
+            const run = findAncestor(t, "r");
+            if (!run) continue;
+            if (!seenRuns.has(run)) seenRuns.add(run);
+            originalRunText.set(run, (originalRunText.get(run) ?? "") + (t.textContent ?? ""));
         }
     }
 
@@ -422,19 +402,11 @@ export function convertOoxml(
     }
 
     // --- Apply Proofing (Post-Conversion) ---
-    // Now we have the original text map (captured before loop) and the DOM has modified text.
-    if (shouldSetLang) {
-        // We need to access `originalRunText` map created above.
-        // Re-implementing the capture logic cleanly:
-        const originalRunText = new Map<Element, string>();
-        // Only re-capture if we didn't do it before? No, we need original text.
-        // Wait, the loop above MODIFIED the textNodes. `node.textContent` is now converted.
-        // So `originalRunText` MUST be populated BEFORE the loop.
-
-        // Let's restructure slightly to ensure scope visibility.
+    if (shouldSetLang && originalRunText) {
+        const r = applyProofingLanguagePreserveUnchanged(doc, textNodes, originalRunText, direction);
+        proofing = { enabled: true, targetLang: targetLangForDirection(direction), ...r };
     }
 
-    // ... (rest of stats & serialization)
     let charsAfter = 0;
     for (const node of textNodes) {
         charsAfter += (node.textContent ?? "").length;

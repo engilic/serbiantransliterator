@@ -17,7 +17,7 @@ export class WorkerClient {
     public async init(): Promise<void> {
         if (this.initPromise) return this.initPromise;
 
-        this.initPromise = new Promise(async (resolve, reject) => {
+        this.initPromise = new Promise((resolve, reject) => {
             try {
                 this.worker = new Worker(WorkerUrl);
 
@@ -27,34 +27,37 @@ export class WorkerClient {
                     reject(e);
                 };
 
-                // Učitaj binarne rečnike u Main thread-u i pošalji ih workeru (Zero-Copy transfer bi bio idealan, ali copy je ok za init)
-                const [b1, b2] = await Promise.all([
-                    this.fetchBinary("assets/dict_e2i.bin"),
-                    this.fetchBinary("assets/dict_i2e.bin"),
-                ]);
+                const bootstrap = async () => {
+                    try {
+                        const [b1, b2] = await Promise.all([
+                            this.fetchBinary("assets/dict_e2i.bin"),
+                            this.fetchBinary("assets/dict_i2e.bin"),
+                        ]);
 
-                const msg: WorkerMessage = {
-                    type: "INIT",
-                    payload: { dictE2i: b1, dictI2e: b2 },
-                };
+                        const msg: WorkerMessage = {
+                            type: "INIT",
+                            payload: { dictE2i: b1, dictI2e: b2 },
+                        };
 
-                // Čekamo INIT_DONE
-                const tempHandler = (e: MessageEvent) => {
-                    const data = e.data as WorkerResponse;
-                    if (data.type === "INIT_DONE") {
-                        this.isReady = true;
-                        this.worker?.removeEventListener("message", tempHandler);
-                        resolve();
-                    } else if (data.type === "ERROR") {
-                        reject(new Error(data.error));
+                        const tempHandler = (e: MessageEvent) => {
+                            const data = e.data as WorkerResponse;
+                            if (data.type === "INIT_DONE") {
+                                this.isReady = true;
+                                this.worker?.removeEventListener("message", tempHandler);
+                                resolve();
+                            } else if (data.type === "ERROR") {
+                                reject(new Error(data.error));
+                            }
+                        };
+
+                        this.worker?.addEventListener("message", tempHandler);
+                        this.worker?.postMessage(msg, [b1.buffer, b2.buffer]);
+                    } catch (err) {
+                        reject(err);
                     }
                 };
 
-                // Privremeni listener samo za init (jer onmessage gore hendluje jobs)
-                // Zapravo, bolje je koristiti centralni handleMessage, ali za init je specijalno.
-                // Uprostićemo: handleMessage će prepoznati INIT_DONE.
-
-                this.worker.postMessage(msg, [b1.buffer, b2.buffer]); // Transferables!
+                bootstrap();
             } catch (e) {
                 reject(e);
             }
@@ -65,6 +68,7 @@ export class WorkerClient {
 
     private async fetchBinary(url: string): Promise<Uint8Array> {
         const res = await fetch(url);
+        if (!res.ok) throw new Error(`Failed to load dict: ${url}`);
         const buf = await res.arrayBuffer();
         return new Uint8Array(buf);
     }
@@ -121,6 +125,7 @@ export class WorkerClient {
         this.worker?.terminate();
         this.worker = null;
         this.isReady = false;
+        this.initPromise = null;
     }
 }
 

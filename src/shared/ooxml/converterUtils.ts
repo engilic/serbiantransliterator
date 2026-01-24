@@ -1,4 +1,4 @@
-import { XML_NS, WORD_NS } from "./dom";
+import { WORD_NS } from "./dom";
 import { isTokenChar } from "./common";
 
 // --- XML Safety ---
