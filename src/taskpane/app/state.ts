@@ -7,14 +7,11 @@ import type { InteractiveDiff } from "../../shared/diff/interactive";
 export const PREVIEW_CACHE_TTL_MS = 60_000; // 1 minut
 
 export interface ExtendedPreviewState extends PreviewState {
-    // Interactive Diff Instance
     interactiveDiff: InteractiveDiff | null;
 
-    /**
-     * Render session token for async preview rendering.
-     * Increment to cancel pending async render loops safely.
-     */
-    renderSession: number;
+    // PR1/PR2/PR3 may already have something similar; keep it simple:
+    // Used to cancel async preview render loops if present in your codebase.
+    renderSession?: number;
 }
 
 interface AppState {
@@ -30,6 +27,10 @@ interface AppState {
     selectionTimeout: ReturnType<typeof setTimeout> | null;
 
     preview: ExtendedPreviewState;
+
+    // PR4: global cancellation (Escape cancels long operations)
+    activeAbortController: AbortController | null;
+    activeOperation: string | null; // e.g. "runSmart", "runPreview", "webBatch"
 }
 
 export const state: AppState = {
@@ -68,6 +69,11 @@ export const state: AppState = {
         cacheTimestamp: null,
 
         interactiveDiff: null,
+
+        // ok if unused elsewhere
         renderSession: 0,
     },
+
+    activeAbortController: null,
+    activeOperation: null,
 };
