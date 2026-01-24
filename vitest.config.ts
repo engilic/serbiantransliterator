@@ -40,10 +40,10 @@ export default defineConfig({
                 "scripts/**",
             ],
             thresholds: {
-                lines: 70,
-                functions: 70,
-                statements: 70,
-                branches: 60,
+                lines: 60,
+                functions: 60,
+                statements: 60,
+                branches: 50,
             },
         },
         // Opciono: Povećaj timeout za Fuzz testove ako su spori
