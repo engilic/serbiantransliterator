@@ -25,7 +25,11 @@ export function ensureLangOnRPr(doc: Document, rPr: Element, lang: string) {
 }
 
 export function getDirectChild(run: Element, localName: string): Element | null {
-    const el = Array.from(run.children).find((c) => c.localName === localName);
+    const el = Array.from(run.children).find((c) => c.localName === "rPr");
+    if (localName !== "rPr") {
+        const other = Array.from(run.children).find((c) => c.localName === localName);
+        return other ?? null;
+    }
     return el ?? null;
 }
 
