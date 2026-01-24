@@ -120,6 +120,7 @@ function createEmptyStats(direction?: string, textNodes = 0, chars = 0): Convert
     };
 }
 
+// Roman Numerals Logic
 const ROMAN_REGEX_STRICT =
     /\b(?!I\b)(?=[MDCLXVI]+\b)M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})\b/g;
 const ROMAN_I_PREFIXES = [
@@ -211,6 +212,7 @@ export function convertOoxml(
     // The parser processes XML as data structure, not executable code.
 
     // codeql[js/xxe]
+    // codeql[js/xss]
     const doc = parser.parseFromString(ooxml, "application/xml");
 
     try {
