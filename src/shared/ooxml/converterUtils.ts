@@ -2,15 +2,8 @@ import { WORD_NS } from "./dom";
 import { isTokenChar } from "./common";
 
 // --- XML Safety ---
-export function isSafeXml(xml: string): boolean {
-    // SECURITY: Prevent XXE attacks.
-    // OOXML parts (document.xml) strictly should not have DTDs or ENTITY declarations.
-    // We reject any XML containing DOCTYPE or ENTITY definitions case-insensitively.
-    if (/<!DOCTYPE/i.test(xml) || /<!ENTITY/i.test(xml)) {
-        return false;
-    }
-    return true;
-}
+// Single source of truth (avoid drift)
+export { isSafeXml } from "./xmlSafety";
 
 // --- DOM Helpers ---
 export function removeProofingTags(doc: Document) {
@@ -32,7 +25,11 @@ export function ensureLangOnRPr(doc: Document, rPr: Element, lang: string) {
 }
 
 export function getDirectChild(run: Element, localName: string): Element | null {
-    const el = Array.from(run.children).find((c) => c.localName === localName);
+    const el = Array.from(run.children).find((c) => c.localName === "rPr");
+    if (localName !== "rPr") {
+        const other = Array.from(run.children).find((c) => c.localName === localName);
+        return other ?? null;
+    }
     return el ?? null;
 }
 

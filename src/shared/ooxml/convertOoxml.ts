@@ -23,11 +23,7 @@ import { parseSafeOoxml } from "./xmlParser";
 import { createEmptyStats, type ConvertStats } from "./stats";
 import { getCachedPhraseInfos, ALWAYS_LATIN_PHRASE_INFOS } from "./phraseCache";
 import { ROMAN_REGEX_STRICT, ROMAN_I_REGEX } from "./roman";
-import {
-    applyProofingLanguagePreserveUnchanged,
-    targetLangForDirection,
-    type ProofingApplyResult,
-} from "./proofing";
+import { applyProofingLanguagePreserveUnchanged, targetLangForDirection } from "./proofing";
 
 export interface OoxmlOptions extends CoreOptions {
     direction?: Direction | "to-ascii";

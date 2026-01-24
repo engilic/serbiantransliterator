@@ -1,4 +1,4 @@
-import { isSafeXml } from "./converterUtils";
+import { isSafeXml } from "./xmlSafety";
 
 export function parseSafeOoxml(xml: string): Document | null {
     if (!isSafeXml(xml)) {
