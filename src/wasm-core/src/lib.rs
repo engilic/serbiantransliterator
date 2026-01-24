@@ -4,10 +4,6 @@ use once_cell::sync::Lazy;
 use fst::Map;
 use std::collections::HashMap;
 use aho_corasick::AhoCorasick;
-use quick_xml::events::{Event, BytesText};
-use quick_xml::reader::Reader;
-use quick_xml::writer::Writer;
-use std::io::Cursor;
 
 // Struktura koja drži učitani rečnik (Zero-Copy wrapper)
 struct DictionaryStore {
@@ -46,56 +42,45 @@ const SYSTEM_EXCEPTIONS: &[(&str, &str)] = &[
 
 // Inicijalizacija Replacera
 #[wasm_bindgen]
-pub fn process_ooxml_streaming(xml_input: &str, mode: &str) -> Result<String, JsValue> {
-    let mut reader = Reader::from_str(xml_input);
-    reader.trim_text(false);
+pub fn init_replacer(custom_json: &str) -> Result<(), JsValue> {
+    let custom_map: HashMap<String, String> = if custom_json.is_empty() {
+        HashMap::new()
+    } else {
+        serde_json::from_str(custom_json)
+            .map_err(|e| JsValue::from_str(&format!("JSON error: {}", e)))?
+    };
 
-    let mut writer = Writer::new(Cursor::new(Vec::new()));
-    let mut buf = Vec::new();
+    let mut patterns: Vec<String> = Vec::new();
+    let mut replacements = Vec::new();
 
-    // Stanje: da li smo unutar <w:t> taga?
-    let mut in_text_node = false;
-
-    loop {
-        match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(ref e)) => {
-                if e.name().as_ref() == b"w:t" || e.name().as_ref() == b"t" {
-                    in_text_node = true;
-                }
-                writer.write_event(Event::Start(e.clone())).map_err(|e| e.to_string())?;
-            }
-            Ok(Event::End(ref e)) => {
-                if e.name().as_ref() == b"w:t" || e.name().as_ref() == b"t" {
-                    in_text_node = false;
-                }
-                writer.write_event(Event::End(e.clone())).map_err(|e| e.to_string())?;
-            }
-            Ok(Event::Text(e)) => {
-                if in_text_node {
-                    let text = e.unescape().map_err(|e| e.to_string())?;
-                    // Ovde pozivamo našu super-brzu transliteraciju
-                    let converted = match mode {
-                        "lat-to-cyr" => to_cyrillic(&text),
-                        "cyr-to-lat" => to_latin(&text),
-                        _ => text.to_string(), // fallback
-                    };
-                    let elem = BytesText::new(&converted);
-                    writer.write_event(Event::Text(elem)).map_err(|e| e.to_string())?;
-                } else {
-                    writer.write_event(Event::Text(e)).map_err(|e| e.to_string())?;
-                }
-            }
-            Ok(Event::Eof) => break,
-            Err(e) => return Err(JsValue::from_str(&format!("XML Error: {}", e))),
-            Ok(e) => {
-                writer.write_event(e).map_err(|e| e.to_string())?;
-            }
-        }
-        buf.clear();
+    // 1. Dodaj sistemske izuzetke
+    for (pat, rep) in SYSTEM_EXCEPTIONS {
+        patterns.push(pat.to_string());
+        replacements.push(rep.to_string());
     }
 
-    let result = writer.into_inner().into_inner();
-    String::from_utf8(result).map_err(|e| JsValue::from_str(&e.to_string()))
+    // 2. Dodaj korisničke zamene
+    for (pat, rep) in custom_map {
+        patterns.push(pat);
+        replacements.push(rep);
+    }
+
+    if patterns.is_empty() {
+        let mut global = REPLACER.lock().unwrap();
+        *global = None;
+        return Ok(());
+    }
+
+    let ac = AhoCorasick::builder()
+        .ascii_case_insensitive(false) 
+        .match_kind(aho_corasick::MatchKind::LeftmostFirst)
+        .build(&patterns)
+        .map_err(|e| JsValue::from_str(&format!("AC error: {}", e)))?;
+
+    let mut global = REPLACER.lock().unwrap();
+    *global = Some((ac, replacements));
+
+    Ok(())
 }
 
 // Primena zamena na tekst
@@ -110,6 +95,13 @@ pub fn apply_replacements(text: &str) -> String {
     }
 }
 
+// Helper za čitanje 8 bajtova (u64)
+fn read_u64(slice: &[u8]) -> u64 {
+    let mut bytes = [0u8; 8];
+    bytes.copy_from_slice(slice);
+    u64::from_le_bytes(bytes)
+}
+
 // Binary Loader (FST + Suffixes)
 #[wasm_bindgen]
 pub fn load_dictionary_bin(mode: &str, bin_data: &[u8]) -> Result<(), JsValue> {
@@ -118,9 +110,7 @@ pub fn load_dictionary_bin(mode: &str, bin_data: &[u8]) -> Result<(), JsValue> {
 
     // 1. FST
     if bin_data.len() < cursor + 8 { return Err(JsValue::from_str("Invalid bin (FST len)")); }
-    let mut len_bytes = [0u8; 8];
-    len_bytes.copy_from_slice(&bin_data[cursor..cursor+8]);
-    let fst_len = u64::from_le_bytes(len_bytes) as usize;
+    let fst_len = read_u64(&bin_data[cursor..cursor+8]) as usize;
     cursor += 8;
 
     if bin_data.len() < cursor + fst_len { return Err(JsValue::from_str("Invalid bin (FST body)")); }
@@ -131,8 +121,7 @@ pub fn load_dictionary_bin(mode: &str, bin_data: &[u8]) -> Result<(), JsValue> {
 
     // 2. Values
     if bin_data.len() < cursor + 8 { return Err(JsValue::from_str("Invalid bin (Val len)")); }
-    len_bytes.copy_from_slice(&bin_data[cursor..cursor+8]);
-    let val_len = u64::from_le_bytes(len_bytes) as usize;
+    let val_len = read_u64(&bin_data[cursor..cursor+8]) as usize;
     cursor += 8;
 
     if bin_data.len() < cursor + val_len { return Err(JsValue::from_str("Invalid bin (Val body)")); }
@@ -141,8 +130,7 @@ pub fn load_dictionary_bin(mode: &str, bin_data: &[u8]) -> Result<(), JsValue> {
 
     // 3. Suffixes
     if bin_data.len() < cursor + 8 { return Err(JsValue::from_str("Invalid bin (Suf len)")); }
-    len_bytes.copy_from_slice(&bin_data[cursor..cursor+8]);
-    let suf_len = u64::from_le_bytes(len_bytes) as usize;
+    let suf_len = read_u64(&bin_data[cursor..cursor+8]) as usize;
     cursor += 8;
 
     if bin_data.len() < cursor + suf_len { return Err(JsValue::from_str("Invalid bin (Suf body)")); }
