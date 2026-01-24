@@ -2,7 +2,6 @@
 
 // ... (getSerbianPluralForm, getEnglishPluralForm, types ostaju isti) ...
 
-// Pomocne funkcije za srpsku gramatiku (jednina/dvojina/množina)
 function getSerbianPluralForm(n: number): "one" | "few" | "many" {
     const n100 = n % 100;
     const n10 = n % 10;
@@ -247,6 +246,16 @@ const SR_RS = {
     // NOVI KLJUČEVI ZA SUPPORT
     lbl_support: "Podrška",
     btn_export_logs: "Sačuvaj logove (Debug)",
+
+    // [NOVO] Web Clipboard
+    web_clipboard_header: "Brzi tekst / Clipboard",
+    web_clipboard_placeholder: "Nalepi tekst ovde (Ctrl+V)...",
+    web_clipboard_convert: "Preslovi Tekst",
+    web_clipboard_copy: "Kopiraj Rezultat",
+    web_clipboard_copied: "Kopirano! ✅",
+    web_clipboard_ready: "Spremno za novi tekst...",
+    web_convert_error: "Greška pri konverziji.",
+    msg_enter_text: "Unesite neki tekst.",
 };
 
 const EN_US: Record<TranslationKey, string> = {
@@ -475,6 +484,16 @@ const EN_US: Record<TranslationKey, string> = {
     // SUPPORT
     lbl_support: "Support",
     btn_export_logs: "Save logs (Debug)",
+
+    // [NOVO] Web Clipboard
+    web_clipboard_header: "Quick Text / Clipboard",
+    web_clipboard_placeholder: "Paste text here (Ctrl+V)...",
+    web_clipboard_convert: "Convert Text",
+    web_clipboard_copy: "Copy Result",
+    web_clipboard_copied: "Copied! ✅",
+    web_clipboard_ready: "Ready for new text...",
+    web_convert_error: "Conversion error.",
+    msg_enter_text: "Please enter some text.",
 };
 
 const TRANSLATIONS: Record<Language, typeof SR_RS> = {
