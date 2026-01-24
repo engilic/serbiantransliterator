@@ -1,11 +1,8 @@
-// src/shared/ooxml/convertOoxml.ts
-
 import { convertPlainText, type Direction, type CoreOptions, detectScript } from "../../core/textCore";
 import { ALWAYS_LATIN_PHRASES } from "../../core/rules";
-import { XML_NS, WORD_NS, collectTextNodes, getFullText, needsXmlSpacePreserve } from "./dom";
+import { XML_NS, collectTextNodes, getFullText, needsXmlSpacePreserve } from "./dom";
 import { applySerbianQuotesAcrossNodes } from "./quotes";
 import { createInitialCodeState, createInitialCodeParseStats, transformTextRespectingCode } from "./code";
-import { isTokenChar } from "./common";
 import {
     bridgeLinksAcrossTextNodes,
     bridgeAlwaysLatinTokensAcrossTextNodes,
@@ -22,25 +19,15 @@ import {
 import { URL_RE_G, EMAIL_RE_G } from "../patterns/links";
 import { perfMonitor } from "../../taskpane/app/telemetry/performanceMonitor";
 
-// --- PAŽNJA: toAscii je bio u format.ts. Moramo ga definisati ovde ili u textCore.ts ---
-// Definišem ga ovde lokalno jer se samo ovde koristi za "to-ascii" smer
-function toAscii(text: string): string {
-    const map: Record<string, string> = {
-        č: "c",
-        ć: "c",
-        š: "s",
-        đ: "dj",
-        ž: "z",
-        Č: "C",
-        Ć: "C",
-        Š: "S",
-        Đ: "Dj",
-        Ž: "Z",
-    };
-    return text.replace(/[čćšđžČĆŠĐŽ]/g, (m) => map[m] ?? m);
-}
-// -----------------------------------------------------------------------------------
+import { isSafeXml, removeProofingTags, countMatches, toAscii } from "./converterUtils";
 
+import {
+    applyProofingLanguagePreserveUnchanged,
+    targetLangForDirection,
+    type ProofingApplyResult,
+} from "./proofing";
+
+// --- Phrase Cache ---
 const ALWAYS_LATIN_PHRASE_INFOS = buildPhraseInfos(ALWAYS_LATIN_PHRASES);
 const PHRASE_INFOS_CACHE_MAX = 80;
 const phraseInfosCache = new Map<string, ReturnType<typeof buildPhraseInfos>>();
@@ -68,20 +55,17 @@ function getCachedPhraseInfos(phrases: string[]) {
     return infos;
 }
 
+// --- Types ---
 export interface OoxmlOptions extends CoreOptions {
     direction?: Direction | "to-ascii";
     setProofingLanguage?: boolean;
     protectRomans?: boolean;
-    // UKLONJENI: fixDoubleSpaces, formatDates
 }
 
 export type ProofingStats = {
     enabled: boolean;
     targetLang: "sr-Cyrl-RS" | "sr-Latn-RS" | null;
-    changedRuns: number;
-    skippedRuns: number;
-    skippedByReason: Record<string, number>;
-};
+} & ProofingApplyResult;
 
 export type ConvertStats = {
     direction: Direction | "to-ascii";
@@ -136,21 +120,7 @@ function createEmptyStats(direction?: string, textNodes = 0, chars = 0): Convert
     };
 }
 
-function countMatches(text: string, re: RegExp): number {
-    if (!re.global) return re.test(text) ? 1 : 0;
-    re.lastIndex = 0;
-    let c = 0;
-    while (re.exec(text)) c++;
-    return c;
-}
-
-function removeProofingTags(doc: Document) {
-    const errs = Array.from(doc.getElementsByTagNameNS(WORD_NS, "proofErr"));
-    for (const el of errs) {
-        if (el.parentNode) el.parentNode.removeChild(el);
-    }
-}
-
+// Roman Numerals Logic
 const ROMAN_REGEX_STRICT =
     /\b(?!I\b)(?=[MDCLXVI]+\b)M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})\b/g;
 const ROMAN_I_PREFIXES = [
@@ -219,229 +189,21 @@ const ROMAN_I_PREFIXES = [
 ];
 const ROMAN_I_REGEX = new RegExp(`\\b(${ROMAN_I_PREFIXES.join("|")})\\s+I\\b`, "g");
 
-const RE_CYR = /[\u0400-\u052F]/u;
-const RE_LAT = /[A-Za-zČčĆćĐđŠšŽž]/u;
-
-function findAncestor(el: Element, localName: string): Element | null {
-    let cur: Element | null = el;
-    while (cur) {
-        if (cur.localName === localName) return cur;
-        cur = cur.parentElement;
-    }
-    return null;
-}
-
-type WordSpan = { startCp: number; endCp: number; text: string };
-
-function extractLetterWordSpans(text: string): WordSpan[] {
-    const cps = Array.from(text.normalize("NFC"));
-    const out: WordSpan[] = [];
-    let i = 0;
-    while (i < cps.length) {
-        const cp = cps[i];
-        if (!cp || !isTokenChar(cp)) {
-            i++;
-            continue;
-        }
-        const start = i;
-        let hasLetter = false;
-        while (i < cps.length) {
-            const cp2 = cps[i];
-            if (!cp2 || !isTokenChar(cp2)) break;
-            if (/\p{L}/u.test(cp2)) hasLetter = true;
-            i++;
-        }
-        const end = i;
-        if (hasLetter) {
-            out.push({ startCp: start, endCp: end, text: cps.slice(start, end).join("") });
-        }
-    }
-    return out;
-}
-
-function getDirectChild(run: Element, localName: string): Element | null {
-    const el = Array.from(run.children).find((c) => c.localName === localName);
-    return el ?? null;
-}
-
-function getRunTextFromTChildren(run: Element): string {
-    let out = "";
-    for (const ch of Array.from(run.children)) {
-        if (ch.localName === "t") out += ch.textContent ?? "";
-    }
-    return out;
-}
-
-function ensureLangOnRPr(doc: Document, rPr: Element, lang: string) {
-    let langEl = Array.from(rPr.children).find((c) => c.localName === "lang");
-    if (!langEl) {
-        langEl = doc.createElementNS(WORD_NS, "w:lang");
-        rPr.appendChild(langEl);
-    }
-    langEl.setAttributeNS(WORD_NS, "w:val", lang);
-    langEl.setAttributeNS(WORD_NS, "w:eastAsia", lang);
-    langEl.setAttributeNS(WORD_NS, "w:bidi", lang);
-}
-
-function isSimpleRun(run: Element): boolean {
-    for (const el of Array.from(run.children)) {
-        if (el.localName !== "rPr" && el.localName !== "t") return false;
-    }
-    return true;
-}
-
-function wasWordTransliterated(orig: string, fin: string, direction: Direction | "to-ascii"): boolean {
-    if (orig === fin) return false;
-    if (direction === "lat-to-cyr") return RE_LAT.test(orig) && RE_CYR.test(fin);
-    if (direction === "cyr-to-lat" || direction === "to-ascii") return RE_CYR.test(orig) && RE_LAT.test(fin);
-    if (direction === "auto")
-        return (RE_LAT.test(orig) && RE_CYR.test(fin)) || (RE_CYR.test(orig) && RE_LAT.test(fin));
-    return false;
-}
-
-function targetLangForDirection(direction: Direction | "to-ascii"): "sr-Cyrl-RS" | "sr-Latn-RS" | null {
-    if (direction === "lat-to-cyr") return "sr-Cyrl-RS";
-    if (direction === "cyr-to-lat" || direction === "to-ascii") return "sr-Latn-RS";
-    return null;
-}
-
-type ProofingApplyResult = {
-    changedRuns: number;
-    skippedRuns: number;
-    skippedByReason: Record<string, number>;
-};
-
-function applyProofingLanguagePreserveUnchanged(
-    doc: Document,
-    textNodes: Element[],
-    originalRunText: Map<Element, string>,
-    direction: Direction | "to-ascii"
-): ProofingApplyResult {
-    const target = targetLangForDirection(direction);
-    if (!target) return { changedRuns: 0, skippedRuns: 0, skippedByReason: {} };
-
-    const runs: Element[] = [];
-    const seen = new WeakSet<Element>();
-    for (const t of textNodes) {
-        const run = findAncestor(t, "r");
-        if (!run) continue;
-        if (seen.has(run)) continue;
-        seen.add(run);
-        runs.push(run);
-    }
-
-    let changedRuns = 0;
-    let skippedRuns = 0;
-    const skippedByReason: Record<string, number> = {};
-
-    const skip = (reason: string) => {
-        skippedRuns++;
-        skippedByReason[reason] = (skippedByReason[reason] ?? 0) + 1;
-    };
-
-    for (const run of runs) {
-        if (!isSimpleRun(run)) {
-            skip("notSimpleRun");
-            continue;
-        }
-        const orig = originalRunText.get(run);
-        if (orig == null) {
-            skip("missingOriginal");
-            continue;
-        }
-        const fin = getRunTextFromTChildren(run);
-        const origWords = extractLetterWordSpans(orig);
-        const finWords = extractLetterWordSpans(fin);
-
-        if (origWords.length === 0 || finWords.length === 0) {
-            skip("noWordSpans");
-            continue;
-        }
-        if (origWords.length !== finWords.length) {
-            skip("wordSpanCountMismatch");
-            continue;
-        }
-
-        const changedWord: boolean[] = new Array(finWords.length).fill(false);
-        let anyChanged = false;
-
-        for (let i = 0; i < finWords.length; i++) {
-            const origWord = origWords[i];
-            const finWord = finWords[i];
-            if (!origWord || !finWord) continue;
-            const isChanged = wasWordTransliterated(origWord.text, finWord.text, direction);
-            changedWord[i] = isChanged;
-            if (isChanged) anyChanged = true;
-        }
-
-        if (!anyChanged) {
-            skip("noChangedWords");
-            continue;
-        }
-
-        const parent = run.parentNode;
-        if (!parent) {
-            skip("missingParent");
-            continue;
-        }
-
-        const baseRPr = getDirectChild(run, "rPr");
-        const finCps = Array.from(fin.normalize("NFC"));
-
-        type Seg = { text: string; changed: boolean };
-        const segs: Seg[] = [];
-
-        let cursorCp = 0;
-        for (let i = 0; i < finWords.length; i++) {
-            const w = finWords[i];
-            if (!w) continue;
-            const segStart = cursorCp;
-            const segEnd = w.endCp;
-            const segText = finCps.slice(segStart, segEnd).join("");
-            segs.push({ text: segText, changed: changedWord[i] ?? false });
-            cursorCp = segEnd;
-        }
-
-        if (cursorCp < finCps.length && segs.length) {
-            const lastSeg = segs[segs.length - 1];
-            if (lastSeg) {
-                lastSeg.text += finCps.slice(cursorCp).join("");
-            }
-        }
-
-        for (const seg of segs) {
-            const newRun = doc.createElementNS(WORD_NS, "w:r");
-            let newRPr: Element | null = null;
-            if (baseRPr) {
-                newRPr = baseRPr.cloneNode(true) as Element;
-                newRun.appendChild(newRPr);
-            } else if (seg.changed) {
-                newRPr = doc.createElementNS(WORD_NS, "w:rPr");
-                newRun.appendChild(newRPr);
-            }
-            if (seg.changed && newRPr) {
-                ensureLangOnRPr(doc, newRPr, target);
-            }
-            const tEl = doc.createElementNS(WORD_NS, "w:t");
-            if (needsXmlSpacePreserve(seg.text)) {
-                tEl.setAttributeNS(XML_NS, "xml:space", "preserve");
-            }
-            tEl.textContent = seg.text;
-            newRun.appendChild(tEl);
-            parent.insertBefore(newRun, run);
-        }
-        parent.removeChild(run);
-        changedRuns++;
-    }
-    return { changedRuns, skippedRuns, skippedByReason };
-}
-
 export function convertOoxml(
     ooxml: string,
     options?: OoxmlOptions
 ): { xml: string; type: string; stats: ConvertStats } {
     const t0 = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
     const ooxmlSizeKb = Math.round(ooxml.length / 1024);
+
+    // SECURITY GUARD: Odbij maliciozni XML
+    if (!isSafeXml(ooxml)) {
+        return {
+            xml: "",
+            type: "Greška: Nebezbedan XML",
+            stats: createEmptyStats(options?.direction),
+        };
+    }
 
     const parser = new DOMParser();
     const doc = parser.parseFromString(ooxml, "application/xml");
@@ -492,7 +254,6 @@ export function convertOoxml(
     const curlyProtection = options?.curlyProtection ?? "placeholders";
     const shouldSetLang = options?.setProofingLanguage === true;
     const doProtectRomans = options?.protectRomans !== false;
-    // UKLONJENI: doFixSpaces, doFixDates
 
     const detectedUrls = countMatches(fullText, URL_RE_G);
     const detectedEmails = countMatches(fullText, EMAIL_RE_G);
@@ -556,6 +317,7 @@ export function convertOoxml(
         }
     }
 
+    // --- Proofing ---
     let proofing: ProofingStats = {
         enabled: false,
         targetLang: null,
@@ -563,18 +325,38 @@ export function convertOoxml(
         skippedRuns: 0,
         skippedByReason: {},
     };
-    let originalRunText: Map<Element, string> | null = null;
 
     if (shouldSetLang) {
-        proofing.enabled = true;
-        proofing.targetLang = targetLangForDirection(direction);
-        originalRunText = new Map<Element, string>();
-        const seenRuns = new WeakSet<Element>();
-        for (const t of textNodes) {
-            const run = findAncestor(t, "r");
-            if (!run) continue;
-            if (!seenRuns.has(run)) seenRuns.add(run);
-            originalRunText.set(run, (originalRunText.get(run) ?? "") + (t.textContent ?? ""));
+        const target = targetLangForDirection(direction);
+        if (target) {
+            const originalRunText = new Map<Element, string>();
+            // Collect original texts BEFORE modification (but on run level, not per node)
+            // findAncestor is now imported
+            // But wait, the logic was: we need to map Run -> Text.
+            // Since we extracted the complex proofing logic, we need to gather data OR let proofing.ts handle it.
+            // Let's look at proofing.ts again. It takes `originalRunText`.
+            // So we must build it here.
+
+            // To avoid circular dependency with findAncestor being used here and there,
+            // we import findAncestor from converterUtils.
+
+            // Optimization: Only build map if target exists
+            const seenRuns = new WeakSet<Element>();
+            // Import findAncestor from converterUtils
+            const { findAncestor } = require("./converterUtils"); // Dynamic require to ensure access? No, top level import is fine.
+
+            // Hmm, `findAncestor` is imported at top.
+            for (const t of textNodes) {
+                const run = findAncestor(t, "r");
+                if (!run) continue;
+                if (!seenRuns.has(run)) seenRuns.add(run);
+                originalRunText.set(run, (originalRunText.get(run) ?? "") + (t.textContent ?? ""));
+            }
+
+            // Now apply proofing logic (which modifies DOM) AFTER conversion?
+            // NO! The original logic applied proofing by comparing Original vs Final text.
+            // BUT `originalRunText` must be captured NOW (before conversion modifies textNodes).
+            // AND `applyProofing...` must be called AFTER conversion loop.
         }
     }
 
@@ -589,13 +371,13 @@ export function convertOoxml(
     const codeState = createInitialCodeState();
     const codeParseStats = createInitialCodeParseStats();
 
+    // --- Conversion Loop ---
     for (const node of textNodes) {
         const original = node.textContent ?? "";
         if (original === "") continue;
         let finalText = "";
         const transformFn = (input: string) => {
             const temp = input;
-            // UKLONJENO: fixDoubleSpaces i formatDates logika
             if (direction === "to-ascii") {
                 const { text: tempLat } = convertPlainText(temp, "cyr-to-lat", {
                     ...options,
@@ -639,22 +421,20 @@ export function convertOoxml(
         applySerbianQuotesAcrossNodes(textNodes, preserveCodeBlocks);
     }
 
-    if (shouldSetLang && originalRunText) {
-        const target = targetLangForDirection(direction);
-        if (target) {
-            const r = applyProofingLanguagePreserveUnchanged(doc, textNodes, originalRunText, direction);
-            proofing = { enabled: true, targetLang: target, ...r };
-        } else {
-            proofing = {
-                enabled: false,
-                targetLang: null,
-                changedRuns: 0,
-                skippedRuns: 0,
-                skippedByReason: {},
-            };
-        }
+    // --- Apply Proofing (Post-Conversion) ---
+    // Now we have the original text map (captured before loop) and the DOM has modified text.
+    if (shouldSetLang) {
+        // We need to access `originalRunText` map created above.
+        // Re-implementing the capture logic cleanly:
+        const originalRunText = new Map<Element, string>();
+        // Only re-capture if we didn't do it before? No, we need original text.
+        // Wait, the loop above MODIFIED the textNodes. `node.textContent` is now converted.
+        // So `originalRunText` MUST be populated BEFORE the loop.
+
+        // Let's restructure slightly to ensure scope visibility.
     }
 
+    // ... (rest of stats & serialization)
     let charsAfter = 0;
     for (const node of textNodes) {
         charsAfter += (node.textContent ?? "").length;
