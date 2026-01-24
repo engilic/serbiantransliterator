@@ -6,6 +6,29 @@
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title data-i18n="app_title">Serbian Transliterator</title>
         <link rel="manifest" href="manifest.webmanifest" />
+
+        <!-- [MAX PERF] Preload Critical Assets: Učitaj rečnike paralelno sa skriptama -->
+        <link rel="preload" href="assets/dict_e2i.bin" as="fetch" crossorigin />
+        <link rel="preload" href="assets/dict_i2e.bin" as="fetch" crossorigin />
+
+        <!-- [MAX UX] Instant Theme Apply: Sprečava beli blic pre nego što se učita CSS -->
+        <script>
+            (function () {
+                try {
+                    var saved = localStorage.getItem("serbiantransliterator.settings.v2");
+                    if (saved) {
+                        var theme = JSON.parse(saved).theme;
+                        if (
+                            theme === "dark" ||
+                            (theme === "auto" && window.matchMedia("(prefers-color-scheme: dark)").matches)
+                        ) {
+                            document.documentElement.setAttribute("data-theme", "dark");
+                        }
+                    }
+                } catch (e) {}
+            })();
+        </script>
+
         <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
     </head>
     <body>
@@ -21,6 +44,7 @@
         fs.readFileSync(resolve('components/header/header.html')) %>
 
         <main id="appMain" role="main" style="display: none">
+            <!-- Web Mode UI (Clipboard/DropZone) se ubacuje ovde dinamički kroz ui.ts -->
             <%= fs.readFileSync(resolve('components/settings/profile.html')) %> <%=
             fs.readFileSync(resolve('components/settings/direction.html')) %> <%=
             fs.readFileSync(resolve('components/settings/options.html')) %> <%=
