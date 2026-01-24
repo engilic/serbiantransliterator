@@ -11,17 +11,12 @@ import { applyExtrasIfEnabled } from "./extras";
 import { setStatus } from "../status";
 import { analyzeSelectionText } from "./selectionText";
 import { t } from "../../../shared/i18n";
-// IMPORTUJ NOVU FUNKCIJU
 import { processDocumentInChunks } from "./chunking";
 
-// Limit za SELEKCIJU ostaje (da spreči korisnika da selektuje previše odjednom ručno)
 const MAX_SELECTION_OOXML_SIZE = 5 * 1024 * 1024;
 
 export type OoxmlConvertResult = ReturnType<typeof convertOoxml>;
 
-/**
- * Helper za obradu jednog Range-a (za Selekciju).
- */
 async function applyRangeWithOoxmlConversion(
     context: Word.RequestContext,
     range: Word.Range,
@@ -44,6 +39,10 @@ async function applyRangeWithOoxmlConversion(
     if (result.type === "Nema teksta") return null;
 
     range.insertOoxml(result.xml, Word.InsertLocation.replace);
+
+    // PR1: preserve selection UX (same as previous runSmart selection flow)
+    range.select();
+
     await context.sync();
 
     return result;
@@ -55,7 +54,6 @@ export async function applyPipeline(
     ui: UiSettings,
     opts: OoxmlOptions
 ): Promise<{ result: OoxmlConvertResult | null; extras: ExtrasSummary }> {
-    // --- 1. SELEKCIJA (Stari način, sve odjednom) ---
     if (scope === "selection") {
         const range = context.document.getSelection();
         range.load("text");
@@ -76,53 +74,15 @@ export async function applyPipeline(
         return { result, extras: emptyExtrasSummary() };
     }
 
-    // --- 2. CEO DOKUMENT (Novi način: Chunking + Extras) ---
-
-    // Prvo obradi extras (Header/Footer/Fusnote) - oni su manji, idu brzo
+    // DOCUMENT scope
     const extras = await applyExtrasIfEnabled(context, ui, opts);
 
-    // Zatim glavni body kroz chunking
-    const nodesChanged = await processDocumentInChunks(context, opts);
+    const chunk = await processDocumentInChunks(context, opts);
 
-    // Konstruišemo "lažni" result objekat za statistiku
-    // (pošto ne možemo da vratimo jedan XML za ceo dokument, vraćamo sumu)
     const result: OoxmlConvertResult = {
-        xml: "", // Nije relevantno za document scope
-        type:
-            opts.direction === "lat-to-cyr"
-                ? "Lat → Ćir"
-                : opts.direction === "cyr-to-lat"
-                  ? "Ćir → Lat"
-                  : "Ošišana",
-        stats: {
-            // Popunjavamo samo ono što možemo da sumiramo ili je bitno za UI
-            direction: opts.direction || "auto",
-            textNodes: nodesChanged,
-            timingMs: 0, // Vreme meri spoljni wrapper
-            charsBefore: 0,
-            charsAfter: 0,
-            detected: { urls: 0, emails: 0 },
-            code: { fenceMarkersSeen: 0, inlineTicksSeen: 0, endedInFence: false, endedInInline: false },
-            bridges: {
-                links: 0,
-                placeholders: 0,
-                brandPhrases: 0,
-                brandTokens: 0,
-                digraphs: 0,
-                userPhrases: 0,
-                userTokens: 0,
-                allCapsHints: 0,
-                spaces: 0,
-                ambiguousBrandSuffix: 0,
-            },
-            proofing: {
-                enabled: false,
-                targetLang: null,
-                changedRuns: 0,
-                skippedRuns: 0,
-                skippedByReason: {},
-            },
-        },
+        xml: "", // not relevant for whole doc (we apply by chunks)
+        type: chunk.type,
+        stats: chunk.stats,
     };
 
     return { result, extras };

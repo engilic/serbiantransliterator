@@ -7,8 +7,14 @@ import type { InteractiveDiff } from "../../shared/diff/interactive";
 export const PREVIEW_CACHE_TTL_MS = 60_000; // 1 minut
 
 export interface ExtendedPreviewState extends PreviewState {
-    // NEW: Interactive Diff Instance
+    // Interactive Diff Instance
     interactiveDiff: InteractiveDiff | null;
+
+    /**
+     * Render session token for async preview rendering.
+     * Increment to cancel pending async render loops safely.
+     */
+    renderSession: number;
 }
 
 interface AppState {
@@ -20,11 +26,7 @@ interface AppState {
     lastStatsTitle: string;
     lastStatsText: string;
 
-    // FIX: Promenjeno 'any' u 'unknown' da zadovolji linter.
-    // U Office.js, ovo je zapravo Office.DocumentSelectionChangedEventArgs,
-    // ali 'unknown' je bezbedan tip za čuvanje reference.
     selectionChangeHandler: ((args: unknown) => void) | null;
-
     selectionTimeout: ReturnType<typeof setTimeout> | null;
 
     preview: ExtendedPreviewState;
@@ -66,5 +68,6 @@ export const state: AppState = {
         cacheTimestamp: null,
 
         interactiveDiff: null,
+        renderSession: 0,
     },
 };
