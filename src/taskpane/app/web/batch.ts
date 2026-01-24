@@ -6,11 +6,15 @@ import { getOoxmlOptionsFromUi } from "../settings/getters";
 import { setProgress, setStatus } from "../status";
 import { t } from "../../../shared/i18n";
 import { workerClient } from "../../worker/client";
+import { state } from "../state";
 
-// Max paralelnih konverzija u letu (balans perf/memorija)
 const CONCURRENCY = 2;
 
 type LimitTask<T> = () => Promise<T>;
+
+function isCancelled(): boolean {
+    return !!state.activeAbortController?.signal.aborted;
+}
 
 async function mapLimit<T>(tasks: Array<LimitTask<T>>, concurrency: number): Promise<T[]> {
     const out: T[] = new Array(tasks.length);
@@ -20,6 +24,7 @@ async function mapLimit<T>(tasks: Array<LimitTask<T>>, concurrency: number): Pro
         for (;;) {
             const i = nextIndex++;
             if (i >= tasks.length) return;
+            if (isCancelled()) return;
             const task = tasks[i];
             if (!task) continue;
             out[i] = await task();
@@ -38,17 +43,25 @@ export async function processDocxFile(file: File) {
     setProgress(5);
 
     try {
-        // 0) Worker init (dicts + wasm)
         await workerClient.init();
 
-        // 1) Učitaj fajl
+        if (isCancelled()) {
+            setStatus(t("status_cancelled"), "neutral");
+            setProgress(null);
+            return;
+        }
+
         const arrayBuffer = await readFileAsArrayBuffer(file);
 
-        // 2) Unzip
+        if (isCancelled()) {
+            setStatus(t("status_cancelled"), "neutral");
+            setProgress(null);
+            return;
+        }
+
         const zip = await JSZip.loadAsync(arrayBuffer);
         const opts = getOoxmlOptionsFromUi();
 
-        // 3) Identifikuj fajlove za obradu
         const filesToProcess: string[] = [];
         zip.forEach((relativePath) => {
             if (
@@ -72,20 +85,17 @@ export async function processDocxFile(file: File) {
         let changedFiles = 0;
 
         const updateProgress = () => {
-            // 5%..90% tokom obrade fajlova, ostatak za zip generate + download
             const ratio = done / filesToProcess.length;
             const pct = Math.round(5 + ratio * 85);
             setProgress(pct);
-
-            // i18n-guard: ne prosleđuj template literal direktno u setStatus
-            const msg = t("status_processing");
-            setStatus(msg, "info");
+            setStatus(t("status_processing"), "info");
         };
 
         updateProgress();
 
-        // 4) Napravi taskove za svaki XML fajl
         const tasks: Array<LimitTask<void>> = filesToProcess.map((path) => async () => {
+            if (isCancelled()) return;
+
             const xmlContent = await zip.file(path)?.async("string");
             if (!xmlContent) {
                 done++;
@@ -93,10 +103,11 @@ export async function processDocxFile(file: File) {
                 return;
             }
 
-            // Konverzija u worker-u (off-main-thread)
+            if (isCancelled()) return;
+
             const res = await workerClient.convert(xmlContent, opts);
 
-            if (res.type !== "Nema teksta" && res.xml) {
+            if (!isCancelled() && res.type !== "Nema teksta" && res.xml) {
                 zip.file(path, res.xml);
                 changedFiles++;
             }
@@ -105,12 +116,16 @@ export async function processDocxFile(file: File) {
             updateProgress();
         });
 
-        // 5) Izvrši konverzije sa limitiranom paralelizacijom
         await mapLimit(tasks, CONCURRENCY);
+
+        if (isCancelled()) {
+            setStatus(t("status_cancelled"), "neutral");
+            setProgress(null);
+            return;
+        }
 
         setProgress(92);
 
-        // 6) Generiši novi .docx
         const outBlob = await zip.generateAsync({
             type: "blob",
             mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -121,17 +136,22 @@ export async function processDocxFile(file: File) {
         const t1 = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
         const ms = Math.max(0, Math.round(t1 - t0));
 
-        // U status koristimo već postojeći format: status_done_document("{0}", "{1}ms", "{2}")
-        // {0} = "Web Mode" label iz i18n (ako je već u PR2), fallback je string ovde ako nema ključa
         const webLabel = t("ui_web_mode");
-
-        const msg = t("status_done_document", webLabel, ms, changedFiles ? ` | files: ${changedFiles}` : "");
+        const extra = changedFiles ? " | files: " + changedFiles : "";
+        const msg = t("status_done_document", webLabel, ms, extra);
         setStatus(msg, "success");
 
         downloadBlob(outBlob, `PRESLOVLJENO_${file.name}`);
 
         setTimeout(() => setProgress(null), 800);
     } catch (e) {
+        // Abort is not an error UX-wise
+        if (isCancelled()) {
+            setStatus(t("status_cancelled"), "neutral");
+            setProgress(null);
+            return;
+        }
+
         console.error(e);
         setStatus(t("status_error_prefix", String(e)), "error");
         setProgress(null);

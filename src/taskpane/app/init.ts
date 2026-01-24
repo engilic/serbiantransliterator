@@ -4,8 +4,6 @@
 import { state } from "./state";
 import { initUi } from "./settings/ui";
 import { onSelectionChange, checkSelectionAndUpdateButtons } from "./selection";
-import { runWithUiLock } from "./uiLock";
-import { runSmart } from "./word/apply";
 import { closeModal } from "./modal/modal";
 import { modalManager } from "./modal/modalManager";
 import { logger } from "./telemetry/logger";
@@ -13,6 +11,8 @@ import { showPreviewToast } from "./modal/previewModal";
 import { initOnboarding } from "./onboarding/tour";
 import { initWasm } from "../../core/textCore";
 import { t } from "../../shared/i18n";
+import { setStatus, setProgress } from "./status";
+import { abortActiveOperation } from "./uiLock";
 
 function registerServiceWorker() {
     if ("serviceWorker" in navigator) {
@@ -44,7 +44,7 @@ export function initTaskpane(isWebMode = false) {
         if (main) main.style.display = "flex";
     }, 100);
 
-    // 2) UI init (settings load + bind dugmad + tags + listeners)
+    // 2) UI init
     try {
         initUi();
     } catch (e) {
@@ -52,7 +52,7 @@ export function initTaskpane(isWebMode = false) {
         logger.error("UI Init failed", e);
     }
 
-    // 3) Pokreni učitavanje WASM-a (i rečnika) u pozadini
+    // 3) WASM init in background
     initWasm().catch((e) => {
         console.error("WASM init failed:", e);
         logger.error("WASM init failed", e);
@@ -66,22 +66,23 @@ export function initTaskpane(isWebMode = false) {
         cleanupEventHandlers();
     });
 
-    // 6) Start Onboarding
+    // 6) Onboarding
     try {
         initOnboarding();
     } catch (e) {
         console.warn("Onboarding failed to init", e);
     }
 
-    // === AKO JE WEB MODE ===
+    // === WEB MODE ===
     if (isWebMode) {
         console.log("Skipping Office API initialization for Web Mode");
-        // Registruj PWA Service Worker (Offline Support)
         registerServiceWorker();
+        // Still enable keyboard shortcuts (ESC cancel)
+        setupKeyboardShortcuts();
         return;
     }
 
-    // 7) Selection change handler (SAMO ZA WORD)
+    // 7) Selection change handler (WORD only)
     state.selectionChangeHandler = () => {
         onSelectionChange();
     };
@@ -97,15 +98,14 @@ export function initTaskpane(isWebMode = false) {
         }
     }
 
-    // 8) Initial button state (SAMO ZA WORD)
-    // Wrap in try-catch/void to ensure it doesn't block main thread
+    // 8) Initial button state (WORD only)
     try {
         void checkSelectionAndUpdateButtons();
     } catch (e) {
         console.warn("Initial selection check failed:", e);
     }
 
-    // 9) Keyboard Shortcuts
+    // 9) Keyboard shortcuts (ESC modal close OR cancel)
     setupKeyboardShortcuts();
 }
 
@@ -115,9 +115,23 @@ function setupKeyboardShortcuts() {
             if (modalManager.isOpen()) {
                 e.preventDefault();
                 closeModal();
+                return;
             }
+
+            // PR4: cancel long operation if any is active
+            if (state.activeAbortController) {
+                e.preventDefault();
+                abortActiveOperation();
+
+                // UX: show neutral cancelled status + clear progress
+                setProgress(null);
+                setStatus(t("status_cancelled"), "neutral");
+                return;
+            }
+
             return;
         }
+
         if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
             const runBtn = document.getElementById("runBtn") as HTMLButtonElement | null;
             if (runBtn && !runBtn.disabled && !modalManager.isOpen()) {
