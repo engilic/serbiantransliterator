@@ -4,9 +4,9 @@
 import { state } from "../state";
 import { applyFromPreview } from "../word/apply";
 import { get, getOptional } from "../utils/dom";
-import { renderSideBySideWithHighlights } from "../preview/diffRenderer"; // Keep side-by-side sync for now (usually smaller chunks)
+import { renderSideBySideWithHighlights } from "../preview/diffRenderer";
 import { escapeHtml } from "../../../shared/safeHtml";
-import { myersDiff, type DiffOp } from "../../../shared/diff"; // Added type DiffOp
+import { myersDiff, type DiffOp } from "../../../shared/diff";
 import { InteractiveDiff } from "../../../shared/diff/interactive";
 import { PREVIEW_BATCH } from "../preview/constants";
 import { convertTextForPreviewPlain } from "../preview/convertPreviewPlain";
@@ -15,12 +15,92 @@ function tokenize(text: string): string[] {
     return text.split(/([ \t\n\r]+)/).filter((x) => x);
 }
 
+function raf(cb: FrameRequestCallback): number {
+    if (typeof requestAnimationFrame === "function") return requestAnimationFrame(cb);
+    // fallback (tests / edge env)
+    return setTimeout(
+        () => cb(typeof performance !== "undefined" ? performance.now() : Date.now()),
+        0
+    ) as unknown as number;
+}
+
+/**
+ * Async Progressive Renderer for Diff Mode.
+ * PR1 hardening: render session token cancellation so loops stop on modal close.
+ */
+function renderDiffAsync(holder: HTMLElement, interactive: InteractiveDiff, session: number) {
+    holder.innerHTML = "";
+
+    const ops = interactive.getOps();
+    const CHUNK_SIZE = 400;
+    let index = 0;
+
+    const getOpHtml = (op: DiffOp, i: number, rejected: boolean) => {
+        const val = escapeHtml(op.value);
+        let cls = "";
+        let tooltip = "";
+
+        if (op.type === "insert") {
+            cls = "diff-added clickable";
+            tooltip = "Klikni da odbaciš izmenu";
+            if (rejected) cls += " diff-rejected";
+        } else if (op.type === "delete") {
+            cls = "diff-removed clickable";
+            tooltip = "Klikni da zadržiš ovaj tekst";
+            if (rejected) cls += " diff-rejected";
+        }
+
+        if (op.type === "equal") {
+            return val;
+        } else {
+            return `<span class="${cls}" data-idx="${i}" title="${tooltip}">${val}</span>`;
+        }
+    };
+
+    const renderChunk = () => {
+        // Cancel if session changed (modal closed or re-opened)
+        if (session !== state.preview.renderSession) return;
+
+        // Also cancel if mode changed away from diff
+        if (state.preview.mode !== "diff") return;
+
+        const end = Math.min(index + CHUNK_SIZE, ops.length);
+
+        let chunkHtml = '<div class="preview-block">';
+
+        for (let i = index; i < end; i++) {
+            const op = ops[i];
+            if (!op) continue;
+
+            const rejected = interactive.isRejected(i);
+            chunkHtml += getOpHtml(op, i, rejected);
+
+            if (op.value.includes("\n")) {
+                chunkHtml += '</div><div class="preview-block">';
+            }
+        }
+
+        chunkHtml += "</div>";
+
+        holder.insertAdjacentHTML("beforeend", chunkHtml);
+        index = end;
+
+        if (index < ops.length) {
+            raf(renderChunk);
+        }
+    };
+
+    renderChunk();
+}
+
 export function showPreviewModal() {
+    // New render session for this open
+    state.preview.renderSession += 1;
+
     const overlay = get<HTMLDivElement>("modalOverlay");
     const modal = get<HTMLDivElement>("modal");
 
     if (!state.preview.interactiveDiff) {
-        // Calculate diff only once
         const ops = myersDiff(tokenize(state.preview.original), tokenize(state.preview.converted));
         state.preview.interactiveDiff = new InteractiveDiff(ops);
     }
@@ -73,7 +153,6 @@ export function showPreviewModal() {
     const btnPlain = getOptional<HTMLButtonElement>("pBtnPlain");
     if (btnPlain) btnPlain.onclick = () => switchMode("plain");
 
-    // Load More Listener
     const loadMoreBtn = getOptional<HTMLButtonElement>("previewLoadMoreBtn");
     if (loadMoreBtn) {
         loadMoreBtn.onclick = () => {
@@ -119,8 +198,6 @@ export function showPreviewModal() {
             const idx = parseInt(idxStr, 10);
             if (!isNaN(idx)) {
                 state.preview.interactiveDiff.toggle(idx);
-                // Re-render only changed part would be better, but full re-render is safe
-                // because Virtualization makes it cheap enough.
                 renderPreviewMode();
             }
         }
@@ -130,84 +207,14 @@ export function showPreviewModal() {
     overlay.style.display = "flex";
 }
 
-/**
- * Async Progressive Renderer for Diff Mode.
- * Prevents UI freeze on large documents.
- */
-function renderDiffAsync(holder: HTMLElement, interactive: InteractiveDiff) {
-    // 1. Clear immediately
-    holder.innerHTML = "";
-
-    const ops = interactive.getOps();
-    const CHUNK_SIZE = 400; // Adjust based on performance testing
-    let index = 0;
-
-    // Helper to generate span HTML
-    const getOpHtml = (op: DiffOp, i: number, rejected: boolean) => {
-        // FIX: typed op
-        const val = escapeHtml(op.value);
-        let cls = "";
-        let tooltip = "";
-
-        if (op.type === "insert") {
-            cls = "diff-added clickable";
-            tooltip = "Klikni da odbaciš izmenu";
-            if (rejected) cls += " diff-rejected";
-        } else if (op.type === "delete") {
-            cls = "diff-removed clickable";
-            tooltip = "Klikni da zadržiš ovaj tekst";
-            if (rejected) cls += " diff-rejected";
-        }
-
-        if (op.type === "equal") {
-            return val;
-        } else {
-            return `<span class="${cls}" data-idx="${i}" title="${tooltip}">${val}</span>`;
-        }
-    };
-
-    const renderChunk = () => {
-        // Safety check: user might have closed modal or switched mode
-        if (state.preview.mode !== "diff") return;
-
-        const end = Math.min(index + CHUNK_SIZE, ops.length);
-
-        // Wrapper for content-visibility
-        let chunkHtml = '<div class="preview-block">';
-
-        for (let i = index; i < end; i++) {
-            const op = ops[i];
-            if (!op) continue;
-            const rejected = interactive.isRejected(i);
-
-            chunkHtml += getOpHtml(op, i, rejected);
-
-            // Heuristic: Break block on newlines to help browser layout
-            if (op.value.includes("\n")) {
-                chunkHtml += '</div><div class="preview-block">';
-            }
-        }
-        chunkHtml += "</div>";
-
-        holder.insertAdjacentHTML("beforeend", chunkHtml);
-        index = end;
-
-        if (index < ops.length) {
-            requestAnimationFrame(renderChunk);
-        }
-    };
-
-    // Start rendering
-    renderChunk();
-}
-
 export function renderPreviewMode() {
     const holder = get<HTMLDivElement>("previewHolder");
     const { mode, original, converted, interactiveDiff } = state.preview;
 
+    const session = state.preview.renderSession;
+
     if (mode === "diff" && interactiveDiff) {
-        // Use Async Renderer
-        renderDiffAsync(holder, interactiveDiff);
+        renderDiffAsync(holder, interactiveDiff, session);
     } else if (mode === "side") {
         holder.innerHTML = renderSideBySideWithHighlights(original, converted);
     } else {
@@ -238,8 +245,12 @@ function switchMode(m: "diff" | "side" | "plain") {
 function closePreview() {
     const overlay = document.getElementById("modalOverlay");
     if (overlay) overlay.style.display = "none";
-    // Clear mode to stop any pending async render
-    state.preview.mode = "diff"; // Reset default, effectively stopping async loops checking for other modes
+
+    // Cancel any pending async render loops immediately
+    state.preview.renderSession += 1;
+
+    // Reset diff instance so it doesn't carry over stale rejections
+    state.preview.interactiveDiff = null;
 }
 
 export function showPreviewToast(msg: string, type: "success" | "error" | "info" = "info", duration = 2000) {

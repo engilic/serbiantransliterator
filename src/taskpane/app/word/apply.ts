@@ -5,9 +5,6 @@ import { unsafeHtml } from "../../../shared/safeHtml";
 import type { OoxmlOptions } from "../../../shared/ooxml/convertOoxml";
 import { t } from "../../../shared/i18n";
 
-// STATIC IMPORT (Ključno za testove)
-import { convertOoxml } from "../../../shared/ooxml/convertOoxml";
-
 import { state, PREVIEW_CACHE_TTL_MS } from "../state";
 import { setStatus, refreshStats } from "../status";
 import { confirmInPanel, showModalInfo } from "../modal/modal";
@@ -65,25 +62,21 @@ export async function runSmart() {
         await Word.run(async (context) => {
             const sel = context.document.getSelection();
             sel.load("text");
-            // Ne učitavamo "paragraphs" jer ne koristimo Smart Expand
             await context.sync();
 
             const selInfo = analyzeSelectionText(sel.text);
 
-            // Ako je selektovano samo prazno (npr. space), to je greška korisnika
             if (selInfo.isJustWhitespace) {
                 showModalInfo(t("modal_title_error"), unsafeHtml(t("msg_empty_selection")));
                 setStatus(t("status_error_prefix", t("msg_empty_selection").split("<")[0]), "error");
                 return;
             }
 
-            // Ako ima teksta -> Selekcija. Ako nema -> Dokument.
             const scope: "selection" | "document" = selInfo.hasText ? "selection" : "document";
 
             const ui = getSettingsFromUi();
             const opts = getOoxmlOptionsFromUi();
 
-            // PITAJ KORISNIKA SAMO AKO JE DOKUMENT SCOPE
             if (scope === "document" && ui.confirmWholeDoc) {
                 const ok = await confirmInPanel(unsafeHtml(t("msg_confirm_whole_doc")));
                 if (!ok) {
@@ -92,38 +85,7 @@ export async function runSmart() {
                 }
             }
 
-            let result, extras;
-
-            if (scope === "selection") {
-                setStatus(t("status_processing"), "info");
-                const ooxml = sel.getOoxml();
-                await context.sync();
-
-                const rawXml = ooxml.value ?? "";
-
-                // Static call (mocked correctly in tests)
-                const convertRes = convertOoxml(rawXml, opts);
-
-                if (convertRes.type !== "Nema teksta") {
-                    sel.insertOoxml(convertRes.xml, Word.InsertLocation.replace);
-                    sel.select();
-                    await context.sync();
-                }
-
-                result = convertRes;
-                extras = {
-                    headersFootersProcessed: 0,
-                    footnotesProcessed: 0,
-                    endnotesProcessed: 0,
-                    footnotesSupported: true,
-                    endnotesSupported: true,
-                };
-            } else {
-                // DOCUMENT SCOPE: Pipeline (Chunking + Extras)
-                const r = await applyPipeline(context, "document", ui, opts);
-                result = r.result;
-                extras = r.extras;
-            }
+            const { result, extras } = await applyPipeline(context, scope, ui, opts);
 
             if (!result) {
                 setStatus(t("status_no_text_found"), "neutral");
@@ -134,7 +96,7 @@ export async function runSmart() {
                 logTelemetrySkippedRuns(result.stats.proofing.skippedByReason);
             }
 
-            const time = result.stats.timingMs.toFixed(0);
+            const time = (result.stats.timingMs ?? 0).toFixed(0);
 
             if (scope === "selection") {
                 setStatus(t("status_done_selection", result.type, time), "success");
@@ -251,7 +213,6 @@ export async function applyFromPreview(scope: "selection" | "document") {
                 return;
             }
 
-            // Document Scope
             const { result, extras } = await applyPipeline(context, "document", ui, opts);
 
             if (!result) {

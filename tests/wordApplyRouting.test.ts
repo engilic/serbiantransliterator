@@ -1,3 +1,4 @@
+// tests/wordApplyRouting.test.ts
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // Mocks for UI/Status modules
@@ -14,9 +15,6 @@ vi.mock("../src/taskpane/app/word/statsText", () => ({
     buildPreviewAppliedStats: vi.fn(() => ({ title: "PREVIEW", text: "PREVIEW_TEXT" })),
 }));
 
-// REMOVED: vi.mock("../src/shared/ooxml/convertOoxml", ...)
-// We will use the REAL convertOoxml implementation to test integration properly.
-
 import { runSmart } from "../src/taskpane/app/word/apply";
 import { setStatus } from "../src/taskpane/app/status";
 import { confirmInPanel, showModalInfo } from "../src/taskpane/app/modal/modal";
@@ -25,7 +23,6 @@ import { getSettingsFromUi, getOoxmlOptionsFromUi } from "../src/taskpane/app/se
 
 const W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
 
-// Helper to create valid minimal Word OOXML so the real convertOoxml works
 function makeSimpleOoxml(text: string) {
     return `
 <w:document xmlns:w="${W_NS}">
@@ -39,8 +36,6 @@ function makeSimpleOoxml(text: string) {
 }
 
 function makeWordStub(selectionText: string, expandText: string = "") {
-    // Generate valid OOXML so real convertOoxml returns a valid result (not "Nema teksta")
-    // If text is empty, convertOoxml will return "Nema teksta", which is what we want for empty selection check.
     const selXml = makeSimpleOoxml(selectionText);
     const paraXml = makeSimpleOoxml(expandText);
 
@@ -86,10 +81,14 @@ function makeWordStub(selectionText: string, expandText: string = "") {
 beforeEach(() => {
     vi.resetAllMocks();
     (getSettingsFromUi as any).mockReturnValue({ confirmWholeDoc: true });
-    (getOoxmlOptionsFromUi as any).mockReturnValue({ direction: "lat-to-cyr" }); // Set explicit direction so conversion happens
+    (getOoxmlOptionsFromUi as any).mockReturnValue({ direction: "lat-to-cyr" });
     (confirmInPanel as any).mockResolvedValue(true);
+
     (applyPipeline as any).mockResolvedValue({
-        result: { type: "Lat → Ćir", stats: { timingMs: 12.3 } },
+        result: {
+            type: "Lat → Ćir",
+            stats: { timingMs: 12.3, proofing: { skippedByReason: {} }, bridges: {} },
+        },
         extras: {
             headersFootersProcessed: 0,
             footnotesProcessed: 0,
@@ -112,27 +111,32 @@ describe("word/apply.runSmart - routing (stubbed Word.run)", () => {
         expect(applyPipeline).not.toHaveBeenCalled();
     });
 
-    it("non-empty selection => runs inline logic (insertOoxml on selection)", async () => {
+    it("non-empty selection => routes through applyPipeline(selection) (PR1)", async () => {
         const { selectionRange } = makeWordStub("Zdravo");
         await runSmart();
 
-        // Since "Zdravo" (lat) -> "Здраво" (cyr) via real convertOoxml, insertOoxml SHOULD be called.
-        expect(selectionRange.insertOoxml).toHaveBeenCalled();
+        expect(applyPipeline).toHaveBeenCalledTimes(1);
+        expect(applyPipeline).toHaveBeenCalledWith(
+            expect.anything(),
+            "selection",
+            expect.anything(),
+            expect.anything()
+        );
+
+        // Since pipeline is mocked, selectionRange.insertOoxml should not be called directly here.
+        expect(selectionRange.insertOoxml).not.toHaveBeenCalled();
+
         expect(setStatus).toHaveBeenCalledWith(expect.stringContaining("Završeno"), "success");
     });
 
     it("no selection + paragraph text => Treats as Document Scope (no more Smart Expand)", async () => {
-        // Selection empty, Para text "Paragraf".
-        // Pošto smo izbacili Smart Expand, ovo sada pita za ceo dokument.
         makeWordStub("", "Paragraf");
 
         (confirmInPanel as any).mockResolvedValue(true);
 
         await runSmart();
 
-        // Očekujemo da pita
         expect(confirmInPanel).toHaveBeenCalled();
-        // I da pozove pipeline za dokument
         expect(applyPipeline).toHaveBeenCalledWith(
             expect.anything(),
             "document",
