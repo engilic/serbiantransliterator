@@ -18,7 +18,7 @@ describe("Supernova Fuzzing (Extreme Edge Cases)", () => {
 
     // 2. HTML/XML Injection (Security Fuzz)
     it("handles XML-like structures without breaking protection", () => {
-        const xmlGen = fc.stringMatching(/<[a-z]+>.*<\/[a-z]+>/);
+        const xmlGen = fc.stringMatching(/<[a-zA-Z]+>.*<\/[a-zA-Z]+>/);
         fc.assert(
             fc.property(xmlGen, fc.boolean(), (xml, protect) => {
                 // Ako je protectBrands=true, HTML tagovi bi trebalo da budu zaštićeni u collectProtectedRanges
