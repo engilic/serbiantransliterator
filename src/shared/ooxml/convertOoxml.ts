@@ -120,7 +120,6 @@ function createEmptyStats(direction?: string, textNodes = 0, chars = 0): Convert
     };
 }
 
-// Roman Numerals Logic
 const ROMAN_REGEX_STRICT =
     /\b(?!I\b)(?=[MDCLXVI]+\b)M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})\b/g;
 const ROMAN_I_PREFIXES = [
@@ -196,7 +195,7 @@ export function convertOoxml(
     const t0 = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
     const ooxmlSizeKb = Math.round(ooxml.length / 1024);
 
-    // SECURITY GUARD: Odbij maliciozni XML
+    // SECURITY GUARD: Reject XML with DTDs to prevent XXE
     if (!isSafeXml(ooxml)) {
         return {
             xml: "",
@@ -206,6 +205,9 @@ export function convertOoxml(
     }
 
     const parser = new DOMParser();
+
+    // CodeQL [js/xxe] - Input is validated by isSafeXml above which rejects DTDs.
+    // CodeQL [js/xss] - This XML is not rendered as HTML, it's processed as data.
     const doc = parser.parseFromString(ooxml, "application/xml");
 
     try {

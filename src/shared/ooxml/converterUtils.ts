@@ -3,7 +3,10 @@ import { isTokenChar } from "./common";
 
 // --- XML Safety ---
 export function isSafeXml(xml: string): boolean {
-    if (xml.includes("<!DOCTYPE") || xml.includes("<!ENTITY")) {
+    // SECURITY: Prevent XXE attacks.
+    // OOXML parts (document.xml) strictly should not have DTDs or ENTITY declarations.
+    // We reject any XML containing DOCTYPE or ENTITY definitions case-insensitively.
+    if (/<!DOCTYPE/i.test(xml) || /<!ENTITY/i.test(xml)) {
         return false;
     }
     return true;
