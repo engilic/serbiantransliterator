@@ -34,10 +34,6 @@ function addRangesFromRegex(text: string, re: RegExp, ranges: Range[], groupInde
     }
 }
 
-/**
- * Varijanta addRangesFromRegex koja "trimuje" trailing interpunkciju sa match-a.
- * Svrha: u plain-text protect sloju štitimo samo link/email, a ne i završnu interpunkciju.
- */
 function addRangesFromRegexTrimEnd(
     text: string,
     re: RegExp,
@@ -99,13 +95,6 @@ export interface ProtectOptions {
     brandPhrases: string[];
     userProtectedPhrases: string[];
     preserveCodeBlocks: boolean;
-
-    /**
-     * Kako štitimo {...} blokove u plain tekstu:
-     * - "placeholders" (default): štiti samo placeholder-like: {USER_NAME}, {Order-Id}, {x_y}, {A:1}
-     * - "all": legacy ponašanje (štiti bilo šta između { ... } čak i sa razmacima)
-     * - "none": ne štiti {...} uopšte
-     */
     curlyProtection: CurlyProtection;
 }
 
@@ -142,10 +131,6 @@ export function collectProtectedRanges(text: string, opts: ProtectOptions): Rang
     /**
      * Unix paths:
      * Guard da ne matchuje unutar URL-a.
-     *
-     * Bez ovoga, "https://example.com/test." sadrži "//example.com/test."
-     * što liči na "/segment/segment" i path regex bi progutao trailing '.' i onda mergeRanges
-     * proširi URL range nazad na tačku.
      */
     addRangesFromRegex(text, /(^|[^:/])(\/[a-zA-Z0-9._-]+\/[a-zA-Z0-9._\-/]+)/g, ranges, 2);
 
@@ -167,7 +152,8 @@ export function collectProtectedRanges(text: string, opts: ProtectOptions): Rang
     if (opts.curlyProtection === "all") {
         addRangesFromRegex(text, /\{[\s\S]*?\}/g, ranges);
     } else if (opts.curlyProtection === "placeholders") {
-        addRangesFromRegex(text, /\{[A-Za-z][A-Za-z0-9_:-]{0,120}\}/g, ranges);
+        // [FIX] Allow underscore at start
+        addRangesFromRegex(text, /\{[A-Za-z_][A-Za-z0-9_:-]{0,120}\}/g, ranges);
     }
 
     addRangesFromRegex(text, /<[a-zA-Z0-9_]+>/g, ranges);
