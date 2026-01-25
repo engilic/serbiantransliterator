@@ -1,10 +1,17 @@
 // src/core/textCore.ts
 
-import { ALWAYS_LATIN_PHRASES, ALWAYS_LATIN_TOKENS_STRICT, ALWAYS_LATIN_TOKENS_AMBIGUOUS } from "./rules";
+import { ALWAYS_LATIN_PHRASES, ALWAYS_LATIN_TOKENS_STRICT } from "./rules";
 import { applyPreCorrectionsLatToCyr } from "./corrections";
 import { fixSerbianQuotes } from "./quotes";
 import { collectProtectedRanges, splitByRanges, type CurlyProtection } from "./protect";
 import { cyrillicToLatin, detectMajorityScript, latinToCyrillic } from "./serbian";
+import { tokenize } from "./tokenizer";
+import {
+    normKey,
+    shouldProtectRomanToken,
+    shouldProtectAmbiguousBrandToken,
+    shouldProtectHeuristic,
+} from "./heuristics";
 
 // Importuj tip za WASM
 type WasmModule = typeof import("../wasm-core/pkg") & {
@@ -59,212 +66,6 @@ export interface CoreOptions {
     dialect?: Dialect;
 }
 
-const normKey = (s: string) => s.normalize("NFC").toLowerCase();
-
-const ROMAN = /^[IVXLCDM]+$/;
-const RULERS = new Set([
-    "petar",
-    "aleksandar",
-    "nikola",
-    "milan",
-    "đorđe",
-    "jovan",
-    "uroš",
-    "stefan",
-    "lazar",
-    "luj",
-    "čarls",
-    "elizabeta",
-    "filip",
-    "papa",
-    "pavle",
-    "patrijarh",
-    "tom",
-    "grupa",
-    "zona",
-    "korpus",
-    "armija",
-    "deo",
-    "knjiga",
-    "stav",
-    "član",
-    "sprat",
-]);
-const CATEGORY_PREFIX = [
-    "razred",
-    "kategorij",
-    "grupa",
-    "zona",
-    "korpus",
-    "armija",
-    "deo",
-    "tom",
-    "knjiga",
-    "stav",
-    "član",
-    "svetski",
-    "sprat",
-    "vek",
-    "rat",
-];
-
-type Tok = { type: "word" | "other"; value: string };
-
-function isLetterOrDigit(ch: string): boolean {
-    return /\p{L}|\p{N}/u.test(ch);
-}
-
-function tokenize(text: string): Tok[] {
-    const out: Tok[] = [];
-    let i = 0;
-    const push = (type: Tok["type"], value: string) => {
-        if (!value) return;
-        const last = out[out.length - 1];
-        if (last && last.type === type) last.value += value;
-        else out.push({ type, value });
-    };
-    while (i < text.length) {
-        const ch = text[i];
-        if (!ch) break;
-        const prev = i > 0 ? text[i - 1] : "";
-        const next = i + 1 < text.length ? text[i + 1] : "";
-        const isJoiner =
-            ch === "-" ||
-            ch === "‑" ||
-            ch === "‐" ||
-            ch === "‒" ||
-            ch === "–" ||
-            ch === "—" ||
-            ch === "'" ||
-            ch === "’" ||
-            ch === "." ||
-            ch === "+" ||
-            ch === "#" ||
-            ch === "/";
-        const joinerOk =
-            isJoiner &&
-            ((ch === "." && (isLetterOrDigit(next) || (isLetterOrDigit(prev) && isLetterOrDigit(next)))) ||
-                ((ch === "+" || ch === "#") && (isLetterOrDigit(prev) || isLetterOrDigit(next))) ||
-                (ch === "/" && isLetterOrDigit(prev) && isLetterOrDigit(next)) ||
-                ((ch === "-" ||
-                    ch === "‑" ||
-                    ch === "‐" ||
-                    ch === "‒" ||
-                    ch === "–" ||
-                    ch === "—" ||
-                    ch === "'" ||
-                    ch === "’") &&
-                    (isLetterOrDigit(prev) || isLetterOrDigit(next))));
-        if (isLetterOrDigit(ch) || joinerOk) push("word", ch);
-        else push("other", ch);
-        i++;
-    }
-    return out;
-}
-
-function prevNextWord(tokens: Tok[], idx: number): { prev?: string; next?: string } {
-    let prev: string | undefined;
-    let next: string | undefined;
-    for (let i = idx - 1; i >= 0; i--) {
-        const tok = tokens[i];
-        if (tok && tok.type === "word") {
-            prev = tok.value;
-            break;
-        }
-    }
-    for (let i = idx + 1; i < tokens.length; i++) {
-        const tok = tokens[i];
-        if (tok && tok.type === "word") {
-            next = tok.value;
-            break;
-        }
-    }
-    return { prev, next };
-}
-
-function getPrevWord(tokens: Tok[], idx: number, n: number): string | undefined {
-    let seen = 0;
-    for (let i = idx - 1; i >= 0; i--) {
-        const t = tokens[i];
-        if (t?.type === "word") {
-            seen++;
-            if (seen === n) return t.value;
-        }
-    }
-    return undefined;
-}
-
-function getNextWord(tokens: Tok[], idx: number, n: number): string | undefined {
-    let seen = 0;
-    for (let i = idx + 1; i < tokens.length; i++) {
-        const t = tokens[i];
-        if (t?.type === "word") {
-            seen++;
-            if (seen === n) return t.value;
-        }
-    }
-    return undefined;
-}
-
-function isAlphaNumModelToken(tok: string): boolean {
-    return /\d/.test(tok) && /\p{L}/u.test(tok);
-}
-
-function isPureNumberToken(tok: string): boolean {
-    return /^\d+$/u.test(tok);
-}
-
-function shouldProtectRomanToken(tokens: Tok[], idx: number): boolean {
-    const t = tokens[idx];
-    if (!t) return false;
-    if (t.type !== "word") return false;
-    const v = t.value;
-    if (!ROMAN.test(v)) return false;
-    if (v !== v.toUpperCase()) return false;
-    if (v.length > 8) return false;
-    const { prev, next } = prevNextWord(tokens, idx);
-    const prevKey = prev ? normKey(prev) : "";
-    const nextKey = next ? normKey(next) : "";
-    if (prevKey && RULERS.has(prevKey)) return true;
-    if (nextKey && CATEGORY_PREFIX.some((p) => nextKey.startsWith(p))) return true;
-    return false;
-}
-
-function shouldProtectAmbiguousBrandToken(tokens: Tok[], idx: number): boolean {
-    const t = tokens[idx];
-    if (!t || t.type !== "word") return false;
-    const tokLower = normKey(t.value);
-    if (!ALWAYS_LATIN_TOKENS_AMBIGUOUS.has(tokLower)) return false;
-    const prev1 = getPrevWord(tokens, idx, 1);
-    const prev2 = getPrevWord(tokens, idx, 2);
-    const next1 = getNextWord(tokens, idx, 1);
-    const next2 = getNextWord(tokens, idx, 2);
-    const p1 = prev1 ? normKey(prev1) : "";
-    const p2 = prev2 ? normKey(prev2) : "";
-    const n1 = next1 ? normKey(next1) : "";
-    const n2 = next2 ? normKey(next2) : "";
-    if (p1 && ALWAYS_LATIN_TOKENS_STRICT.has(p1)) return true;
-    if (p2 && ALWAYS_LATIN_TOKENS_STRICT.has(p2)) return true;
-    if (n1 && ALWAYS_LATIN_TOKENS_STRICT.has(n1)) return true;
-    if (n2 && ALWAYS_LATIN_TOKENS_STRICT.has(n2)) return true;
-    if (prev1 && isAlphaNumModelToken(prev1)) return true;
-    if (next1 && isAlphaNumModelToken(next1)) return true;
-    if ((prev1 && isPureNumberToken(prev1)) || (next1 && isPureNumberToken(next1))) return false;
-    return false;
-}
-
-// [GALAXY MODE] Smart Heuristics
-function shouldProtectHeuristic(word: string): boolean {
-    // MixedCase check (npr. "iCloud", "JavaScript", "myVariable")
-    if (word.length < 3) return false;
-
-    const slice = word.slice(1);
-    const hasUpper = /[A-ZČĆŽŠĐ]/.test(slice);
-    const hasLower = /[a-zčćžšđ]/.test(slice);
-
-    return hasUpper && hasLower;
-}
-
 export function detectScript(text: string): "latin" | "cyrillic" {
     return detectMajorityScript(text);
 }
@@ -286,8 +87,10 @@ function convertUnprotectedSegment(segment: string, toCyrillic: boolean, options
     const toks = tokenize(segment);
     let out = "";
     for (let i = 0; i < toks.length; i++) {
+        // FIX: Bez "!"
         const t = toks[i];
         if (!t) continue;
+
         if (t.type !== "word") {
             out += t.value;
             continue;
