@@ -4,8 +4,12 @@
             "@babel/preset-env",
             {
                 "targets": {
-                    "esmodules": false
-                }
+                    "esmodules": true,
+                    "browsers": ["> 0.25%", "not dead", "last 2 versions"]
+                },
+                "useBuiltIns": "usage",
+                "corejs": 3,
+                "modules": false
             }
         ],
         "@babel/preset-typescript"

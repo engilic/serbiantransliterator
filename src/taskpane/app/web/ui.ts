@@ -45,6 +45,15 @@ export function transliterateDomNode(node: Node, dir: Direction, coreOpts: CoreO
 export function initWebModeUi() {
     console.log("🚀 Initializing Web Mode UI...");
 
+    // [MAX UX] Ukloni preloader (jer smo sada spremni i React/JS je preuzeo kontrolu)
+    const preloader = document.getElementById("webModePreloader");
+    if (preloader) {
+        // Fade out efekat
+        preloader.style.transition = "opacity 0.3s";
+        preloader.style.opacity = "0";
+        setTimeout(() => preloader.remove(), 300);
+    }
+
     // [GODLIKE] Check Incognito on start
     setTimeout(checkIncognito, 1000);
 

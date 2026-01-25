@@ -102,7 +102,6 @@ body {
     padding-bottom: env(safe-area-inset-bottom);
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
-    /* [ULTIMATE MAX] Typographic Perfection */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
@@ -421,7 +420,6 @@ main {
     font-size: 14px;
 }
 
-/* [ULTIMATE MAX] Respect User Motion Preferences */
 @media (prefers-reduced-motion: reduce) {
     * {
         animation-duration: 0.01ms !important;
@@ -438,7 +436,6 @@ main {
     }
 }
 
-/* [VISION 2027] Full Screen Drop Overlay */
 #dragOverlay {
     position: fixed;
     inset: 0;
@@ -460,7 +457,7 @@ main {
 }
 
 .drag-content {
-    pointer-events: none; /* Klikovi prolaze kroz tekst */
+    pointer-events: none;
     text-align: center;
     animation: bounce 1s infinite;
 }
@@ -497,14 +494,18 @@ main {
 #dragOverlay,
 .drop-zone {
     will-change: opacity, transform;
-    /* Forsira kreiranje novog Layer-a u browseru (Hardware Compositing) */
     transform: translateZ(0);
 }
 
 /* [MAXMAXMAX] Smart render skipping for settings lists */
-/* Ovo govori browseru da ne renderuje sadržaj sekcije dok nije u viewportu */
-/* Smanjuje Layout/Paint time pri inicijalnom učitavanju */
 .section {
     content-visibility: auto;
-    contain-intrinsic-size: 1px 300px; /* Procena visine da scrollbar ne skače */
+    contain-intrinsic-size: 1px 300px;
+}
+
+/* [MAX4] Layout Containment za Preview */
+.preview-text-pane {
+    contain: strict;
+    content-visibility: auto;
+    contain-intrinsic-size: 1px 500px;
 }

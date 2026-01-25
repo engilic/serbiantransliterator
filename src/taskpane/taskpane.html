@@ -11,7 +11,7 @@
         <link rel="preload" href="assets/dict_e2i.bin" as="fetch" crossorigin />
         <link rel="preload" href="assets/dict_i2e.bin" as="fetch" crossorigin />
 
-        <!-- [MAX NET] Preconnect to Microsoft CDN (štedi 100-300ms na DNS/SSL) -->
+        <!-- [MAX NET] Preconnect to Microsoft CDN -->
         <link rel="preconnect" href="https://appsforoffice.microsoft.com" />
 
         <!-- [MAX UX] Instant Theme Apply -->
@@ -35,6 +35,41 @@
         <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
     </head>
     <body>
+        <!-- [MAX UX] Instant Web Mode UI -->
+        <!-- FIX: Empty text to satisfy i18n check. Icon conveys meaning instantly. -->
+        <div
+            id="webModePreloader"
+            style="
+                display: none;
+                position: absolute;
+                inset: 0;
+                background: var(--colorNeutralBackground2);
+                z-index: 10000;
+                align-items: center;
+                justify-content: center;
+                flex-direction: column;
+            "
+        >
+            <div style="font-size: 48px; margin-bottom: 20px">📂</div>
+            <!-- Prazni div-ovi sa data-i18n će biti popunjeni čim JS stigne -->
+            <div
+                style="font-size: 18px; font-weight: 600; color: var(--colorBrandForeground1)"
+                data-i18n="app_title"
+            ></div>
+            <div style="margin-top: 10px; opacity: 0.7" data-i18n="web_clipboard_ready"></div>
+        </div>
+
+        <script>
+            (function () {
+                if (new URLSearchParams(window.location.search).get("mode") === "web") {
+                    var el = document.getElementById("webModePreloader");
+                    if (el) el.style.display = "flex";
+                    var sk = document.getElementById("skeleton");
+                    if (sk) sk.style.display = "none";
+                }
+            })();
+        </script>
+
         <div id="skeleton" aria-hidden="true">
             <div class="sk-line" style="width: 40%"></div>
             <div class="sk-rect"></div>

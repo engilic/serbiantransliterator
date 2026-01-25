@@ -18,7 +18,7 @@ once_cell = "1.18"
 bincode = "1.3"
 fst = "0.4"
 aho-corasick = "1.1"
-rustc-hash = "1.1" # <--- MAX SPEED HASHING
+rustc-hash = "1.1"
 
 # [FIX] Isključujemo wasm-opt jer pravi probleme sa bulk-memory instrukcijama
 [package.metadata.wasm-pack.profile.release]
@@ -26,7 +26,7 @@ wasm-opt = false
 
 [profile.release]
 opt-level = 3
-lto = true
+lto = "fat"          # <--- MAX: Fat LTO (sporiji build, brži kod)
 codegen-units = 1
-strip = true
+strip = "debuginfo"  # <--- MAX: Agresivno čišćenje (smanjuje WASM)
 panic = "abort"
