@@ -437,3 +437,56 @@ main {
         transition: none !important;
     }
 }
+
+/* [VISION 2027] Full Screen Drop Overlay */
+#dragOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 108, 189, 0.95);
+    z-index: 10000;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    backdrop-filter: blur(5px);
+    transition: opacity 0.2s;
+    opacity: 0;
+}
+
+#dragOverlay.active {
+    display: flex;
+    opacity: 1;
+}
+
+.drag-content {
+    pointer-events: none; /* Klikovi prolaze kroz tekst */
+    text-align: center;
+    animation: bounce 1s infinite;
+}
+
+.drag-icon-lg {
+    font-size: 80px;
+    margin-bottom: 20px;
+    display: block;
+}
+
+.drag-title {
+    font-size: 24px;
+    font-weight: 700;
+}
+
+@keyframes bounce {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+[data-theme="dark"] #dragOverlay {
+    background: rgba(15, 108, 189, 0.85);
+}

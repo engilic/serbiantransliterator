@@ -69,6 +69,14 @@
 
         <div id="msg" role="status" aria-live="polite"></div>
 
+        <!-- [VISION 2027] Drag Overlay -->
+        <div id="dragOverlay">
+            <div class="drag-content">
+                <span class="drag-icon-lg">📂</span>
+                <div class="drag-title" data-i18n="web_drop_overlay_title"></div>
+            </div>
+        </div>
+
         <%= fs.readFileSync(resolve('components/footer/footer.html')) %> <%=
         fs.readFileSync(resolve('components/footer/sticky-footer.html')) %> <%=
         fs.readFileSync(resolve('components/modals/confirm-modal.html')) %> <%=
