@@ -84,5 +84,8 @@
         "**/*.{ts,js,cjs,mjs,json,css,md,html}": [
             "prettier --write"
         ]
+    },
+    "overrides": {
+        "tmp": "^0.2.3"
     }
 }
