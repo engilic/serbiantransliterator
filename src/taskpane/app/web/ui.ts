@@ -8,27 +8,25 @@ import { html } from "../../../shared/safeHtml";
 import { convertPlainText, type Direction, type CoreOptions } from "../../../core/textCore";
 import { getSettingsFromUi } from "../settings/getters";
 import { state } from "../state";
+import { playSuccessSound } from "../audio"; // [GODLIKE]
+import { checkIncognito } from "../incognito"; // [GODLIKE]
 
 interface FileSystemFileHandle {
     kind: "file";
     name: string;
     getFile(): Promise<File>;
 }
-
 interface LaunchParams {
     files: FileSystemFileHandle[];
 }
-
 interface LaunchQueue {
     setConsumer(callback: (launchParams: LaunchParams) => Promise<void>): void;
 }
-
 interface WindowWithLaunchQueue extends Window {
     launchQueue?: LaunchQueue;
 }
 
-// [GALAXY MODE] Rekurzivna transliteracija DOM stabla (čuva stilove)
-// [FIX] EXPORTED FOR TESTS
+// [GALAXY MODE] Rekurzivna transliteracija
 export function transliterateDomNode(node: Node, dir: Direction, coreOpts: CoreOptions) {
     if (node.nodeType === Node.TEXT_NODE) {
         const original = node.textContent || "";
@@ -46,6 +44,9 @@ export function transliterateDomNode(node: Node, dir: Direction, coreOpts: CoreO
 
 export function initWebModeUi() {
     console.log("🚀 Initializing Web Mode UI...");
+
+    // [GODLIKE] Check Incognito on start
+    setTimeout(checkIncognito, 1000);
 
     const main = document.querySelector("main");
     if (!main) return;
@@ -103,17 +104,15 @@ export function initWebModeUi() {
         const copyBtn = clipboardSection.querySelector("#webCopyBtn") as HTMLButtonElement;
 
         richInput.addEventListener("input", () => {
-            // [FIX] textContent fallback
             const txt = richInput.innerText || richInput.textContent || "";
             if (txt.trim() === "") richInput.classList.add("empty");
             else richInput.classList.remove("empty");
         });
         richInput.classList.add("empty");
 
-        convertBtn.onclick = () => {
-            // [FIX] textContent fallback for JSDOM/Test
+        // Helper za konverziju
+        const doConvert = () => {
             const text = richInput.innerText || richInput.textContent || "";
-
             if (!text.trim()) {
                 showModalInfo(t("modal_title_error"), html`${t("msg_enter_text")}`);
                 return;
@@ -121,7 +120,6 @@ export function initWebModeUi() {
 
             const uiSettings = getSettingsFromUi();
             const userProtected = [...Array.from(state.customWordsSet), ...Array.from(state.presetWordsSet)];
-
             let dir = uiSettings.direction;
             if (dir === "auto") dir = "auto";
 
@@ -142,9 +140,11 @@ export function initWebModeUi() {
                 convertBtn.style.display = "none";
                 copyBtn.style.display = "inline-flex";
                 copyBtn.innerText = t("web_clipboard_copy");
+
+                // [GODLIKE] Sound!
+                playSuccessSound();
             } catch (e) {
                 console.error(e);
-                // [FIX] Uklonjen alert(), koristimo Modal
                 showModalInfo(
                     t("modal_title_error"),
                     html`${t("web_convert_error")}<br /><small>${String(e)}</small>`
@@ -152,13 +152,13 @@ export function initWebModeUi() {
             }
         };
 
+        convertBtn.onclick = doConvert;
+
         copyBtn.onclick = async () => {
             try {
                 const htmlBlob = new Blob([richInput.innerHTML], { type: "text/html" });
-                // [FIX] textContent fallback
                 const txt = richInput.innerText || richInput.textContent || "";
                 const textBlob = new Blob([txt], { type: "text/plain" });
-
                 const item = new ClipboardItem({ "text/html": htmlBlob, "text/plain": textBlob });
                 await navigator.clipboard.write([item]);
 
@@ -169,18 +169,43 @@ export function initWebModeUi() {
                     copyBtn.innerText = t("web_clipboard_copy");
                 }, 1500);
             } catch (e) {
-                // [FIX] textContent fallback
                 const txt = richInput.innerText || richInput.textContent || "";
                 await navigator.clipboard.writeText(txt);
                 copyBtn.innerText = t("web_clipboard_copied") + " (Plain)";
             }
         };
 
+        // [GODLIKE] Global Auto-Paste
+        document.addEventListener("paste", (e) => {
+            // Ako fokus nije u inputu, uhvati paste i ubaci u nas editor
+            const active = document.activeElement;
+            const isInput =
+                active instanceof HTMLInputElement ||
+                active instanceof HTMLTextAreaElement ||
+                (active as HTMLElement).isContentEditable;
+
+            if (!isInput && e.clipboardData) {
+                e.preventDefault();
+                const text = e.clipboardData.getData("text/html") || e.clipboardData.getData("text/plain");
+                if (text) {
+                    richInput.innerHTML = text; // ili textContent ako je plain
+                    richInput.classList.remove("empty");
+                    // Auto-scroll to editor
+                    richInput.scrollIntoView({ behavior: "smooth", block: "center" });
+                    // Flash effect
+                    richInput.style.backgroundColor = "var(--colorNeutralBackground2)";
+                    setTimeout(() => (richInput.style.backgroundColor = ""), 300);
+                    // Odmah konvertuj? Ne, pusti korisnika da vidi.
+                    // Ili... Auto-Convert ako je prazno bilo?
+                    // Ne, bolje da korisnik klikne.
+                }
+            }
+        });
+
         const titleEl = document.querySelector(".section-title");
         if (titleEl) {
             const baseTitle = titleEl.textContent;
             richInput.addEventListener("input", () => {
-                // [FIX] textContent fallback
                 const txt = richInput.innerText || richInput.textContent || "";
                 const len = txt.length;
                 if (len > 0) titleEl.textContent = `${baseTitle} (${len} chars)`;
@@ -189,7 +214,6 @@ export function initWebModeUi() {
         }
     }
 
-    // PWA File Handling
     const win = window as WindowWithLaunchQueue;
     if (win.launchQueue) {
         win.launchQueue.setConsumer(async (launchParams: LaunchParams) => {

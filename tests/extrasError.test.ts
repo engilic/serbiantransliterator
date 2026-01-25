@@ -10,16 +10,19 @@ vi.mock("../src/taskpane/app/word/notes", () => ({
 
 describe("word/extras Error Handling", () => {
     it("catches errors in headers processing and continues", async () => {
-        // Mock da baci grešku
+        // [FIX] Silence console.warn for this test
+        const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
         (processHeadersFooters as any).mockRejectedValue(new Error("Header Boom"));
 
         const ui: any = { includeHeadersFooters: true };
         const ctx: any = {};
 
-        // Should not throw
         const res = await applyExtrasIfEnabled(ctx, ui, {} as any);
 
-        // Ali headers count treba da bude 0
         expect(res.headersFootersProcessed).toBe(0);
+
+        // [FIX] Restore console
+        warnSpy.mockRestore();
     });
 });

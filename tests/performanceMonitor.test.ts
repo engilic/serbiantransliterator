@@ -1,6 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { PerformanceMonitor } from "../src/taskpane/app/telemetry/performanceMonitor";
 
+// [FIX] Mock DB logging to prevent IndexedDB error
+vi.mock("../src/taskpane/app/telemetry/db", () => ({
+    addLog: vi.fn(),
+    getAllLogs: vi.fn(async () => []),
+}));
+
+// [FIX] Mock logger to prevent console spam
+vi.mock("../src/taskpane/app/telemetry/logger", () => ({
+    logger: {
+        warn: vi.fn(),
+        error: vi.fn(),
+        info: vi.fn(),
+    },
+}));
+
 describe("PerformanceMonitor", () => {
     let monitor: PerformanceMonitor;
 
