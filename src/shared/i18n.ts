@@ -252,6 +252,7 @@ const SR_RS = {
     live_target_lat: "→ Latinica",
     live_target_ascii: "→ ASCII",
     live_warn_ascii: " ⚠️ ASCII?",
+    web_drop_overlay_title: "Prevucite fajl ovde",
     tooltip_run_shortcut: " (Alt+Enter)",
     tooltip_preview_shortcut: " (Alt+P)",
 
@@ -495,6 +496,7 @@ const EN_US: Record<TranslationKey, string> = {
     live_target_lat: "→ Latin",
     live_target_ascii: "→ ASCII",
     live_warn_ascii: " ⚠️ ASCII?",
+    web_drop_overlay_title: "Drop file here",
     tooltip_run_shortcut: " (Alt+Enter)",
     tooltip_preview_shortcut: " (Alt+P)",
 

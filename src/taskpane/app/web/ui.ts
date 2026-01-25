@@ -214,6 +214,40 @@ export function initWebModeUi() {
                 else titleEl.textContent = baseTitle;
             });
         }
+
+        // [VISION 2027] Global Drag & Drop Overlay Logic
+        const overlay = document.getElementById("dragOverlay");
+        let dragCounter = 0;
+
+        if (overlay) {
+            window.addEventListener("dragenter", (e) => {
+                e.preventDefault();
+                dragCounter++;
+                overlay.classList.add("active");
+            });
+
+            window.addEventListener("dragleave", (e) => {
+                e.preventDefault();
+                dragCounter--;
+                if (dragCounter === 0) {
+                    overlay.classList.remove("active");
+                }
+            });
+
+            window.addEventListener("dragover", (e) => {
+                e.preventDefault(); // Neophodno da bi drop radio
+            });
+
+            window.addEventListener("drop", (e) => {
+                e.preventDefault();
+                dragCounter = 0;
+                overlay.classList.remove("active");
+
+                if (e.dataTransfer?.files?.length) {
+                    handleFiles(e.dataTransfer.files);
+                }
+            });
+        }
     }
 
     const win = window as WindowWithLaunchQueue;
