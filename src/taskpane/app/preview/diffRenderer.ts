@@ -3,6 +3,7 @@
 import { myersDiff } from "../../../shared/diff";
 import { escapeHtml } from "../../../shared/safeHtml";
 import type { InteractiveDiff } from "../../../shared/diff/interactive";
+import { t } from "../../../shared/i18n";
 
 function tokenize(text: string): string[] {
     // Tokenizacija koja čuva razmake kao zasebne tokene za precizan diff
@@ -31,11 +32,11 @@ export function renderInteractiveDiffHtml(interactive: InteractiveDiff, maxLen =
 
         if (op.type === "insert") {
             cls = "diff-added clickable";
-            tooltip = "Klikni da odbaciš izmenu";
+            tooltip = t("preview_diff_tip_insert");
             if (rejected) cls += " diff-rejected";
         } else if (op.type === "delete") {
             cls = "diff-removed clickable";
-            tooltip = "Klikni da zadržiš ovaj tekst";
+            tooltip = t("preview_diff_tip_delete");
             if (rejected) cls += " diff-rejected";
         }
 
@@ -44,12 +45,13 @@ export function renderInteractiveDiffHtml(interactive: InteractiveDiff, maxLen =
             html += val;
         } else {
             // Span sa indeksom operacije
-            html += `<span class="${cls}" data-idx="${i}" title="${tooltip}">${val}</span>`;
+            html += `<span class="${cls}" data-idx="${i}" title="${escapeHtml(tooltip)}">${val}</span>`;
         }
 
         len += op.value.length;
         if (len > maxLen) {
-            html += "... (prikaz skraćen)";
+            // i18n: koristimo postojeći ključ (SR: "Prikaz skraćen zbog performansi")
+            html += `… (${escapeHtml(t("preview_label_truncated_perf"))})`;
             break;
         }
     }
@@ -83,8 +85,8 @@ export function renderSideBySideWithHighlights(original: string, converted: stri
     }
 
     return `<div class="preview-grid">
-        <div class="preview-col"><strong>Pre:</strong><br>${left}</div>
-        <div class="preview-col"><strong>Posle:</strong><br>${right}</div>
+        <div class="preview-col"><strong>${escapeHtml(t("preview_label_before"))}:</strong><br>${left}</div>
+        <div class="preview-col"><strong>${escapeHtml(t("preview_label_after"))}:</strong><br>${right}</div>
     </div>`;
 }
 

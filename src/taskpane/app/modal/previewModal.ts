@@ -26,6 +26,13 @@ function raf(cb: FrameRequestCallback): number {
 }
 
 /**
+ * Snapshot original confirm/info modal skeleton so preview (which replaces modal.innerHTML)
+ * doesn't corrupt subsequent confirm/info modal flows.
+ */
+let modalSkeletonHtml: string | null = null;
+let modalSkeletonClassName: string | null = null;
+
+/**
  * Async Progressive Renderer for Diff Mode.
  * PR1 hardening: render session token cancellation so loops stop on modal close.
  */
@@ -100,6 +107,12 @@ export function showPreviewModal() {
 
     const overlay = get<HTMLDivElement>("modalOverlay");
     const modal = get<HTMLDivElement>("modal");
+
+    // Snapshot modal skeleton once (before we overwrite it with preview UI)
+    if (modalSkeletonHtml == null) {
+        modalSkeletonHtml = modal.innerHTML;
+        modalSkeletonClassName = modal.className;
+    }
 
     if (!state.preview.interactiveDiff) {
         const ops = myersDiff(tokenize(state.preview.original), tokenize(state.preview.converted));
@@ -181,7 +194,12 @@ export function showPreviewModal() {
                 const ops = myersDiff(tokenize(state.preview.original), tokenize(state.preview.converted));
                 state.preview.interactiveDiff = new InteractiveDiff(ops);
 
-                state.preview.titleText = `Prvih ${state.preview.shownCount} paragrafa (${state.preview.typeText})`;
+                // i18n-safe title update
+                state.preview.titleText = t(
+                    "preview_title_doc",
+                    state.preview.shownCount,
+                    state.preview.typeText
+                );
                 const titleEl = document.querySelector('[data-testid="previewTitleText"]');
                 if (titleEl) titleEl.textContent = state.preview.titleText;
 
@@ -252,6 +270,13 @@ function closePreview() {
 
     // Reset diff instance so it doesn't carry over stale rejections
     state.preview.interactiveDiff = null;
+
+    // Restore confirm/info modal skeleton so future confirmInPanel/showModalInfo don't crash
+    const modal = document.getElementById("modal");
+    if (modal && modalSkeletonHtml != null) {
+        modal.innerHTML = modalSkeletonHtml;
+        modal.className = modalSkeletonClassName ?? "modal";
+    }
 }
 
 export function showPreviewToast(msg: string, type: "success" | "error" | "info" = "info", duration = 2000) {

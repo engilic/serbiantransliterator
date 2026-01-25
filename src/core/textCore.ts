@@ -26,6 +26,16 @@ type WasmModule = typeof import("../wasm-core/pkg") & {
 let wasmModule: WasmModule | null = null;
 const isDictLoaded = { e2i: false, i2e: false };
 
+// PERF: cache last replacer json to avoid re-initializing Aho-Corasick on every call
+let lastReplacerJson: string | null = null;
+
+function stableStringifySubstitutions(map: Record<string, string>): string {
+    const keys = Object.keys(map || {}).sort((a, b) => a.localeCompare(b));
+    const out: Record<string, string> = {};
+    for (const k of keys) out[k] = map[k] ?? "";
+    return JSON.stringify(out);
+}
+
 async function loadBinaryDict(filename: string, mode: "e2i" | "i2e") {
     if (!wasmModule) return;
     try {
@@ -44,10 +54,17 @@ export async function initWasm() {
     try {
         const module = await import("../wasm-core/pkg");
         wasmModule = module as unknown as WasmModule;
+
+        // reset replacer cache when module changes (defensive)
+        lastReplacerJson = null;
+
         const p1 = loadBinaryDict("assets/dict_e2i.bin", "e2i");
         const p2 = loadBinaryDict("assets/dict_i2e.bin", "i2e");
         await Promise.all([p1, p2]);
+
+        // init with empty substitutions
         wasmModule.init_replacer("{}");
+        lastReplacerJson = "{}";
     } catch (e) {
         console.warn("WASM load failed", e);
     }
@@ -154,6 +171,7 @@ export function convertPlainText(
         toCyr = false;
         label = "Ćir → Lat";
     }
+
     const userProtectedPhrases = userProtected.filter((x) => /\s/.test(x));
     const protectedRanges = collectProtectedRanges(text, {
         protectBrands,
@@ -165,10 +183,15 @@ export function convertPlainText(
     const parts = splitByRanges(text, protectedRanges);
     const outParts: string[] = [];
 
-    if (wasmModule && options?.customSubstitutions) {
-        wasmModule.init_replacer(JSON.stringify(options.customSubstitutions));
-    } else if (wasmModule) {
-        wasmModule.init_replacer("{}");
+    // PERF: init replacer only when substitutions changed
+    if (wasmModule) {
+        const subs = options?.customSubstitutions ?? {};
+        const json = stableStringifySubstitutions(subs);
+
+        if (json !== lastReplacerJson) {
+            wasmModule.init_replacer(json);
+            lastReplacerJson = json;
+        }
     }
 
     for (const part of parts) {
