@@ -10,7 +10,7 @@ describe("diffRenderer limits", () => {
 
         const html = renderInteractiveDiffHtml(diff, 50); // limit 50 chars
 
-        expect(html).toContain("prikaz skraćen");
-        // Uklonjena provera dužine jer HTML tagovi povećavaju string
+        // i18n string (SR): "Prikaz skraćen zbog performansi"
+        expect(html).toContain("Prikaz skraćen");
     });
 });

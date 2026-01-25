@@ -11,12 +11,12 @@ static WORD_CACHE: Lazy<Mutex<HashMap<String, String>>> = Lazy::new(|| {
 fn get_value_from_store(store: &DictionaryStore, offset: u64) -> Option<String> {
     let start = offset as usize;
     if start >= store.values.len() { return None; }
-    
+
     let mut end = start;
     while end < store.values.len() && store.values[end] != 0 {
         end += 1;
     }
-    
+
     let slice = &store.values[start..end];
     Some(String::from_utf8_lossy(slice).to_string())
 }
@@ -24,7 +24,7 @@ fn get_value_from_store(store: &DictionaryStore, offset: u64) -> Option<String> 
 fn match_case(original: &str, replacement: &str) -> String {
     let mut chars_orig = original.chars();
     let first = chars_orig.next();
-    
+
     if let Some(f) = first {
         if f.is_uppercase() {
             let mut chars_repl = replacement.chars();
@@ -82,7 +82,7 @@ fn should_protect(word: &str) -> bool {
             'č' | 'ć' | 'đ' | 'š' | 'ž' |
             'Č' | 'Ć' | 'Đ' | 'Š' | 'Ž' => {
                 if matches!(c, 'q' | 'w' | 'x' | 'y' | 'Q' | 'W' | 'X' | 'Y') {
-                    has_foreign = true; 
+                    has_foreign = true;
                 }
             },
             '\u{0400}'..='\u{04FF}' => {},
@@ -179,35 +179,35 @@ fn process_word_to_cyr(result: &mut String, word: &str) {
     let chars: Vec<char> = word.chars().collect();
     let len = chars.len();
     let mut i = 0;
-    
+
     let word_lower = word.to_lowercase();
     let is_nj_unsafe = is_nj_exception(&word_lower);
 
     while i < len {
         let c = chars[i];
-        
+
         if i + 1 < len {
             let next = chars[i + 1];
             let pair = format!("{}{}", c, next);
             match pair.as_str() {
                 "Lj" | "LJ" => { result.push('Љ'); i += 2; continue; },
                 "lj" => { result.push('љ'); i += 2; continue; },
-                
-                "Nj" | "NJ" => { 
-                    if is_nj_unsafe { 
-                        // Fallthrough
-                    } else {
-                        result.push('Њ'); i += 2; continue; 
-                    }
-                },
-                "nj" => { 
+
+                "Nj" | "NJ" => {
                     if is_nj_unsafe {
                         // Fallthrough
                     } else {
-                        result.push('њ'); i += 2; continue; 
+                        result.push('Њ'); i += 2; continue;
                     }
                 },
-                
+                "nj" => {
+                    if is_nj_unsafe {
+                        // Fallthrough
+                    } else {
+                        result.push('њ'); i += 2; continue;
+                    }
+                },
+
                 "Dž" | "DŽ" => { result.push('Џ'); i += 2; continue; },
                 "dž" => { result.push('џ'); i += 2; continue; },
                 _ => {}
@@ -291,7 +291,10 @@ pub fn to_latin_internal(text: &str) -> String {
             'Ф' => result.push('F'), 'ф' => result.push('f'),
             'Х' => result.push('H'), 'х' => result.push('h'),
             'Ц' => result.push('C'), 'ц' => result.push('c'),
-            'Č' => result.push('Č'), 'č' => result.push('č'),
+
+            // FIX: ćirilično Ч/ч (ranije pogrešno bilo 'Č'/'č')
+            'Ч' => result.push('Č'), 'ч' => result.push('č'),
+
             'Џ' => result.push_str("Dž"), 'џ' => result.push_str("dž"),
             'Ш' => result.push('Š'), 'ш' => result.push('š'),
             _ => result.push(c),

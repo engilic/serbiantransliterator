@@ -53,6 +53,9 @@
         />
     </div>
 
+    <!-- A11y label (bez hardcoded stringova) -->
+    <label for="tagInput" class="visually-hidden" data-i18n="tags_input_placeholder"></label>
+
     <div style="display: flex; gap: 8px; margin-bottom: 8px">
         <input
             type="text"
@@ -60,9 +63,14 @@
             class="sub-input"
             autocomplete="off"
             data-i18n-attr="placeholder:tags_input_placeholder"
-            aria-label="New protected word"
         />
-        <button id="addTagBtn" class="mini-btn success" type="button" disabled aria-label="Add word">
+        <button
+            id="addTagBtn"
+            class="mini-btn success"
+            type="button"
+            disabled
+            data-i18n-attr="title:btn_add_word_title,aria-label:btn_add_word_title"
+        >
             +
         </button>
     </div>

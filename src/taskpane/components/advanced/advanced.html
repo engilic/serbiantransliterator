@@ -15,6 +15,7 @@
         <div class="field-row">
             <div id="lblCurly" class="field-label">
                 <span data-i18n="opt_curly_label_before"></span><code>{...}</code>
+                <span data-i18n="opt_curly_label_after"></span>
             </div>
             <select id="optCurlyProtection" aria-labelledby="lblCurly">
                 <option value="placeholders" data-i18n="opt_curly_placeholders"></option>
@@ -23,20 +24,20 @@
             </select>
         </div>
 
-        <label
-            ><input type="checkbox" id="optProtectRomans" checked /><span
+        <label>
+            <input type="checkbox" id="optProtectRomans" checked /><span
                 data-i18n="opt_protect_romans"
-            ></span
-        ></label>
-        <label
-            ><input type="checkbox" id="optSetProofingLanguage" checked /><span
+            ></span>
+        </label>
+        <label>
+            <input type="checkbox" id="optSetProofingLanguage" checked /><span
                 data-i18n="opt_set_proofing_language"
-            ></span
-        ></label>
+            ></span>
+        </label>
 
         <div class="field-row" style="margin-top: 15px">
             <label for="optDialect" class="field-label" data-i18n="opt_dialect_label"></label>
-            <select id="optDialect">
+            <select id="optDialect" aria-labelledby="optDialect">
                 <option value="none" data-i18n="opt_dialect_none"></option>
                 <option value="ekavica_to_ijekavica" data-i18n="opt_dialect_ei"></option>
                 <option value="ijekavica_to_ekavica" data-i18n="opt_dialect_ie"></option>
@@ -45,14 +46,23 @@
 
         <div class="field-row" style="margin-top: 15px">
             <div id="lblSubs" class="field-label" data-i18n="opt_custom_subs_label"></div>
-            <!-- FIX: Dodati aria-label atributi direktno u HTML kao fallback -->
+
+            <!-- A11y: labels (bez hardcoded stringova) -->
+            <label id="subSrcLabel" for="subSrc" class="visually-hidden" data-i18n="subs_input_src"></label>
+            <label
+                id="subDestLabel"
+                for="subDest"
+                class="visually-hidden"
+                data-i18n="subs_input_dest"
+            ></label>
+
             <div class="subs-add-row" role="group" aria-labelledby="lblSubs">
                 <input
                     type="text"
                     id="subSrc"
                     class="sub-input"
-                    aria-label="Izvor"
-                    data-i18n-attr="placeholder:subs_input_src_short,aria-label:subs_input_src_short"
+                    aria-labelledby="subSrcLabel"
+                    data-i18n-attr="placeholder:subs_input_src_short"
                 />
 
                 <span class="arrow" aria-hidden="true">→</span>
@@ -61,17 +71,20 @@
                     type="text"
                     id="subDest"
                     class="sub-input"
-                    aria-label="Cilj"
-                    data-i18n-attr="placeholder:subs_input_dest_short,aria-label:subs_input_dest_short"
+                    aria-labelledby="subDestLabel"
+                    data-i18n-attr="placeholder:subs_input_dest_short"
                 />
 
-                <button id="addSubBtn" class="mini-btn success" type="button" aria-label="Dodaj zamenu">
+                <!-- i18n-guard safe: nema aria-label stringa u HTML-u -->
+                <button id="addSubBtn" class="mini-btn success" type="button" aria-labelledby="lblSubs">
                     +
                 </button>
             </div>
+
             <div id="subsContainer" class="subs-container">
                 <div class="subs-empty hint" data-i18n="subs_list_empty"></div>
             </div>
+
             <textarea id="optCustomSubstitutions" style="display: none"></textarea>
         </div>
     </div>
