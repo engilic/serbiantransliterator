@@ -36,7 +36,6 @@
     </head>
     <body>
         <!-- [MAX UX] Instant Web Mode UI -->
-        <!-- FIX: Empty text to satisfy i18n check. Icon conveys meaning instantly. -->
         <div
             id="webModePreloader"
             style="
@@ -51,7 +50,6 @@
             "
         >
             <div style="font-size: 48px; margin-bottom: 20px">📂</div>
-            <!-- Prazni div-ovi sa data-i18n će biti popunjeni čim JS stigne -->
             <div
                 style="font-size: 18px; font-weight: 600; color: var(--colorBrandForeground1)"
                 data-i18n="app_title"
@@ -106,9 +104,10 @@
 
         <div id="msg" role="status" aria-live="polite"></div>
 
-        <div id="dragOverlay">
+        <!-- [A11Y FIX] role="presentation" ensures screen readers ignore this visual overlay -->
+        <div id="dragOverlay" aria-hidden="true" role="presentation">
             <div class="drag-content">
-                <span class="drag-icon-lg">📂</span>
+                <span class="drag-icon-lg" aria-hidden="true">📂</span>
                 <div class="drag-title" data-i18n="web_drop_overlay_title"></div>
             </div>
         </div>
