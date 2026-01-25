@@ -29,11 +29,6 @@ module.exports = {
                 test: /\.css$/i,
                 use: [MiniCssExtractPlugin.loader, "css-loader"],
             },
-            // UKLONJEN html-loader za .html fajlove
-            // HtmlWebpackPlugin će sam procesirati template koristeći lodash (EJS)
-            // Ako nam treba html-loader za import html-a u JS, možemo ga vratiti ali moramo exclude-ovati template fajlove.
-            // Za sada ga sklanjamo da bismo osigurali da template radi.
-
             {
                 test: /\.(png|jpg|gif|ico)$/,
                 type: "asset/resource",
@@ -73,9 +68,16 @@ module.exports = {
         }),
         new CopyWebpackPlugin({
             patterns: [
-                { from: "assets/*", to: "assets/[name][ext]" },
+                // [FIX] Ignore JSON dictionaries in assets (we use .bin)
+                {
+                    from: "src/static/assets",
+                    to: "assets",
+                    globOptions: {
+                        ignore: ["**/*.json"],
+                    },
+                    noErrorOnMissing: true,
+                },
                 { from: "manifest*.xml", to: "[name][ext]" },
-                { from: "src/static/assets", to: "assets", noErrorOnMissing: true },
                 { from: "src/static/index.html", to: "index.html", noErrorOnMissing: true },
                 { from: "src/static/support.html", to: "support.html", noErrorOnMissing: true },
                 { from: "src/static/privacy.html", to: "privacy.html", noErrorOnMissing: true },
