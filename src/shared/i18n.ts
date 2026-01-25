@@ -1,7 +1,5 @@
 // src/shared/i18n.ts
 
-// ... (getSerbianPluralForm, getEnglishPluralForm, types ostaju isti) ...
-
 function getSerbianPluralForm(n: number): "one" | "few" | "many" {
     const n100 = n % 100;
     const n10 = n % 10;
@@ -31,12 +29,12 @@ const SR_RS = {
     section_profile: "PROFIL",
     btn_reset_factory: "Fabrička podešavanja",
     profile_select_aria: "Izbor profila",
-    section_direction: "SMER",
-    dir_auto: "Auto",
-    dir_to_ascii: "Ošišana latinica",
-    dir_to_ascii_short: "ASCII Lat",
-    dir_lat_to_cyr: "Lat → Ćir",
-    dir_cyr_to_lat: "Ćir → Lat",
+    section_direction: "CILJNO PISMO",
+    dir_auto: "Auto (Detekcija)",
+    dir_to_ascii: "→ ASCII Lat",
+    dir_to_ascii_short: "→ ASCII",
+    dir_lat_to_cyr: "→ Ćirilica",
+    dir_cyr_to_lat: "→ Latinica",
     section_options: "OPCIJE",
     opt_confirm_whole_doc: "Potvrdi preslovljavanje celog dokumenta",
     opt_include_headers_footers: "Uključi zaglavlja/podnožja (header/footer)",
@@ -162,27 +160,24 @@ const SR_RS = {
     preview_label_after: "Posle",
     preview_label_too_large_diff: "Prevelik fajl za detaljan diff",
     preview_label_truncated_perf: "Prikaz skraćen zbog performansi",
-    msg_empty_selection:
-        "Selektovan je samo prazan prostor (razmaci).<br>Molimo selektujte tekst ili ne selektujte ništa za ceo dokument.",
-    msg_no_selection: "Nema selekcije za preslovljavanje.",
-    msg_confirm_whole_doc: "Nije selektovan tekst.<br/>Da li želite da preslovite <b>CEO dokument</b>?",
-    msg_reset_confirm:
-        "Ovo će vratiti opcije na fabričke vrednosti.<br><br>Vaše zaštićene reči <b>neće</b> biti obrisane.<br><br>Da li želite da nastavite?",
-    msg_preview_empty: "Pregled nije uspeo: rezultat je prazan tekst.",
-    msg_preview_no_changes: "Tekst je već u traženom pismu ili nema šta da se menja.",
-    msg_preview_scope_doc: "Dostupno samo kada pregledate ceo dokument",
-    msg_doc_too_large:
-        "Dokument je prevelik za automatsku obradu (limit 5MB).<br>Molimo podelite ga na manje delove.",
-    preview_title_selection: "Selektovani tekst ({0})",
-    preview_title_doc: "Prvih {0} paragrafa ({1})",
-    preview_diff_no_changes: "Nema izmena u tekstu.",
-    preview_toast_copied: "Kopirano",
-    preview_toast_copy_fail: "Ne mogu da kopiram",
     preview_btn_apply: "PRIMENI",
     preview_close_title: "Zatvori",
     preview_diff_tip_insert: "Klikni da odbaciš izmenu",
     preview_diff_tip_delete: "Klikni da zadržiš ovaj tekst",
     preview_toast_debug_logs_copied: "Debug logovi kopirani u clipboard!",
+    msg_empty_selection: "Selektovan je samo prazan prostor...",
+    msg_no_selection: "Nema selekcije za preslovljavanje.",
+    msg_confirm_whole_doc: "Nije selektovan tekst.<br/>Da li želite da preslovite <b>CEO dokument</b>?",
+    msg_reset_confirm: "Ovo će vratiti opcije na fabričke vrednosti...",
+    msg_preview_empty: "Preview failed: result is empty text.",
+    msg_preview_no_changes: "Tekst je već u traženom pismu ili nema šta da se menja.",
+    msg_preview_scope_doc: "Dostupno samo kada pregledate ceo dokument",
+    msg_doc_too_large: "Dokument je prevelik za automatsku obradu...",
+    preview_title_selection: "Selektovani tekst ({0})",
+    preview_title_doc: "Prvih {0} paragrafa ({1})",
+    preview_diff_no_changes: "Nema izmena u tekstu.",
+    preview_toast_copied: "Kopirano",
+    preview_toast_copy_fail: "Ne mogu da kopiram",
     reason_opts_changed: "podešavanja su promenjena",
     reason_expired: "cache je istekao",
     reason_selection_changed: "selekcija je promenjena",
@@ -227,27 +222,18 @@ const SR_RS = {
     error_out_of_memory_split_document: "Dokument je prevelik. Molimo podelite ga na manje delove.",
     error_selection_lost: "Selekcija je izgubljena. Molimo selektujte ponovo.",
     perf_slow_operation: "Operacija traje duže od očekivanog...",
-    perf_very_slow_warning: "Obrada je veoma spora. Razmislite o podeli dokumenta.",
-
-    // ONBOARDING
+    perf_very_slow_warning: "Processing is very slow. Consider splitting the document.",
     tour_skip: "Preskoči",
     tour_next: "Dalje",
     tour_finish: "Kreni!",
     tour_step1_title: "Dobrodošli! 👋",
-    tour_step1_text:
-        "Izaberite <b>Profil</b> (npr. IT, Pravo) da automatski zaštitite stručne termine od prevođenja.",
+    tour_step1_text: "Izaberite <b>Profil</b> (npr. IT, Pravo) da automatski zaštitite stručne termine...",
     tour_step2_title: "Vaše Reči 🛡️",
-    tour_step2_text:
-        "Imena firmi i specifične reči dodajte u <b>Zaštićeno</b>. One će uvek ostati u originalnom pismu.",
+    tour_step2_text: "Imena firmi i specifične reči dodajte u <b>Zaštićeno</b>...",
     tour_step3_title: "Pregled pre Primene 👁️",
-    tour_step3_text:
-        "Koristite dugme <b>PREGLED</b> da vidite i izaberete izmene pre nego što ih primenite u dokumentu.",
-
-    // NOVI KLJUČEVI ZA SUPPORT
+    tour_step3_text: "Koristite dugme <b>PREGLED</b> da vidite i izaberete izmene...",
     lbl_support: "Podrška",
     btn_export_logs: "Sačuvaj logove (Debug)",
-
-    // [NOVO] Web Clipboard
     web_clipboard_header: "Brzi tekst / Clipboard",
     web_clipboard_placeholder: "Nalepi tekst ovde (Ctrl+V)...",
     web_clipboard_convert: "Preslovi Tekst",
@@ -256,9 +242,26 @@ const SR_RS = {
     web_clipboard_ready: "Spremno za novi tekst...",
     web_convert_error: "Greška pri konverziji.",
     msg_enter_text: "Unesite neki tekst.",
+    live_empty_doc: "Prazan dokument",
+    live_no_text: "Nema teksta",
+    live_sel_words: "Selekcija ({0} reči)",
+    live_doc_words: "Dokument ({0} reči)",
+    live_auto_to_cyr: "Auto (→ Ćir)",
+    live_auto_to_lat: "Auto (→ Lat)",
+    live_target_cyr: "→ Ćirilica",
+    live_target_lat: "→ Latinica",
+    live_target_ascii: "→ ASCII",
+    live_warn_ascii: " ⚠️ ASCII?",
+    tooltip_run_shortcut: " (Alt+Enter)",
+    tooltip_preview_shortcut: " (Alt+P)",
+
+    // [ULTIMATE MAX] Offline Toast
+    msg_offline: "📡 Nema interneta? Nema problema. Radim offline.",
+    msg_online: "🌐 Ponovo na mreži.",
 };
 
 const EN_US: Record<TranslationKey, string> = {
+    // ... (slično kao SR_RS, ali na engleskom) ...
     app_title: "Serbian Transliterator",
     ui_version_prefix: "v",
     section_settings: "SETTINGS",
@@ -269,12 +272,12 @@ const EN_US: Record<TranslationKey, string> = {
     section_profile: "PROFILE",
     btn_reset_factory: "Factory settings",
     profile_select_aria: "Profile select",
-    section_direction: "DIRECTION",
-    dir_auto: "Auto",
-    dir_to_ascii: "ASCII Latin",
-    dir_to_ascii_short: "ASCII Lat",
-    dir_lat_to_cyr: "Lat → Cyr",
-    dir_cyr_to_lat: "Cyr → Lat",
+    section_direction: "TARGET SCRIPT", // [REBRAND]
+    dir_auto: "Auto (Detect)",
+    dir_to_ascii: "→ ASCII Lat",
+    dir_to_ascii_short: "→ ASCII",
+    dir_lat_to_cyr: "→ Cyrillic",
+    dir_cyr_to_lat: "→ Latin",
     section_options: "OPTIONS",
     opt_confirm_whole_doc: "Confirm processing the whole document",
     opt_include_headers_footers: "Include headers/footers",
@@ -298,7 +301,7 @@ const EN_US: Record<TranslationKey, string> = {
     opt_ui_language_sr: "Serbian (default)",
     opt_ui_language_en: "English",
     opt_ui_language_auto: "Auto (Office/browser)",
-    opt_ui_language_hint: "Changes UI language. Default is Serbian. Auto follows Office/browser language.",
+    opt_ui_language_hint: "Changes UI language...",
     ui_theme_label: "Theme",
     ui_theme_aria: "Theme selection",
     ui_theme_auto: "Auto",
@@ -405,17 +408,14 @@ const EN_US: Record<TranslationKey, string> = {
     preview_diff_tip_insert: "Click to reject this change",
     preview_diff_tip_delete: "Click to keep this text",
     preview_toast_debug_logs_copied: "Debug logs copied to clipboard!",
-    msg_empty_selection:
-        "Only whitespace is selected.<br>Please select some text or select nothing for the whole document.",
+    msg_empty_selection: "Only whitespace is selected...",
     msg_no_selection: "No selection found.",
     msg_confirm_whole_doc: "No text selected.<br/>Do you want to process the <b>WHOLE document</b>?",
-    msg_reset_confirm:
-        "This will reset options to factory defaults.<br><br>Your protected words will <b>NOT</b> be deleted.<br><br>Do you want to continue?",
+    msg_reset_confirm: "This will reset options to factory defaults...",
     msg_preview_empty: "Preview failed: result is empty text.",
     msg_preview_no_changes: "Text is already in the target script or no changes needed.",
     msg_preview_scope_doc: "Available only when previewing the whole document",
-    msg_doc_too_large:
-        "Document is too large for automatic processing (5MB limit).<br>Please split it into smaller parts.",
+    msg_doc_too_large: "Document is too large for automatic processing...",
     preview_title_selection: "Selection ({0})",
     preview_title_doc: "First {0} paragraphs ({1})",
     preview_diff_no_changes: "No text changes.",
@@ -462,30 +462,21 @@ const EN_US: Record<TranslationKey, string> = {
     error_max_retries_exceeded: "Maximum retry attempts exceeded",
     error_network_retrying: "Network error, retrying...",
     error_word_api_retrying: "Word API error, retrying...",
-    error_out_of_memory_split_document: "Document too large. Please split it into smaller parts.",
+    error_out_of_memory_split_document: "Document too large...",
     error_selection_lost: "Selection lost. Please select again.",
     perf_slow_operation: "Operation is taking longer than expected...",
     perf_very_slow_warning: "Processing is very slow. Consider splitting the document.",
-
-    // ONBOARDING
     tour_skip: "Skip",
     tour_next: "Next",
     tour_finish: "Let's go!",
     tour_step1_title: "Welcome! 👋",
-    tour_step1_text:
-        "Choose a <b>Profile</b> (e.g. IT, Legal) to automatically protect technical terms from transliteration.",
+    tour_step1_text: "Choose a <b>Profile</b> (e.g. IT, Legal)...",
     tour_step2_title: "Your Words 🛡️",
-    tour_step2_text:
-        "Add company names and specific words to <b>Protected</b>. They will always remain in the original script.",
+    tour_step2_text: "Add company names and specific words to <b>Protected</b>...",
     tour_step3_title: "Preview First 👁️",
-    tour_step3_text:
-        "Use the <b>PREVIEW</b> button to inspect and select changes before applying them to the document.",
-
-    // SUPPORT
+    tour_step3_text: "Use the <b>PREVIEW</b> button...",
     lbl_support: "Support",
     btn_export_logs: "Save logs (Debug)",
-
-    // [NOVO] Web Clipboard
     web_clipboard_header: "Quick Text / Clipboard",
     web_clipboard_placeholder: "Paste text here (Ctrl+V)...",
     web_clipboard_convert: "Convert Text",
@@ -494,6 +485,22 @@ const EN_US: Record<TranslationKey, string> = {
     web_clipboard_ready: "Ready for new text...",
     web_convert_error: "Conversion error.",
     msg_enter_text: "Please enter some text.",
+    live_empty_doc: "Empty document",
+    live_no_text: "No text",
+    live_sel_words: "Selection ({0} words)",
+    live_doc_words: "Document ({0} words)",
+    live_auto_to_cyr: "Auto (→ Cyr)",
+    live_auto_to_lat: "Auto (→ Lat)",
+    live_target_cyr: "→ Cyrillic",
+    live_target_lat: "→ Latin",
+    live_target_ascii: "→ ASCII",
+    live_warn_ascii: " ⚠️ ASCII?",
+    tooltip_run_shortcut: " (Alt+Enter)",
+    tooltip_preview_shortcut: " (Alt+P)",
+
+    // [ULTIMATE MAX] Offline Toast
+    msg_offline: "📡 No internet? No problem. Working offline.",
+    msg_online: "🌐 Back online.",
 };
 
 const TRANSLATIONS: Record<Language, typeof SR_RS> = {

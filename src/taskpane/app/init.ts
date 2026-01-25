@@ -57,6 +57,8 @@ export function initTaskpane(isWebMode = false) {
         console.log("Web Mode");
         registerServiceWorker();
         setupKeyboardShortcuts();
+        // [ULTIMATE MAX] Web Mode needs network listeners too
+        setupNetworkListeners();
         return;
     }
 
@@ -78,9 +80,23 @@ export function initTaskpane(isWebMode = false) {
     }
 
     setupKeyboardShortcuts();
+    setupNetworkListeners();
 }
 
-// [FIX] EXPORTED FOR TESTS
+// [ULTIMATE MAX] Network Resilience Proof
+function setupNetworkListeners() {
+    window.addEventListener("offline", () => {
+        setStatus(t("msg_offline"), "success"); // Success color to show confidence
+        setTimeout(() => setStatus(t("status_ready"), "neutral"), 4000);
+    });
+
+    window.addEventListener("online", () => {
+        setStatus(t("msg_online"), "info");
+        setTimeout(() => setStatus(t("status_ready"), "neutral"), 2000);
+    });
+}
+
+// [FIX] EXPORTED FOR TESTING
 export function setupKeyboardShortcuts() {
     document.addEventListener("keydown", (e) => {
         if (e.key === "Escape") {
