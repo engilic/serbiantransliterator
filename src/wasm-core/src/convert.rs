@@ -1,14 +1,19 @@
 use crate::dictionary::{DictionaryStore, DICTIONARIES};
+use std::sync::Mutex;
+use once_cell::sync::Lazy;
+use rustc_hash::FxHashMap; // <--- ULTRA FAST HASH
+
+// [MAXMAXMAX] FxHashMap: 3x brži hashing od standardnog.
+// Cache: 10.000 reči.
+static WORD_CACHE: Lazy<Mutex<FxHashMap<String, String>>> = Lazy::new(|| {
+    Mutex::new(FxHashMap::with_capacity_and_hasher(10000, Default::default()))
+});
 
 fn get_value_from_store(store: &DictionaryStore, offset: u64) -> Option<String> {
     let start = offset as usize;
     if start >= store.values.len() { return None; }
-    
     let mut end = start;
-    while end < store.values.len() && store.values[end] != 0 {
-        end += 1;
-    }
-    
+    while end < store.values.len() && store.values[end] != 0 { end += 1; }
     let slice = &store.values[start..end];
     Some(String::from_utf8_lossy(slice).to_string())
 }
@@ -16,7 +21,6 @@ fn get_value_from_store(store: &DictionaryStore, offset: u64) -> Option<String> 
 fn match_case(original: &str, replacement: &str) -> String {
     let mut chars_orig = original.chars();
     let first = chars_orig.next();
-    
     if let Some(f) = first {
         if f.is_uppercase() {
             let mut chars_repl = replacement.chars();
@@ -32,24 +36,17 @@ fn match_case(original: &str, replacement: &str) -> String {
 
 fn try_smart_lookup(store: &DictionaryStore, word: &str) -> Option<String> {
     let word_lower = word.to_lowercase();
-
     if let Some(offset) = store.fst.get(&word_lower) {
         if let Some(res) = get_value_from_store(store, offset) {
             return Some(match_case(word, &res));
         }
     }
-
-    if word_lower.chars().count() < 4 {
-        return None;
-    }
-
+    if word_lower.chars().count() < 4 { return None; }
     for suffix in &store.suffixes {
         if word_lower.ends_with(suffix) {
             let root_len = word_lower.len() - suffix.len();
             let root = &word_lower[..root_len];
-
             if root.chars().count() < 3 { continue; }
-
             if let Some(offset) = store.fst.get(root) {
                 if let Some(root_translation) = get_value_from_store(store, offset) {
                     let mut result = root_translation;
@@ -59,7 +56,6 @@ fn try_smart_lookup(store: &DictionaryStore, word: &str) -> Option<String> {
             }
         }
     }
-
     None
 }
 
@@ -67,15 +63,10 @@ fn should_protect(word: &str) -> bool {
     let mut has_foreign = false;
     let mut has_underscore = false;
     let mut has_digit = false;
-
     for c in word.chars() {
         match c {
-            'a'..='z' | 'A'..='Z' |
-            'č' | 'ć' | 'đ' | 'š' | 'ž' |
-            'Č' | 'Ć' | 'Đ' | 'Š' | 'Ž' => {
-                if matches!(c, 'q' | 'w' | 'x' | 'y' | 'Q' | 'W' | 'X' | 'Y') {
-                    has_foreign = true; 
-                }
+            'a'..='z' | 'A'..='Z' | 'č' | 'ć' | 'đ' | 'š' | 'ž' | 'Č' | 'Ć' | 'Đ' | 'Š' | 'Ž' => {
+                if matches!(c, 'q' | 'w' | 'x' | 'y' | 'Q' | 'W' | 'X' | 'Y') { has_foreign = true; }
             },
             '\u{0400}'..='\u{04FF}' => {},
             '0'..='9' => { has_digit = true; },
@@ -84,7 +75,6 @@ fn should_protect(word: &str) -> bool {
             _ => { has_foreign = true; }
         }
     }
-
     if has_foreign || has_underscore || has_digit { return true; }
     false
 }
@@ -106,13 +96,26 @@ pub fn convert_dialect_internal(text: &str, mode: &str) -> String {
         }
 
         let start = i;
-        while i < len && chars[i].is_alphabetic() {
-            i += 1;
-        }
+        while i < len && chars[i].is_alphabetic() { i += 1; }
         let word: String = chars[start..i].iter().collect();
+
+        // --- CACHE LOGIC START ---
+        let cached = {
+            let cache = WORD_CACHE.lock().unwrap();
+            cache.get(&word).cloned()
+        };
+
+        if let Some(c) = cached {
+            result.push_str(&c);
+            continue;
+        }
+        // --- CACHE LOGIC END ---
 
         if should_protect(&word) {
             result.push_str(&word);
+            let mut cache = WORD_CACHE.lock().unwrap();
+            if cache.len() > 10000 { cache.clear(); }
+            cache.insert(word.clone(), word.clone());
             continue;
         }
 
@@ -122,13 +125,43 @@ pub fn convert_dialect_internal(text: &str, mode: &str) -> String {
             None
         };
 
-        if let Some(repl) = replacement {
-            result.push_str(&repl);
+        let final_word = if let Some(repl) = replacement {
+            repl
         } else {
-            result.push_str(&word);
+            word.clone()
+        };
+
+        result.push_str(&final_word);
+
+        // Save to cache
+        {
+            let mut cache = WORD_CACHE.lock().unwrap();
+            if cache.len() > 10000 { cache.clear(); }
+            cache.insert(word, final_word);
         }
     }
     result
+}
+
+// [GALAXY BRAIN] Heuristika za Digrafe
+fn should_split_nj(word_lower: &str) -> bool {
+    if word_lower.contains("njek") || word_lower.contains("njekt") {
+        return true;
+    }
+    if word_lower.contains("njunk") {
+        return true;
+    }
+    if word_lower.contains("tanjug") {
+        return true;
+    }
+    false
+}
+
+fn should_split_dz(word_lower: &str) -> bool {
+    if word_lower.starts_with("nadž") || word_lower.starts_with("podž") {
+        return true;
+    }
+    false
 }
 
 fn process_word_to_cyr(result: &mut String, word: &str) {
@@ -136,6 +169,10 @@ fn process_word_to_cyr(result: &mut String, word: &str) {
         result.push_str(word);
         return;
     }
+
+    let word_lower = word.to_lowercase();
+    let split_nj = should_split_nj(&word_lower);
+    let split_dz = should_split_dz(&word_lower);
 
     let chars: Vec<char> = word.chars().collect();
     let len = chars.len();
@@ -150,10 +187,20 @@ fn process_word_to_cyr(result: &mut String, word: &str) {
             match pair.as_str() {
                 "Lj" | "LJ" => { result.push('Љ'); i += 2; continue; },
                 "lj" => { result.push('љ'); i += 2; continue; },
-                "Nj" | "NJ" => { result.push('Њ'); i += 2; continue; },
-                "nj" => { result.push('њ'); i += 2; continue; },
-                "Dž" | "DŽ" => { result.push('Џ'); i += 2; continue; },
-                "dž" => { result.push('џ'); i += 2; continue; },
+                
+                "Nj" | "NJ" => { 
+                    if !split_nj { result.push('Њ'); i += 2; continue; }
+                },
+                "nj" => { 
+                    if !split_nj { result.push('њ'); i += 2; continue; }
+                },
+                
+                "Dž" | "DŽ" => { 
+                    if !split_dz { result.push('Џ'); i += 2; continue; }
+                },
+                "dž" => { 
+                    if !split_dz { result.push('џ'); i += 2; continue; }
+                },
                 _ => {}
             }
         }
@@ -176,7 +223,7 @@ fn process_word_to_cyr(result: &mut String, word: &str) {
 }
 
 pub fn to_cyrillic_internal(text: &str) -> String {
-    let mut result = String::with_capacity(text.len());
+    let mut result = String::with_capacity(text.len() * 2);
     let mut current_word = String::new();
     let mut in_word = false;
 

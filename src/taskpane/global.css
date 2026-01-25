@@ -490,3 +490,21 @@ main {
 [data-theme="dark"] #dragOverlay {
     background: rgba(15, 108, 189, 0.85);
 }
+
+/* [MAXMAXMAX] GPU Acceleration Hints */
+.fade-in,
+.modal-overlay,
+#dragOverlay,
+.drop-zone {
+    will-change: opacity, transform;
+    /* Forsira kreiranje novog Layer-a u browseru (Hardware Compositing) */
+    transform: translateZ(0);
+}
+
+/* [MAXMAXMAX] Smart render skipping for settings lists */
+/* Ovo govori browseru da ne renderuje sadržaj sekcije dok nije u viewportu */
+/* Smanjuje Layout/Paint time pri inicijalnom učitavanju */
+.section {
+    content-visibility: auto;
+    contain-intrinsic-size: 1px 300px; /* Procena visine da scrollbar ne skače */
+}

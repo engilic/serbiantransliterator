@@ -3,8 +3,15 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 // Full mock of textCore to avoid loading WASM or original module logic
 vi.mock("../src/core/textCore", () => ({
     initWasm: vi.fn(async () => {}),
-    // Mock other exports if needed by the dependency graph, but initWasm is the main side-effect trigger
     convertPlainText: vi.fn(),
+}));
+
+// [FIX] Mock worker client da izbegnemo "Worker is not defined" u JSDOM
+// i da init() bude brz i predvidiv
+vi.mock("../src/taskpane/worker/client", () => ({
+    workerClient: {
+        init: vi.fn().mockResolvedValue(undefined),
+    },
 }));
 
 function setupDomForTaskpane() {
@@ -65,6 +72,8 @@ function setupDomForTaskpane() {
     <div id="statsTitle"></div>
     <pre id="statsText"></pre>
     <div id="modalOverlay"><div id="modal"><h3 id="modalTitle"></h3><div id="modalText"></div><textarea id="modalInput"></textarea><div class="modal-actions"><button id="modalCancel"></button><button id="modalOk"></button></div></div></div>
+    <!-- Dodajemo i element za verziju -->
+    <span id="appVersionDisplay"></span>
   `;
 }
 
@@ -88,6 +97,9 @@ function setupOfficeStub() {
             },
         },
         onReady: (cb: (info: any) => void) => {
+            // [FIX] Simuliraj asinhrone prirode Office-a
+            // Ovo osigurava da se callback pozove, ali stvarna logika unutar
+            // callback-a u taskpane.ts je async, pa se svakako čeka.
             cb({ host: "Word" });
         },
     };
@@ -104,15 +116,25 @@ afterEach(() => {
     delete (globalThis as any).Office;
     delete (globalThis as any).Word;
     document.body.innerHTML = "";
+    vi.restoreAllMocks();
 });
 
 describe("taskpane entrypoint smoke", () => {
     it("imports src/taskpane/taskpane.ts without throwing (Office stub + minimal DOM)", async () => {
         vi.resetModules();
-        // Increase timeout for this specific test if CI is slow
-        await expect(import("../src/taskpane/taskpane")).resolves.toBeTruthy();
 
-        // Basic verification that UI bound correctly
-        expect(document.getElementById("runBtn")?.onclick).toBeTruthy();
-    }, 10000); // 10s timeout
+        // Import pokreće Office.onReady(...)
+        await import("../src/taskpane/taskpane");
+
+        // [FIX] Office.onReady callback je `async`, što znači da se izvršava u mikrotaskovima.
+        // Moramo sačekati da se event loop okrene i UI inicijalizuje.
+        await vi.waitFor(
+            () => {
+                const runBtn = document.getElementById("runBtn");
+                // Proveravamo da li je onclick postavljen (znak da je initUi prošao)
+                expect(runBtn?.onclick).toBeTruthy();
+            },
+            { timeout: 2000, interval: 50 }
+        );
+    }, 10000);
 });

@@ -6,11 +6,15 @@ module.exports = {
     devtool: false,
     optimization: {
         minimize: true,
+        // [MAX] Scope Hoisting: Spaja male module u jedan scope = brže izvršavanje
+        concatenateModules: true,
         minimizer: [
             new TerserPlugin({
                 terserOptions: {
                     compress: {
                         drop_console: true,
+                        // [MAX] Dva prolaza optimizacije
+                        passes: 2,
                     },
                     mangle: {
                         toplevel: true,
@@ -34,8 +38,7 @@ module.exports = {
             },
         },
     },
-    // === NUKLEARNA OPCIJA ===
     performance: {
-        hints: false, // Isključujemo warning skroz. Znamo šta radimo.
+        hints: false,
     },
 };

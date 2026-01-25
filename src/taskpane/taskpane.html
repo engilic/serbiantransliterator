@@ -7,11 +7,14 @@
         <title data-i18n="app_title">Serbian Transliterator</title>
         <link rel="manifest" href="manifest.webmanifest" />
 
-        <!-- [MAX PERF] Preload Critical Assets: Učitaj rečnike paralelno sa skriptama -->
+        <!-- [MAX PERF] Preload Critical Assets -->
         <link rel="preload" href="assets/dict_e2i.bin" as="fetch" crossorigin />
         <link rel="preload" href="assets/dict_i2e.bin" as="fetch" crossorigin />
 
-        <!-- [MAX UX] Instant Theme Apply: Sprečava beli blic pre nego što se učita CSS -->
+        <!-- [MAX NET] Preconnect to Microsoft CDN (štedi 100-300ms na DNS/SSL) -->
+        <link rel="preconnect" href="https://appsforoffice.microsoft.com" />
+
+        <!-- [MAX UX] Instant Theme Apply -->
         <script>
             (function () {
                 try {
@@ -44,7 +47,6 @@
         fs.readFileSync(resolve('components/header/header.html')) %>
 
         <main id="appMain" role="main" style="display: none">
-            <!-- Web Mode UI (Clipboard/DropZone) se ubacuje ovde dinamički kroz ui.ts -->
             <%= fs.readFileSync(resolve('components/settings/profile.html')) %> <%=
             fs.readFileSync(resolve('components/settings/direction.html')) %> <%=
             fs.readFileSync(resolve('components/settings/options.html')) %> <%=
@@ -69,7 +71,6 @@
 
         <div id="msg" role="status" aria-live="polite"></div>
 
-        <!-- [VISION 2027] Drag Overlay -->
         <div id="dragOverlay">
             <div class="drag-content">
                 <span class="drag-icon-lg">📂</span>
