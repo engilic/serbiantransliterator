@@ -1,4 +1,2 @@
-# Umesto [build], koristimo [target...] da bismo ograničili flegove samo na WASM.
-
 [target.wasm32-unknown-unknown]
 rustflags = ["-C", "target-feature=+simd128"]

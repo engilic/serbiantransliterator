@@ -1,20 +1,15 @@
-<div
-    id="modalOverlay"
-    class="modal-overlay"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="modalTitle"
-    aria-describedby="modalText"
->
-    <div id="modal" class="modal">
-        <h2 id="modalTitle"></h2>
-        <div class="modal-content">
-            <div id="modalText"></div>
-            <textarea id="modalInput" rows="5"></textarea>
-        </div>
-        <div class="modal-actions">
-            <button id="modalCancel" class="secondary-btn" type="button"></button>
-            <button id="modalOk" class="primary-btn" type="button"></button>
-        </div>
-    </div>
-</div>
+test("should not have violations in Modal (confirm)", async ({ page }) => { await page.goto("/taskpane.html");
+await expect(page.locator("#skeleton")).toBeHidden({ timeout: 15000 }); await page.evaluate(() => { const
+overlay = document.getElementById("modalOverlay"); if (overlay) overlay.style.display = "flex"; const title =
+document.getElementById("modalTitle"); if (title) title.innerText = "Test Naslov"; const text =
+document.getElementById("modalText"); if (text) text.innerText = "Test poruka."; const btnCancel =
+document.getElementById("modalCancel"); if (btnCancel) btnCancel.innerText = "Otkaži"; const btnOk =
+document.getElementById("modalOk"); if (btnOk) btnOk.innerText = "OK"; const input =
+document.getElementById("modalInput"); if (input) input.style.display = "none"; // SAKRIJ SVE OSIM MODALA
+Array.from(document.body.children).forEach((child) => { if (child.id !== "modalOverlay" && child.tagName !==
+"SCRIPT") { child.setAttribute("aria-hidden", "true"); } }); }); await
+expect(page.locator("#modalOverlay")).toBeVisible(); await page.waitForTimeout(500); // Analiziraj SAMO
+modalOverlay const results = await new AxeBuilder({ page }) .include("#modalOverlay") .disableRules([
+"page-has-heading-one", // Modal ne mora da ima H1 "landmark-one-main", // Modal nije main landmark "region",
+// Modal ne mora biti u regionu "aria-hidden-focus" // Ignoriši fokus probleme jer ručno krijemo ])
+.analyze(); logViolations(results.violations); expect(results.violations).toEqual([]); });
