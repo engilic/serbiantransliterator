@@ -175,7 +175,7 @@ export function initWebModeUi() {
             }
         };
 
-        // [GODLIKE] Global Auto-Paste
+        // [GODLIKE] Global Auto-Paste (SECURED - CodeQL FIX)
         document.addEventListener("paste", (e) => {
             // Ako fokus nije u inputu, uhvati paste i ubaci u nas editor
             const active = document.activeElement;
@@ -186,18 +186,20 @@ export function initWebModeUi() {
 
             if (!isInput && e.clipboardData) {
                 e.preventDefault();
-                const text = e.clipboardData.getData("text/html") || e.clipboardData.getData("text/plain");
+                // SECURITY FIX: Only accept plain text to prevent XSS via innerHTML
+                const text = e.clipboardData.getData("text/plain");
+
                 if (text) {
-                    richInput.innerHTML = text; // ili textContent ako je plain
+                    // SECURITY FIX: Use innerText instead of innerHTML
+                    richInput.innerText = text;
                     richInput.classList.remove("empty");
+
                     // Auto-scroll to editor
                     richInput.scrollIntoView({ behavior: "smooth", block: "center" });
+
                     // Flash effect
                     richInput.style.backgroundColor = "var(--colorNeutralBackground2)";
                     setTimeout(() => (richInput.style.backgroundColor = ""), 300);
-                    // Odmah konvertuj? Ne, pusti korisnika da vidi.
-                    // Ili... Auto-Convert ako je prazno bilo?
-                    // Ne, bolje da korisnik klikne.
                 }
             }
         });
