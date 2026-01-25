@@ -30,6 +30,9 @@ Office.onReady(async (info) => {
             verEl.textContent = pkg.version;
         }
 
+        // [MAX3] Log Version for Debugging
+        console.log(`🚀 Serbian Transliterator v${pkg.version} starting...`);
+
         // NEW: Preload Worker in background (Startuje thread, učitava WASM i rečnike)
         // Ovo radimo odmah da bi sve bilo spremno kad korisnik klikne na dugme.
         console.log("🚀 Spawning Worker Pool...");
