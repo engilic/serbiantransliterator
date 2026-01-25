@@ -1,7 +1,6 @@
 // src/shared/locales/en.ts
 import { SR_RS } from "./sr";
 
-// Tip za ključeve da budemo sigurni da EN i SR imaju isti set
 export type TranslationKey = keyof typeof SR_RS;
 
 export const EN_US: Record<TranslationKey, string> = {
@@ -238,9 +237,9 @@ export const EN_US: Record<TranslationKey, string> = {
     live_target_lat: "→ Latin",
     live_target_ascii: "→ ASCII",
     live_warn_ascii: " ⚠️ ASCII?",
+    web_drop_overlay_title: "Drop file here",
     tooltip_run_shortcut: " (Alt+Enter)",
     tooltip_preview_shortcut: " (Alt+P)",
     msg_offline: "📡 No internet? No problem. Working offline.",
     msg_online: "🌐 Back online.",
-    web_drop_overlay_title: "Drop file here",
 };

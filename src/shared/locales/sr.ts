@@ -234,9 +234,9 @@ export const SR_RS = {
     live_target_lat: "→ Latinica",
     live_target_ascii: "→ ASCII",
     live_warn_ascii: " ⚠️ ASCII?",
+    web_drop_overlay_title: "Prevucite fajl ovde",
     tooltip_run_shortcut: " (Alt+Enter)",
     tooltip_preview_shortcut: " (Alt+P)",
     msg_offline: "📡 Nema interneta? Nema problema. Radim offline.",
     msg_online: "🌐 Ponovo na mreži.",
-    web_drop_overlay_title: "Prevucite fajl ovde",
 };
