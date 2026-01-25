@@ -20,12 +20,11 @@ fst = "0.4"
 aho-corasick = "1.1"
 
 # [FIX] Isključujemo wasm-opt jer pravi probleme sa bulk-memory instrukcijama
-# Rust LLVM optimizer (opt-level="z") je sasvim dovoljan.
 [package.metadata.wasm-pack.profile.release]
 wasm-opt = false
 
 [profile.release]
-opt-level = "z"  # Optimize for size
+opt-level = 3    # [VISION 2027] Optimize for SPEED (not size)
 lto = true       # Link Time Optimization
 codegen-units = 1
 strip = true
