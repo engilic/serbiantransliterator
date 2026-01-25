@@ -3,15 +3,23 @@
   X-Content-Type-Options: nosniff
   Referrer-Policy: no-referrer
   
-  # MAX SECURITY CSP
-  # default-src 'none': Blokiraj sve što nije eksplicitno dozvoljeno.
-  # script-src: Dozvoli samo naše skripte ('self') i Office.js (Microsoft CDN).
-  # style-src: Dozvoli naše stilove i inline stilove (jer React/JS često dodaju style="...").
-  # connect-src: Dozvoli fetch samo ka istom domenu (za .bin rečnike).
-  # img-src: Dozvoli slike sa istog domena i data: (base64 slike).
-  # frame-ancestors: Dozvoli da nas učita Office (Word).
-  
+  # MAX SECURITY CSP (Ostaje isti, ali dodajemo optimizacije)
   Content-Security-Policy: default-src 'none'; script-src 'self' https://appsforoffice.microsoft.com https://ajax.aspnetcdn.com; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; font-src 'self'; frame-ancestors https://*.office.com https://*.officeapps.live.com https://*.microsoft.com https://*.sharepoint.com https://*.sharepoint-df.com;
 
+# [MAX5] Immutable Cache za statičke resurse (Hashovani fajlovi)
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
+
+# [MAX5] WASM Specifična optimizacija (Streaming Compile)
+/*.wasm
+  Content-Type: application/wasm
+  Cache-Control: public, max-age=31536000, immutable
+
+# [MAX5] Binarni rečnici
+/*.bin
+  Content-Type: application/octet-stream
+  Cache-Control: public, max-age=31536000, immutable
+
+# HTML se ne kešira agresivno (jer se menja)
+/*.html
+  Cache-Control: public, max-age=0, must-revalidate
