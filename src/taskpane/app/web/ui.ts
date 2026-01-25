@@ -144,7 +144,11 @@ export function initWebModeUi() {
                 copyBtn.innerText = t("web_clipboard_copy");
             } catch (e) {
                 console.error(e);
-                alert(t("web_convert_error"));
+                // [FIX] Uklonjen alert(), koristimo Modal
+                showModalInfo(
+                    t("modal_title_error"),
+                    html`${t("web_convert_error")}<br /><small>${String(e)}</small>`
+                );
             }
         };
 
@@ -185,6 +189,7 @@ export function initWebModeUi() {
         }
     }
 
+    // PWA File Handling
     const win = window as WindowWithLaunchQueue;
     if (win.launchQueue) {
         win.launchQueue.setConsumer(async (launchParams: LaunchParams) => {

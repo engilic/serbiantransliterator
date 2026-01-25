@@ -86,6 +86,24 @@ body {
     flex-direction: column;
     overflow: hidden;
     scroll-behavior: smooth;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+}
+
+/* [MAX MAX MAX] Custom Focus Ring */
+:focus-visible {
+    outline: 2px solid var(--colorBrandBackground);
+    outline-offset: 2px;
+    transition: outline-offset 0.1s ease-out;
+}
+
+button,
+.drop-zone,
+.tag,
+.sub-remove {
+    touch-action: manipulation;
 }
 
 #skeleton {
@@ -160,6 +178,24 @@ main {
     display: none;
 }
 
+/* [MAX MAX MAX] Breathing Animation for Drop Zone */
+@keyframes breathe {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(15, 108, 189, 0.2);
+    }
+
+    50% {
+        transform: scale(1.02);
+        box-shadow: 0 0 20px 0 rgba(15, 108, 189, 0.4);
+    }
+
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(15, 108, 189, 0.2);
+    }
+}
+
 .drop-zone {
     border: 2px dashed var(--colorNeutralStroke1);
     border-radius: var(--radius8);
@@ -175,6 +211,7 @@ main {
 .drop-zone:focus-visible {
     border-color: var(--colorBrandBackground);
     background: var(--colorStatusSuccessBackground);
+    animation: breathe 1.5s infinite ease-in-out;
     outline: none;
 }
 
@@ -198,7 +235,6 @@ main {
     transition: width 0.3s;
 }
 
-/* [MAX UX] Premium Easing Curve (Apple-style) */
 @keyframes fadeIn {
     from {
         opacity: 0;
@@ -215,7 +251,6 @@ main {
     animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* [MAX UX] Web Mode Clipboard Styles */
 .web-clipboard-area {
     width: 100%;
     margin-top: 15px;
@@ -261,7 +296,6 @@ main {
     background: var(--colorNeutralForeground3);
 }
 
-/* [GOD MODE] Glassmorphism & Premium Textures */
 .preview-sticky-header,
 .sticky-footer,
 .modal,
@@ -278,7 +312,6 @@ main {
     background: rgba(41, 41, 41, 0.85) !important;
 }
 
-/* [GOD MODE] Success Pulse Animation */
 @keyframes successPulse {
     0% {
         box-shadow: 0 0 0 0 rgba(16, 108, 189, 0.4);
@@ -301,7 +334,6 @@ main {
     animation: successPulse 0.5s ease-out;
 }
 
-/* Poliranje ivica */
 .modal,
 .section,
 .drop-zone,
@@ -312,9 +344,62 @@ main {
         inset 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
-/* Ikonice u opcijama */
+.live-stats {
+    position: absolute;
+    top: -22px;
+    left: 0;
+    width: 100%;
+    text-align: center;
+    font-size: 10px;
+    font-weight: 500;
+    color: #595959;
+    background: transparent;
+    pointer-events: none;
+    display: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 0 10px;
+}
+
+[data-theme="dark"] .live-stats {
+    color: #adadad;
+}
+
+.rich-input {
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.rich-input.empty::before {
+    content: attr(data-placeholder);
+    color: #595959;
+    font-style: italic;
+    pointer-events: none;
+    display: block;
+}
+
+[data-theme="dark"] .rich-input.empty::before {
+    color: #adadad;
+}
+
+.rich-input b,
+.rich-input strong {
+    font-weight: bold;
+}
+
+.rich-input i,
+.rich-input em {
+    font-style: italic;
+}
+
+.rich-input u {
+    text-decoration: underline;
+}
+
 .icon-hint {
-    margin-left: auto; /* Gura ikonicu skroz desno */
-    opacity: 0.5;
+    margin-left: auto;
+    opacity: 0.7;
     font-size: 14px;
 }
