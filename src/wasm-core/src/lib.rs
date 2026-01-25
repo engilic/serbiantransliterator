@@ -4,9 +4,10 @@ use once_cell::sync::Lazy;
 use std::collections::HashMap;
 use aho_corasick::AhoCorasick;
 
-mod dictionary;
-mod convert;
-mod tests; // <--- REGISTER TESTS MODULE
+// [FIX] pub(crate) allows visibility inside the crate (for tests.rs)
+pub(crate) mod dictionary;
+pub(crate) mod convert;
+mod tests;
 
 use dictionary::load_dictionary_internal;
 use convert::{to_cyrillic_internal, to_latin_internal, convert_dialect_internal};

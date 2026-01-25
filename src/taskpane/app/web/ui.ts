@@ -1,5 +1,5 @@
 // src/taskpane/app/web/ui.ts
-/* global document, navigator, window */
+/* global document, navigator, window, requestAnimationFrame, setTimeout */
 
 import { processDocxFile } from "./batch";
 import { t } from "../../../shared/i18n";
@@ -268,11 +268,20 @@ export function initWebModeUi() {
 async function handleFiles(files: FileList) {
     const fileArray = Array.from(files);
     let hasInvalid = false;
+
+    // [GALAXY BRAIN] Zero-Layout-Shift: Immediate UI Feedback
+    // Koristimo requestAnimationFrame da osiguramo da browser iscrta
+    // overlay pre nego što worker zaglavi CPU.
+
     for (const file of fileArray) {
         if (!file.name.endsWith(".docx")) {
             hasInvalid = true;
             continue;
         }
+
+        // Pusti browser da 'dahne' pre teškog rada
+        await new Promise<void>((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
+
         await processDocxFile(file);
     }
     if (hasInvalid) showModalInfo(t("modal_title_error"), html`${t("web_drop_invalid_file")}`);

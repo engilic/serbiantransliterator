@@ -1,4 +1,13 @@
 use crate::dictionary::{DictionaryStore, DICTIONARIES};
+use std::collections::HashMap;
+use std::sync::Mutex;
+use once_cell::sync::Lazy;
+
+// [GALAXY BRAIN] LRU Cache (Simple HashMap with Reset strategy)
+// Kada napunimo 2000 reči, ispraznimo sve. Brže nego pravi LRU (manje overhead-a).
+static WORD_CACHE: Lazy<Mutex<HashMap<String, String>>> = Lazy::new(|| {
+    Mutex::new(HashMap::with_capacity(2000))
+});
 
 fn get_value_from_store(store: &DictionaryStore, offset: u64) -> Option<String> {
     let start = offset as usize;
@@ -116,19 +125,53 @@ pub fn convert_dialect_internal(text: &str, mode: &str) -> String {
             continue;
         }
 
+        // [GALAXY BRAIN] Check Cache
+        {
+            let mut cache = WORD_CACHE.lock().unwrap();
+            if let Some(cached) = cache.get(&word) {
+                result.push_str(cached);
+                continue;
+            }
+        }
+
         let replacement = if let Some(store) = store_opt {
             try_smart_lookup(store, &word)
         } else {
             None
         };
 
-        if let Some(repl) = replacement {
-            result.push_str(&repl);
+        let final_word = if let Some(repl) = replacement {
+            repl
         } else {
-            result.push_str(&word);
+            word.clone()
+        };
+
+        result.push_str(&final_word);
+
+        // [GALAXY BRAIN] Store in Cache (Simple Reset Strategy)
+        {
+            let mut cache = WORD_CACHE.lock().unwrap();
+            if cache.len() >= 2000 {
+                cache.clear();
+            }
+            cache.insert(word, final_word);
         }
     }
     result
+}
+
+// [GALAXY BRAIN] Suffix Heuristic for 'nj' exceptions
+fn is_nj_exception(word_lower: &str) -> bool {
+    // Reči koje se završavaju na 'kcija', 'kcije', 'kciju'... (injekcija)
+    // ili 'kt...' (injektor)
+    // ili počinju sa 'konj...' (konjugacija, konjunkcija)
+    if word_lower.contains("njekc") || word_lower.contains("njekt") {
+        return true;
+    }
+    if word_lower.starts_with("konjug") || word_lower.starts_with("konjunk") {
+        return true;
+    }
+    false
 }
 
 fn process_word_to_cyr(result: &mut String, word: &str) {
@@ -140,6 +183,9 @@ fn process_word_to_cyr(result: &mut String, word: &str) {
     let chars: Vec<char> = word.chars().collect();
     let len = chars.len();
     let mut i = 0;
+    
+    let word_lower = word.to_lowercase();
+    let is_nj_unsafe = is_nj_exception(&word_lower);
 
     while i < len {
         let c = chars[i];
@@ -150,8 +196,24 @@ fn process_word_to_cyr(result: &mut String, word: &str) {
             match pair.as_str() {
                 "Lj" | "LJ" => { result.push('Љ'); i += 2; continue; },
                 "lj" => { result.push('љ'); i += 2; continue; },
-                "Nj" | "NJ" => { result.push('Њ'); i += 2; continue; },
-                "nj" => { result.push('њ'); i += 2; continue; },
+                
+                // [GALAXY BRAIN] Smart 'nj' check
+                "Nj" | "NJ" => { 
+                    if is_nj_unsafe { 
+                        // Exception! Treat as separate letters (N + J -> Н + Ј)
+                        // Fallthrough to single char mapping
+                    } else {
+                        result.push('Њ'); i += 2; continue; 
+                    }
+                },
+                "nj" => { 
+                    if is_nj_unsafe {
+                        // Exception
+                    } else {
+                        result.push('њ'); i += 2; continue; 
+                    }
+                },
+                
                 "Dž" | "DŽ" => { result.push('Џ'); i += 2; continue; },
                 "dž" => { result.push('џ'); i += 2; continue; },
                 _ => {}
