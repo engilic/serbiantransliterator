@@ -70,17 +70,16 @@
 
 * {
     box-sizing: border-box;
-    /* [MAX POLISH] Firefox Scrollbar Support */
     scrollbar-width: thin;
     scrollbar-color: var(--colorNeutralStroke1) transparent;
 }
-/* [MAX POLISH] Brand Text Selection */
+
 ::selection {
     background: var(--colorBrandBackground);
     color: #ffffff;
     text-shadow: none;
 }
-/* Fix za Dark Mode scrollbar */
+
 [data-theme="dark"] * {
     scrollbar-color: var(--colorNeutralStroke1) var(--colorNeutralBackground2);
 }
@@ -103,6 +102,13 @@ body {
     padding-bottom: env(safe-area-inset-bottom);
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
+    /* [ULTIMATE MAX] Typographic Perfection */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-feature-settings:
+        "kern" 1,
+        "liga" 1;
 }
 
 :focus-visible {
@@ -413,4 +419,21 @@ main {
     margin-left: auto;
     opacity: 0.7;
     font-size: 14px;
+}
+
+/* [ULTIMATE MAX] Respect User Motion Preferences */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+
+    .fade-in,
+    .success-pulse,
+    .drop-zone.hover {
+        animation: none !important;
+        transition: none !important;
+    }
 }
