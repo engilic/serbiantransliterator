@@ -96,16 +96,24 @@ export async function processDocxFile(file: File) {
         const tasks: Array<LimitTask<void>> = filesToProcess.map((path) => async () => {
             if (isCancelled()) return;
 
-            const xmlContent = await zip.file(path)?.async("string");
+            // [MAX3] Explicitly nullable to allow GC hint
+            let xmlContent: string | null = (await zip.file(path)?.async("string")) ?? null;
+
             if (!xmlContent) {
                 done++;
                 updateProgress();
                 return;
             }
 
-            if (isCancelled()) return;
+            if (isCancelled()) {
+                xmlContent = null; // Free memory immediately
+                return;
+            }
 
             const res = await workerClient.convert(xmlContent, opts);
+
+            // [MAX3] Free original XML string immediately
+            xmlContent = null;
 
             if (!isCancelled() && res.type !== "Nema teksta" && res.xml) {
                 zip.file(path, res.xml);
@@ -139,6 +147,8 @@ export async function processDocxFile(file: File) {
         const webLabel = t("ui_web_mode");
         const extra = changedFiles ? " | files: " + changedFiles : "";
         const msg = t("status_done_document", webLabel, ms, extra);
+
+        // [MAX3] Success Pulse triggered inside setStatus
         setStatus(msg, "success");
 
         downloadBlob(outBlob, `PRESLOVLJENO_${file.name}`);

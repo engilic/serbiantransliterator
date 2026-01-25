@@ -1,5 +1,6 @@
 /* eslint-disable no-undef */
 const TerserPlugin = require("terser-webpack-plugin");
+const CompressionPlugin = require("compression-webpack-plugin"); // [MAX4]
 
 module.exports = {
     mode: "production",
@@ -38,6 +39,25 @@ module.exports = {
             },
         },
     },
+    plugins: [
+        // [MAX4] Pre-compressed assets (Gzip)
+        // Cloudflare automatski servira .gz ako browser podržava
+        new CompressionPlugin({
+            filename: "[path][base].gz",
+            algorithm: "gzip",
+            test: /\.(js|css|html|svg|wasm)$/,
+            threshold: 0, // Komprimuj sve (čak i male fajlove)
+            minRatio: 0.8,
+        }),
+        // [MAX4] Pre-compressed assets (Brotli - još bolja kompresija)
+        new CompressionPlugin({
+            filename: "[path][base].br",
+            algorithm: "brotliCompress",
+            test: /\.(js|css|html|svg|wasm)$/,
+            threshold: 0, // Komprimuj sve
+            minRatio: 0.8,
+        }),
+    ],
     performance: {
         hints: false,
     },

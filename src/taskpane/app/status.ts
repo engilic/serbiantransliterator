@@ -4,6 +4,15 @@
 import { state } from "./state";
 import { t } from "../../shared/i18n";
 
+// [MAX3] Helper za animaciju
+function triggerSuccessPulse() {
+    const progressBar = document.getElementById("progressBar");
+    if (progressBar) {
+        progressBar.classList.add("success-pulse");
+        setTimeout(() => progressBar.classList.remove("success-pulse"), 500);
+    }
+}
+
 export function setStatus(msg: string, type: "info" | "success" | "error" | "neutral") {
     const el = document.getElementById("msg") as HTMLDivElement | null;
     if (!el) return;
@@ -16,22 +25,14 @@ export function setStatus(msg: string, type: "info" | "success" | "error" | "neu
               ? "var(--colorStatusSuccessForeground)"
               : "var(--colorNeutralForeground1)";
 
-    // Reset animacije
+    // Reset animacije fade-in
     el.classList.remove("fade-in");
     void el.offsetWidth;
     el.classList.add("fade-in");
 
-    // [GOD MODE] Trigger Pulse on Success
+    // [MAX3] Trigger Pulse on Success
     if (type === "success") {
         triggerSuccessPulse();
-    }
-}
-
-function triggerSuccessPulse() {
-    const progressBar = document.getElementById("progressBar");
-    if (progressBar) {
-        progressBar.classList.add("success-pulse");
-        setTimeout(() => progressBar.classList.remove("success-pulse"), 500);
     }
 }
 
