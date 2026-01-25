@@ -1,181 +1,231 @@
+/* Cards (Sections) */
 .section {
     background: var(--colorNeutralBackground1);
-    padding: 16px;
     border-radius: var(--radius8);
-    border: 1px solid var(--colorNeutralStroke1);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    /* No border, shadow gives depth */
+    box-shadow: var(--shadow2);
+    padding: 16px 20px;
+    margin-bottom: 16px;
+    transition:
+        box-shadow 0.2s ease,
+        transform 0.2s ease;
+    contain-intrinsic-size: 1px 300px;
+    content-visibility: auto;
 }
+
+.section:hover {
+    box-shadow: var(--shadow4); /* Lift effect */
+    z-index: 1;
+}
+
 .section-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
 }
+
 .section-title {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;
+    letter-spacing: 0.5px;
     color: var(--colorNeutralForeground2);
 }
+
+/* Direction Grid */
 .direction-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 8px 16px;
+    gap: 12px;
 }
-.direction-row label {
-    color: var(--colorNeutralForeground1);
-}
-.lang-group {
-    margin-bottom: 10px;
-}
-.lang-label {
-    font-size: 11px;
-    font-weight: 600;
-    margin-bottom: 4px;
-    color: var(--colorNeutralForeground2);
-    display: block;
-}
-.mini-btn {
-    background: var(--colorNeutralBackground1);
-    border: 1px solid var(--colorNeutralStroke1);
-    color: var(--colorNeutralForeground1);
-    padding: 4px 10px;
-    border-radius: var(--radius4);
-    cursor: pointer;
-    font-size: 12px;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    min-height: 28px;
-    transition: all 0.2s;
-}
-.mini-btn:hover:not(:disabled) {
-    background: var(--colorNeutralBackground2);
-    border-color: var(--colorBrandForeground1);
-    color: var(--colorBrandForeground1);
-}
-.mini-btn:disabled {
-    color: var(--colorNeutralForeground3);
-    cursor: not-allowed;
-    background: var(--colorNeutralBackground3);
-    border-color: transparent;
-    opacity: 1;
-}
-.mini-btn svg {
-    width: 14px;
-    height: 14px;
-    fill: currentColor;
-}
-.mini-btn[aria-expanded="true"] {
-    background: var(--colorBrandBackground);
-    color: white;
-    border-color: var(--colorBrandBackground);
-}
-.mini-btn[aria-expanded="true"]:hover {
-    background: var(--colorBrandBackgroundHover);
-    color: white;
-}
-.mini-btn.success:not(:disabled) {
-    color: var(--colorStatusSuccessForeground);
-    border-color: var(--colorStatusSuccessForeground);
-    font-weight: 600;
-}
-.mini-btn.success:not(:disabled):hover {
-    background: var(--colorStatusSuccessBackground);
-}
-.mini-btn.danger:not(:disabled) {
-    color: var(--colorStatusDangerForeground);
-    border-color: var(--colorStatusDangerForeground);
-    font-weight: 600;
-}
-.mini-btn.danger:not(:disabled):hover {
-    background: var(--colorStatusDangerBackground);
-}
-.mini-btn:focus-visible {
-    outline: 2px solid var(--colorBrandBackground);
-    outline-offset: 2px;
-}
-.header-actions {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-}
-.tags-container {
-    border: 1px solid var(--colorNeutralStroke1);
-    border-radius: var(--radius4);
-    padding: 8px;
-    background: var(--colorNeutralBackground1);
-    min-height: 40px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    align-items: center;
-}
-.tag {
-    background: var(--colorBrandBackground);
-    color: white;
-    padding: 4px 10px;
-    border-radius: 14px;
-    font-size: 12px;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    white-space: nowrap;
-    font-weight: 500;
-}
-.tag.preset {
-    background: var(--colorNeutralBackground3);
-    color: var(--colorNeutralForeground1);
-    border: 1px solid var(--colorNeutralStroke2);
-}
-.tag-remove {
-    cursor: pointer;
-    font-weight: bold;
-    opacity: 0.8;
-}
-.tag-remove:hover {
-    opacity: 1;
-}
+
+/* Modern Checkboxes & Radios */
 label {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 8px 0;
+    padding: 10px 8px; /* Bigger touch target */
     cursor: pointer;
-    color: var(--colorNeutralForeground1);
+    font-weight: 500;
+    transition: background 0.1s;
+    border-radius: var(--radius4);
+    margin: 0 -8px; /* Negative margin to align text */
 }
+
+label:hover {
+    background: var(--colorNeutralBackground3);
+}
+
+.icon-hint {
+    margin-left: auto;
+    opacity: 0.5;
+    font-size: 16px;
+}
+
 input[type="checkbox"],
 input[type="radio"] {
-    accent-color: var(--colorBrandBackground);
+    appearance: none;
     width: 18px;
     height: 18px;
+    border: 1px solid var(--colorNeutralForeground3);
+    border-radius: 4px; /* Checkbox */
+    background: var(--colorNeutralBackground1);
+    display: grid;
+    place-content: center;
+    transition: all 0.2s;
+    margin: 0;
+}
+
+input[type="radio"] {
+    border-radius: 50%; /* Radio */
+}
+
+input[type="checkbox"]:checked,
+input[type="radio"]:checked {
+    background-color: var(--colorBrandBackground);
+    border-color: var(--colorBrandBackground);
+}
+
+/* Checkmark */
+input[type="checkbox"]::before {
+    content: "";
+    width: 10px;
+    height: 5px;
+    border-left: 2px solid white;
+    border-bottom: 2px solid white;
+    transform: rotate(-45deg) translate(1px, -2px);
+    opacity: 0;
+}
+
+input[type="checkbox"]:checked::before {
+    opacity: 1;
+}
+
+/* Radio Dot */
+input[type="radio"]::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    background: white;
+    border-radius: 50%;
+    transform: scale(0);
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+input[type="radio"]:checked::before {
+    transform: scale(1);
+}
+
+/* Focus Visible */
+input[type="checkbox"]:focus-visible,
+input[type="radio"]:focus-visible {
+    outline: 2px solid var(--colorBrandBackground);
+    outline-offset: 2px;
+}
+
+/* Tags (Pills) */
+.tags-container {
+    background: var(--colorNeutralBackground2);
+    border: 1px solid var(--colorNeutralStroke2);
+    border-radius: var(--radius8);
+    padding: 8px;
+    min-height: 48px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.tag {
+    background: var(--colorNeutralBackground1);
+    border: 1px solid var(--colorNeutralStroke2);
+    color: var(--colorNeutralForeground1);
+    padding: 4px 12px;
+    border-radius: var(--radiusPill);
+    font-size: 13px;
+    font-weight: 500;
+    box-shadow: var(--shadow2);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    user-select: none;
+    transition: transform 0.1s;
+}
+
+.tag:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow4);
+}
+
+.tag.custom {
+    border-left: 3px solid var(--colorBrandBackground);
+}
+
+.tag-remove {
+    color: var(--colorNeutralForeground3);
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 2px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tag-remove:hover {
+    color: var(--colorStatusDangerForeground);
+    background: var(--colorStatusDangerBackground);
+}
+
+/* Mini Buttons (Header Actions) */
+.header-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.mini-btn {
+    height: 32px;
+    padding: 0 12px;
+    background: transparent;
+    border: 1px solid var(--colorNeutralStroke2);
+    border-radius: var(--radius4);
+    font-weight: 600;
+    color: var(--colorNeutralForeground1);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.1s;
+    font-size: 12px;
     cursor: pointer;
 }
-select,
-textarea,
-input[type="text"] {
-    width: 100%;
-    padding: 8px 12px;
-    border: 1px solid var(--colorNeutralStroke1);
-    border-radius: var(--radius4);
-    background: var(--colorNeutralBackground1);
-    color: var(--colorNeutralForeground1);
-    font-family: inherit;
-}
-select:focus,
-textarea:focus,
-input[type="text"]:focus {
-    outline: 2px solid var(--colorBrandBackground);
-    outline-offset: -1px;
-    border-color: var(--colorBrandBackground);
-    padding-bottom: 8px;
-}
-code {
-    font-family: "Consolas", monospace;
-    font-size: 11px;
+
+.mini-btn:hover:not(:disabled) {
     background: var(--colorNeutralBackground3);
-    color: var(--colorNeutralForeground1);
-    padding: 2px 4px;
-    border-radius: 4px;
-    border: 1px solid var(--colorNeutralStroke2);
+    border-color: var(--colorNeutralForeground2);
+}
+
+.mini-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.mini-btn.success {
+    color: var(--colorStatusSuccessForeground);
+    background: var(--colorStatusSuccessBackground);
+    border-color: transparent;
+}
+
+.mini-btn.danger:hover {
+    color: var(--colorStatusDangerForeground);
+    background: var(--colorStatusDangerBackground);
+    border-color: var(--colorStatusDangerForeground);
+}
+
+.mini-btn svg {
+    width: 14px;
+    height: 14px;
+    fill: currentColor;
 }

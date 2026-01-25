@@ -1,69 +1,111 @@
 .app-footer {
     text-align: center;
     font-size: 11px;
-    padding: 10px 0;
-    background: var(--colorNeutralBackground1);
+    padding: 16px 0;
+    background: var(--colorNeutralBackground2);
     flex-shrink: 0;
-    color: var(--colorNeutralForeground3);
+    /* Dark grey for text */
+    color: var(--colorNeutralForeground2);
 }
+
 .app-footer a {
+    /* Use Brand Color (now accessible #005a9e) */
     color: var(--colorBrandBackground);
-    text-decoration: underline;
+    text-decoration: none;
     font-weight: 600;
 }
+
 .app-footer a:hover {
-    text-decoration: none;
+    text-decoration: underline;
+    color: var(--colorBrandBackgroundHover);
 }
+
+/* Sticky Action Bar (Glassmorphism) */
 .sticky-footer {
-    position: static;
-    background: var(--colorNeutralBackground1);
+    position: sticky;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.85); /* Glass effect light */
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border-top: 1px solid var(--colorNeutralStroke1);
-    padding: 16px 20px;
+    padding: 16px 24px;
     display: flex;
     gap: 12px;
     z-index: 100;
-    flex-shrink: 0;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.04);
 }
+
+[data-theme="dark"] .sticky-footer {
+    background: rgba(31, 31, 31, 0.85); /* Glass effect dark */
+}
+
 .primary-btn,
 .secondary-btn {
     flex: 1;
-    height: 44px;
-    border-radius: var(--radius4);
+    height: 48px; /* Optimal Touch Target */
+    border-radius: var(--radius8);
+    font-size: 15px;
     font-weight: 600;
-    cursor: pointer;
-    font-size: 14px;
+    letter-spacing: 0.3px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     line-height: 1.1;
-}
-.primary-btn {
-    background: var(--colorBrandBackground);
-    color: white;
+    box-shadow: var(--shadow4);
     border: none;
+    cursor: pointer;
+    transition:
+        transform 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+        box-shadow 0.1s;
 }
-.primary-btn:hover {
-    background: var(--colorBrandBackgroundHover);
+
+.primary-btn {
+    /* Subtle gradient for richness */
+    background: linear-gradient(135deg, var(--colorBrandBackground) 0%, #004578 100%);
+    color: white;
 }
+
+.primary-btn:hover:not(:disabled) {
+    box-shadow: var(--shadow8);
+    transform: translateY(-2px);
+}
+
+.primary-btn:active:not(:disabled) {
+    transform: translateY(1px);
+    box-shadow: var(--shadow2);
+}
+
+.primary-btn:disabled,
+.secondary-btn:disabled {
+    background: var(--colorNeutralBackground3);
+    color: var(--colorNeutralForeground3);
+    box-shadow: none;
+    cursor: not-allowed;
+    transform: none;
+}
+
 .secondary-btn {
-    background: transparent;
-    border: 1px solid var(--colorNeutralStroke1);
+    background: var(--colorNeutralBackground1);
     color: var(--colorNeutralForeground1);
+    border: 1px solid var(--colorNeutralStroke2);
 }
-.secondary-btn:hover {
-    background: var(--colorNeutralBackground2);
-    border-color: var(--colorBrandBackground);
-    color: var(--colorBrandForeground1);
+
+.secondary-btn:hover:not(:disabled) {
+    background: var(--colorNeutralBackground3);
+    border-color: var(--colorNeutralForeground2);
 }
-.primary-btn:focus-visible,
-.secondary-btn:focus-visible {
-    outline: 2px solid var(--colorBrandBackground);
-    outline-offset: 2px;
-}
+
 .btn-sub {
     font-size: 10px;
     font-weight: 400;
-    opacity: 0.9;
+    opacity: 0.85;
     margin-top: 2px;
+}
+
+/* Focus Visible for Accessibility */
+.primary-btn:focus-visible,
+.secondary-btn:focus-visible {
+    outline: 2px solid var(--colorBrandForeground1);
+    outline-offset: 2px;
 }
