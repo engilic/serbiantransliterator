@@ -1,14 +1,15 @@
 use crate::dictionary::{DictionaryStore, DICTIONARIES};
 use std::sync::Mutex;
 use once_cell::sync::Lazy;
-use rustc_hash::FxHashMap; // <--- ULTRA FAST HASH
+use rustc_hash::FxHashMap;
 
 // [MAXMAXMAX] FxHashMap: 3x brži hashing od standardnog.
-// Cache: 10.000 reči.
 static WORD_CACHE: Lazy<Mutex<FxHashMap<String, String>>> = Lazy::new(|| {
     Mutex::new(FxHashMap::with_capacity_and_hasher(10000, Default::default()))
 });
 
+// [MAX4] Force Inline
+#[inline(always)]
 fn get_value_from_store(store: &DictionaryStore, offset: u64) -> Option<String> {
     let start = offset as usize;
     if start >= store.values.len() { return None; }
@@ -18,6 +19,7 @@ fn get_value_from_store(store: &DictionaryStore, offset: u64) -> Option<String> 
     Some(String::from_utf8_lossy(slice).to_string())
 }
 
+#[inline(always)]
 fn match_case(original: &str, replacement: &str) -> String {
     let mut chars_orig = original.chars();
     let first = chars_orig.next();
@@ -59,6 +61,8 @@ fn try_smart_lookup(store: &DictionaryStore, word: &str) -> Option<String> {
     None
 }
 
+// [MAX4] Force Inline
+#[inline(always)]
 fn should_protect(word: &str) -> bool {
     let mut has_foreign = false;
     let mut has_underscore = false;
@@ -99,7 +103,7 @@ pub fn convert_dialect_internal(text: &str, mode: &str) -> String {
         while i < len && chars[i].is_alphabetic() { i += 1; }
         let word: String = chars[start..i].iter().collect();
 
-        // --- CACHE LOGIC START ---
+        // CACHE
         let cached = {
             let cache = WORD_CACHE.lock().unwrap();
             cache.get(&word).cloned()
@@ -109,7 +113,6 @@ pub fn convert_dialect_internal(text: &str, mode: &str) -> String {
             result.push_str(&c);
             continue;
         }
-        // --- CACHE LOGIC END ---
 
         if should_protect(&word) {
             result.push_str(&word);
@@ -133,7 +136,7 @@ pub fn convert_dialect_internal(text: &str, mode: &str) -> String {
 
         result.push_str(&final_word);
 
-        // Save to cache
+        // Save
         {
             let mut cache = WORD_CACHE.lock().unwrap();
             if cache.len() > 10000 { cache.clear(); }
@@ -143,24 +146,18 @@ pub fn convert_dialect_internal(text: &str, mode: &str) -> String {
     result
 }
 
-// [GALAXY BRAIN] Heuristika za Digrafe
+// [MAX4] Force Inline
+#[inline(always)]
 fn should_split_nj(word_lower: &str) -> bool {
-    if word_lower.contains("njek") || word_lower.contains("njekt") {
-        return true;
-    }
-    if word_lower.contains("njunk") {
-        return true;
-    }
-    if word_lower.contains("tanjug") {
-        return true;
-    }
+    if word_lower.contains("njek") || word_lower.contains("njekt") { return true; }
+    if word_lower.contains("njunk") { return true; }
+    if word_lower.contains("tanjug") { return true; }
     false
 }
 
+#[inline(always)]
 fn should_split_dz(word_lower: &str) -> bool {
-    if word_lower.starts_with("nadž") || word_lower.starts_with("podž") {
-        return true;
-    }
+    if word_lower.starts_with("nadž") || word_lower.starts_with("podž") { return true; }
     false
 }
 
@@ -187,14 +184,12 @@ fn process_word_to_cyr(result: &mut String, word: &str) {
             match pair.as_str() {
                 "Lj" | "LJ" => { result.push('Љ'); i += 2; continue; },
                 "lj" => { result.push('љ'); i += 2; continue; },
-                
                 "Nj" | "NJ" => { 
                     if !split_nj { result.push('Њ'); i += 2; continue; }
                 },
                 "nj" => { 
                     if !split_nj { result.push('њ'); i += 2; continue; }
                 },
-                
                 "Dž" | "DŽ" => { 
                     if !split_dz { result.push('Џ'); i += 2; continue; }
                 },

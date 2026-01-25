@@ -7,7 +7,6 @@ const WasmPackPlugin = require("@wasm-tool/wasm-pack-plugin");
 
 module.exports = {
     entry: {
-        polyfill: ["core-js/stable", "regenerator-runtime/runtime"],
         taskpane: ["./src/taskpane/taskpane.ts"],
         commands: ["./src/commands/commands.ts"],
         sw: "./src/sw.ts",
@@ -49,7 +48,7 @@ module.exports = {
         new HtmlWebpackPlugin({
             filename: "taskpane.html",
             template: "./src/taskpane/taskpane.html",
-            chunks: ["polyfill", "taskpane"],
+            chunks: ["taskpane"],
             minify: {
                 collapseWhitespace: true,
                 removeComments: true,
@@ -59,7 +58,7 @@ module.exports = {
         new HtmlWebpackPlugin({
             filename: "commands.html",
             template: "./src/commands/commands.html",
-            chunks: ["polyfill", "commands"],
+            chunks: ["commands"],
             minify: {
                 collapseWhitespace: true,
                 removeComments: true,
@@ -68,7 +67,6 @@ module.exports = {
         }),
         new CopyWebpackPlugin({
             patterns: [
-                // [FIX] Ignore JSON dictionaries in assets (we use .bin)
                 {
                     from: "src/static/assets",
                     to: "assets",
