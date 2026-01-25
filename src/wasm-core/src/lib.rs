@@ -4,7 +4,6 @@ use once_cell::sync::Lazy;
 use std::collections::HashMap;
 use aho_corasick::AhoCorasick;
 
-// [FIX] pub(crate) allows visibility inside the crate (for tests.rs)
 pub(crate) mod dictionary;
 pub(crate) mod convert;
 mod tests;
