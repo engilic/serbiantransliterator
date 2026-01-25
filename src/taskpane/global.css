@@ -70,6 +70,19 @@
 
 * {
     box-sizing: border-box;
+    /* [MAX POLISH] Firefox Scrollbar Support */
+    scrollbar-width: thin;
+    scrollbar-color: var(--colorNeutralStroke1) transparent;
+}
+/* [MAX POLISH] Brand Text Selection */
+::selection {
+    background: var(--colorBrandBackground);
+    color: #ffffff;
+    text-shadow: none;
+}
+/* Fix za Dark Mode scrollbar */
+[data-theme="dark"] * {
+    scrollbar-color: var(--colorNeutralStroke1) var(--colorNeutralBackground2);
 }
 
 html,
@@ -92,7 +105,6 @@ body {
     padding-right: env(safe-area-inset-right);
 }
 
-/* [MAX MAX MAX] Custom Focus Ring */
 :focus-visible {
     outline: 2px solid var(--colorBrandBackground);
     outline-offset: 2px;
@@ -178,7 +190,6 @@ main {
     display: none;
 }
 
-/* [MAX MAX MAX] Breathing Animation for Drop Zone */
 @keyframes breathe {
     0% {
         transform: scale(1);
