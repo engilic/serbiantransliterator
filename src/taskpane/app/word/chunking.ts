@@ -7,7 +7,11 @@ import { t } from "../../../shared/i18n";
 import { workerClient } from "../../worker/client";
 import { state } from "../state";
 
-const BATCH_SIZE = 50;
+// [MAX20] Adaptive limits
+const BATCH_SIZE_START = 50;
+const MIN_BATCH = 10;
+const MAX_BATCH = 150;
+const TARGET_TIME_MS = 800; // Cilj: ~800ms po ciklusu (brz UI response)
 const YIELD_DELAY_MS = 5;
 
 export type ChunkingResult = {
@@ -110,6 +114,7 @@ function isCancelled(): boolean {
 
 /**
  * PR4: ESC cancels long operation by aborting state.activeAbortController.
+ * PR5: Adaptive Chunking + Dirty Check (Smart Write)
  */
 export async function processDocumentInChunks(
     context: Word.RequestContext,
@@ -117,7 +122,7 @@ export async function processDocumentInChunks(
 ): Promise<ChunkingResult> {
     const t0 = nowMs();
 
-    setStatus(t("status_processing") + " (Inicijalizacija Workera...)", "info");
+    setStatus(t("status_processing") + " (Inicijalizacija...)", "info");
     await workerClient.init();
 
     const paragraphs = context.document.body.paragraphs;
@@ -144,15 +149,10 @@ export async function processDocumentInChunks(
         setStatus(t("status_processing") + " (0/" + totalParagraphs + ")", "info");
 
         let processedCount = 0;
-
         let i = 0;
-        let batchSize = BATCH_SIZE;
 
-        const MIN_BATCH = 10;
-        const MAX_BATCH = 80;
-
-        const FAST_MS = 900;
-        const SLOW_MS = 3500;
+        // [MAX20] Adaptive Start
+        let batchSize = BATCH_SIZE_START;
 
         while (i < totalParagraphs) {
             if (isCancelled()) break;
@@ -175,23 +175,22 @@ export async function processDocumentInChunks(
 
             const rawXml = ooxmlRes.value;
             if (!rawXml) {
+                // Empty range, skip processing but advance counter
                 processedCount += batchItems.length;
                 i += batchItems.length;
-
                 const progress = Math.round((processedCount / totalParagraphs) * 100);
                 setProgress(progress);
-
-                const msg =
+                setStatus(
                     t("status_processing") +
-                    " " +
-                    progress +
-                    "% (" +
-                    processedCount +
-                    "/" +
-                    totalParagraphs +
-                    ")";
-                setStatus(msg, "info");
-
+                        " " +
+                        progress +
+                        "% (" +
+                        processedCount +
+                        "/" +
+                        totalParagraphs +
+                        ")",
+                    "info"
+                );
                 await new Promise((resolve) => setTimeout(resolve, YIELD_DELAY_MS));
                 continue;
             }
@@ -209,7 +208,8 @@ export async function processDocumentInChunks(
 
             if (isCancelled()) break;
 
-            if (result.type !== "Nema teksta") {
+            // [MAX20] Dirty Check: Write ONLY if changed
+            if (result.type !== "Nema teksta" && result.xml !== rawXml) {
                 batchRange.insertOoxml(result.xml, Word.InsertLocation.replace);
                 didInsert = true;
             }
@@ -231,15 +231,26 @@ export async function processDocumentInChunks(
                 ")";
             setStatus(statusMsg, "info");
 
+            // [MAX20] Measure & Adapt
+            // Sync is needed for UI refresh and Word queue flush
+            await new Promise((resolve) => setTimeout(resolve, YIELD_DELAY_MS));
+
+            // Sync after insert (implicitly handled by next read or loop end, but we measure full cycle)
+
             const dur = Math.max(0, nowMs() - batchStart);
 
-            if (dur > SLOW_MS && batchSize > MIN_BATCH) {
-                batchSize = Math.max(MIN_BATCH, Math.floor(batchSize * 0.7));
-            } else if (dur < FAST_MS && batchSize < MAX_BATCH) {
-                batchSize = Math.min(MAX_BATCH, batchSize + 10);
-            }
+            // [MAX20] Adaptive Logic
+            if (dur > 0) {
+                const msPerPara = dur / batchItems.length;
+                const idealBatch = Math.floor(TARGET_TIME_MS / msPerPara);
 
-            await new Promise((resolve) => setTimeout(resolve, YIELD_DELAY_MS));
+                // Smoothing: (old + ideal) / 2
+                let newBatch = Math.floor((batchSize + idealBatch) / 2);
+
+                // Clamp
+                newBatch = Math.max(MIN_BATCH, Math.min(newBatch, MAX_BATCH));
+                batchSize = newBatch;
+            }
         }
 
         // flush only if we inserted and not cancelled mid-batch
