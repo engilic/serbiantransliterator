@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { initUi } from "../src/taskpane/app/settings/ui";
 
 // Mock dependencies
@@ -63,14 +63,55 @@ function setupFullDom() {
     <button id="clearAllBtn"></button>
     <button id="toggleAdvancedBtn"></button>
     <div id="advancedSettings"></div>
+    
+    <!-- Dodajemo i msg element jer ga initUi koristi za status -->
+    <div id="msg"></div>
+    
+    <!-- Dodajemo Live Status elemente -->
+    <div id="liveStatus"></div>
+    <div id="liveTextLeft"></div>
+    <div id="liveTextRight"></div>
     `;
 }
 
 describe("settings/ui.ts Coverage Boost", () => {
     beforeEach(() => {
         setupFullDom();
-        // Reset storage
         localStorage.clear();
+
+        // [FIX] Mock window.matchMedia
+        Object.defineProperty(window, "matchMedia", {
+            writable: true,
+            value: vi.fn().mockImplementation((query) => ({
+                matches: false,
+                media: query,
+                onchange: null,
+                addListener: vi.fn(),
+                removeListener: vi.fn(),
+                addEventListener: vi.fn(),
+                removeEventListener: vi.fn(),
+                dispatchEvent: vi.fn(),
+            })),
+        });
+
+        // Office Mock
+        (globalThis as any).Office = {
+            CoercionType: { Text: "Text" },
+            AsyncResultStatus: { Succeeded: "Succeeded" },
+            context: {
+                document: {
+                    getSelectedDataAsync: (_type: any, cb: any) => cb({ status: "failed" }),
+                },
+            },
+        };
+        (globalThis as any).Word = {
+            run: async () => {},
+        };
+    });
+
+    afterEach(() => {
+        delete (globalThis as any).Office;
+        delete (globalThis as any).Word;
     });
 
     it("initializes UI without errors (Full DOM)", () => {
@@ -81,7 +122,6 @@ describe("settings/ui.ts Coverage Boost", () => {
         initUi();
         const picker = document.getElementById("optUiLanguage") as HTMLSelectElement;
         picker.onchange?.(new Event("change"));
-        // just check it doesn't crash
     });
 
     it("binds theme picker change", () => {

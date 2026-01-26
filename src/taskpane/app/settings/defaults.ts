@@ -8,10 +8,8 @@ export const DEFAULT_SETTINGS: UiSettings = {
     schemaVersion: 2,
     profile: "custom",
     userWordsCustom: [],
-
     theme: "auto",
     customSubstitutions: "",
-    // NEW
     dialect: "none",
 
     confirmWholeDoc: true,
@@ -25,7 +23,7 @@ export const DEFAULT_SETTINGS: UiSettings = {
     applySerbianQuotes: true,
     curlyProtection: "placeholders",
     setProofingLanguage: true,
-    showStats: false,
+    // Removed: showStats: false,
 };
 
 export const PROFILE_NAMES: Record<string, string> = {

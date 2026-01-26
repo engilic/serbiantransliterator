@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import {
     buildApplyStatsText,
-    buildApplyStatsTitle,
+    // REMOVED: buildApplyStatsTitle,
     buildPreviewAppliedStats,
 } from "../src/taskpane/app/word/statsText";
 import type { ConvertStats } from "../src/shared/ooxml/convertOoxml";
@@ -35,10 +35,7 @@ function makeStats(textNodes: number): ConvertStats {
 describe("word/statsText", () => {
     beforeEach(() => setLanguage("sr"));
 
-    it("buildApplyStatsTitle", () => {
-        const title = buildApplyStatsTitle({ type: "Lat → Ćir", stats: makeStats(7) });
-        expect(title).toBe("Statistika: Lat → Ćir");
-    });
+    // REMOVED: test for buildApplyStatsTitle
 
     it("buildPreviewAppliedStats (smoke)", () => {
         const s = buildPreviewAppliedStats();
@@ -46,7 +43,7 @@ describe("word/statsText", () => {
         expect(s.text).toBeTruthy();
     });
 
-    // --- NEW: Coverage for Proofing branches ---
+    // ... (ostatak fajla ostaje isti) ...
     it("uključuje proofing statistiku kada je enabled", () => {
         const stats = makeStats(10);
         stats.proofing = {
@@ -59,12 +56,11 @@ describe("word/statsText", () => {
 
         const text = buildApplyStatsText({ type: "Lat → Ćir", stats }, "selection");
 
-        expect(text).toContain("Proofing language:");
-        expect(text).toContain("target: sr-Cyrl-RS");
+        expect(text).toContain("Jezik provere:");
+        expect(text).toContain("Ciljni jezik: sr-Cyrl-RS");
         expect(text).toContain("noWordSpans: 1");
     });
 
-    // --- NEW: Coverage for Document Extras branches ---
     it("uključuje extras statistiku za document scope (H/F, Fusnote)", () => {
         const stats = makeStats(100);
         const extras = {
@@ -72,14 +68,13 @@ describe("word/statsText", () => {
             footnotesProcessed: 3,
             endnotesProcessed: 0,
             footnotesSupported: true,
-            endnotesSupported: false, // Target branch: endnotes not supported
+            endnotesSupported: false,
         };
 
         const text = buildApplyStatsText({ type: "Lat → Ćir", stats }, "document", extras);
 
-        expect(text).toContain("Header/Footer: 5");
+        expect(text).toContain("Zaglavlja/Podnožja: 5");
         expect(text).toContain("Fusnote: 3");
-        // Endnotes supported: false branch
         expect(text).toContain("Endnote podržane: NE");
     });
 
@@ -89,15 +84,13 @@ describe("word/statsText", () => {
             headersFootersProcessed: 0,
             footnotesProcessed: 0,
             endnotesProcessed: 0,
-            footnotesSupported: false, // Target branch
+            footnotesSupported: false,
             endnotesSupported: true,
         };
 
         const text = buildApplyStatsText({ type: "Lat → Ćir", stats }, "document", extras);
         expect(text).toContain("Fusnote podržane: NE");
     });
-
-    // ---- pluralization SR ----
 
     it("pluralization (sr): 1", () => {
         const text = buildApplyStatsText({ type: "Lat → Ćir", stats: makeStats(1) }, "selection");
@@ -123,8 +116,6 @@ describe("word/statsText", () => {
         const text = buildApplyStatsText({ type: "Lat → Ćir", stats: makeStats(22) }, "selection");
         expect(text).toContain("Promenjena 22 čvora");
     });
-
-    // ---- pluralization EN (tight checks) ----
 
     it("pluralization (en): 1", () => {
         setLanguage("en");

@@ -6,16 +6,19 @@ import { invalidatePreviewCache } from "./preview/cache";
 import { t, tPlural } from "../../shared/i18n";
 import { getSettingsFromUi } from "./settings/getters";
 
-let cachedDocInfo: { count: number; sample: string } | null = null;
+// Keširamo informacije o dokumentu da ne bi učitavali ceo body na svaki klik
+let cachedDocInfo: { count: number; sample: string; hasLat: boolean; hasCyr: boolean } | null = null;
 let lastDocCheck = 0;
+const DOC_INFO_CACHE_MS = 5000;
 
 export function onSelectionChange() {
     invalidatePreviewCache();
 
     if (state.selectionTimeout) clearTimeout(state.selectionTimeout);
+
     state.selectionTimeout = setTimeout(() => {
         void checkSelectionAndUpdateButtons();
-    }, 50);
+    }, 200);
 }
 
 export function getSelectedTextAsync(): Promise<string> {
@@ -37,25 +40,30 @@ export function getSelectedTextAsync(): Promise<string> {
 function countWords(text: string): number {
     if (!text) return 0;
     const matches = text.match(/[\p{L}\p{N}]+(?:[-’'][\p{L}\p{N}]+)*/gu);
-    if (!matches) return 0;
-
-    const ALLOWED_SINGLE_CHARS = new Set(["i", "a", "o", "u", "k", "s", "I", "A", "O", "U", "K", "S", "a"]);
-
-    let count = 0;
-    for (const m of matches) {
-        if (!/\p{L}/u.test(m)) continue;
-        if (m.length > 1) {
-            count++;
-        } else if (ALLOWED_SINGLE_CHARS.has(m)) {
-            count++;
-        }
-    }
-    return count;
+    return matches ? matches.length : 0;
 }
 
-async function getDocInfoAsync(): Promise<{ count: number; sample: string }> {
+function countNonSpaceChars(text: string): number {
+    return text.replace(/\s/g, "").length;
+}
+
+function hasScriptContent(text: string) {
+    const hasLat = /[A-Za-zČčĆćĐđŠšŽž]/.test(text);
+    const hasCyr = /[\u0400-\u052F]/.test(text);
+    return { hasLat, hasCyr };
+}
+
+function formatCompact(n: number): string {
+    if (n < 10000) return n.toString();
+    if (n < 1000000) return (n / 1000).toFixed(1).replace(/\.0$/, "") + "k";
+    return (n / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
+}
+
+async function getDocInfoAsync(
+    forceRefresh = false
+): Promise<{ count: number; sample: string; hasLat: boolean; hasCyr: boolean }> {
     const now = Date.now();
-    if (cachedDocInfo !== null && now - lastDocCheck < 2000) {
+    if (!forceRefresh && cachedDocInfo !== null && now - lastDocCheck < DOC_INFO_CACHE_MS) {
         return cachedDocInfo;
     }
 
@@ -68,28 +76,40 @@ async function getDocInfoAsync(): Promise<{ count: number; sample: string }> {
             const text = body.text || "";
             const count = countWords(text);
             const sample = text.slice(0, 1000);
+            const { hasLat, hasCyr } = hasScriptContent(text);
 
-            cachedDocInfo = { count, sample };
+            cachedDocInfo = { count, sample, hasLat, hasCyr };
             lastDocCheck = Date.now();
             return cachedDocInfo;
         });
     } catch {
-        return { count: 0, sample: "" };
+        return { count: 0, sample: "", hasLat: false, hasCyr: false };
     }
 }
 
-function getTargetScriptInfo(): { label: string; icon: string } {
+// Helper tip za rezultat detekcije
+type DetectionResult = {
+    label: string;
+    icon: string;
+    asciiLevel: "safe" | "yellow" | "red";
+    isAuto: boolean; // NEW: Da znamo da li da prikuzemo ✨
+};
+
+function getTargetScriptInfo(): DetectionResult {
     const settings = getSettingsFromUi();
     const dir = settings.direction;
 
-    if (dir === "lat-to-cyr") return { label: t("live_target_cyr"), icon: "" };
-    if (dir === "cyr-to-lat") return { label: t("live_target_lat"), icon: "" };
-    if (dir === "to-ascii") return { label: t("live_target_ascii"), icon: "" };
+    if (dir === "lat-to-cyr")
+        return { label: t("live_target_cyr"), icon: "", asciiLevel: "safe", isAuto: false };
+    if (dir === "cyr-to-lat")
+        return { label: t("live_target_lat"), icon: "", asciiLevel: "safe", isAuto: false };
+    if (dir === "to-ascii")
+        return { label: t("live_target_ascii"), icon: "", asciiLevel: "safe", isAuto: false };
 
-    return { label: t("dir_auto"), icon: "✨" };
+    return { label: t("dir_auto"), icon: "", asciiLevel: "safe", isAuto: true };
 }
 
-function detectDirectionInfo(text: string): { label: string; icon: string } {
+function detectDirectionInfo(text: string): DetectionResult {
     let cyr = 0;
     let lat = 0;
     let latSr = 0;
@@ -106,17 +126,27 @@ function detectDirectionInfo(text: string): { label: string; icon: string } {
     }
 
     const total = lat + cyr;
-    if (total === 0) return { label: t("dir_auto"), icon: "✨" };
+
+    // Default (Auto -> Auto)
+    const base: DetectionResult = { label: t("dir_auto"), icon: "", asciiLevel: "safe", isAuto: true };
+
+    if (total === 0) return base;
 
     if (cyr > lat) {
-        return { label: t("live_auto_to_lat"), icon: "✨" };
+        // Većina ćirilica -> Cilj Latinica
+        return { label: t("live_auto_to_lat"), icon: "", asciiLevel: "safe", isAuto: true };
     }
 
-    if (lat > 20 && latSr / lat < 0.01) {
-        return { label: t("live_auto_to_cyr") + t("live_warn_ascii"), icon: "⚠️" };
+    // Većina latinica -> Cilj Ćirilica
+    if (lat > 35) {
+        const ratio = latSr / lat;
+        // Ako nema naših slova, sumnjivo je (ASCII)
+        if (ratio === 0) return { label: t("live_auto_to_cyr"), icon: "", asciiLevel: "red", isAuto: true };
+        if (ratio < 0.012)
+            return { label: t("live_auto_to_cyr"), icon: "", asciiLevel: "yellow", isAuto: true };
     }
 
-    return { label: t("live_auto_to_cyr"), icon: "✨" };
+    return { label: t("live_auto_to_cyr"), icon: "", asciiLevel: "safe", isAuto: true };
 }
 
 export async function checkSelectionAndUpdateButtons() {
@@ -125,108 +155,126 @@ export async function checkSelectionAndUpdateButtons() {
         const prevBtn = document.getElementById("previewBtn") as HTMLButtonElement | null;
 
         const liveStatus = document.getElementById("liveStatus");
-        // [FIX] ID-evi za razdvojeni status (zahteva sticky-footer.html koji sam poslao ranije)
         const liveTextLeft = document.getElementById("liveTextLeft");
         const liveTextRight = document.getElementById("liveTextRight");
+        const liveAscii = document.getElementById("liveAscii");
+        const liveAutoIcon = document.getElementById("liveAutoIcon"); // NEW
+
         const liveIconLeft = document.getElementById("liveIconLeft");
         const liveIconRight = document.getElementById("liveIconRight");
 
         if (!runBtn || !prevBtn) return;
 
         const rawText = normalizeWeirdBreaks(await getSelectedTextAsync());
-
-        const selWords = countWords(rawText);
         const isSelectionMode = rawText.length > 0;
-        const hasValidWords = selWords > 0;
+
+        const selWords = isSelectionMode ? countWords(rawText) : 0;
+        const selChars = isSelectionMode ? countNonSpaceChars(rawText) : 0;
+        const selScripts = isSelectionMode ? hasScriptContent(rawText) : { hasLat: false, hasCyr: false };
 
         const settings = getSettingsFromUi();
-        let dirLabel = "";
-        let dirIcon = "";
 
-        if (settings.direction !== "auto") {
-            const info = getTargetScriptInfo();
-            dirLabel = info.label;
-            dirIcon = info.icon;
-        }
-
-        // --- LIVE STATUS UPDATE ---
-        if (liveStatus && liveTextLeft && liveTextRight && liveIconLeft && liveIconRight) {
-            liveStatus.style.display = "flex";
-
-            let words = 0;
-
-            if (isSelectionMode) {
-                // STATUS: SELEKCIJA
-                if (settings.direction === "auto") {
-                    const info = detectDirectionInfo(rawText);
-                    dirLabel = info.label;
-                    dirIcon = info.icon;
-                }
-                words = selWords;
-                liveTextLeft.textContent = t("live_sel_words", tPlural("word_count", words));
-            } else {
-                // STATUS: DOKUMENT
-                const docInfo = await getDocInfoAsync();
-                if (settings.direction === "auto") {
-                    const info = detectDirectionInfo(docInfo.sample);
-                    dirLabel = info.label;
-                    dirIcon = info.icon;
-                }
-                words = docInfo.count;
-                liveTextLeft.textContent = t("live_doc_words", tPlural("word_count", words));
-            }
-
-            liveTextRight.textContent = dirLabel;
-            liveIconRight.textContent = dirIcon;
-
-            const isGray = isSelectionMode && !hasValidWords;
-
-            if (!isGray) {
-                // Active
-                // [FIX] Neutralna boja teksta (crna) za kontrast
-                liveStatus.style.color = "var(--colorNeutralForeground1)";
-                liveStatus.style.backgroundColor = "var(--colorNeutralBackground3)";
-                liveStatus.style.opacity = "1";
-                liveStatus.style.borderColor = "var(--colorBrandForeground1)";
-
-                liveIconLeft.style.filter = "none";
-                liveIconRight.style.filter = "none";
-            } else {
-                // Inactive
-                liveStatus.style.color = "var(--colorNeutralForeground3)";
-                liveStatus.style.backgroundColor = "var(--colorNeutralBackground2)";
-                liveStatus.style.opacity = "0.6";
-                liveStatus.style.borderColor = "var(--colorNeutralStroke1)";
-
-                liveIconLeft.style.filter = "grayscale(100%)";
-                liveIconRight.style.filter = "grayscale(100%)";
-            }
-        }
-
-        // --- BUTTONS UPDATE (RESTAURIRANO: Menjamo innerHTML sa podnaslovima) ---
-        const runLabel = t("ui_btn_run");
-        const prevLabel = t("ui_btn_preview");
+        // Initial info from manual settings
+        let detection: DetectionResult = getTargetScriptInfo();
 
         if (isSelectionMode) {
-            // Ako je nešto selektovano, ali nema validnih reči -> Disable + "NEMA TEKSTA"
-            if (!hasValidWords) {
-                runBtn.innerHTML = `${runLabel}<br><span class="btn-subtitle"><b>${t("ui_sub_no_text")}</b></span>`;
-                runBtn.disabled = true;
-                prevBtn.innerHTML = `${prevLabel}<br><span class="btn-subtitle"><b>${t("ui_sub_no_text")}</b></span>`;
-                prevBtn.disabled = true;
-            } else {
-                // Validna selekcija -> "selekciju"
-                runBtn.innerHTML = `${runLabel}<br><span class="btn-subtitle"><b>${t("ui_sub_run_selection")}</b></span>`;
-                runBtn.disabled = false;
-                prevBtn.innerHTML = `${prevLabel}<br><span class="btn-subtitle"><b>${t("ui_sub_preview_selection")}</b></span>`;
-                prevBtn.disabled = false;
+            if (settings.direction === "auto") {
+                detection = detectDirectionInfo(rawText);
             }
         } else {
-            // Nema selekcije -> "ceo dokument"
-            runBtn.innerHTML = `${runLabel}<br><span class="btn-subtitle"><b>${t("ui_sub_run_document")}</b></span>`;
-            runBtn.disabled = false;
-            prevBtn.innerHTML = `${prevLabel}<br><span class="btn-subtitle"><b>${t("ui_sub_preview_document")}</b></span>`;
-            prevBtn.disabled = false;
+            // Document mode
+            const docInfo = await getDocInfoAsync(cachedDocInfo === null);
+            if (settings.direction === "auto") {
+                detection = detectDirectionInfo(docInfo.sample);
+            }
+        }
+
+        // [FIX] Ako je izabran "to-ascii", ignoriši ASCII upozorenje (jer korisnik to želi)
+        if (settings.direction === "to-ascii") {
+            detection.asciiLevel = "safe";
+        }
+
+        let shouldEnable = false;
+        const contentInfo = isSelectionMode ? selScripts : cachedDocInfo || { hasLat: false, hasCyr: false };
+
+        if (settings.direction === "lat-to-cyr") {
+            shouldEnable = !!contentInfo?.hasLat;
+        } else if (settings.direction === "cyr-to-lat" || settings.direction === "to-ascii") {
+            shouldEnable = !!contentInfo?.hasCyr;
+        } else {
+            shouldEnable = !!(contentInfo?.hasLat || contentInfo?.hasCyr);
+        }
+
+        if (liveStatus && liveTextLeft && liveTextRight && liveIconLeft && liveIconRight && liveAutoIcon) {
+            liveStatus.style.display = "flex";
+
+            let label = "";
+            if (isSelectionMode) {
+                if (selWords >= 1) {
+                    const countStr = formatCompact(selWords);
+                    if (selWords >= 10000) label = t("word_count_many", countStr);
+                    else label = tPlural("word_count", selWords);
+                } else {
+                    label = tPlural("char_count", selChars);
+                }
+                liveTextLeft.textContent = t("live_sel_words", label);
+            } else {
+                const docInfo = cachedDocInfo || { count: 0, sample: "" };
+                const countStr = formatCompact(docInfo.count);
+                if (docInfo.count >= 10000) label = t("word_count_many", countStr);
+                else label = tPlural("word_count", docInfo.count);
+                liveTextLeft.textContent = t("live_doc_words", label);
+            }
+
+            liveTextRight.textContent = detection.label;
+
+            // [FIX] Prikazujemo ✨ ikonicu samo ako je Auto mod
+            if (detection.isAuto) {
+                liveAutoIcon.style.display = "inline-block";
+            } else {
+                liveAutoIcon.style.display = "none";
+            }
+
+            // [FIX] Ikonica desno sada može da se koristi za nešto drugo ili ostane prazna
+            liveIconRight.textContent = detection.icon;
+
+            if (liveAscii) {
+                liveAscii.className = "live-ascii";
+                liveAscii.textContent = "ASCII";
+                if (detection.asciiLevel === "red") liveAscii.classList.add("warning-red");
+                else if (detection.asciiLevel === "yellow") liveAscii.classList.add("warning-yellow");
+                liveAscii.style.display = "block";
+            }
+
+            if (shouldEnable) {
+                liveStatus.style.color = "var(--colorNeutralForeground1)";
+                liveStatus.style.opacity = "1";
+                liveIconLeft.style.filter = "none";
+                liveIconRight.style.filter = "none";
+                liveAutoIcon.style.filter = "none"; // Reset filter
+                runBtn.disabled = false;
+                prevBtn.disabled = false;
+            } else {
+                // Grayout state
+                liveStatus.style.color = "var(--colorNeutralForeground3)";
+                liveStatus.style.opacity = "0.7";
+                liveIconLeft.style.filter = "grayscale(100%)";
+                liveIconRight.style.filter = "grayscale(100%)";
+                liveAutoIcon.style.filter = "grayscale(100%)"; // Grayout ✨
+
+                if (liveAscii) {
+                    liveAscii.className = "live-ascii";
+                    liveAscii.style.opacity = "0.3";
+                }
+                runBtn.disabled = true;
+                prevBtn.disabled = true;
+
+                if (isSelectionMode) {
+                    liveTextLeft.textContent = t("stats_scope_selection");
+                } else {
+                    liveTextLeft.textContent = t("stats_scope_document");
+                }
+            }
         }
     } catch (e) {
         console.error("Error updating UI:", e);

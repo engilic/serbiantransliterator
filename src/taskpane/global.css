@@ -1,61 +1,68 @@
+/* src/taskpane/global.css */
+
 :root {
-    /* --- Fluent 2 Design Tokens (Light) --- */
+    /* --- Fluent 2 Design Tokens (Light - DEFAULT) --- */
     /* Backgrounds */
-    --colorNeutralBackground1: #ffffff; /* Cards */
-    --colorNeutralBackground2: #f5f5f5; /* App Background */
-    --colorNeutralBackground3: #eaeaea; /* Hover */
-    --colorNeutralBackground4: #faf9f8; /* Alt Background */
+    --colorNeutralBackground1: #ffffff;
+    --colorNeutralBackground2: #f5f5f5;
+    --colorNeutralBackground3: #eaeaea;
+    --colorNeutralBackground4: #faf9f8;
     /* Text */
-    --colorNeutralForeground1: #242424; /* Primary */
-    --colorNeutralForeground2: #424242; /* Secondary */
-    --colorNeutralForeground3: #616161; /* Tertiary */
-    /* Brand (Microsoft Blue Refined) */
+    --colorNeutralForeground1: #242424;
+    --colorNeutralForeground2: #424242;
+    --colorNeutralForeground3: #616161;
+    /* Brand */
     --colorBrandBackground: #0078d4;
     --colorBrandBackgroundHover: #106ebe;
     --colorBrandBackgroundPressed: #005a9e;
     --colorBrandForeground1: #0078d4;
-    /* Borders & Dividers */
-    --colorNeutralStroke1: #e0e0e0; /* Card borders */
-    --colorNeutralStroke2: #d1d1d1; /* Input borders */
-    /* Status Colors */
+    /* Borders */
+    --colorNeutralStroke1: #e0e0e0;
+    --colorNeutralStroke2: #d1d1d1;
+    /* Status */
     --colorStatusSuccessBackground: #dff6dd;
     --colorStatusSuccessForeground: #0f7b0f;
     --colorStatusDangerBackground: #fde7e9;
     --colorStatusDangerForeground: #c50f1f;
-    /* Elevation (Soft Multi-layer Shadows) */
+    /* Shadows & Geometry */
     --shadow2: 0 2px 4px rgba(0, 0, 0, 0.04);
     --shadow4: 0 4px 8px rgba(0, 0, 0, 0.08);
     --shadow8: 0 8px 16px rgba(0, 0, 0, 0.12);
-    /* Geometry */
+    /* Typography */
     --radius4: 4px;
     --radius8: 8px;
     --radius12: 12px;
     --radiusPill: 999px;
-    /* Typography */
     --fontFamilyBase: "Segoe UI Variable", "Segoe UI", "Roboto", sans-serif;
 }
 
-[data-theme="dark"] {
-    /* --- Dark Mode Tokens --- */
-    --colorNeutralBackground1: #2c2c2c;
-    --colorNeutralBackground2: #202020;
-    --colorNeutralBackground3: #383838;
-    --colorNeutralBackground4: #181818;
-    --colorNeutralForeground1: #ffffff;
-    --colorNeutralForeground2: #d0d0d0;
-    --colorNeutralForeground3: #9e9e9e;
-    --colorBrandBackground: #479ef5;
-    --colorBrandBackgroundHover: #2886de;
-    --colorBrandForeground1: #479ef5;
-    --colorNeutralStroke1: #3e3e3e;
-    --colorNeutralStroke2: #505050;
-    --shadow2: 0 2px 4px rgba(0, 0, 0, 0.3);
-    --shadow4: 0 4px 8px rgba(0, 0, 0, 0.4);
-    --shadow8: 0 8px 16px rgba(0, 0, 0, 0.5);
-    --colorStatusSuccessBackground: #052505;
-    --colorStatusSuccessForeground: #54b054;
-    --colorStatusDangerBackground: #3b0509;
-    --colorStatusDangerForeground: #ff99a4;
+/* 
+   [AUTOMATIC DARK MODE]
+   Browser/Office automatski aktivira ovo kad je sistem taman.
+   Nema potrebe za JavaScript-om.
+*/
+@media (prefers-color-scheme: dark) {
+    :root {
+        --colorNeutralBackground1: #2c2c2c;
+        --colorNeutralBackground2: #202020;
+        --colorNeutralBackground3: #383838;
+        --colorNeutralBackground4: #181818;
+        --colorNeutralForeground1: #ffffff;
+        --colorNeutralForeground2: #d0d0d0;
+        --colorNeutralForeground3: #9e9e9e;
+        --colorBrandBackground: #479ef5;
+        --colorBrandBackgroundHover: #2886de;
+        --colorBrandForeground1: #479ef5;
+        --colorNeutralStroke1: #3e3e3e;
+        --colorNeutralStroke2: #505050;
+        --shadow2: 0 2px 4px rgba(0, 0, 0, 0.3);
+        --shadow4: 0 4px 8px rgba(0, 0, 0, 0.4);
+        --shadow8: 0 8px 16px rgba(0, 0, 0, 0.5);
+        --colorStatusSuccessBackground: #052505;
+        --colorStatusSuccessForeground: #54b054;
+        --colorStatusDangerBackground: #3b0509;
+        --colorStatusDangerForeground: #ff99a4;
+    }
 }
 
 * {
@@ -86,14 +93,13 @@ body {
 main {
     flex: 1;
     overflow-y: auto;
-    padding: 20px;
+    padding: 15px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    padding-bottom: 100px;
+    gap: 15px;
 }
 
-/* --- Modern Inputs (Fluent Style) --- */
+/* --- Modern Inputs --- */
 input[type="text"],
 select,
 textarea {
@@ -145,7 +151,6 @@ textarea:focus {
     }
 }
 
-/* Success Pulse */
 @keyframes pulse-success {
     0% {
         box-shadow: 0 0 0 0 rgba(16, 124, 16, 0.7);
@@ -184,19 +189,7 @@ textarea:focus {
     background: var(--colorNeutralForeground3);
 }
 
-/* --- Status Message --- */
-#msg {
-    margin: 0;
-    padding: 10px 12px;
-    background-color: var(--colorNeutralBackground3);
-    border-top: 1px solid var(--colorNeutralStroke1);
-    text-align: center;
-    font-weight: 600;
-    font-size: 12px;
-    flex-shrink: 0;
-}
-
-/* --- Drag & Drop Overlay (WEB MODE ONLY) --- */
+/* --- Drag & Drop Overlay --- */
 #dragOverlay {
     position: fixed;
     inset: 0;
@@ -207,12 +200,18 @@ textarea:focus {
     align-items: center;
     justify-content: center;
     opacity: 0;
-    pointer-events: none; /* Skriven i neinteraktivan po defaultu */
+    pointer-events: none;
     transition: opacity 0.2s ease;
 }
 
 [data-theme="dark"] #dragOverlay {
     background: rgba(32, 32, 32, 0.9);
+}
+
+@media (prefers-color-scheme: dark) {
+    #dragOverlay {
+        background: rgba(32, 32, 32, 0.9);
+    }
 }
 
 #dragOverlay.active {
@@ -243,7 +242,6 @@ textarea:focus {
     }
 }
 
-/* High Contrast Fixes */
 @media (forced-colors: active) {
     input,
     select,
@@ -255,8 +253,168 @@ textarea:focus {
     }
 }
 
-footer {
-    display: flex;
+/* --- Stats Box Styling (Fixed Layout) --- */
+#statsBox {
+    display: flex; /* Vraćamo Flex jer najbolje kontroliše decu */
     flex-direction: column;
-    /* Sticky footer je unutra, on ce se pobrinuti za pozicioniranje */
+    width: 100%; /* Osigurava punu širinu */
+    margin-top: 15px;
+    background: var(--colorNeutralBackground1);
+    border: 1px solid var(--colorNeutralStroke1);
+    border-radius: var(--radius12);
+    box-shadow: var(--shadow2);
+    overflow: hidden;
+}
+
+#statsBox:hover {
+    box-shadow: var(--shadow4);
+}
+
+.stats-header {
+    /* KLJUČNO: Ovo natera dugme da se raširi */
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: transparent;
+    border: none;
+    padding: 12px 15px;
+    cursor: pointer;
+    color: var(--colorNeutralForeground1);
+    font-family: inherit;
+    min-height: 48px;
+    transition: background-color 0.2s;
+    /* Uklanjamo default button stilove */
+    margin: 0;
+    outline: none;
+}
+
+.stats-header:hover {
+    background-color: var(--colorNeutralBackground2);
+}
+
+/* --- Stats Box Styling (Hardened) --- */
+#statsBox {
+    display: flex; /* Flex da bi bio dobar gradjanin u main flex-u */
+    flex-direction: column;
+    width: 100%;
+    margin-top: 15px;
+    background: var(--colorNeutralBackground1);
+    border: 1px solid var(--colorNeutralStroke1);
+    border-radius: var(--radius12);
+    box-shadow: var(--shadow2);
+    flex-shrink: 0; /* NE DOZVOLI SKUPLJANJE */
+}
+
+#statsBox:hover {
+    box-shadow: var(--shadow4);
+}
+
+.stats-header {
+    width: 100%;
+    height: 48px; /* FIKSNA VISINA */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: transparent;
+    border: none;
+    padding: 0 15px; /* Padding samo levo/desno */
+    cursor: pointer;
+    color: var(--colorNeutralForeground1);
+    font-family: inherit;
+    transition: background-color 0.2s;
+    outline: none;
+    flex-shrink: 0; /* Dugme se NE SME smanjiti */
+}
+
+/* Klik prolazi kroz decu direktno na dugme */
+.stats-header * {
+    pointer-events: none;
+}
+
+.stats-header:hover {
+    background-color: var(--colorNeutralBackground2);
+}
+
+.stats-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 100%; /* Puna visina */
+}
+
+.stats-icon {
+    fill: var(--colorBrandForeground1);
+    opacity: 0.9;
+    width: 16px;
+    height: 16px;
+    display: block;
+}
+
+.stats-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--colorBrandForeground1);
+    text-align: left;
+    line-height: 1; /* Sprečava čudna poravnanja */
+}
+
+.stats-chevron {
+    transition: transform 0.2s ease;
+    color: var(--colorNeutralForeground3);
+    width: 20px;
+    height: 20px;
+    display: block;
+}
+
+.stats-header[aria-expanded="true"] .stats-chevron {
+    transform: rotate(180deg);
+}
+
+/* --- Content --- */
+.stats-content {
+    display: none;
+    width: 100%;
+    background-color: var(--colorNeutralBackground2); /* Blago siva pozadina za ceo content */
+    box-sizing: border-box;
+}
+
+.stats-content.open {
+    display: block;
+    /* [FIX] Uklonjen padding da bi sadržaj išao od ivice do ivice */
+    padding: 0;
+    border-top: 1px solid var(--colorNeutralStroke2);
+    animation: fadeInContent 0.2s ease-out;
+}
+
+@keyframes fadeInContent {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+#statsText {
+    margin: 0;
+    white-space: pre-wrap;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 11px;
+    color: var(--colorNeutralForeground2);
+    line-height: 1.5;
+    /* [FIX] Transparentna pozadina da se stopi sa stats-content */
+    background-color: transparent;
+    /* [FIX] Padding unutar teksta da se odvoji od ivica */
+    padding: 15px;
+    /* [FIX] Uklonjen border i radius jer je sad deo celina */
+    border: none;
+    border-radius: 0;
+    display: block;
+    width: 100%;
 }

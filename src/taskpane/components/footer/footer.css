@@ -1,57 +1,52 @@
-/* App Footer (Links) */
+/* App Footer (Legacy - Hide) */
 .app-footer {
-    text-align: center;
-    font-size: 11px;
-    padding: 16px 0;
-    background: var(--colorNeutralBackground2);
-    flex-shrink: 0;
-    color: var(--colorNeutralForeground2);
+    display: none;
 }
 
-.app-footer a {
-    /* [FIX A11Y] Hardcoded Dark Blue (#005a9e) za siguran kontrast (6.27:1) */
-    color: #005a9e !important;
-    text-decoration: none;
-    font-weight: 600;
-}
-
-.app-footer a:hover {
-    text-decoration: underline;
-    color: #004578 !important; /* Još tamnija na hover */
-}
-
-/* Sticky Action Bar (Glassmorphism) */
+/* Sticky Action Bar Container */
 .sticky-footer {
     position: sticky;
     bottom: 0;
-    background: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border-top: 1px solid rgba(0, 0, 0, 0.05);
-    padding: 12px 24px 16px;
+    background: var(--colorNeutralBackground1);
+    border-top: 1px solid var(--colorNeutralStroke1);
+    padding: 0;
     display: flex;
-    flex-direction: column; /* Stack: status gore, dugmad dole */
-    gap: 10px;
+    flex-direction: column;
     z-index: 100;
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
 }
 
 [data-theme="dark"] .sticky-footer {
-    background: rgba(32, 32, 32, 0.85);
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    background: var(--colorNeutralBackground2);
 }
 
-/* Live Status Stilovi */
+/* --- 1. Status Message --- */
+#msg {
+    margin: 0;
+    padding: 6px 15px;
+    background-color: var(--colorNeutralBackground4);
+    border-bottom: 1px solid var(--colorNeutralStroke1);
+    text-align: center;
+    font-weight: 600;
+    font-size: 11px;
+    min-height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.3s;
+}
+
+/* --- 2. Live Status --- */
 .live-status {
     font-size: 11px;
-    color: var(--colorNeutralForeground2);
+    font-weight: 500;
+    color: var(--colorNeutralForeground1);
+    background: var(--colorNeutralBackground1);
+    border-bottom: 1px solid var(--colorNeutralStroke1);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 6px 12px;
-    background: var(--colorNeutralBackground2);
-    border: 1px solid var(--colorNeutralStroke1);
-    border-radius: 4px;
+    padding: 6px 15px;
     width: 100%;
     box-sizing: border-box;
 }
@@ -60,72 +55,116 @@
     display: flex;
     align-items: center;
     gap: 6px;
+    flex: 1;
+    min-width: 0;
     overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.live-right {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+    justify-content: flex-end;
 }
 
 .live-icon {
-    font-size: 12px;
-    opacity: 0.8;
+    font-size: 14px;
 }
 
-/* Footer Actions Wrapper */
+/* ASCII Warning */
+.live-ascii {
+    font-weight: 700;
+    font-size: 10px;
+    color: var(--colorNeutralForeground3);
+    opacity: 0.15;
+    white-space: nowrap;
+    padding: 1px 4px;
+    border-radius: 3px;
+    margin-left: 4px;
+    display: block;
+}
+
+.live-ascii.warning-yellow {
+    color: #d13438;
+    background-color: #fdf6f6;
+    opacity: 1;
+}
+
+.live-ascii.warning-red {
+    color: #c50f1f;
+    background-color: #fde7e9;
+    opacity: 1;
+}
+
+[data-theme="dark"] .live-ascii.warning-yellow {
+    color: #ff99a4;
+    background-color: #3b0509;
+}
+
+/* --- 3. Buttons --- */
+.footer-content-wrapper {
+    padding: 12px 15px;
+    background: var(--colorNeutralBackground1);
+}
+
+[data-theme="dark"] .footer-content-wrapper {
+    background: var(--colorNeutralBackground2);
+}
+
 .footer-actions {
     display: flex;
-    gap: 16px;
+    gap: 12px;
     width: 100%;
 }
 
 .primary-btn,
 .secondary-btn {
-    flex: 1; /* Popuni sirinu */
-    height: 48px;
-    border-radius: var(--radius8);
-    font-size: 15px;
+    flex: 1;
+    height: 44px;
+    border-radius: 6px;
+    font-size: 14px;
     font-weight: 600;
-    letter-spacing: 0.3px;
     display: flex;
-    /* FIX: Vraćamo flex-direction column za podnaslove */
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    line-height: 1.1;
-    border: none;
+    border: 1px solid transparent;
     cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .primary-btn {
     background: var(--colorBrandBackground);
     color: white;
-    box-shadow: var(--shadow4);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .primary-btn:hover:not(:disabled) {
     background: var(--colorBrandBackgroundHover);
-    box-shadow: var(--shadow8);
-    transform: translateY(-2px);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .primary-btn:active:not(:disabled) {
     transform: scale(0.98);
-    box-shadow: var(--shadow2);
 }
 
-.primary-btn:disabled,
-.secondary-btn:disabled {
+.primary-btn:disabled {
     background: var(--colorNeutralBackground3);
     color: var(--colorNeutralForeground3);
     box-shadow: none;
     cursor: not-allowed;
-    transform: none;
 }
 
 .secondary-btn {
     background: var(--colorNeutralBackground1);
     color: var(--colorNeutralForeground1);
-    border: 1px solid var(--colorNeutralStroke2);
+    border-color: var(--colorNeutralStroke2);
 }
 
 .secondary-btn:hover:not(:disabled) {
@@ -133,17 +172,60 @@
     border-color: var(--colorNeutralForeground2);
 }
 
-/* FIX: Vraćamo stil za podnaslov */
-.btn-sub,
-.btn-subtitle {
-    font-size: 10px;
-    font-weight: 400;
-    opacity: 0.9;
-    margin-top: 2px;
+.secondary-btn:disabled {
+    background: var(--colorNeutralBackground2);
+    color: var(--colorNeutralForeground3);
+    border-color: var(--colorNeutralStroke1);
+    cursor: not-allowed;
 }
 
-.primary-btn:focus-visible,
-.secondary-btn:focus-visible {
-    outline: 2px solid var(--colorBrandForeground1);
-    outline-offset: 2px;
+/* --- 4. Links Bar --- */
+.app-footer-compact {
+    background: var(--colorNeutralBackground3);
+    border-top: 1px solid var(--colorNeutralStroke1);
+    padding: 4px 5px;
+    text-align: center;
+    font-size: 10px;
+    color: var(--colorNeutralForeground3);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.sticky-footer .app-footer-compact a {
+    color: var(--colorNeutralForeground2);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.sticky-footer .app-footer-compact a:hover {
+    color: var(--colorBrandBackground);
+    text-decoration: underline;
+}
+
+.footer-icon-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--colorNeutralBackground1);
+    border: 1px solid var(--colorNeutralStroke2);
+    font-weight: bold;
+    font-size: 10px;
+    color: var(--colorNeutralForeground1);
+}
+
+.footer-version-click {
+    cursor: pointer;
+    font-weight: 600;
+    transition: color 0.2s;
+}
+
+.footer-version-click:hover {
+    color: var(--colorBrandBackground);
+    text-decoration: underline;
 }

@@ -1,12 +1,15 @@
 <div class="section fade-in">
-    <div class="section-header">
+    <div class="section-header" style="flex-direction: column; align-items: flex-start; gap: 10px">
         <div class="section-title" data-i18n="section_protected"></div>
-        <div class="header-actions">
+
+        <!-- [FIX] Prebačeno ispod naslova -->
+        <div class="header-actions" style="width: 100%; display: flex; gap: 8px">
             <button
                 id="clearCustomBtn"
                 class="mini-btn danger"
                 type="button"
                 data-i18n-attr="title:btn_clear_custom_title,aria-label:btn_clear_custom_title"
+                style="flex: 1"
             >
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                     <path
@@ -20,6 +23,7 @@
                 class="mini-btn"
                 type="button"
                 data-i18n-attr="title:btn_clear_preset_title,aria-label:btn_clear_preset_title"
+                style="flex: 1"
             >
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                     <path
@@ -33,6 +37,7 @@
                 class="mini-btn danger"
                 type="button"
                 data-i18n-attr="title:btn_clear_all_title,aria-label:btn_clear_all_title"
+                style="flex: 1"
             >
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                     <path

@@ -1,11 +1,11 @@
 // src/taskpane/app/types.ts
 
 import type { CurlyProtectionUi } from "./word/curlyProtection";
+import type { InteractiveDiff } from "../../shared/diff/interactive";
 
 export type DirectionUi = "auto" | "lat-to-cyr" | "cyr-to-lat" | "to-ascii";
 export type ProfilePreset = "custom" | "it" | "finance" | "medical" | "legal" | "journalism" | "marketing";
 export type AppTheme = "auto" | "light" | "dark";
-// NEW
 export type DialectUi = "none" | "ekavica_to_ijekavica" | "ijekavica_to_ekavica";
 
 export interface UiSettings {
@@ -13,11 +13,9 @@ export interface UiSettings {
 
     profile: ProfilePreset;
     userWordsCustom: string[];
-
     theme: AppTheme;
-    customSubstitutions: string;
 
-    // NEW
+    customSubstitutions: string;
     dialect: DialectUi;
 
     protectBrands: boolean;
@@ -33,7 +31,7 @@ export interface UiSettings {
     includeFootnotes: boolean;
     includeEndnotes: boolean;
 
-    showStats: boolean;
+    // Removed: showStats
     direction: DirectionUi;
 }
 
@@ -62,6 +60,10 @@ export interface PreviewState {
     selectionOoxmlHash: string | null;
 
     cacheTimestamp: number | null;
+
+    interactiveDiff: InteractiveDiff | null;
+
+    renderSession?: number;
 }
 
 export type ExtrasSummary = {

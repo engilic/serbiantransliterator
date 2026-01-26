@@ -19,20 +19,16 @@ function ms0(n: number): string {
     return Number.isFinite(n) ? n.toFixed(0) : "0";
 }
 
-export function buildApplyStatsTitle(result: ResultLike): string {
-    return t("stats_header_apply", result.type);
-}
+// REMOVED: buildApplyStatsTitle function
 
 export function buildApplyStatsText(result: ResultLike, scope: ApplyScope, extras?: ExtrasSummary): string {
     const time = ms0(result.stats.timingMs);
     const bridges = result.stats.bridges;
-    // NEW: Character count
     const chars = result.stats.charsBefore || 0;
 
     let out =
         `${t("stats_line_scope", scopeLabel(scope))}\n` +
         `${tPlural("stats_line_nodes_changed", result.stats.textNodes)}\n` +
-        // Manual simple string for now, or add to i18n
         `${t("stats_line_chars", chars)}\n` +
         `${t("stats_line_time_ms", time)}\n` +
         `${t("stats_section_bridges")}\n` +

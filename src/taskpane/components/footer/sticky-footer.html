@@ -1,5 +1,8 @@
 <div class="sticky-footer" id="stickyFooter">
-    <!-- Live Status Bar -->
+    <!-- 1. Status Message (Feedback) -->
+    <div id="msg" role="status" aria-live="polite"></div>
+
+    <!-- 2. Live Status Bar (Context) -->
     <div id="liveStatus" class="live-status fade-in" style="display: none">
         <div class="live-left">
             <span id="liveIconLeft" class="live-icon">ℹ️</span>
@@ -8,18 +11,37 @@
 
         <div class="live-right">
             <span id="liveTextRight">...</span>
-            <span id="liveIconRight" class="live-icon" style="margin-left: 6px"></span>
+
+            <!-- NEW: Auto Icon separated (always visible in Auto mode) -->
+            <span id="liveAutoIcon" class="live-icon" style="display: none" title="Automatska detekcija"
+                >✨</span
+            >
+
+            <span id="liveIconRight" class="live-icon"></span>
+            <div id="liveAscii" class="live-ascii">ASCII</div>
         </div>
     </div>
 
-    <div class="footer-actions">
-        <button id="previewBtn" class="secondary-btn" type="button">
-            <span data-i18n="ui_btn_preview"></span>
-            <div class="btn-sub" data-i18n="ui_sub_preview_selection"></div>
-        </button>
-        <button id="runBtn" class="primary-btn" type="button">
-            <span data-i18n="ui_btn_run"></span>
-            <div class="btn-sub" data-i18n="ui_sub_run_selection"></div>
-        </button>
+    <!-- 3. Actions Wrapper (Controls) -->
+    <div class="footer-content-wrapper">
+        <div class="footer-actions">
+            <button id="previewBtn" class="secondary-btn" type="button">
+                <span data-i18n="ui_btn_preview"></span>
+            </button>
+            <button id="runBtn" class="primary-btn" type="button">
+                <span data-i18n="ui_btn_run"></span>
+            </button>
+        </div>
+    </div>
+
+    <!-- 4. Compact Footer Links (Meta) -->
+    <div class="app-footer-compact">
+        <a href="mailto:iddj27510@gmail.com" class="footer-icon-link" aria-label="Email" title="Kontakt">@</a>
+        &bull; <a href="support.html" target="_blank" data-i18n="footer_help"></a> &bull;
+        <a href="privacy.html" target="_blank" data-i18n="footer_privacy"></a> &bull;
+        <a href="https://github.com/sponsors/engilic" target="_blank" data-i18n="footer_donate"></a> &bull;
+        <span id="footerVersion" class="footer-version-click" title="O aplikaciji / Changelog">v1.0.0</span>
+        &bull;
+        <span data-i18n="footer_copyright"></span>
     </div>
 </div>

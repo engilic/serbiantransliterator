@@ -7,23 +7,27 @@ function setupDom() {
     <div id="msg"></div>
     <div id="progressContainer" style="display:none"></div>
     <div id="progressBar" style="width:0%"></div>
-    <div id="statsBox" style="display:none"></div>
-    <div id="statsTitle"></div>
-    <pre id="statsText"></pre>
-    <input type="checkbox" id="optShowStats" />
+    
+    <div id="statsBox" style="display:none">
+        <button id="statsHeader"></button>
+        <div id="statsContent">
+            <pre id="statsText"></pre>
+        </div>
+        <span id="statsTitle">STATISTIKA</span>
+    </div>
     `;
 }
 
 describe("status.ts", () => {
     beforeEach(() => {
         setupDom();
+        state.lastStatsText = "";
     });
 
     it("setStatus updates text", () => {
         setStatus("Greška!", "error");
         const el = document.getElementById("msg")!;
         expect(el.innerText).toBe("Greška!");
-        // Uklonjena stroga provera boje zbog JSDOM-a
     });
 
     it("setProgress updates width and visibility", () => {
@@ -38,22 +42,23 @@ describe("status.ts", () => {
         expect(container.style.display).toBe("none");
     });
 
-    it("refreshStats shows stats only if checkbox is checked", () => {
-        state.lastStatsTitle = "Naslov";
-        state.lastStatsText = "Tekst";
-
-        const checkbox = document.getElementById("optShowStats") as HTMLInputElement;
+    it("refreshStats shows stats box if text exists", () => {
+        state.lastStatsText = "Tekst statistike...";
         const box = document.getElementById("statsBox")!;
-
-        // Not checked -> Hidden
-        checkbox.checked = false;
         refreshStats();
-        expect(box.style.display).toBe("none");
+        // [FIX] Flex
+        expect(box.style.display).toBe("flex");
+        expect(document.getElementById("statsText")!.innerText).toBe("Tekst statistike...");
+    });
 
-        // Checked -> Visible
-        checkbox.checked = true;
+    it("refreshStats shows placeholder if text is empty", () => {
+        state.lastStatsText = "";
+        const box = document.getElementById("statsBox")!;
+        const textPre = document.getElementById("statsText")!;
+        box.style.display = "none";
         refreshStats();
-        expect(box.style.display).toBe("block");
-        expect(document.getElementById("statsTitle")!.innerText).toBe("Naslov");
+        // [FIX] Flex
+        expect(box.style.display).toBe("flex");
+        expect(textPre.innerText).toContain("(Nema podataka)");
     });
 });

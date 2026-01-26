@@ -2,9 +2,9 @@
 .section {
     background: var(--colorNeutralBackground1);
     border: 1px solid var(--colorNeutralStroke1);
-    border-radius: var(--radius12); /* Modern rounded corners */
-    padding: 20px;
-    margin-bottom: 16px;
+    border-radius: var(--radius12);
+    padding: 15px;
+    margin-bottom: 0;
     box-shadow: var(--shadow2);
     transition: box-shadow 0.3s ease;
     contain-intrinsic-size: 1px 300px;

@@ -10,8 +10,11 @@ import { logger } from "./telemetry/logger";
 import { showPreviewToast } from "./modal/previewModal";
 import { initOnboarding } from "./onboarding/tour";
 import { initWasm } from "../../core/textCore";
+import { showModalInfo } from "./modal/modal";
+import { html } from "../../shared/safeHtml";
+import pkg from "../../../package.json";
 import { t } from "../../shared/i18n";
-import { setStatus, setProgress } from "./status";
+import { setStatus, setProgress, initStatsAccordion } from "./status"; // IMPORTED initStatsAccordion
 import { abortActiveOperation } from "./uiLock";
 import { getOptional } from "./utils/dom";
 
@@ -40,11 +43,15 @@ export function initTaskpane(isWebMode = false) {
 
     try {
         initUi();
+        // [NEW] Initialize Stats Accordion Logic
+        initStatsAccordion();
     } catch (e) {
         logger.error("UI Init failed", e);
     }
+
+    // ... ostatak fajla isti kao pre ...
     initWasm().catch((e) => logger.error("WASM init failed", e));
-    setupDebugTrigger();
+    setupVersionHandler();
 
     window.addEventListener("beforeunload", () => cleanupEventHandlers());
     try {
@@ -57,7 +64,6 @@ export function initTaskpane(isWebMode = false) {
         console.log("Web Mode");
         registerServiceWorker();
         setupKeyboardShortcuts();
-        // [ULTIMATE MAX] Web Mode needs network listeners too
         setupNetworkListeners();
         return;
     }
@@ -83,10 +89,9 @@ export function initTaskpane(isWebMode = false) {
     setupNetworkListeners();
 }
 
-// [ULTIMATE MAX] Network Resilience Proof
 function setupNetworkListeners() {
     window.addEventListener("offline", () => {
-        setStatus(t("msg_offline"), "success"); // Success color to show confidence
+        setStatus(t("msg_offline"), "success");
         setTimeout(() => setStatus(t("status_ready"), "neutral"), 4000);
     });
 
@@ -96,7 +101,6 @@ function setupNetworkListeners() {
     });
 }
 
-// [FIX] EXPORTED FOR TESTING
 export function setupKeyboardShortcuts() {
     document.addEventListener("keydown", (e) => {
         if (e.key === "Escape") {
@@ -115,7 +119,6 @@ export function setupKeyboardShortcuts() {
             return;
         }
 
-        // [GALAXY MODE] Commander Shortcuts (Alt + Key)
         if (e.altKey && !e.ctrlKey && !e.shiftKey) {
             if (e.key === "1") {
                 e.preventDefault();
@@ -164,23 +167,52 @@ function showToast(msg: string) {
     }
 }
 
-function setupDebugTrigger() {
-    const versionEl = document.querySelector(".version");
-    if (!versionEl) return;
-    let clicks = 0;
-    versionEl.addEventListener("click", async () => {
-        clicks++;
-        if (clicks >= 5) {
-            clicks = 0;
-            const logs = await logger.exportLogsFull();
-            try {
-                await navigator.clipboard.writeText(logs);
-                showPreviewToast(t("preview_toast_debug_logs_copied"), "success", 3000);
-            } catch (e) {
-                logger.error("Copy failed", e);
+function setupVersionHandler() {
+    const el = document.getElementById("footerVersion");
+    if (!el) return;
+
+    el.onclick = async () => {
+        const content = html`
+            <div style="text-align: center; margin-bottom: 15px;">
+                <div style="font-size: 48px; margin-bottom: 10px;">Ž</div>
+                <h3 style="margin: 0;">Serbian Transliterator</h3>
+                <div style="opacity: 0.6; font-size: 12px;">v${pkg.version}</div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <a
+                    href="https://github.com/engilic/serbiantransliterator/blob/master/CHANGELOG.md"
+                    target="_blank"
+                    class="btn-secondary"
+                    style="text-align:center; padding: 8px; text-decoration: none; border: 1px solid var(--colorNeutralStroke1); border-radius: 4px; color: var(--colorNeutralForeground1);"
+                >
+                    📄 Pogledaj Changelog
+                </a>
+
+                <button id="btnCopyLogs" class="btn-secondary" style="padding: 8px; cursor: pointer;">
+                    🐞 Kopiraj Debug Logove
+                </button>
+            </div>
+
+            <div style="margin-top: 20px; font-size: 11px; opacity: 0.5; text-align: center;">
+                Built with ❤️ in Rust & TypeScript.
+            </div>
+        `;
+
+        showModalInfo(t("modal_title_about"), content);
+
+        setTimeout(() => {
+            const btn = document.getElementById("btnCopyLogs");
+            if (btn) {
+                btn.onclick = async () => {
+                    const logs = await logger.exportLogsFull();
+                    await navigator.clipboard.writeText(logs);
+                    btn.textContent = "✅ Kopirano!";
+                    setTimeout(() => (btn.textContent = "🐞 Kopiraj Debug Logove"), 2000);
+                };
             }
-        }
-    });
+        }, 100);
+    };
 }
 
 function cleanupEventHandlers() {

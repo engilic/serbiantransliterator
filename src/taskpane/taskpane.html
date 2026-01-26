@@ -11,23 +11,6 @@
         <link rel="preload" href="assets/dict_i2e.bin" as="fetch" crossorigin />
         <link rel="preconnect" href="https://appsforoffice.microsoft.com" />
 
-        <script>
-            (function () {
-                try {
-                    var saved = localStorage.getItem("serbiantransliterator.settings.v2");
-                    if (saved) {
-                        var theme = JSON.parse(saved).theme;
-                        if (
-                            theme === "dark" ||
-                            (theme === "auto" && window.matchMedia("(prefers-color-scheme: dark)").matches)
-                        ) {
-                            document.documentElement.setAttribute("data-theme", "dark");
-                        }
-                    }
-                } catch (e) {}
-            })();
-        </script>
-
         <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
     </head>
     <body>
@@ -70,6 +53,7 @@
             <div class="sk-line" style="width: 70%"></div>
         </div>
 
+        <!-- [FIX] Dodat Header -->
         <%= readPart('components/header/header.html') %>
 
         <main id="appMain" role="main" style="display: none">
@@ -88,13 +72,41 @@
             >
                 <div id="progressBar" class="progress-bar"></div>
             </div>
-            <div id="statsBox" style="display: none" aria-live="polite">
-                <div id="statsTitle"></div>
-                <pre id="statsText"></pre>
+
+            <!-- Stats Accordion -->
+            <div id="statsBox" class="section fade-in">
+                <button
+                    id="statsHeader"
+                    class="stats-header"
+                    type="button"
+                    aria-expanded="false"
+                    aria-controls="statsContent"
+                >
+                    <div class="stats-header-left">
+                        <svg class="stats-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                            <path d="M4 9h4v11H4V9zm6-5h4v16h-4V4zm6 8h4v8h-4V12z" />
+                        </svg>
+                        <span class="stats-title" data-i18n="ui_stats_accordion_header"></span>
+                    </div>
+
+                    <svg
+                        id="statsArrow"
+                        class="stats-chevron"
+                        viewBox="0 0 24 24"
+                        width="20"
+                        height="20"
+                        fill="currentColor"
+                        aria-hidden="true"
+                    >
+                        <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z" />
+                    </svg>
+                </button>
+
+                <div id="statsContent" class="stats-content" aria-hidden="true">
+                    <pre id="statsText" data-i18n="ui_stats_empty_placeholder"></pre>
+                </div>
             </div>
         </main>
-
-        <div id="msg" role="status" aria-live="polite"></div>
 
         <div id="dragOverlay" aria-hidden="true" role="presentation" style="display: none">
             <div class="drag-content">
@@ -103,13 +115,7 @@
             </div>
         </div>
 
-        <!-- [FIX] Wrapper footer element za A11y Landmark -->
-        <footer role="contentinfo">
-            <!-- Linkovi -->
-            <%= readPart('components/footer/footer.html') %>
-            <!-- Sticky Akcije -->
-            <%= readPart('components/footer/sticky-footer.html') %>
-        </footer>
+        <footer role="contentinfo"><%= readPart('components/footer/sticky-footer.html') %></footer>
 
         <%= readPart('components/modals/confirm-modal.html') %> <%=
         readPart('components/modals/tour-modal.html') %>
