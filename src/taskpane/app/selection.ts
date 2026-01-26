@@ -83,16 +83,16 @@ async function getDocInfoAsync(
             return cachedDocInfo;
         });
     } catch {
+        // [FIX] Vraćamo validan objekat čak i u catch bloku
         return { count: 0, sample: "", hasLat: false, hasCyr: false };
     }
 }
 
-// Helper tip za rezultat detekcije
 type DetectionResult = {
     label: string;
     icon: string;
     asciiLevel: "safe" | "yellow" | "red";
-    isAuto: boolean; // NEW: Da znamo da li da prikuzemo ✨
+    isAuto: boolean;
 };
 
 function getTargetScriptInfo(): DetectionResult {
@@ -110,11 +110,13 @@ function getTargetScriptInfo(): DetectionResult {
 }
 
 function detectDirectionInfo(text: string): DetectionResult {
+    // [FIX] Defensive: ako je text null/undefined, tretiraj kao prazan
+    const safeText = text || "";
     let cyr = 0;
     let lat = 0;
     let latSr = 0;
 
-    const sample = text.slice(0, 500);
+    const sample = safeText.slice(0, 500);
 
     for (const char of sample) {
         if (/[a-zA-Z]/.test(char)) lat++;
@@ -127,20 +129,16 @@ function detectDirectionInfo(text: string): DetectionResult {
 
     const total = lat + cyr;
 
-    // Default (Auto -> Auto)
     const base: DetectionResult = { label: t("dir_auto"), icon: "", asciiLevel: "safe", isAuto: true };
 
     if (total === 0) return base;
 
     if (cyr > lat) {
-        // Većina ćirilica -> Cilj Latinica
         return { label: t("live_auto_to_lat"), icon: "", asciiLevel: "safe", isAuto: true };
     }
 
-    // Većina latinica -> Cilj Ćirilica
     if (lat > 35) {
         const ratio = latSr / lat;
-        // Ako nema naših slova, sumnjivo je (ASCII)
         if (ratio === 0) return { label: t("live_auto_to_cyr"), icon: "", asciiLevel: "red", isAuto: true };
         if (ratio < 0.012)
             return { label: t("live_auto_to_cyr"), icon: "", asciiLevel: "yellow", isAuto: true };
@@ -158,7 +156,7 @@ export async function checkSelectionAndUpdateButtons() {
         const liveTextLeft = document.getElementById("liveTextLeft");
         const liveTextRight = document.getElementById("liveTextRight");
         const liveAscii = document.getElementById("liveAscii");
-        const liveAutoIcon = document.getElementById("liveAutoIcon"); // NEW
+        const liveAutoIcon = document.getElementById("liveAutoIcon");
 
         const liveIconLeft = document.getElementById("liveIconLeft");
         const liveIconRight = document.getElementById("liveIconRight");
@@ -174,7 +172,6 @@ export async function checkSelectionAndUpdateButtons() {
 
         const settings = getSettingsFromUi();
 
-        // Initial info from manual settings
         let detection: DetectionResult = getTargetScriptInfo();
 
         if (isSelectionMode) {
@@ -182,14 +179,17 @@ export async function checkSelectionAndUpdateButtons() {
                 detection = detectDirectionInfo(rawText);
             }
         } else {
-            // Document mode
             const docInfo = await getDocInfoAsync(cachedDocInfo === null);
+            // [FIX] Provera da li docInfo postoji pre pristupa sample-u
+            // Ako je docInfo undefined (što ne bi smelo da se desi zbog try/catch u getDocInfoAsync, ali JS je čudan),
+            // koristimo prazan string.
+            const sample = docInfo?.sample || "";
+
             if (settings.direction === "auto") {
-                detection = detectDirectionInfo(docInfo.sample);
+                detection = detectDirectionInfo(sample);
             }
         }
 
-        // [FIX] Ako je izabran "to-ascii", ignoriši ASCII upozorenje (jer korisnik to želi)
         if (settings.direction === "to-ascii") {
             detection.asciiLevel = "safe";
         }
@@ -228,14 +228,12 @@ export async function checkSelectionAndUpdateButtons() {
 
             liveTextRight.textContent = detection.label;
 
-            // [FIX] Prikazujemo ✨ ikonicu samo ako je Auto mod
             if (detection.isAuto) {
                 liveAutoIcon.style.display = "inline-block";
             } else {
                 liveAutoIcon.style.display = "none";
             }
 
-            // [FIX] Ikonica desno sada može da se koristi za nešto drugo ili ostane prazna
             liveIconRight.textContent = detection.icon;
 
             if (liveAscii) {
@@ -251,16 +249,15 @@ export async function checkSelectionAndUpdateButtons() {
                 liveStatus.style.opacity = "1";
                 liveIconLeft.style.filter = "none";
                 liveIconRight.style.filter = "none";
-                liveAutoIcon.style.filter = "none"; // Reset filter
+                liveAutoIcon.style.filter = "none";
                 runBtn.disabled = false;
                 prevBtn.disabled = false;
             } else {
-                // Grayout state
                 liveStatus.style.color = "var(--colorNeutralForeground3)";
                 liveStatus.style.opacity = "0.7";
                 liveIconLeft.style.filter = "grayscale(100%)";
                 liveIconRight.style.filter = "grayscale(100%)";
-                liveAutoIcon.style.filter = "grayscale(100%)"; // Grayout ✨
+                liveAutoIcon.style.filter = "grayscale(100%)";
 
                 if (liveAscii) {
                     liveAscii.className = "live-ascii";

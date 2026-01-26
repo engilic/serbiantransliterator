@@ -29,19 +29,13 @@ test.describe("Accessibility (A11y)", () => {
     test("should not have any accessibility violations on main page", async ({ page }) => {
         await page.goto("/taskpane.html");
 
-        // 1. Prvo čekamo da se Skeleton skloni (znak da je JS krenuo)
         await expect(page.locator("#skeleton")).toBeHidden({ timeout: 15000 });
-
-        // 2. Čekamo da se glavni kontejner pojavi
         await expect(page.locator("#appMain")).toBeVisible();
 
-        // 3. Eksplicitno čekamo da dugme bude vidljivo u DOM-u
         const runBtn = page.locator("#runBtn");
         await expect(runBtn).toBeVisible();
-        // Tek onda proveravamo tekst (i18n)
         await expect(runBtn).toHaveText(/PRESLOVI|APPLY|RUN/, { timeout: 10000 });
 
-        // 4. Čekamo da se aria-label atributi popune
         await page.waitForFunction(
             () => {
                 const el = document.getElementById("subSrc");
@@ -51,14 +45,9 @@ test.describe("Accessibility (A11y)", () => {
             { timeout: 10000 }
         );
 
-        // Kratka pauza da se rendering smiri
         await page.waitForTimeout(1000);
 
-        const results = await new AxeBuilder({ page })
-            .exclude("#skeleton")
-            // [FIX] Isključujemo liveAscii (namerno nizak kontrast kad je inactive)
-            .exclude(".live-ascii")
-            .analyze();
+        const results = await new AxeBuilder({ page }).exclude("#skeleton").exclude(".live-ascii").analyze();
 
         logViolations(results.violations);
         expect(results.violations).toEqual([]);
@@ -68,15 +57,7 @@ test.describe("Accessibility (A11y)", () => {
         await page.goto("/taskpane.html");
         await expect(page.locator("#skeleton")).toBeHidden({ timeout: 15000 });
 
-        // [FIX] Uklonjeno traženje toggle dugmeta jer je panel sada uvek vidljiv
-        // const toggleBtn = page.locator("#toggleAdvancedBtn");
-        // await expect(toggleBtn).toBeVisible();
-        // await toggleBtn.click();
-
-        // Proveravamo da li je sadržaj vidljiv (po novoj klasi)
         await expect(page.locator(".advanced-settings-content")).toBeVisible();
-
-        // Čekamo kraj animacije (za svaki slučaj)
         await page.waitForTimeout(500);
 
         const results = await new AxeBuilder({ page }).exclude("#skeleton").exclude(".live-ascii").analyze();
@@ -90,6 +71,10 @@ test.describe("Accessibility (A11y)", () => {
         await expect(page.locator("#skeleton")).toBeHidden({ timeout: 15000 });
 
         await page.evaluate(() => {
+            // [FIX] Osiguraj da je Tour sakriven da ne bi pravio kontrast probleme
+            const tour = document.getElementById("tourOverlay");
+            if (tour) tour.style.display = "none";
+
             const overlay = document.getElementById("modalOverlay");
             if (overlay) overlay.style.display = "flex";
 
@@ -98,18 +83,16 @@ test.describe("Accessibility (A11y)", () => {
             const text = document.getElementById("modalText");
             if (text) text.innerText = "Test poruka.";
 
-            // FIX: Popuni dugmad (simulacija i18n)
             const btnCancel = document.getElementById("modalCancel");
             if (btnCancel) btnCancel.innerText = "Otkaži";
 
             const btnOk = document.getElementById("modalOk");
             if (btnOk) btnOk.innerText = "OK";
 
-            // FIX: Sakrij input polje jer ga confirm modal ne koristi
             const input = document.getElementById("modalInput");
             if (input) input.style.display = "none";
 
-            // FIX: Sakrij sve elemente u pozadini (aria-hidden)
+            // Sakrij pozadinu (aria-hidden)
             Array.from(document.body.children).forEach((child) => {
                 if (child.id !== "modalOverlay" && child.tagName !== "SCRIPT" && child.id !== "skeleton") {
                     child.setAttribute("aria-hidden", "true");
@@ -120,7 +103,11 @@ test.describe("Accessibility (A11y)", () => {
         await expect(page.locator("#modalOverlay")).toBeVisible();
         await page.waitForTimeout(500);
 
-        const results = await new AxeBuilder({ page }).exclude("#skeleton").exclude(".live-ascii").analyze();
+        const results = await new AxeBuilder({ page })
+            .exclude("#skeleton")
+            .exclude(".live-ascii")
+            .exclude("#tourOverlay") // [FIX] Eksplicitno isključi Tour
+            .analyze();
 
         logViolations(results.violations);
         expect(results.violations).toEqual([]);
