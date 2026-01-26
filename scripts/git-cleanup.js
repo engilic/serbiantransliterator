@@ -61,8 +61,8 @@ async function main() {
     console.log(`\n${C.green}>>> 2. Brišem lokalne grane...${C.reset}`);
     const localBranches = getOutput("git", ["branch"]);
     for (const b of localBranches) {
-        // Ukloni * marker ako postoji
-        const branchName = b.replace("*", "").trim();
+        // [FIX] Koristimo regex sa global flagom (/g) da zadovoljimo CodeQL
+        const branchName = b.replace(/\*/g, "").trim();
         if (!SAFE_BRANCHES.includes(branchName)) {
             run("git", ["branch", "-D", branchName], true);
         }
