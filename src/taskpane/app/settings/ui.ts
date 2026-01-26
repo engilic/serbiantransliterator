@@ -439,6 +439,11 @@ function setupInputListeners() {
             if (!state.isApplyingProfile) switchToCustomIfManual();
             else saveSettings();
             if (id === "optShowStats") refreshStats();
+
+            // FIX: Ažuriraj Live Status odmah kada se promeni smer
+            if (id.startsWith("dir")) {
+                void checkSelectionAndUpdateButtons();
+            }
         };
     });
 }

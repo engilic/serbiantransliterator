@@ -1,3 +1,5 @@
+/* src/taskpane/components/header/header.css */
+
 header {
     background: var(--colorNeutralBackground1);
     padding: 12px 20px;
@@ -5,6 +7,9 @@ header {
     display: flex;
     align-items: center;
     flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    z-index: 50;
 }
 
 .header-content {
@@ -16,15 +21,18 @@ header {
 
 header h1 {
     margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--colorBrandForeground1);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--colorNeutralForeground1);
+    letter-spacing: 0.2px;
 }
 
 .version {
     font-size: 10px;
-    /* [A11Y FIX] Brutal contrast fix. Using #323130 (Standard dark grey) with !important */
-    color: #323130 !important;
-    opacity: 1 !important;
-    padding-top: 2px;
+    color: var(--colorNeutralForeground2);
+    background: var(--colorNeutralBackground3);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+    margin-right: 15px;
 }

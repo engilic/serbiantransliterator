@@ -7,14 +7,10 @@
         <title data-i18n="app_title">Serbian Transliterator</title>
         <link rel="manifest" href="manifest.webmanifest" />
 
-        <!-- [MAX PERF] Preload Critical Assets -->
         <link rel="preload" href="assets/dict_e2i.bin" as="fetch" crossorigin />
         <link rel="preload" href="assets/dict_i2e.bin" as="fetch" crossorigin />
-
-        <!-- [MAX NET] Preconnect to Microsoft CDN -->
         <link rel="preconnect" href="https://appsforoffice.microsoft.com" />
 
-        <!-- [MAX UX] Instant Theme Apply -->
         <script>
             (function () {
                 try {
@@ -35,7 +31,6 @@
         <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
     </head>
     <body>
-        <!-- [MAX UX] Instant Web Mode UI -->
         <div
             id="webModePreloader"
             style="
@@ -75,16 +70,13 @@
             <div class="sk-line" style="width: 70%"></div>
         </div>
 
-        <% const fs = require('fs'); const path = require('path'); const root = process.cwd(); const resolve =
-        (p) => path.join(root, 'src', 'taskpane', p); %> <%=
-        fs.readFileSync(resolve('components/header/header.html')) %>
+        <%= readPart('components/header/header.html') %>
 
         <main id="appMain" role="main" style="display: none">
-            <%= fs.readFileSync(resolve('components/settings/profile.html')) %> <%=
-            fs.readFileSync(resolve('components/settings/direction.html')) %> <%=
-            fs.readFileSync(resolve('components/settings/options.html')) %> <%=
-            fs.readFileSync(resolve('components/advanced/advanced.html')) %> <%=
-            fs.readFileSync(resolve('components/settings/protected.html')) %>
+            <%= readPart('components/settings/profile.html') %> <%=
+            readPart('components/settings/direction.html') %> <%= readPart('components/settings/options.html')
+            %> <%= readPart('components/advanced/advanced.html') %> <%=
+            readPart('components/settings/protected.html') %>
 
             <div
                 id="progressContainer"
@@ -104,17 +96,22 @@
 
         <div id="msg" role="status" aria-live="polite"></div>
 
-        <!-- [A11Y FIX] role="presentation" ensures screen readers ignore this visual overlay -->
-        <div id="dragOverlay" aria-hidden="true" role="presentation">
+        <div id="dragOverlay" aria-hidden="true" role="presentation" style="display: none">
             <div class="drag-content">
                 <span class="drag-icon-lg" aria-hidden="true">📂</span>
                 <div class="drag-title" data-i18n="web_drop_overlay_title"></div>
             </div>
         </div>
 
-        <%= fs.readFileSync(resolve('components/footer/footer.html')) %> <%=
-        fs.readFileSync(resolve('components/footer/sticky-footer.html')) %> <%=
-        fs.readFileSync(resolve('components/modals/confirm-modal.html')) %> <%=
-        fs.readFileSync(resolve('components/modals/tour-modal.html')) %>
+        <!-- [FIX] Wrapper footer element za A11y Landmark -->
+        <footer role="contentinfo">
+            <!-- Linkovi -->
+            <%= readPart('components/footer/footer.html') %>
+            <!-- Sticky Akcije -->
+            <%= readPart('components/footer/sticky-footer.html') %>
+        </footer>
+
+        <%= readPart('components/modals/confirm-modal.html') %> <%=
+        readPart('components/modals/tour-modal.html') %>
     </body>
 </html>

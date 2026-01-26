@@ -1,78 +1,115 @@
+/* App Footer (Links) */
 .app-footer {
     text-align: center;
     font-size: 11px;
     padding: 16px 0;
     background: var(--colorNeutralBackground2);
     flex-shrink: 0;
-    /* Dark grey for text */
     color: var(--colorNeutralForeground2);
 }
 
 .app-footer a {
-    /* Use Brand Color (now accessible #005a9e) */
-    color: var(--colorBrandBackground);
+    /* [FIX A11Y] Hardcoded Dark Blue (#005a9e) za siguran kontrast (6.27:1) */
+    color: #005a9e !important;
     text-decoration: none;
     font-weight: 600;
 }
 
 .app-footer a:hover {
     text-decoration: underline;
-    color: var(--colorBrandBackgroundHover);
+    color: #004578 !important; /* Još tamnija na hover */
 }
 
 /* Sticky Action Bar (Glassmorphism) */
 .sticky-footer {
     position: sticky;
     bottom: 0;
-    background: rgba(255, 255, 255, 0.85); /* Glass effect light */
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border-top: 1px solid var(--colorNeutralStroke1);
-    padding: 16px 24px;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    padding: 12px 24px 16px;
     display: flex;
-    gap: 12px;
+    flex-direction: column; /* Stack: status gore, dugmad dole */
+    gap: 10px;
     z-index: 100;
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.04);
 }
 
 [data-theme="dark"] .sticky-footer {
-    background: rgba(31, 31, 31, 0.85); /* Glass effect dark */
+    background: rgba(32, 32, 32, 0.85);
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Live Status Stilovi */
+.live-status {
+    font-size: 11px;
+    color: var(--colorNeutralForeground2);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 12px;
+    background: var(--colorNeutralBackground2);
+    border: 1px solid var(--colorNeutralStroke1);
+    border-radius: 4px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.live-left {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.live-icon {
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+/* Footer Actions Wrapper */
+.footer-actions {
+    display: flex;
+    gap: 16px;
+    width: 100%;
 }
 
 .primary-btn,
 .secondary-btn {
-    flex: 1;
-    height: 48px; /* Optimal Touch Target */
+    flex: 1; /* Popuni sirinu */
+    height: 48px;
     border-radius: var(--radius8);
     font-size: 15px;
     font-weight: 600;
     letter-spacing: 0.3px;
     display: flex;
+    /* FIX: Vraćamo flex-direction column za podnaslove */
     flex-direction: column;
     align-items: center;
     justify-content: center;
     line-height: 1.1;
-    box-shadow: var(--shadow4);
     border: none;
     cursor: pointer;
-    transition:
-        transform 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275),
-        box-shadow 0.1s;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .primary-btn {
-    /* Subtle gradient for richness */
-    background: linear-gradient(135deg, var(--colorBrandBackground) 0%, #004578 100%);
+    background: var(--colorBrandBackground);
     color: white;
+    box-shadow: var(--shadow4);
 }
 
 .primary-btn:hover:not(:disabled) {
+    background: var(--colorBrandBackgroundHover);
     box-shadow: var(--shadow8);
     transform: translateY(-2px);
 }
 
 .primary-btn:active:not(:disabled) {
-    transform: translateY(1px);
+    transform: scale(0.98);
     box-shadow: var(--shadow2);
 }
 
@@ -96,14 +133,15 @@
     border-color: var(--colorNeutralForeground2);
 }
 
-.btn-sub {
+/* FIX: Vraćamo stil za podnaslov */
+.btn-sub,
+.btn-subtitle {
     font-size: 10px;
     font-weight: 400;
-    opacity: 0.85;
+    opacity: 0.9;
     margin-top: 2px;
 }
 
-/* Focus Visible for Accessibility */
 .primary-btn:focus-visible,
 .secondary-btn:focus-visible {
     outline: 2px solid var(--colorBrandForeground1);

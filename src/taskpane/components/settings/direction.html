@@ -1,32 +1,34 @@
 <div class="section fade-in">
     <div class="section-header">
+        <!-- Ovo je PRVI i JEDINI naslov koji treba da se vidi -->
         <div class="section-title" data-i18n="section_direction"></div>
     </div>
-    <fieldset style="border: none; padding: 0; margin: 0; min-width: 0">
-        <legend class="visually-hidden" data-i18n="section_direction"></legend>
+
+    <!-- Zamenjen fieldset sa div-om da sigurno uklonimo legend behavior -->
+    <div role="radiogroup" aria-label="Ciljno pismo">
         <div class="direction-row">
-            <label
-                ><input type="radio" id="dirAuto" name="direction" value="auto" checked /><span
+            <label>
+                <input type="radio" id="dirAuto" name="direction" value="auto" checked /><span
                     data-i18n="dir_auto"
-                ></span
-            ></label>
-            <label
-                ><input type="radio" id="dirToAscii" name="direction" value="to-ascii" /><span
+                ></span>
+            </label>
+            <label>
+                <input type="radio" id="dirToAscii" name="direction" value="to-ascii" /><span
                     data-i18n="dir_to_ascii_short"
-                ></span
-            ></label>
-            <label
-                ><input type="radio" id="dirLatToCyr" name="direction" value="lat-to-cyr" /><span
+                ></span>
+            </label>
+            <label>
+                <input type="radio" id="dirLatToCyr" name="direction" value="lat-to-cyr" /><span
                     data-i18n="dir_lat_to_cyr"
-                ></span
-            ></label>
-            <label
-                ><input type="radio" id="dirCyrToLat" name="direction" value="cyr-to-lat" /><span
+                ></span>
+            </label>
+            <label>
+                <input type="radio" id="dirCyrToLat" name="direction" value="cyr-to-lat" /><span
                     data-i18n="dir_cyr_to_lat"
-                ></span
-            ></label>
+                ></span>
+            </label>
         </div>
-    </fieldset>
+    </div>
 
     <div style="margin-top: 15px">
         <div class="lang-group">
