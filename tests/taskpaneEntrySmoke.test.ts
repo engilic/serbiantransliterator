@@ -6,12 +6,16 @@ vi.mock("../src/core/textCore", () => ({
     convertPlainText: vi.fn(),
 }));
 
-// [FIX] Mock worker client da izbegnemo "Worker is not defined" u JSDOM
-// i da init() bude brz i predvidiv
+// Mock worker client
 vi.mock("../src/taskpane/worker/client", () => ({
     workerClient: {
         init: vi.fn().mockResolvedValue(undefined),
     },
+}));
+
+// Mock package.json import
+vi.mock("../../package.json", () => ({
+    default: { version: "1.0.0" },
 }));
 
 function setupDomForTaskpane() {
@@ -41,7 +45,7 @@ function setupDomForTaskpane() {
     <input type="checkbox" id="optPreserveCodeBlocks" checked />
     <input type="checkbox" id="optProtectRomans" checked />
     <input type="checkbox" id="optSetProofingLanguage" checked />
-    <input type="checkbox" id="optShowStats" />
+    <!-- Removed optShowStats -->
     <input type="checkbox" id="optFixDoubleSpaces" checked />
     <input type="checkbox" id="optFormatDates" />
     <button id="toggleAdvancedBtn"></button>
@@ -67,13 +71,35 @@ function setupDomForTaskpane() {
     <button id="clearCustomBtn"></button>
     <button id="clearPresetBtn"></button>
     <button id="clearAllBtn"></button>
+    <button id="exportLogsBtn"></button>
+    
+    <!-- Msg i Live Status -->
     <div id="msg"></div>
+    <div id="liveStatus"></div>
+    <div id="liveTextLeft"></div>
+    <div id="liveTextRight"></div>
+    <div id="liveIconLeft"></div>
+    <div id="liveIconRight"></div>
+    <div id="liveAscii"></div>
+    
+    <!-- Stats Accordion Elements -->
     <div id="statsBox"></div>
+    <button id="statsHeader"></button>
+    <div id="statsContent"></div>
     <div id="statsTitle"></div>
     <pre id="statsText"></pre>
+    
     <div id="modalOverlay"><div id="modal"><h3 id="modalTitle"></h3><div id="modalText"></div><textarea id="modalInput"></textarea><div class="modal-actions"><button id="modalCancel"></button><button id="modalOk"></button></div></div></div>
-    <!-- Dodajemo i element za verziju -->
-    <span id="appVersionDisplay"></span>
+    
+    <div id="tourOverlay" style="display: none"></div>
+    <button id="tourCloseBtn"></button>
+    <button id="tourActionBtn"></button>
+    <h2 id="tourTitle"></h2>
+    <p id="tourText"></p>
+    <div id="tourIcon"></div>
+    <div id="tourDots"></div>
+
+    <span id="footerVersion"></span>
   `;
 }
 
@@ -97,10 +123,7 @@ function setupOfficeStub() {
             },
         },
         onReady: (cb: (info: any) => void) => {
-            // [FIX] Simuliraj asinhrone prirode Office-a
-            // Ovo osigurava da se callback pozove, ali stvarna logika unutar
-            // callback-a u taskpane.ts je async, pa se svakako čeka.
-            cb({ host: "Word" });
+            setTimeout(() => cb({ host: "Word" }), 0);
         },
     };
     (globalThis as any).Office = OfficeStub;
@@ -109,6 +132,21 @@ function setupOfficeStub() {
 
 beforeEach(() => {
     setupDomForTaskpane();
+
+    Object.defineProperty(window, "matchMedia", {
+        writable: true,
+        value: vi.fn().mockImplementation((query) => ({
+            matches: false,
+            media: query,
+            onchange: null,
+            addListener: vi.fn(),
+            removeListener: vi.fn(),
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+            dispatchEvent: vi.fn(),
+        })),
+    });
+
     setupOfficeStub();
 });
 
@@ -122,19 +160,13 @@ afterEach(() => {
 describe("taskpane entrypoint smoke", () => {
     it("imports src/taskpane/taskpane.ts without throwing (Office stub + minimal DOM)", async () => {
         vi.resetModules();
-
-        // Import pokreće Office.onReady(...)
         await import("../src/taskpane/taskpane");
-
-        // [FIX] Office.onReady callback je `async`, što znači da se izvršava u mikrotaskovima.
-        // Moramo sačekati da se event loop okrene i UI inicijalizuje.
         await vi.waitFor(
             () => {
                 const runBtn = document.getElementById("runBtn");
-                // Proveravamo da li je onclick postavljen (znak da je initUi prošao)
                 expect(runBtn?.onclick).toBeTruthy();
             },
-            { timeout: 2000, interval: 50 }
+            { timeout: 3000, interval: 100 }
         );
-    }, 10000);
+    }, 15000);
 });

@@ -1,6 +1,26 @@
 <header role="banner">
     <div class="header-content">
-        <h1 data-i18n="app_title"></h1>
+        <div style="display: flex; align-items: center; gap: 10px">
+            <!-- Brand Mark / Logo -->
+            <div
+                style="
+                    width: 24px;
+                    height: 24px;
+                    background: var(--colorBrandBackground);
+                    border-radius: 6px;
+                    display: grid;
+                    place-items: center;
+                    color: white;
+                    font-weight: 900;
+                    font-size: 14px;
+                "
+            >
+                Ž
+            </div>
+
+            <h1 data-i18n="app_title"></h1>
+        </div>
+
         <div class="version">
             <span data-i18n="ui_version_prefix"></span><span id="appVersionDisplay"></span>
         </div>

@@ -4,13 +4,10 @@ import type { UiSettings, PreviewState, ProfilePreset } from "./types";
 import { DEFAULT_SETTINGS } from "./settings/defaults";
 import type { InteractiveDiff } from "../../shared/diff/interactive";
 
-export const PREVIEW_CACHE_TTL_MS = 60_000; // 1 minut
+export const PREVIEW_CACHE_TTL_MS = 60_000;
 
 export interface ExtendedPreviewState extends PreviewState {
     interactiveDiff: InteractiveDiff | null;
-
-    // PR1/PR2/PR3 may already have something similar; keep it simple:
-    // Used to cancel async preview render loops if present in your codebase.
     renderSession?: number;
 }
 
@@ -20,7 +17,7 @@ interface AppState {
     customWordsSet: Set<string>;
     presetWordsSet: Set<string>;
 
-    lastStatsTitle: string;
+    // REMOVED: lastStatsTitle
     lastStatsText: string;
 
     selectionChangeHandler: ((args: unknown) => void) | null;
@@ -28,9 +25,8 @@ interface AppState {
 
     preview: ExtendedPreviewState;
 
-    // PR4: global cancellation (Escape cancels long operations)
     activeAbortController: AbortController | null;
-    activeOperation: string | null; // e.g. "runSmart", "runPreview", "webBatch"
+    activeOperation: string | null;
 }
 
 export const state: AppState = {
@@ -39,7 +35,7 @@ export const state: AppState = {
     customWordsSet: new Set(),
     presetWordsSet: new Set(),
 
-    lastStatsTitle: "",
+    // REMOVED: lastStatsTitle
     lastStatsText: "",
 
     selectionChangeHandler: null,
@@ -69,8 +65,6 @@ export const state: AppState = {
         cacheTimestamp: null,
 
         interactiveDiff: null,
-
-        // ok if unused elsewhere
         renderSession: 0,
     },
 

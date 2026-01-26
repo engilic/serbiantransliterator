@@ -1,5 +1,5 @@
 // src/taskpane/app/settings/getters.ts
-import type { UiSettings, DirectionUi, ProfilePreset, AppTheme, DialectUi } from "../types";
+import type { UiSettings, DirectionUi, ProfilePreset, DialectUi, AppTheme } from "../types";
 import type { OoxmlOptions } from "../../../shared/ooxml/convertOoxml";
 import { state } from "../state";
 import { asCurlyProtectionUi } from "../word/curlyProtection";
@@ -49,12 +49,12 @@ function asDirectionUi(v: string | null | undefined): DirectionUi {
     return allowed.includes(s) ? s : "auto";
 }
 
-function asAppTheme(v: string): AppTheme {
-    return v === "light" || v === "dark" ? v : "auto";
-}
-
 function asDialectUi(v: string): DialectUi {
     return v === "ekavica_to_ijekavica" || v === "ijekavica_to_ekavica" ? v : "none";
+}
+
+function asThemeUi(v: string): AppTheme {
+    return v === "light" || v === "dark" ? v : "auto";
 }
 
 function parseCustomSubstitutions(raw: string): Record<string, string> {
@@ -84,7 +84,7 @@ export function getSettingsFromUi(): UiSettings {
     const curlyProtection = asCurlyProtectionUi(curlyRaw);
 
     const themeRaw = getSelectValue("optTheme");
-    const theme = asAppTheme(themeRaw);
+    const theme = asThemeUi(themeRaw);
 
     const subsRaw = getTextValue("optCustomSubstitutions");
     const dialectRaw = getSelectValue("optDialect");
@@ -107,7 +107,7 @@ export function getSettingsFromUi(): UiSettings {
         includeHeadersFooters: getCheckValue("optIncludeHeadersFooters"),
         includeFootnotes: getCheckValue("optIncludeFootnotes"),
         includeEndnotes: getCheckValue("optIncludeEndnotes"),
-        showStats: getCheckValue("optShowStats"),
+        // Removed: showStats
         direction,
     };
 }

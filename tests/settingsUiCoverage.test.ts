@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { initUi } from "../src/taskpane/app/settings/ui";
 
 // Mock dependencies
@@ -15,7 +15,6 @@ vi.mock("../src/taskpane/app/telemetry/logger", () => ({
 }));
 
 function setupFullDom() {
-    // Mora da sadrži SVE ID-eve koje ui.ts traži
     document.body.innerHTML = `
     <select id="profilePreset"><option value="custom">c</option></select>
     <select id="optUiLanguage"><option value="sr">sr</option></select>
@@ -29,7 +28,6 @@ function setupFullDom() {
     <input type="checkbox" id="optPreserveCodeBlocks" />
     <input type="checkbox" id="optProtectRomans" />
     <input type="checkbox" id="optSetProofingLanguage" />
-    <input type="checkbox" id="optShowStats" />
     <input type="checkbox" id="optIncludeHeadersFooters" />
     <input type="checkbox" id="optIncludeFootnotes" />
     <input type="checkbox" id="optIncludeEndnotes" />
@@ -61,19 +59,56 @@ function setupFullDom() {
     <button id="clearCustomBtn"></button>
     <button id="clearPresetBtn"></button>
     <button id="clearAllBtn"></button>
-    <button id="toggleAdvancedBtn"></button>
-    <div id="advancedSettings"></div>
+    <!-- REMOVED toggleAdvancedBtn -->
+    <div class="advanced-settings-content"></div>
     
-    <!-- Dodajemo i msg element jer ga initUi koristi za status -->
     <div id="msg"></div>
+    <div id="liveStatus"></div>
+    <div id="liveTextLeft"></div>
+    <div id="liveTextRight"></div>
+    
+    <div id="statsBox"></div>
+    <button id="statsHeader"></button>
+    <div id="statsContent"></div>
     `;
 }
 
 describe("settings/ui.ts Coverage Boost", () => {
     beforeEach(() => {
         setupFullDom();
-        // Reset storage
         localStorage.clear();
+
+        Object.defineProperty(window, "matchMedia", {
+            writable: true,
+            value: vi.fn().mockImplementation((query) => ({
+                matches: false,
+                media: query,
+                onchange: null,
+                addListener: vi.fn(),
+                removeListener: vi.fn(),
+                addEventListener: vi.fn(),
+                removeEventListener: vi.fn(),
+                dispatchEvent: vi.fn(),
+            })),
+        });
+
+        (globalThis as any).Office = {
+            CoercionType: { Text: "Text" },
+            AsyncResultStatus: { Succeeded: "Succeeded" },
+            context: {
+                document: {
+                    getSelectedDataAsync: (_type: any, cb: any) => cb({ status: "failed" }),
+                },
+            },
+        };
+        (globalThis as any).Word = {
+            run: async () => {},
+        };
+    });
+
+    afterEach(() => {
+        delete (globalThis as any).Office;
+        delete (globalThis as any).Word;
     });
 
     it("initializes UI without errors (Full DOM)", () => {
@@ -83,7 +118,6 @@ describe("settings/ui.ts Coverage Boost", () => {
     it("binds language picker change", () => {
         initUi();
         const picker = document.getElementById("optUiLanguage") as HTMLSelectElement;
-        // Trigger change
         picker.onchange?.(new Event("change"));
     });
 

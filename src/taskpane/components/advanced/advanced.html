@@ -1,17 +1,11 @@
 <div class="section fade-in">
     <div class="section-header">
         <div class="section-title" data-i18n="section_advanced"></div>
-        <button
-            id="toggleAdvancedBtn"
-            class="mini-btn"
-            type="button"
-            aria-expanded="false"
-            aria-controls="advancedSettings"
-            data-i18n="btn_toggle_advanced"
-        ></button>
+        <!-- [FIX] Dugme obrisano -->
     </div>
 
-    <div id="advancedSettings" class="advanced-settings">
+    <!-- [FIX] Uklonjen ID advancedSettings jer više ne togglujemo, klasa ostaje za stil -->
+    <div class="advanced-settings-content">
         <div class="field-row">
             <div id="lblCurly" class="field-label">
                 <span data-i18n="opt_curly_label_before"></span><code>{...}</code>
@@ -23,16 +17,16 @@
             </select>
         </div>
 
-        <label
-            ><input type="checkbox" id="optProtectRomans" checked /><span
+        <label>
+            <input type="checkbox" id="optProtectRomans" checked /><span
                 data-i18n="opt_protect_romans"
-            ></span
-        ></label>
-        <label
-            ><input type="checkbox" id="optSetProofingLanguage" checked /><span
+            ></span>
+        </label>
+        <label>
+            <input type="checkbox" id="optSetProofingLanguage" checked /><span
                 data-i18n="opt_set_proofing_language"
-            ></span
-        ></label>
+            ></span>
+        </label>
 
         <div class="field-row" style="margin-top: 15px">
             <label for="optDialect" class="field-label" data-i18n="opt_dialect_label"></label>
@@ -45,7 +39,6 @@
 
         <div class="field-row" style="margin-top: 15px">
             <div id="lblSubs" class="field-label" data-i18n="opt_custom_subs_label"></div>
-            <!-- FIX: Dodati aria-label atributi direktno u HTML kao fallback -->
             <div class="subs-add-row" role="group" aria-labelledby="lblSubs">
                 <input
                     type="text"

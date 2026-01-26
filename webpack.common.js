@@ -1,9 +1,16 @@
 /* eslint-disable no-undef */
 const path = require("path");
+const fs = require("fs"); // Dodato za citanje fajlova
 const CopyWebpackPlugin = require("copy-webpack-plugin");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const WasmPackPlugin = require("@wasm-tool/wasm-pack-plugin");
+
+// Helper za citanje komponenti
+function readPart(partialPath) {
+    const fullPath = path.resolve(__dirname, "src/taskpane", partialPath);
+    return fs.readFileSync(fullPath, "utf8");
+}
 
 module.exports = {
     entry: {
@@ -49,6 +56,10 @@ module.exports = {
             filename: "taskpane.html",
             template: "./src/taskpane/taskpane.html",
             chunks: ["taskpane"],
+            // [FIX] Prosledjujemo funkciju za citanje u sablon
+            templateParameters: {
+                readPart: readPart,
+            },
             minify: {
                 collapseWhitespace: true,
                 removeComments: true,

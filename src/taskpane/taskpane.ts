@@ -2,7 +2,6 @@
 
 // UI Components
 import "./global.css";
-import "./components/header/header.css";
 import "./components/settings/settings.css";
 import "./components/advanced/advanced.css";
 import "./components/modals/modals.css";
@@ -25,9 +24,9 @@ Office.onReady(async (info) => {
         const isWebMode = forceWeb || !info.host || (info.host && info.host !== Office.HostType.Word);
 
         // Dynamically inject version into header
-        const verEl = document.getElementById("appVersionDisplay");
+        const verEl = document.getElementById("footerVersion");
         if (verEl) {
-            verEl.textContent = pkg.version;
+            verEl.textContent = `v${pkg.version}`;
         }
 
         // [MAX3] Log Version for Debugging

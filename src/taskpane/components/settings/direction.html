@@ -2,31 +2,31 @@
     <div class="section-header">
         <div class="section-title" data-i18n="section_direction"></div>
     </div>
-    <fieldset style="border: none; padding: 0; margin: 0; min-width: 0">
-        <legend class="visually-hidden" data-i18n="section_direction"></legend>
+
+    <div role="radiogroup" aria-label="Ciljno pismo">
         <div class="direction-row">
-            <label
-                ><input type="radio" id="dirAuto" name="direction" value="auto" checked /><span
+            <label>
+                <input type="radio" id="dirAuto" name="direction" value="auto" checked /><span
                     data-i18n="dir_auto"
-                ></span
-            ></label>
-            <label
-                ><input type="radio" id="dirToAscii" name="direction" value="to-ascii" /><span
+                ></span>
+            </label>
+            <label>
+                <input type="radio" id="dirToAscii" name="direction" value="to-ascii" /><span
                     data-i18n="dir_to_ascii_short"
-                ></span
-            ></label>
-            <label
-                ><input type="radio" id="dirLatToCyr" name="direction" value="lat-to-cyr" /><span
+                ></span>
+            </label>
+            <label>
+                <input type="radio" id="dirLatToCyr" name="direction" value="lat-to-cyr" /><span
                     data-i18n="dir_lat_to_cyr"
-                ></span
-            ></label>
-            <label
-                ><input type="radio" id="dirCyrToLat" name="direction" value="cyr-to-lat" /><span
+                ></span>
+            </label>
+            <label>
+                <input type="radio" id="dirCyrToLat" name="direction" value="cyr-to-lat" /><span
                     data-i18n="dir_cyr_to_lat"
-                ></span
-            ></label>
+                ></span>
+            </label>
         </div>
-    </fieldset>
+    </div>
 
     <div style="margin-top: 15px">
         <div class="lang-group">
@@ -37,13 +37,6 @@
                 <option value="auto" data-i18n="opt_ui_language_auto"></option>
             </select>
         </div>
-        <div class="lang-group" style="margin-top: 10px">
-            <label for="optTheme" class="lang-label" data-i18n="ui_theme_label"></label>
-            <select id="optTheme">
-                <option value="auto" data-i18n="ui_theme_auto"></option>
-                <option value="light" data-i18n="ui_theme_light"></option>
-                <option value="dark" data-i18n="ui_theme_dark"></option>
-            </select>
-        </div>
+        <!-- Theme Select REMOVED -->
     </div>
 </div>

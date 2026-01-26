@@ -1,5 +1,5 @@
 // src/taskpane/app/settings/ui.ts
-/* global document, Blob, URL, FileReader */
+/* global document, Blob, URL, FileReader, window */
 
 import type { UiSettings, ProfilePreset, AppTheme } from "../types";
 import { state } from "../state";
@@ -20,7 +20,7 @@ import { loadSettingsFromStorage, saveSettingsToStorage } from "./store";
 import { DEFAULT_SETTINGS, PRESETS, SETTINGS_KEY } from "./defaults";
 
 import { renderTags, setupTagEvents } from "./tags";
-import { initAdvancedSettingsToggle } from "./advanced";
+// [FIX] Removed import { initAdvancedSettingsToggle } from "./advanced";
 
 import { initUiI18n, getUiLanguagePreference, setUiLanguagePreference, asUiLangPref } from "../i18n/uiI18n";
 import { checkSelectionAndUpdateButtons } from "../selection";
@@ -28,13 +28,32 @@ import { get, getOptional } from "../utils/dom";
 
 import { logger } from "../telemetry/logger";
 
+let autoThemeQuery: MediaQueryList | null = null;
+let autoThemeHandler: ((e: MediaQueryListEvent) => void) | null = null;
+
 function applyTheme(theme: AppTheme) {
-    if (theme === "light") {
-        document.documentElement.setAttribute("data-theme", "light");
-    } else if (theme === "dark") {
-        document.documentElement.setAttribute("data-theme", "dark");
+    const root = document.documentElement;
+
+    if (autoThemeQuery && autoThemeHandler) {
+        autoThemeQuery.removeEventListener("change", autoThemeHandler);
+        autoThemeQuery = null;
+        autoThemeHandler = null;
+    }
+
+    if (theme === "auto") {
+        const query = window.matchMedia("(prefers-color-scheme: dark)");
+        const updateAuto = () => {
+            const isDark = query.matches;
+            root.setAttribute("data-theme", isDark ? "dark" : "light");
+        };
+        updateAuto();
+        autoThemeHandler = (e: MediaQueryListEvent) => {
+            root.setAttribute("data-theme", e.matches ? "dark" : "light");
+        };
+        query.addEventListener("change", autoThemeHandler);
+        autoThemeQuery = query;
     } else {
-        document.documentElement.removeAttribute("data-theme");
+        root.setAttribute("data-theme", theme);
     }
 }
 
@@ -106,7 +125,6 @@ function addSub() {
     destInput.value = "";
     srcInput.focus();
 
-    // Disable button again
     addSubBtn.disabled = true;
 
     renderSubsList();
@@ -157,17 +175,16 @@ export function initUi() {
     applySettingsToUi(settings);
     state.isApplyingProfile = false;
 
-    initAdvancedSettingsToggle();
+    // [FIX] Removed initAdvancedSettingsToggle() call because the section is now always visible
     renderTags();
     updateResetButtonState();
 
     bindButtons();
     setupInputListeners();
 
-    // CUSTOM SUBS UI INIT
     const addSubBtn = get<HTMLButtonElement>("addSubBtn");
     addSubBtn.onclick = addSub;
-    addSubBtn.disabled = true; // Initially disabled
+    addSubBtn.disabled = true;
 
     const subSrc = get<HTMLInputElement>("subSrc");
     const subDest = get<HTMLInputElement>("subDest");
@@ -224,7 +241,6 @@ function bindButtons() {
     get<HTMLButtonElement>("runBtn").onclick = () => runWithUiLock(runSmart);
     get<HTMLButtonElement>("previewBtn").onclick = () => runWithUiLock(runPreview);
 
-    // Legacy export/import buttons might be hidden, but we bind them just in case
     const exportBtn = getOptional<HTMLButtonElement>("exportBtn");
     if (exportBtn) exportBtn.onclick = exportSettingsAsDownload;
 
@@ -238,14 +254,10 @@ function bindButtons() {
         if (ok) resetSettings();
     };
 
-    // NOVO: Telemetry Export Button
     const exportLogsBtn = getOptional<HTMLButtonElement>("exportLogsBtn");
     if (exportLogsBtn) {
         exportLogsBtn.onclick = async () => {
             try {
-                // Importujemo dinamički da izbegnemo kružne reference ako je logger heavy
-                // Ali ovde je logger već importovan na vrhu fajla, pa koristimo direktno.
-                // Uverite se da je: import { logger } from "../telemetry/logger"; na vrhu.
                 const logs = await logger.exportLogsFull();
                 const blob = new Blob([logs], { type: "text/plain" });
                 const url = URL.createObjectURL(blob);
@@ -301,8 +313,6 @@ function applySettingsToUi(s: UiSettings) {
     const curlySel = getOptional<HTMLSelectElement>("optCurlyProtection");
     if (curlySel) curlySel.value = s.curlyProtection;
 
-    setCheckValue("optShowStats", s.showStats);
-
     setRadioValue("direction", s.direction);
 
     setCheckValue("optIncludeHeadersFooters", s.includeHeadersFooters);
@@ -339,7 +349,6 @@ function updateResetButtonState() {
         "protectRomans",
         "setProofingLanguage",
         "curlyProtection",
-        "showStats",
         "theme",
         "customSubstitutions",
         "dialect",
@@ -418,7 +427,6 @@ function setupInputListeners() {
         "optProtectRomans",
         "optSetProofingLanguage",
         "optCurlyProtection",
-        "optShowStats",
         "optIncludeHeadersFooters",
         "optIncludeFootnotes",
         "optIncludeEndnotes",
@@ -438,7 +446,9 @@ function setupInputListeners() {
             if (id !== "optShowStats") invalidatePreviewCache();
             if (!state.isApplyingProfile) switchToCustomIfManual();
             else saveSettings();
-            if (id === "optShowStats") refreshStats();
+            if (id.startsWith("dir")) {
+                void checkSelectionAndUpdateButtons();
+            }
         };
     });
 }

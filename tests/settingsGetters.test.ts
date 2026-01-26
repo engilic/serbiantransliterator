@@ -37,6 +37,7 @@ function setupDomForGetters() {
     
     <!-- NEW: Custom Subs Textarea -->
     <textarea id="optCustomSubstitutions"></textarea>
+    <select id="optDialect"><option value="none">none</option></select>
 
     <!-- checkboxes used by getters -->
     <input type="checkbox" id="optConfirmWholeDoc" />
@@ -48,7 +49,7 @@ function setupDomForGetters() {
     <input type="checkbox" id="optPreserveCodeBlocks" />
     <input type="checkbox" id="optProtectRomans" />
     <input type="checkbox" id="optSetProofingLanguage" />
-    <input type="checkbox" id="optShowStats" />
+    <!-- Removed: optShowStats -->
     <input type="checkbox" id="optFixDoubleSpaces" />
     <input type="checkbox" id="optFormatDates" />
   `;
@@ -78,8 +79,6 @@ describe("settings/getters.ts", () => {
         check("optPreserveCodeBlocks", true);
         check("optSetProofingLanguage", true);
         check("optProtectRomans", true);
-        check("optFixDoubleSpaces", true);
-        check("optFormatDates", false);
         check("optConfirmWholeDoc", true);
 
         const s = getSettingsFromUi();
@@ -90,6 +89,7 @@ describe("settings/getters.ts", () => {
         expect(s.preserveCodeBlocks).toBe(true);
         expect(s.curlyProtection).toBe("all");
         expect(s.theme).toBe("dark");
+        // showStats is gone, so no check here
     });
 
     it("fallback: if no radio is selected, direction falls back to 'auto'", () => {

@@ -1,94 +1,170 @@
+/* App Footer (Legacy - Hide) */
 .app-footer {
-    text-align: center;
-    font-size: 11px;
-    padding: 16px 0;
-    background: var(--colorNeutralBackground2);
-    flex-shrink: 0;
-    /* Dark grey for text */
-    color: var(--colorNeutralForeground2);
+    display: none;
 }
 
-.app-footer a {
-    /* Use Brand Color (now accessible #005a9e) */
-    color: var(--colorBrandBackground);
-    text-decoration: none;
-    font-weight: 600;
-}
-
-.app-footer a:hover {
-    text-decoration: underline;
-    color: var(--colorBrandBackgroundHover);
-}
-
-/* Sticky Action Bar (Glassmorphism) */
+/* Sticky Action Bar Container */
 .sticky-footer {
     position: sticky;
     bottom: 0;
-    background: rgba(255, 255, 255, 0.85); /* Glass effect light */
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background: var(--colorNeutralBackground1);
     border-top: 1px solid var(--colorNeutralStroke1);
-    padding: 16px 24px;
+    padding: 0;
     display: flex;
-    gap: 12px;
+    flex-direction: column;
     z-index: 100;
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
 }
 
 [data-theme="dark"] .sticky-footer {
-    background: rgba(31, 31, 31, 0.85); /* Glass effect dark */
+    background: var(--colorNeutralBackground2);
+}
+
+/* --- 1. Status Message --- */
+#msg {
+    margin: 0;
+    padding: 6px 15px;
+    background-color: var(--colorNeutralBackground4);
+    border-bottom: 1px solid var(--colorNeutralStroke1);
+    text-align: center;
+    font-weight: 600;
+    font-size: 11px;
+    min-height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.3s;
+}
+
+/* --- 2. Live Status --- */
+.live-status {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--colorNeutralForeground1);
+    background: var(--colorNeutralBackground1);
+    border-bottom: 1px solid var(--colorNeutralStroke1);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 15px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.live-left {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.live-right {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+    justify-content: flex-end;
+}
+
+.live-icon {
+    font-size: 14px;
+}
+
+/* ASCII Warning */
+.live-ascii {
+    font-weight: 700;
+    font-size: 10px;
+    color: var(--colorNeutralForeground3);
+    opacity: 0.15;
+    white-space: nowrap;
+    padding: 1px 4px;
+    border-radius: 3px;
+    margin-left: 4px;
+    display: block;
+}
+
+.live-ascii.warning-yellow {
+    color: #d13438;
+    background-color: #fdf6f6;
+    opacity: 1;
+}
+
+.live-ascii.warning-red {
+    color: #c50f1f;
+    background-color: #fde7e9;
+    opacity: 1;
+}
+
+[data-theme="dark"] .live-ascii.warning-yellow {
+    color: #ff99a4;
+    background-color: #3b0509;
+}
+
+/* --- 3. Buttons --- */
+.footer-content-wrapper {
+    padding: 12px 15px;
+    background: var(--colorNeutralBackground1);
+}
+
+[data-theme="dark"] .footer-content-wrapper {
+    background: var(--colorNeutralBackground2);
+}
+
+.footer-actions {
+    display: flex;
+    gap: 12px;
+    width: 100%;
 }
 
 .primary-btn,
 .secondary-btn {
     flex: 1;
-    height: 48px; /* Optimal Touch Target */
-    border-radius: var(--radius8);
-    font-size: 15px;
+    height: 44px;
+    border-radius: 6px;
+    font-size: 14px;
     font-weight: 600;
-    letter-spacing: 0.3px;
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    line-height: 1.1;
-    box-shadow: var(--shadow4);
-    border: none;
+    border: 1px solid transparent;
     cursor: pointer;
-    transition:
-        transform 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275),
-        box-shadow 0.1s;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .primary-btn {
-    /* Subtle gradient for richness */
-    background: linear-gradient(135deg, var(--colorBrandBackground) 0%, #004578 100%);
+    background: var(--colorBrandBackground);
     color: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .primary-btn:hover:not(:disabled) {
-    box-shadow: var(--shadow8);
-    transform: translateY(-2px);
+    background: var(--colorBrandBackgroundHover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .primary-btn:active:not(:disabled) {
-    transform: translateY(1px);
-    box-shadow: var(--shadow2);
+    transform: scale(0.98);
 }
 
-.primary-btn:disabled,
-.secondary-btn:disabled {
+.primary-btn:disabled {
     background: var(--colorNeutralBackground3);
     color: var(--colorNeutralForeground3);
     box-shadow: none;
     cursor: not-allowed;
-    transform: none;
 }
 
 .secondary-btn {
     background: var(--colorNeutralBackground1);
     color: var(--colorNeutralForeground1);
-    border: 1px solid var(--colorNeutralStroke2);
+    border-color: var(--colorNeutralStroke2);
 }
 
 .secondary-btn:hover:not(:disabled) {
@@ -96,16 +172,60 @@
     border-color: var(--colorNeutralForeground2);
 }
 
-.btn-sub {
-    font-size: 10px;
-    font-weight: 400;
-    opacity: 0.85;
-    margin-top: 2px;
+.secondary-btn:disabled {
+    background: var(--colorNeutralBackground2);
+    color: var(--colorNeutralForeground3);
+    border-color: var(--colorNeutralStroke1);
+    cursor: not-allowed;
 }
 
-/* Focus Visible for Accessibility */
-.primary-btn:focus-visible,
-.secondary-btn:focus-visible {
-    outline: 2px solid var(--colorBrandForeground1);
-    outline-offset: 2px;
+/* --- 4. Links Bar --- */
+.app-footer-compact {
+    background: var(--colorNeutralBackground3);
+    border-top: 1px solid var(--colorNeutralStroke1);
+    padding: 4px 5px;
+    text-align: center;
+    font-size: 10px;
+    color: var(--colorNeutralForeground3);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.sticky-footer .app-footer-compact a {
+    color: var(--colorNeutralForeground2);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.sticky-footer .app-footer-compact a:hover {
+    color: var(--colorBrandBackground);
+    text-decoration: underline;
+}
+
+.footer-icon-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--colorNeutralBackground1);
+    border: 1px solid var(--colorNeutralStroke2);
+    font-weight: bold;
+    font-size: 10px;
+    color: var(--colorNeutralForeground1);
+}
+
+.footer-version-click {
+    cursor: pointer;
+    font-weight: 600;
+    transition: color 0.2s;
+}
+
+.footer-version-click:hover {
+    color: var(--colorBrandBackground);
+    text-decoration: underline;
 }

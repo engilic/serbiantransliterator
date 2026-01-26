@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { state } from "../src/taskpane/app/state";
 import { getOoxmlOptionsFromUi } from "../src/taskpane/app/settings/getters";
 import { convertOoxml } from "../src/shared/transliterator";
@@ -29,6 +29,11 @@ function setupDom() {
       <option value="all">all</option>
       <option value="none">none</option>
     </select>
+    
+    <!-- Theme & Dialect & Subs (needed for getters) -->
+    <select id="optTheme"><option value="auto">auto</option></select>
+    <select id="optDialect"><option value="none">none</option></select>
+    <textarea id="optCustomSubstitutions"></textarea>
 
     <!-- checkboxes used by getters -->
     <input type="checkbox" id="optConfirmWholeDoc" />
@@ -40,9 +45,7 @@ function setupDom() {
     <input type="checkbox" id="optPreserveCodeBlocks" checked />
     <input type="checkbox" id="optProtectRomans" checked />
     <input type="checkbox" id="optSetProofingLanguage" />
-    <input type="checkbox" id="optShowStats" />
-    <input type="checkbox" id="optFixDoubleSpaces" />
-    <input type="checkbox" id="optFormatDates" />
+    <!-- Removed optShowStats -->
   `;
 }
 

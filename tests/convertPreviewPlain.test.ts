@@ -6,19 +6,20 @@ function baseSettings() {
         schemaVersion: 2,
         profile: "custom" as const,
         userWordsCustom: [],
+        theme: "auto" as const,
+        customSubstitutions: "",
+        dialect: "none" as const,
         protectBrands: false,
         applySerbianQuotes: false,
         preserveCodeBlocks: false,
         setProofingLanguage: false,
         protectRomans: true,
         curlyProtection: "placeholders" as "placeholders" | "all" | "none",
-        fixDoubleSpaces: false,
-        formatDates: false,
         confirmWholeDoc: true,
         includeHeadersFooters: false,
         includeFootnotes: false,
         includeEndnotes: false,
-        showStats: false,
+        // Removed: showStats
         direction: "lat-to-cyr" as "auto" | "lat-to-cyr" | "cyr-to-lat" | "to-ascii",
     };
 }
