@@ -22,8 +22,7 @@ git checkout -b feat/tvoj-naziv-zadatka
 
 # npm run git:reset -- --yes
 
-=============================== 2. RAZVOJ (DEV LOOP)
-===============================
+# =============================== 2. RAZVOJ (DEV LOOP)
 
 # Kodiranje...
 
@@ -36,8 +35,7 @@ npm run build
 
 npm run serve:dist
 
-=============================== 3. FINALNA VERIFIKACIJA (PRE-PUSH)
-===============================
+# =============================== 3. FINALNA VERIFIKACIJA (PRE-PUSH)
 
 # Pokreni "God Mode" proveru (Clean, Format, Lint, Typecheck, Build, Unit, E2E, Security)
 
@@ -47,8 +45,7 @@ npm run verify:all
 
 # "🎉 SVI TESTOVI PROŠLI! SPREMNO ZA RELEASE."
 
-=============================== 4. SLANJE IZMENA (PUSH & PR)
-===============================
+# =============================== 4. SLANJE IZMENA (PUSH & PR)
 
 # Dodaj i komituj
 
@@ -67,8 +64,7 @@ git push origin feat/tvoj-naziv-zadatka
 
 # -> Uradi "Squash and Merge" na GitHub-u.
 
-=============================== 5. ZAVRŠETAK (TOTAL CLEANUP)
-===============================
+# =============================== 5. ZAVRŠETAK (TOTAL CLEANUP)
 
 # Vrati se na početak (ovo briše tvoju granu i sinhronizuje master)
 
