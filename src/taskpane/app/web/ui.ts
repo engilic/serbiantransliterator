@@ -43,13 +43,13 @@ export function transliterateDomNode(node: Node, dir: Direction, coreOpts: CoreO
 }
 
 // [MAX3] Sanitizer za Paste (čuva formatiranje, sklanja opasnost)
-// [SECURITY FIX] Returns DocumentFragment to avoid innerHTML sink issues
+// [SECURITY FIX] Use <template> for inert parsing (Safe from XSS)
 function sanitizePasteToFragment(htmlContent: string): DocumentFragment {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(htmlContent, "text/html");
+    const template = document.createElement("template");
+    template.innerHTML = htmlContent; // Scripts do NOT execute here
+
     const fragment = document.createDocumentFragment();
 
-    // Whitelist tags: p, br, b, i, u, strong, em, ul, ol, li, table, tr, td, th, span, div
     const allowedTags = new Set([
         "P",
         "BR",
@@ -73,17 +73,16 @@ function sanitizePasteToFragment(htmlContent: string): DocumentFragment {
 
     function walkAndClean(node: Node): Node | null {
         if (node.nodeType === Node.TEXT_NODE) {
-            return node.cloneNode(true);
+            return document.createTextNode(node.textContent || "");
         }
 
         if (node.nodeType === Node.ELEMENT_NODE) {
             const el = node as Element;
+            const tagName = el.tagName.toUpperCase();
 
-            // If tag is allowed, clone it cleanly (without attributes)
-            if (allowedTags.has(el.tagName)) {
-                const newEl = document.createElement(el.tagName);
+            if (allowedTags.has(tagName)) {
+                const newEl = document.createElement(tagName);
 
-                // Recursively handle children
                 let child = el.firstChild;
                 while (child) {
                     const cleanChild = walkAndClean(child);
@@ -92,7 +91,7 @@ function sanitizePasteToFragment(htmlContent: string): DocumentFragment {
                 }
                 return newEl;
             } else {
-                // If tag is NOT allowed, strip tag but keep children (unwrap)
+                // Unwrap
                 const docFrag = document.createDocumentFragment();
                 let child = el.firstChild;
                 while (child) {
@@ -106,8 +105,8 @@ function sanitizePasteToFragment(htmlContent: string): DocumentFragment {
         return null;
     }
 
-    // Process body children
-    let child = doc.body.firstChild;
+    // Process template content
+    let child = template.content.firstChild;
     while (child) {
         const cleanNode = walkAndClean(child);
         if (cleanNode) fragment.appendChild(cleanNode);
