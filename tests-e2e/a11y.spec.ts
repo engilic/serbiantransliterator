@@ -57,13 +57,19 @@ test.describe("Accessibility (A11y)", () => {
         await page.goto("/taskpane.html");
         await expect(page.locator("#skeleton")).toBeHidden({ timeout: 15000 });
 
-        // [FIX] Open the accordion first!
+        // [FIX] Wait for main app to be visible
+        await expect(page.locator("#appMain")).toBeVisible();
+
         const header = page.locator("#advancedHeader");
+
+        // [FIX] Scroll into view and force wait
+        await header.scrollIntoViewIfNeeded();
+        await expect(header).toBeVisible();
         await header.click();
 
         // [FIX] Target correct ID
         await expect(page.locator("#advancedContent")).toBeVisible();
-        await page.waitForTimeout(500); // Wait for animation
+        await page.waitForTimeout(500);
 
         const results = await new AxeBuilder({ page }).exclude("#skeleton").exclude(".live-ascii").analyze();
 
