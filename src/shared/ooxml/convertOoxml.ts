@@ -1,3 +1,5 @@
+// src/shared/ooxml/convertOoxml.ts
+
 import { convertPlainText, type Direction, type CoreOptions, detectScript } from "../../core/textCore";
 import {
     XML_NS,
@@ -6,6 +8,7 @@ import {
     getFullText,
     needsXmlSpacePreserve,
     getParagraphStyleId,
+    getRunStyleId, // <--- NEW
     isInsideTag,
 } from "./dom";
 import { applySerbianQuotesAcrossNodes } from "./quotes";
@@ -42,20 +45,7 @@ export interface OoxmlOptions extends CoreOptions {
 
 export { ConvertStats };
 
-function isNodeInIgnoredStyle(node: Element, ignoredStyles: Set<string>): boolean {
-    if (ignoredStyles.size === 0) return false;
-
-    let cur: Element | null = node.parentElement;
-    while (cur) {
-        if (cur.localName === "p") {
-            const styleId = getParagraphStyleId(cur);
-            if (styleId && ignoredStyles.has(styleId)) return true;
-            return false;
-        }
-        cur = cur.parentElement;
-    }
-    return false;
-}
+// [REMOVED] isNodeInIgnoredStyle (više nam ne treba, radimo pametnije)
 
 export function convertOoxml(
     ooxml: string,
@@ -87,37 +77,52 @@ export function convertOoxml(
         // ignore
     }
 
-    // [MAX3] REFACTOR: Iteration by Paragraph with Style Check
+    // [MAX3] REFACTOR: Smart Traversal (Paragraph -> Run -> Text)
+    // Ovo je O(N) i podržava rStyle (Character Styles).
+
     const allParas = Array.from(doc.getElementsByTagNameNS(WORD_NS, "p"));
     const ignoredSet = new Set(options?.ignoredStyles || []);
-
     const textNodesToProcess: Element[] = [];
 
-    // Fallback: If no paragraphs found (e.g. just a run fragment), fall back to collecting all nodes
-    // This handles edge cases where we get just a run XML from Word
+    // Fallback: Ako nema paragrafa (npr. samo run fragment), koristi stari metod
     if (allParas.length === 0) {
+        // [FIX] I ovde možemo proveriti rStyle ako roditelj postoji
         let nodes = collectTextNodes(doc);
-        // Still try to filter if possible (though unlikely to have pStyle without p)
         if (ignoredSet.size > 0) {
-            nodes = nodes.filter((n) => !isNodeInIgnoredStyle(n, ignoredSet));
+            nodes = nodes.filter((n) => {
+                const run = findAncestor(n, "r");
+                if (run) {
+                    const rStyle = getRunStyleId(run);
+                    if (rStyle && ignoredSet.has(rStyle)) return false;
+                }
+                return true;
+            });
         }
         textNodesToProcess.push(...nodes);
     } else {
         for (const para of allParas) {
-            // 1. Check Style
+            // 1. Check Paragraph Style (pStyle)
             if (ignoredSet.size > 0) {
-                const styleId = getParagraphStyleId(para);
-                if (styleId && ignoredSet.has(styleId)) {
-                    continue; // SKIP paragraph
+                const pStyle = getParagraphStyleId(para);
+                if (pStyle && ignoredSet.has(pStyle)) {
+                    continue; // SKIP entire paragraph
                 }
             }
 
-            // 2. Collect nodes securely
+            // 2. Collect nodes from runs
             const runs = Array.from(para.getElementsByTagNameNS(WORD_NS, "r"));
             for (const run of runs) {
+                // 3. [NEW] Check Character Style (rStyle)
+                if (ignoredSet.size > 0) {
+                    const rStyle = getRunStyleId(run);
+                    if (rStyle && ignoredSet.has(rStyle)) {
+                        continue; // SKIP this run (inline code)
+                    }
+                }
+
                 const tNodes = Array.from(run.getElementsByTagNameNS(WORD_NS, "t"));
                 for (const t of tNodes) {
-                    // Security filters (same as collectTextNodes)
+                    // Security filters
                     if (isInsideTag(t, "instrText")) continue;
                     if (isInsideTag(t, "fldSimple")) continue;
                     if (isInsideTag(t, "fldChar")) continue;
@@ -141,6 +146,9 @@ export function convertOoxml(
     }
 
     removeProofingTags(doc);
+
+    // ... (Ostatak funkcije ostaje ISTI kao pre, bez izmena) ...
+    // Samo kopirajte ostatak od "const dirSetting = options?.direction ?? 'auto';" na dole.
 
     const dirSetting = options?.direction ?? "auto";
     let direction: Direction | "to-ascii";
