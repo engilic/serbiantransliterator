@@ -202,6 +202,7 @@ export async function checkSelectionAndUpdateButtons() {
         } else if (settings.direction === "to-ascii") {
             shouldEnable = !!(contentInfo?.hasLat || contentInfo?.hasCyr);
         } else {
+            // Auto: enable if has ANY script content
             shouldEnable = !!(contentInfo?.hasLat || contentInfo?.hasCyr);
         }
 
@@ -258,8 +259,17 @@ export async function checkSelectionAndUpdateButtons() {
 
                 liveIconRight.style.filter = "none";
                 liveAutoIcon.style.filter = "none";
+
                 runBtn.disabled = false;
                 prevBtn.disabled = false;
+
+                // [MAX3 UX] Add Pulse & Tooltips
+                runBtn.classList.add("pulse-action");
+
+                // Dinamički tooltip sa prečicom
+                const actionName = detection.label.replace("Auto ", ""); // npr. "(→ Ćir)"
+                runBtn.title = `${t("ui_btn_run")} ${actionName} ${t("tooltip_run_shortcut")}`;
+                prevBtn.title = `${t("ui_btn_preview")} ${t("tooltip_preview_shortcut")}`;
             } else {
                 liveStatus.style.color = "var(--colorNeutralForeground3)";
                 liveStatus.style.opacity = "0.7";
@@ -277,6 +287,11 @@ export async function checkSelectionAndUpdateButtons() {
                 }
                 runBtn.disabled = true;
                 prevBtn.disabled = true;
+
+                // [MAX3 UX] Remove Pulse & Reset Tooltips
+                runBtn.classList.remove("pulse-action");
+                runBtn.title = "";
+                prevBtn.title = "";
 
                 if (isSelectionMode) {
                     liveTextLeft.textContent = t("stats_scope_selection");
