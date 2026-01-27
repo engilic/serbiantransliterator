@@ -5,7 +5,7 @@ const path = require("path");
 const ROOT = process.cwd();
 const WASM_DIR = path.join(ROOT, "src", "wasm-core");
 
-// ANSI boje za lepši ispis
+// ANSI boje
 const C = {
     reset: "\x1b[0m",
     green: "\x1b[32m",
@@ -38,15 +38,13 @@ function run(stepName, cmd, args, cwd = ROOT) {
 console.log(`${C.bold}🚀 STARTING FULL VERIFICATION WORKFLOW${C.reset}`);
 const totalStart = Date.now();
 
-// 0. Clean (Simulacija CI okruženja - brišemo stare artefakte)
-// Ovo osigurava da Typecheck ne prolazi "slučajno" zbog starog wasm builda.
+// 0. Clean (Simulacija CI okruženja)
 run("0. Clean Environment", "npm", ["run", "clean"]);
 
 // 1. Format Fix
 run("1. Format Fix", "npm", ["run", "format:fix"]);
 
 // 2. Linting & Types
-// Sada se ovo izvršava u čistom okruženju.
 run("2.1 Lint Fix", "npm", ["run", "lint:fix"]);
 run("2.2 Typecheck", "npm", ["run", "typecheck"]);
 
@@ -57,21 +55,19 @@ run("3. Rust Core Tests", "cargo", ["test"], WASM_DIR);
 run("4. Security Audit", "npm", ["audit"]);
 
 // 5. Build (Production)
-// Ovo će generisati nove WASM artefakte.
 run("5. Build (Production)", "npm", ["run", "build"]);
 
-// 6. JS Unit & Fuzz Tests (Zahtevaju build ako testiraju integraciju)
+// 6. JS Unit & Fuzz Tests
 run("6. JS Tests (Coverage)", "npm", ["run", "test:coverage"]);
 
 // 7. Manifest Validation
 run("7. Manifest Validation", "npm", ["run", "validate:prod"]);
 
-// 8. Internal Security Checks
-run("8.1 i18n Guard", "npm", ["run", "check:i18n"]);
+// 8. Internal Security & Integrity Guards
+run("8.1 i18n Guard (Hardcoded & Missing Keys)", "npm", ["run", "check:i18n"]);
 run("8.2 Conflict Guard", "npm", ["run", "check:conflicts"]);
 
 // 9. E2E Tests (Playwright)
-// Najsporiji deo, ide na kraj.
 run("9. E2E Tests", "npm", ["run", "test:e2e"]);
 
 const totalEnd = Date.now();
