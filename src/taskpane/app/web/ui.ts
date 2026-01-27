@@ -11,7 +11,6 @@ import { state } from "../state";
 import { playSuccessSound } from "../audio";
 import { checkIncognito } from "../incognito";
 
-// ... (Interface definitions for FileSystemFileHandle, LaunchParams... keep them) ...
 interface FileSystemFileHandle {
     kind: "file";
     name: string;
@@ -27,7 +26,7 @@ interface WindowWithLaunchQueue extends Window {
     launchQueue?: LaunchQueue;
 }
 
-// Rekurzivna transliteracija DOM-a (zadržavamo je)
+// Rekurzivna transliteracija DOM-a
 export function transliterateDomNode(node: Node, dir: Direction, coreOpts: CoreOptions) {
     if (node.nodeType === Node.TEXT_NODE) {
         const original = node.textContent || "";
@@ -44,6 +43,7 @@ export function transliterateDomNode(node: Node, dir: Direction, coreOpts: CoreO
 }
 
 // [MAX3] Sanitizer za Paste (čuva formatiranje, sklanja opasnost)
+// [SECURITY FIX] Uklanja SVE atribute da spreči XSS
 function sanitizePaste(htmlContent: string): string {
     const parser = new DOMParser();
     const doc = parser.parseFromString(htmlContent, "text/html");
@@ -73,10 +73,11 @@ function sanitizePaste(htmlContent: string): string {
     function walk(node: Node) {
         if (node.nodeType === Node.ELEMENT_NODE) {
             const el = node as Element;
-            // Remove style attributes to prevent weird coloring
-            el.removeAttribute("style");
-            el.removeAttribute("class");
-            el.removeAttribute("id");
+
+            // [SECURITY FIX] Remove ALL attributes to prevent XSS via event handlers or javascript: URIs
+            while (el.attributes.length > 0) {
+                el.removeAttribute(el.attributes[0].name);
+            }
 
             if (!allowedTags.has(el.tagName)) {
                 // Unwrap disallowed tags (replace with children)
