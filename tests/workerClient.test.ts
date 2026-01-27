@@ -36,7 +36,7 @@ class MockWorker {
 
     removeEventListener(type: string, listener: any) {
         if (!this.listeners[type]) return;
-        this.listeners[type].filter((l) => l !== listener);
+        this.listeners[type] = this.listeners[type].filter((l) => l !== listener);
     }
 }
 
@@ -53,10 +53,8 @@ describe("WorkerClient", () => {
         vi.useRealTimers();
         client = new WorkerClient();
 
-        // [FIX] Manually inject worker and ready state to bypass init() logic
-        // Ovo osigurava da testira convert() logiku bez zavisnosti od init() tajminga
+        // [FIX] Manually inject worker and ready state to bypass init() logic for fast tests
         const w = new MockWorker("fake");
-        // Moramo da zakačimo listener ručno jer client to radi u init-u
         w.addEventListener("message", (event: any) => (client as any).handleMessage(event));
 
         (client as any).worker = w;
@@ -75,8 +73,8 @@ describe("WorkerClient", () => {
     it("handles timeout correctly", async () => {
         // Zameni workera sa sporim
         const slowWorker = new MockWorker("");
-        slowWorker.postMessage = () => {};
-        (client as any).worker = slowWorker; // Replace injected worker
+        slowWorker.postMessage = () => {}; // Never replies
+        (client as any).worker = slowWorker;
 
         vi.useFakeTimers();
         const p = client.convert("<xml/>", {} as any, 50);
@@ -97,8 +95,15 @@ describe("WorkerClient", () => {
     it("init() handles bootstrapping (separate test)", async () => {
         // Reset client to test clean init
         const freshClient = new WorkerClient();
+
+        // Mock fetch to ensure it passes
+        (globalThis as any).fetch = vi.fn(async () => ({
+            ok: true,
+            arrayBuffer: async () => new ArrayBuffer(10),
+        }));
+
         await freshClient.init();
-        // Just checking it resolves
+        // Just checking it resolves without error
         expect(true).toBe(true);
     });
 });
