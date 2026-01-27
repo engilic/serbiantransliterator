@@ -1,5 +1,5 @@
 // src/taskpane/app/web/ui.ts
-/* global document, navigator, window, ClipboardItem */
+/* global document, navigator, window, ClipboardItem, Blob */
 
 import { processDocxFile } from "./batch";
 import { t } from "../../../shared/i18n";
@@ -10,6 +10,7 @@ import { getSettingsFromUi } from "../settings/getters";
 import { state } from "../state";
 import { playSuccessSound } from "../audio";
 import { checkIncognito } from "../incognito";
+import DOMPurify from "dompurify"; // [MAX3] Security Standard
 
 interface FileSystemFileHandle {
     kind: "file";
@@ -40,80 +41,6 @@ export function transliterateDomNode(node: Node, dir: Direction, coreOpts: CoreO
             node.childNodes.forEach((child) => transliterateDomNode(child, dir, coreOpts));
         }
     }
-}
-
-// [MAX3] Sanitizer za Paste (čuva formatiranje, sklanja opasnost)
-// [SECURITY FIX] Use <template> for inert parsing (Safe from XSS)
-function sanitizePasteToFragment(htmlContent: string): DocumentFragment {
-    const template = document.createElement("template");
-    template.innerHTML = htmlContent; // Scripts do NOT execute here
-
-    const fragment = document.createDocumentFragment();
-
-    const allowedTags = new Set([
-        "P",
-        "BR",
-        "B",
-        "I",
-        "U",
-        "STRONG",
-        "EM",
-        "UL",
-        "OL",
-        "LI",
-        "TABLE",
-        "THEAD",
-        "TBODY",
-        "TR",
-        "TD",
-        "TH",
-        "SPAN",
-        "DIV",
-    ]);
-
-    function walkAndClean(node: Node): Node | null {
-        if (node.nodeType === Node.TEXT_NODE) {
-            return document.createTextNode(node.textContent || "");
-        }
-
-        if (node.nodeType === Node.ELEMENT_NODE) {
-            const el = node as Element;
-            const tagName = el.tagName.toUpperCase();
-
-            if (allowedTags.has(tagName)) {
-                const newEl = document.createElement(tagName);
-
-                let child = el.firstChild;
-                while (child) {
-                    const cleanChild = walkAndClean(child);
-                    if (cleanChild) newEl.appendChild(cleanChild);
-                    child = child.nextSibling;
-                }
-                return newEl;
-            } else {
-                // Unwrap
-                const docFrag = document.createDocumentFragment();
-                let child = el.firstChild;
-                while (child) {
-                    const cleanChild = walkAndClean(child);
-                    if (cleanChild) docFrag.appendChild(cleanChild);
-                    child = child.nextSibling;
-                }
-                return docFrag;
-            }
-        }
-        return null;
-    }
-
-    // Process template content
-    let child = template.content.firstChild;
-    while (child) {
-        const cleanNode = walkAndClean(child);
-        if (cleanNode) fragment.appendChild(cleanNode);
-        child = child.nextSibling;
-    }
-
-    return fragment;
 }
 
 export function initWebModeUi() {
@@ -208,7 +135,7 @@ export function initWebModeUi() {
                 applySerbianQuotes: uiSettings.applySerbianQuotes,
                 preserveCodeBlocks: uiSettings.preserveCodeBlocks,
                 curlyProtection: uiSettings.curlyProtection,
-                ignoredStyles: uiSettings.ignoredStyles, // [PR3] Add ignoredStyles
+                ignoredStyles: uiSettings.ignoredStyles,
             };
 
             try {
@@ -263,15 +190,14 @@ export function initWebModeUi() {
             }
         };
 
-        // [MAX3] Universal Paste Handler (Sanitized HTML + Plain Text Fallback)
+        // [MAX3] Universal Paste Handler (DOMPurify + Range API)
         richInput.addEventListener("paste", (e) => {
             e.preventDefault();
 
-            // Prefer HTML if available (preserves bold, lists)
             const htmlData = e.clipboardData?.getData("text/html");
             const textData = e.clipboardData?.getData("text/plain");
 
-            // [FIX] Hack to bypass ESLint office-addins rule (it thinks this is Word.Selection)
+            // [FIX] Hack to bypass ESLint office-addins rule
             const getSel = window["getSelection"];
             const selection = getSel ? getSel.call(window) : null;
 
@@ -281,14 +207,18 @@ export function initWebModeUi() {
             range.deleteContents();
 
             if (htmlData) {
-                // [FIX] Use fragment directly
-                const fragment = sanitizePasteToFragment(htmlData);
+                // [SECURITY FIX] Use DOMPurify for bulletproof XSS protection
+                const fragment = DOMPurify.sanitize(htmlData, {
+                    RETURN_DOM_FRAGMENT: true,
+                    // Optional: Whitelist to preserve specific formatting
+                    // ALLOWED_TAGS: ['b', 'i', 'u', 'strong', 'em', 'p', 'br', 'ul', 'ol', 'li', 'table', 'tr', 'td', 'th', 'div', 'span']
+                });
+
                 range.insertNode(fragment);
                 range.collapse(false);
             } else if (textData) {
                 const textNode = document.createTextNode(textData);
                 range.insertNode(textNode);
-                // Move cursor to end
                 range.collapse(false);
             }
 
@@ -296,7 +226,6 @@ export function initWebModeUi() {
             selection.addRange(range);
 
             richInput.classList.remove("empty");
-            // Auto-scroll to view
             richInput.scrollIntoView({ behavior: "smooth", block: "center" });
         });
 
@@ -311,7 +240,6 @@ export function initWebModeUi() {
             });
         }
 
-        // Global Drag & Drop Overlay (unchanged)
         const overlay = document.getElementById("dragOverlay");
         let dragCounter = 0;
 
