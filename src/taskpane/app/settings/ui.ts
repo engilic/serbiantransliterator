@@ -8,18 +8,19 @@ import { asCurlyProtectionUi } from "../word/curlyProtection";
 import { setStatus, refreshStats } from "../status";
 import { invalidatePreviewCache } from "../preview/cache";
 import { confirmInPanel } from "../modal/modal";
-import { unsafeHtml, escapeHtml } from "../../../shared/safeHtml";
+import { unsafeHtml } from "../../../shared/safeHtml";
 import { t } from "../../../shared/i18n";
 
 import { runWithUiLock } from "../uiLock";
 import { runSmart } from "../word/apply";
 import { runPreview } from "../preview/runPreview";
 
-import { getSettingsFromUi, getOoxmlOptionsFromUi } from "./getters";
+import { getSettingsFromUi } from "./getters";
 import { loadSettingsFromStorage, saveSettingsToStorage } from "./store";
 import { DEFAULT_SETTINGS, PRESETS, SETTINGS_KEY } from "./defaults";
 
 import { renderTags, setupTagEvents } from "./tags";
+import { initSubsUi, renderSubsList } from "./subsUi"; // <--- IMPORTED
 
 import { initUiI18n, getUiLanguagePreference, setUiLanguagePreference, asUiLangPref } from "../i18n/uiI18n";
 import { checkSelectionAndUpdateButtons } from "../selection";
@@ -56,98 +57,7 @@ function applyTheme(theme: AppTheme) {
     }
 }
 
-function renderSubsList() {
-    const area = get<HTMLTextAreaElement>("optCustomSubstitutions");
-    const container = get<HTMLDivElement>("subsContainer");
-
-    const raw = area.value.trim();
-    const lines = raw ? raw.split("\n") : [];
-
-    container.innerHTML = "";
-
-    if (lines.length === 0) {
-        container.innerHTML = `<div class="subs-empty hint" data-i18n="subs_list_empty">${t("subs_list_empty")}</div>`;
-        return;
-    }
-
-    lines.forEach((line) => {
-        if (!line.includes("->")) return;
-        const [src, dest] = line.split("->").map((s) => s.trim());
-
-        const item = document.createElement("div");
-        item.className = "sub-item";
-        item.innerHTML = `
-            <span class="sub-text"><b>${escapeHtml(src)}</b> &rarr; ${escapeHtml(dest)}</span>
-            <span class="sub-remove" title="${t("ui_tag_remove")}">&times;</span>
-        `;
-
-        item.querySelector(".sub-remove")!.addEventListener("click", () => {
-            removeSub(line);
-        });
-
-        container.appendChild(item);
-    });
-}
-
-function addSub() {
-    const srcInput = get<HTMLInputElement>("subSrc");
-    const destInput = get<HTMLInputElement>("subDest");
-    const area = get<HTMLTextAreaElement>("optCustomSubstitutions");
-    const addSubBtn = get<HTMLButtonElement>("addSubBtn");
-
-    const src = srcInput.value.trim();
-    const dest = destInput.value.trim();
-
-    if (!src || !dest) {
-        if (!src) highlightError(srcInput);
-        if (!dest) highlightError(destInput);
-        return;
-    }
-
-    if (src.includes("->") || dest.includes("->")) {
-        alert("Simbol '->' je rezervisan za separator i ne može biti deo reči.");
-        return;
-    }
-
-    const newLine = `${src} -> ${dest}`;
-    const current = area.value.trim();
-
-    if (current.includes(src + " ->")) {
-        alert(`Pravilo za reč '${src}' već postoji. Obrišite staro pre dodavanja novog.`);
-        return;
-    }
-
-    area.value = current ? current + "\n" + newLine : newLine;
-    area.dispatchEvent(new Event("change"));
-
-    srcInput.value = "";
-    destInput.value = "";
-    srcInput.focus();
-
-    addSubBtn.disabled = true;
-
-    renderSubsList();
-}
-
-function highlightError(el: HTMLElement) {
-    const original = el.style.borderColor;
-    el.style.borderColor = "var(--colorStatusDangerForeground)";
-    setTimeout(() => {
-        el.style.borderColor = original;
-    }, 1000);
-}
-
-function removeSub(lineToRemove: string) {
-    const area = get<HTMLTextAreaElement>("optCustomSubstitutions");
-    const lines = area.value
-        .split("\n")
-        .map((s) => s.trim())
-        .filter((s) => s !== lineToRemove && s);
-    area.value = lines.join("\n");
-
-    area.dispatchEvent(new Event("change"));
-    renderSubsList();
-}
+// [REMOVED] renderSubsList, addSub, highlightError, removeSub
 
 export function initUi() {
     initUiI18n();
@@ -180,21 +90,8 @@ export function initUi() {
     bindButtons();
     setupInputListeners();
 
-    const addSubBtn = get<HTMLButtonElement>("addSubBtn");
-    addSubBtn.onclick = addSub;
-    addSubBtn.disabled = true;
-
-    const subSrc = get<HTMLInputElement>("subSrc");
-    const subDest = get<HTMLInputElement>("subDest");
-
-    const checkSubInputs = () => {
-        addSubBtn.disabled = !(subSrc.value.trim() && subDest.value.trim());
-    };
-
-    subSrc.oninput = checkSubInputs;
-    subDest.oninput = checkSubInputs;
-
-    renderSubsList();
+    // [ADDED] Init subs UI
+    initSubsUi();
 
     get<HTMLSelectElement>("profilePreset").onchange = (e) => {
         const val = (e.target as HTMLSelectElement).value as ProfilePreset;
@@ -224,7 +121,11 @@ function initLanguagePicker() {
         const pref = asUiLangPref(sel.value);
         setUiLanguagePreference(pref);
         renderTags();
-        renderSubsList();
+
+        // Re-render subs list
+        const area = getOptional<HTMLTextAreaElement>("optCustomSubstitutions");
+        if (area) renderSubsList(area);
+
         refreshStats();
         setStatus(t("status_ready"), "neutral");
         try {
@@ -322,13 +223,14 @@ function applySettingsToUi(s: UiSettings) {
     applyTheme(s.theme || "auto");
 
     const subArea = getOptional<HTMLTextAreaElement>("optCustomSubstitutions");
-    if (subArea) subArea.value = s.customSubstitutions || "";
-    renderSubsList();
+    if (subArea) {
+        subArea.value = s.customSubstitutions || "";
+        renderSubsList(subArea); // [CHANGED] Use module
+    }
 
     const dialectSel = getOptional<HTMLSelectElement>("optDialect");
     if (dialectSel) dialectSel.value = s.dialect || "none";
 
-    // [NEW] Ignored Styles
     const styleArea = getOptional<HTMLTextAreaElement>("optIgnoredStyles");
     if (styleArea) styleArea.value = (s.ignoredStyles || []).join("\n");
 
@@ -354,13 +256,10 @@ function updateResetButtonState() {
         "theme",
         "customSubstitutions",
         "dialect",
-        // [NEW] Check ignoredStyles (array comparison is tricky, simplify)
-        // Ignorisemo ignoredStyles u reset logici za sada da ne komplikujemo deep equals
     ];
 
     const mismatches = keys.filter((k) => current[k] !== DEFAULT_SETTINGS[k]);
 
-    // Manual check for ignoredStyles
     const defStyles = DEFAULT_SETTINGS.ignoredStyles.join("\n");
     const curStyles = current.ignoredStyles.join("\n");
     const hasStyleDiff = defStyles !== curStyles;
@@ -414,10 +313,8 @@ function changeProfile(profile: ProfilePreset) {
                 if (dSel) dSel.value = data.dialect;
             }
 
-            // [NEW] Apply profile styles
             const styleArea = getOptional<HTMLTextAreaElement>("optIgnoredStyles");
             if (styleArea) {
-                // Use profile specific or default
                 const styles = data.ignoredStyles || DEFAULT_SETTINGS.ignoredStyles;
                 styleArea.value = styles.join("\n");
             }
@@ -454,7 +351,7 @@ function setupInputListeners() {
         "dirToAscii",
         "optCustomSubstitutions",
         "optDialect",
-        "optIgnoredStyles", // [NEW]
+        "optIgnoredStyles",
     ];
 
     ids.forEach((id) => {

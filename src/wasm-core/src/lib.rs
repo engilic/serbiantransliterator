@@ -6,32 +6,18 @@ use aho_corasick::AhoCorasick;
 
 mod dictionary;
 mod convert;
+mod rules; // <--- NEW MOD
 mod tests;
 
 use dictionary::load_dictionary_internal;
 use convert::{to_cyrillic_internal, to_latin_internal, convert_dialect_internal};
+use rules::SYSTEM_EXCEPTIONS; // <--- USE
 
 static REPLACER: Lazy<Mutex<Option<(AhoCorasick, Vec<String>)>>> = Lazy::new(|| {
     Mutex::new(None)
 });
 
-const SYSTEM_EXCEPTIONS: &[(&str, &str)] = &[
-    ("Tanjug", "Танјуг"), ("tanjug", "танјуг"),
-    ("Injekc", "Инјекц"), ("injekc", "инјекц"),
-    ("Injekt", "Инјект"), ("injekt", "инјект"),
-    ("Konjug", "Конјуг"), ("konjug", "конјуг"),
-    ("Konjunk", "Конјунк"), ("konjunk", "конјунк"),
-    ("Anjon", "Анјон"),   ("anjon", "анјон"),
-    ("Katjon", "Катјон"), ("katjon", "катјон"),
-    ("Nadživ", "Наджив"), ("nadživ", "наджив"),
-    ("Podžanr", "Поджанр"), ("podžanr", "поджанр"),
-    ("reke Save", "реке Саве"),
-    ("duž Save", "дуж Саве"),
-    ("ka Savi", "ка Сави"),
-    ("na Savi", "на Сави"),
-    ("ušća Save", "ушћа Саве"),
-    ("obale Save", "обале Саве"),
-];
+// [REMOVED] SYSTEM_EXCEPTIONS constant (moved to rules.rs)
 
 #[wasm_bindgen]
 pub fn init_debug() {
