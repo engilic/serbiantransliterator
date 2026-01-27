@@ -1,4 +1,3 @@
-// scripts/checkTaskpaneHtmlI18n.cjs
 "use strict";
 
 const fs = require("node:fs");
@@ -12,8 +11,8 @@ const LETTER_RE = /[A-Za-zČĆĐŠŽčćđšž\u0400-\u052F]/;
 function posFromIndex(text, idx) {
     const before = text.slice(0, idx);
     const lines = before.split("\n");
-    const line = lines.length; // 1-based
-    const col = (lines[lines.length - 1] || "").length + 1; // 1-based
+    const line = lines.length;
+    const col = (lines[lines.length - 1] || "").length + 1;
     return { line, col };
 }
 
@@ -30,44 +29,38 @@ function main() {
 
     let html = fs.readFileSync(FILE, "utf8");
 
-    // Strip HtmlWebpackPlugin template tags (<%= ... %>) to avoid false positives.
+    // Strip template tags
     html = html.replace(/<%[\s\S]*?%>/g, "");
 
-    const violations = [];
-
-    // FIX: Ignoriši <title> tag ako ima data-i18n, jer nam treba neki tekst unutra za a11y pre JS-a.
-    // Jednostavno brišemo ceo <title ...>...</title> blok pre analize teksta.
+    // Strip title (special case)
     html = html.replace(/<title\s+[^>]*data-i18n[^>]*>.*?<\/title>/gs, "");
+
+    const violations = [];
 
     // 1) Visible text nodes: > ... <
     const reText = />[^<]*</g;
     let m;
     while ((m = reText.exec(html)) !== null) {
-        const raw = m[0].slice(1, -1); // inside >...<
+        const raw = m[0].slice(1, -1);
         const txt = raw.replace(/\s+/g, " ").trim();
 
-        // Ignoriši CSS content unutar <style> (koji često ima tačke, zagrade, ali ne i user tekst na ovaj način)
-        // Ali ovde je regex prost. Ako CSS klasa ima slova, okinuće.
-        // Najbolje je ignorisati style blokove skroz.
-
         if (!txt) continue;
-
-        // Ignoriši ako je samo interpunkcija ili brojevi
         if (!LETTER_RE.test(txt)) continue;
 
-        // Ignoriši specifične tehničke stringove ako ih ima (npr. CSS klase u style tagu)
-        // Ovde je teško bez pravog parsera.
-        // Pretpostavljamo da <style> blokovi ne bi trebalo da imaju text node-ove u ovom regexu
-        // osim ako nisu unutar >...<, što CSS nije (CSS je unutar <style>...</style>).
-        // Regex />[^<]*</ hvata sadržaj između tagova. <style> sadržaj se hvata.
-
-        // FIX: Ignoriši sadržaj ako smo unutar <style>
-        // Prosta detekcija: ako prethodni tag počinje sa <style
+        // Context check: look at the tag opening before this text
         const before = html.slice(0, m.index);
-        const lastTagOpen = before.lastIndexOf("<");
-        const lastTag = before.slice(lastTagOpen);
-        if (lastTag.startsWith("<style")) continue;
-        if (lastTag.startsWith("<script")) continue;
+        const lastTagOpenIndex = before.lastIndexOf("<");
+        if (lastTagOpenIndex === -1) continue;
+
+        const tagContent = before.slice(lastTagOpenIndex);
+
+        // [FIX] Ignore if tag has data-i18n attribute
+        if (tagContent.includes("data-i18n=")) continue;
+        if (tagContent.includes("data-i18n ")) continue; // data-i18n without value (boolean style, though rare here)
+
+        // Ignore style/script
+        if (tagContent.startsWith("<style")) continue;
+        if (tagContent.startsWith("<script")) continue;
 
         const idx = m.index;
         const { line, col } = posFromIndex(html, idx);
@@ -82,29 +75,31 @@ function main() {
         if (reText.lastIndex === idx) reText.lastIndex++;
     }
 
-    // 2) Attributes (title, placeholder, aria-label)
+    // 2) Attributes
     const reAttr = /\b(title|placeholder|aria-label)\s*=\s*"([^"]*)"/g;
     while ((m = reAttr.exec(html)) !== null) {
+        const attrName = m[1];
         const attrVal = m[2] || "";
         if (!LETTER_RE.test(attrVal)) continue;
 
-        // FIX: Ignoriši ako element ima data-i18n-attr koji pokriva ovaj atribut
-        // Ovo je "heuristic" check - gledamo da li u istom tagu (oko matcha) postoji data-i18n-attr
-        // Nije savršeno ali smanjuje false positives.
-
-        // Za sada, samo prijavljujemo. Ako si svesno stavio aria-label kao fallback,
-        // moramo ili dozvoliti ili koristiti data-i18n-attr striktno.
-
-        // Zbog "advanced.html" gde smo dodali aria-label ručno:
-        // Dozvoljavamo aria-label ako postoji data-i18n-attr u blizini.
-
-        // Ali pošto je skripta striktna, najbolje je da se držimo pravila:
-        // Sve što je user-facing MORA u data-i18n.
-        // Fallback u HTML-u je tehnički "hardcoded string" koji se vidi ako JS pukne.
-        // Za sada ćemo ovo ostaviti kao violation, a ti moraš odlučiti:
-        // ili obriši aria-label iz HTML-a (i osloni se na JS), ili ignorisati grešku.
-
+        // Check if data-i18n-attr handles this attribute
+        // Simple heuristic: check if data-i18n-attr exists in the vicinity (same tag)
+        // We look backwards for < and forwards for >
         const idx = m.index;
+
+        // Scan backwards to find start of tag
+        let startTag = html.lastIndexOf("<", idx);
+        // Scan forwards to find end of tag
+        let endTag = html.indexOf(">", idx);
+
+        if (startTag !== -1 && endTag !== -1) {
+            const fullTag = html.slice(startTag, endTag);
+            // If data-i18n-attr contains the attribute name (e.g. title:KEY)
+            if (fullTag.includes(`data-i18n-attr`) && fullTag.includes(`${attrName}:`)) {
+                continue;
+            }
+        }
+
         const { line, col } = posFromIndex(html, idx);
 
         violations.push({

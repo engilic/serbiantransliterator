@@ -19,6 +19,7 @@ bincode = "1.3"
 fst = "0.4"
 aho-corasick = "1.1"
 rustc-hash = "1.1"
+console_error_panic_hook = "0.1.7" # <--- NEW
 
 # [FIX] Isključujemo wasm-opt jer pravi probleme sa bulk-memory instrukcijama
 [package.metadata.wasm-pack.profile.release]
@@ -26,7 +27,7 @@ wasm-opt = false
 
 [profile.release]
 opt-level = 3
-lto = "fat"          # <--- MAX: Fat LTO (sporiji build, brži kod)
+lto = "fat"
 codegen-units = 1
-strip = "debuginfo"  # <--- MAX: Agresivno čišćenje (smanjuje WASM)
+strip = "debuginfo"
 panic = "abort"

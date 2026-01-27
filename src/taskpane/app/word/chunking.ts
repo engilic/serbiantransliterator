@@ -6,6 +6,7 @@ import { setStatus, setProgress } from "../status";
 import { t } from "../../../shared/i18n";
 import { workerClient } from "../../worker/client";
 import { state } from "../state";
+import { perfMonitor } from "../telemetry/performanceMonitor"; // [MAX20] Import monitor
 
 // [MAX20] Adaptive limits
 const BATCH_SIZE_START = 50;
@@ -209,9 +210,12 @@ export async function processDocumentInChunks(
             if (isCancelled()) break;
 
             // [MAX20] Dirty Check: Write ONLY if changed
+            let skippedWrite = false;
             if (result.type !== "Nema teksta" && result.xml !== rawXml) {
                 batchRange.insertOoxml(result.xml, Word.InsertLocation.replace);
                 didInsert = true;
+            } else {
+                skippedWrite = true;
             }
 
             processedCount += batchItems.length;
@@ -238,6 +242,14 @@ export async function processDocumentInChunks(
             // Sync after insert (implicitly handled by next read or loop end, but we measure full cycle)
 
             const dur = Math.max(0, nowMs() - batchStart);
+
+            // [MAX20] TELEMETRY RECORDING
+            if (typeof perfMonitor !== "undefined") {
+                perfMonitor.record("processChunk", batchItems.length, dur, {
+                    batchSize: batchItems.length,
+                    skippedWrite: skippedWrite,
+                });
+            }
 
             // [MAX20] Adaptive Logic
             if (dur > 0) {

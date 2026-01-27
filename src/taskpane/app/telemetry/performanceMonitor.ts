@@ -1,13 +1,18 @@
 // src/taskpane/app/telemetry/performanceMonitor.ts
 
-import { logger } from "./logger"; // NEW
+import { logger } from "./logger";
 
 export interface PerformanceEntry {
     operation: string;
     nodeCount: number;
     duration: number;
     timestamp: number;
-    extras?: Record<string, unknown>;
+    // Extras for detailed debugging
+    extras?: {
+        skippedWrite?: boolean;
+        batchSize?: number;
+        [key: string]: unknown;
+    };
 }
 
 export interface PerformanceStats {
@@ -18,6 +23,9 @@ export interface PerformanceStats {
     max: number;
     count: number;
     slowest: PerformanceEntry[];
+    // Telemetry stats
+    skippedRate?: string; // Percentage of writes skipped due to dirty check
+    avgBatchSize?: number; // Average adaptive batch size
 }
 
 /**
@@ -37,7 +45,7 @@ export class PerformanceMonitor {
         operation: string,
         nodeCount: number,
         duration: number,
-        extras?: Record<string, unknown>
+        extras?: { skippedWrite?: boolean; batchSize?: number; [key: string]: unknown }
     ): void {
         const entry: PerformanceEntry = {
             operation,
@@ -83,6 +91,19 @@ export class PerformanceMonitor {
         // Find slowest operations
         const slowest = [...this.entries].sort((a, b) => b.duration - a.duration).slice(0, 5);
 
+        // NEW: Calculate extra stats for chunking
+        const chunks = this.entries.filter((e) => e.operation === "processChunk");
+        let skippedRate = "N/A";
+        let avgBatchSize = 0;
+
+        if (chunks.length > 0) {
+            const skipped = chunks.filter((c) => c.extras?.skippedWrite === true).length;
+            skippedRate = ((skipped / chunks.length) * 100).toFixed(1) + "%";
+
+            const totalBatch = chunks.reduce((acc, c) => acc + (Number(c.extras?.batchSize) || 0), 0);
+            avgBatchSize = Math.round(totalBatch / chunks.length);
+        }
+
         return {
             avg: sum / durations.length,
             median: this.percentile(durations, 0.5),
@@ -91,6 +112,8 @@ export class PerformanceMonitor {
             max: durations[durations.length - 1] || 0,
             count: this.entries.length,
             slowest,
+            skippedRate,
+            avgBatchSize,
         };
     }
 
@@ -112,15 +135,15 @@ export class PerformanceMonitor {
      * Export entries as CSV string.
      */
     public exportCsv(): string {
-        const headers = ["Timestamp", "Operation", "Nodes", "Duration (ms)", "Nodes/sec"];
+        const headers = ["Timestamp", "Operation", "Nodes", "Duration (ms)", "BatchSize", "SkippedWrite"];
         const rows = this.entries.map((e) => {
-            const nodesPerSec = e.duration > 0 ? (e.nodeCount / (e.duration / 1000)).toFixed(0) : "N/A";
             return [
                 new Date(e.timestamp).toISOString(),
                 e.operation,
                 e.nodeCount.toString(),
                 e.duration.toFixed(0),
-                nodesPerSec,
+                e.extras?.batchSize ? String(e.extras.batchSize) : "",
+                e.extras?.skippedWrite ? "YES" : "NO",
             ];
         });
 
