@@ -1,5 +1,13 @@
 import { convertPlainText, type Direction, type CoreOptions, detectScript } from "../../core/textCore";
-import { XML_NS, collectTextNodes, getFullText, needsXmlSpacePreserve } from "./dom";
+import {
+    XML_NS,
+    WORD_NS,
+    collectTextNodes,
+    getFullText,
+    needsXmlSpacePreserve,
+    getParagraphStyleId,
+    isInsideTag,
+} from "./dom";
 import { applySerbianQuotesAcrossNodes } from "./quotes";
 import { createInitialCodeState, createInitialCodeParseStats, transformTextRespectingCode } from "./code";
 import {
@@ -29,9 +37,25 @@ export interface OoxmlOptions extends CoreOptions {
     direction?: Direction | "to-ascii";
     setProofingLanguage?: boolean;
     protectRomans?: boolean;
+    ignoredStyles?: string[];
 }
 
-export { ConvertStats }; // Re-export for consumers
+export { ConvertStats };
+
+function isNodeInIgnoredStyle(node: Element, ignoredStyles: Set<string>): boolean {
+    if (ignoredStyles.size === 0) return false;
+
+    let cur: Element | null = node.parentElement;
+    while (cur) {
+        if (cur.localName === "p") {
+            const styleId = getParagraphStyleId(cur);
+            if (styleId && ignoredStyles.has(styleId)) return true;
+            return false;
+        }
+        cur = cur.parentElement;
+    }
+    return false;
+}
 
 export function convertOoxml(
     ooxml: string,
@@ -40,7 +64,6 @@ export function convertOoxml(
     const t0 = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
     const ooxmlSizeKb = Math.round(ooxml.length / 1024);
 
-    // SECURITY & PARSING (Izolovano u xmlParser.ts)
     const doc = parseSafeOoxml(ooxml);
 
     if (!doc) {
@@ -64,7 +87,49 @@ export function convertOoxml(
         // ignore
     }
 
-    const textNodes = collectTextNodes(doc);
+    // [MAX3] REFACTOR: Iteration by Paragraph with Style Check
+    const allParas = Array.from(doc.getElementsByTagNameNS(WORD_NS, "p"));
+    const ignoredSet = new Set(options?.ignoredStyles || []);
+
+    const textNodesToProcess: Element[] = [];
+
+    // Fallback: If no paragraphs found (e.g. just a run fragment), fall back to collecting all nodes
+    // This handles edge cases where we get just a run XML from Word
+    if (allParas.length === 0) {
+        let nodes = collectTextNodes(doc);
+        // Still try to filter if possible (though unlikely to have pStyle without p)
+        if (ignoredSet.size > 0) {
+            nodes = nodes.filter((n) => !isNodeInIgnoredStyle(n, ignoredSet));
+        }
+        textNodesToProcess.push(...nodes);
+    } else {
+        for (const para of allParas) {
+            // 1. Check Style
+            if (ignoredSet.size > 0) {
+                const styleId = getParagraphStyleId(para);
+                if (styleId && ignoredSet.has(styleId)) {
+                    continue; // SKIP paragraph
+                }
+            }
+
+            // 2. Collect nodes securely
+            const runs = Array.from(para.getElementsByTagNameNS(WORD_NS, "r"));
+            for (const run of runs) {
+                const tNodes = Array.from(run.getElementsByTagNameNS(WORD_NS, "t"));
+                for (const t of tNodes) {
+                    // Security filters (same as collectTextNodes)
+                    if (isInsideTag(t, "instrText")) continue;
+                    if (isInsideTag(t, "fldSimple")) continue;
+                    if (isInsideTag(t, "fldChar")) continue;
+                    if (isInsideTag(t, "delText")) continue;
+
+                    textNodesToProcess.push(t);
+                }
+            }
+        }
+    }
+
+    const textNodes = textNodesToProcess;
     const fullText = getFullText(textNodes);
 
     if (!fullText.trim()) {
@@ -160,7 +225,6 @@ export function convertOoxml(
         }
     }
 
-    // --- Proofing Prep (Before Conversion) ---
     let proofing: import("./stats").ProofingStats = {
         enabled: false,
         targetLang: null,
@@ -194,7 +258,6 @@ export function convertOoxml(
     const codeState = createInitialCodeState();
     const codeParseStats = createInitialCodeParseStats();
 
-    // --- Conversion Loop ---
     for (const node of textNodes) {
         const original = node.textContent ?? "";
         if (original === "") continue;
@@ -244,7 +307,6 @@ export function convertOoxml(
         applySerbianQuotesAcrossNodes(textNodes, preserveCodeBlocks);
     }
 
-    // --- Apply Proofing (Post-Conversion) ---
     if (shouldSetLang && originalRunText) {
         const r = applyProofingLanguagePreserveUnchanged(doc, textNodes, originalRunText, direction);
         proofing = { enabled: true, targetLang: targetLangForDirection(direction), ...r };

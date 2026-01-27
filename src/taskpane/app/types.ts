@@ -18,6 +18,9 @@ export interface UiSettings {
     customSubstitutions: string;
     dialect: DialectUi;
 
+    // [NEW]
+    ignoredStyles: string[];
+
     protectBrands: boolean;
     applySerbianQuotes: boolean;
     preserveCodeBlocks: boolean;
@@ -31,7 +34,6 @@ export interface UiSettings {
     includeFootnotes: boolean;
     includeEndnotes: boolean;
 
-    // Removed: showStats
     direction: DirectionUi;
 }
 

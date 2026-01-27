@@ -43,6 +43,8 @@ beforeEach(() => {
         theme: "auto",
         customSubstitutions: "",
         dialect: "none",
+        // [FIX] Added ignoredStyles
+        ignoredStyles: [],
         confirmWholeDoc: true,
         includeHeadersFooters: false,
         includeFootnotes: false,
@@ -79,7 +81,6 @@ describe("previewModal - load more (document preview)", () => {
     it("clicking 'Učitaj još' increases shownCount and updates title (via data-testid)", async () => {
         showPreviewModal();
 
-        // CHANGE: Target 'previewLoadMoreBtn' instead of 'modalOk'
         const loadMoreBtn = document.getElementById("previewLoadMoreBtn") as HTMLButtonElement;
 
         expect(loadMoreBtn).toBeTruthy();
@@ -87,10 +88,8 @@ describe("previewModal - load more (document preview)", () => {
 
         const before = state.preview.shownCount;
 
-        // Trigger click
         await (loadMoreBtn.onclick as unknown as () => Promise<void>)();
 
-        // Verification
         expect(state.preview.shownCount).toBeGreaterThan(before);
         expect(state.preview.shownCount).toBe(
             Math.min(state.preview.allParagraphs.length, before + PREVIEW_BATCH)
