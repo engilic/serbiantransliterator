@@ -35,7 +35,8 @@
         "format:check": "prettier --check .",
         "format:fix": "prettier --write .",
         "audit:high": "npm audit --audit-level=high",
-        "prepare": "husky install"
+        "prepare": "husky install",
+        "release": "standard-version"
     },
     "dependencies": {
         "core-js": "^3.37.1",
@@ -79,6 +80,7 @@
         "office-addin-manifest": "^2.1.2",
         "prettier": "^3.2.5",
         "rimraf": "^6.1.2",
+        "standard-version": "^9.5.0",
         "terser-webpack-plugin": "^5.3.9",
         "typescript": "^5.9.3",
         "vitest": "^4.0.17",
