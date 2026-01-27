@@ -6,6 +6,10 @@ import { invalidatePreviewCache } from "./preview/cache";
 import { t, tPlural } from "../../shared/i18n";
 import { getSettingsFromUi } from "./settings/getters";
 
+// [NEW] SVG Icons (Fluent UI style)
+const ICON_DOC = `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>`;
+const ICON_SEL = `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M2.5 4v3h2V5h15v2h2V4h-19zm19 16v-3h-2v2H4.5v-2h-2v3h19zM6 10h12v4H6v-4z"/></svg>`; // Selection / Text Box
+
 let cachedDocInfo: { count: number; sample: string; hasLat: boolean; hasCyr: boolean } | null = null;
 let lastDocCheck = 0;
 const DOC_INFO_CACHE_MS = 5000;
@@ -196,7 +200,6 @@ export async function checkSelectionAndUpdateButtons() {
         } else if (settings.direction === "cyr-to-lat") {
             shouldEnable = !!contentInfo?.hasCyr;
         } else if (settings.direction === "to-ascii") {
-            // [FIX] Enable for ANY script (Cyrillic OR Latin)
             shouldEnable = !!(contentInfo?.hasLat || contentInfo?.hasCyr);
         } else {
             shouldEnable = !!(contentInfo?.hasLat || contentInfo?.hasCyr);
@@ -207,6 +210,9 @@ export async function checkSelectionAndUpdateButtons() {
 
             let label = "";
             if (isSelectionMode) {
+                // [FIX] Selection Icon
+                liveIconLeft.innerHTML = ICON_SEL;
+
                 if (selWords >= 1) {
                     const countStr = formatCompact(selWords);
                     if (selWords >= 10000) label = t("word_count_many", countStr);
@@ -216,6 +222,9 @@ export async function checkSelectionAndUpdateButtons() {
                 }
                 liveTextLeft.textContent = t("live_sel_words", label);
             } else {
+                // [FIX] Document Icon
+                liveIconLeft.innerHTML = ICON_DOC;
+
                 const docInfo = cachedDocInfo || { count: 0, sample: "" };
                 const countStr = formatCompact(docInfo.count);
                 if (docInfo.count >= 10000) label = t("word_count_many", countStr);
@@ -244,7 +253,9 @@ export async function checkSelectionAndUpdateButtons() {
             if (shouldEnable) {
                 liveStatus.style.color = "var(--colorNeutralForeground1)";
                 liveStatus.style.opacity = "1";
-                liveIconLeft.style.filter = "none";
+                // [FIX] Apply Brand Color to Icon
+                liveIconLeft.style.color = "var(--colorBrandForeground1)";
+
                 liveIconRight.style.filter = "none";
                 liveAutoIcon.style.filter = "none";
                 runBtn.disabled = false;
@@ -252,6 +263,10 @@ export async function checkSelectionAndUpdateButtons() {
             } else {
                 liveStatus.style.color = "var(--colorNeutralForeground3)";
                 liveStatus.style.opacity = "0.7";
+
+                // [FIX] Grey Icon when disabled
+                liveIconLeft.style.color = "inherit";
+
                 liveIconLeft.style.filter = "grayscale(100%)";
                 liveIconRight.style.filter = "grayscale(100%)";
                 liveAutoIcon.style.filter = "grayscale(100%)";
@@ -275,7 +290,6 @@ export async function checkSelectionAndUpdateButtons() {
     }
 }
 
-// ... (normalize funcs remain same) ...
 export function normalizeWeirdBreaks(s: string): string {
     return (s ?? "").replace(/\u000b/g, "\n").replace(/\u000c/g, "\n");
 }
