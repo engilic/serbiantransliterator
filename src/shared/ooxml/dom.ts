@@ -1,3 +1,5 @@
+// src/shared/ooxml/dom.ts
+
 export const XML_NS = "http://www.w3.org/XML/1998/namespace";
 export const WORD_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
 
@@ -14,6 +16,36 @@ export function isInsideTag(el: Element, localName: string): boolean {
     return false;
 }
 
+// [NEW] Helper to get paragraph style ID
+export function getParagraphStyleId(para: Element): string | null {
+    // Structure: <w:p> -> <w:pPr> -> <w:pStyle w:val="Code"/>
+    // Using simple traversal for speed (avoiding querySelector in hot loop if possible)
+
+    // 1. Find w:pPr direct child
+    let pPr: Element | null = null;
+    for (let i = 0; i < para.children.length; i++) {
+        const child = para.children[i];
+        if (child?.localName === "pPr") {
+            pPr = child;
+            break;
+        }
+    }
+
+    if (!pPr) return null;
+
+    // 2. Find w:pStyle child of pPr
+    for (let i = 0; i < pPr.children.length; i++) {
+        const child = pPr.children[i];
+        if (child?.localName === "pStyle") {
+            // 3. Get w:val attribute
+            return child.getAttributeNS(WORD_NS, "val");
+        }
+    }
+
+    return null;
+}
+
+// [MODIFIED] collectTextNodes is now context-aware if needed, but we refactored usage in convertOoxml
 export function collectTextNodes(doc: Document): Element[] {
     // Prefer namespace-aware lookup (most robust for OOXML)
     let allTextNodes = Array.from(doc.getElementsByTagNameNS(WORD_NS, "t"));

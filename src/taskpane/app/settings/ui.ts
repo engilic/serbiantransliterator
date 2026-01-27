@@ -20,7 +20,6 @@ import { loadSettingsFromStorage, saveSettingsToStorage } from "./store";
 import { DEFAULT_SETTINGS, PRESETS, SETTINGS_KEY } from "./defaults";
 
 import { renderTags, setupTagEvents } from "./tags";
-// [FIX] Removed import { initAdvancedSettingsToggle } from "./advanced";
 
 import { initUiI18n, getUiLanguagePreference, setUiLanguagePreference, asUiLangPref } from "../i18n/uiI18n";
 import { checkSelectionAndUpdateButtons } from "../selection";
@@ -175,7 +174,6 @@ export function initUi() {
     applySettingsToUi(settings);
     state.isApplyingProfile = false;
 
-    // [FIX] Removed initAdvancedSettingsToggle() call because the section is now always visible
     renderTags();
     updateResetButtonState();
 
@@ -330,6 +328,10 @@ function applySettingsToUi(s: UiSettings) {
     const dialectSel = getOptional<HTMLSelectElement>("optDialect");
     if (dialectSel) dialectSel.value = s.dialect || "none";
 
+    // [NEW] Ignored Styles
+    const styleArea = getOptional<HTMLTextAreaElement>("optIgnoredStyles");
+    if (styleArea) styleArea.value = (s.ignoredStyles || []).join("\n");
+
     refreshStats();
     updateResetButtonState();
 }
@@ -352,11 +354,19 @@ function updateResetButtonState() {
         "theme",
         "customSubstitutions",
         "dialect",
+        // [NEW] Check ignoredStyles (array comparison is tricky, simplify)
+        // Ignorisemo ignoredStyles u reset logici za sada da ne komplikujemo deep equals
     ];
 
     const mismatches = keys.filter((k) => current[k] !== DEFAULT_SETTINGS[k]);
+
+    // Manual check for ignoredStyles
+    const defStyles = DEFAULT_SETTINGS.ignoredStyles.join("\n");
+    const curStyles = current.ignoredStyles.join("\n");
+    const hasStyleDiff = defStyles !== curStyles;
+
     const btn = getOptional<HTMLButtonElement>("resetBtn");
-    if (btn) btn.disabled = mismatches.length === 0;
+    if (btn) btn.disabled = mismatches.length === 0 && !hasStyleDiff;
 }
 
 function switchToCustomIfManual() {
@@ -403,6 +413,14 @@ function changeProfile(profile: ProfilePreset) {
                 const dSel = getOptional<HTMLSelectElement>("optDialect");
                 if (dSel) dSel.value = data.dialect;
             }
+
+            // [NEW] Apply profile styles
+            const styleArea = getOptional<HTMLTextAreaElement>("optIgnoredStyles");
+            if (styleArea) {
+                // Use profile specific or default
+                const styles = data.ignoredStyles || DEFAULT_SETTINGS.ignoredStyles;
+                styleArea.value = styles.join("\n");
+            }
         }
     }
 
@@ -436,6 +454,7 @@ function setupInputListeners() {
         "dirToAscii",
         "optCustomSubstitutions",
         "optDialect",
+        "optIgnoredStyles", // [NEW]
     ];
 
     ids.forEach((id) => {

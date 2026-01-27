@@ -73,6 +73,14 @@ function parseCustomSubstitutions(raw: string): Record<string, string> {
     return map;
 }
 
+function parseList(raw: string): string[] {
+    if (!raw) return [];
+    return raw
+        .split("\n")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+}
+
 export function getSettingsFromUi(): UiSettings {
     const profileRaw = getSelectValue("profilePreset");
     const profile = asProfilePreset(profileRaw);
@@ -90,6 +98,9 @@ export function getSettingsFromUi(): UiSettings {
     const dialectRaw = getSelectValue("optDialect");
     const dialect = asDialectUi(dialectRaw);
 
+    // [NEW] Ignored Styles
+    const stylesRaw = getTextValue("optIgnoredStyles");
+
     return {
         schemaVersion: 2,
         profile,
@@ -97,6 +108,7 @@ export function getSettingsFromUi(): UiSettings {
         theme,
         customSubstitutions: subsRaw,
         dialect,
+        ignoredStyles: parseList(stylesRaw), // [NEW]
         protectBrands: getCheckValue("optProtectBrands"),
         applySerbianQuotes: getCheckValue("optSerbianQuotes"),
         preserveCodeBlocks: getCheckValue("optPreserveCodeBlocks"),
@@ -107,7 +119,6 @@ export function getSettingsFromUi(): UiSettings {
         includeHeadersFooters: getCheckValue("optIncludeHeadersFooters"),
         includeFootnotes: getCheckValue("optIncludeFootnotes"),
         includeEndnotes: getCheckValue("optIncludeEndnotes"),
-        // Removed: showStats
         direction,
     };
 }
@@ -131,5 +142,6 @@ export function getOoxmlOptionsFromUi(): OoxmlOptions {
         userProtected: [...Array.from(state.customWordsSet), ...Array.from(state.presetWordsSet)],
         customSubstitutions: parseCustomSubstitutions(s.customSubstitutions),
         dialect: s.dialect,
+        ignoredStyles: s.ignoredStyles, // [NEW]
     };
 }

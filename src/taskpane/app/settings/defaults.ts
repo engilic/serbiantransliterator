@@ -12,6 +12,9 @@ export const DEFAULT_SETTINGS: UiSettings = {
     customSubstitutions: "",
     dialect: "none",
 
+    // [NEW] Default styles to ignore
+    ignoredStyles: ["Code", "Macro Text", "Source Code"],
+
     confirmWholeDoc: true,
     includeHeadersFooters: false,
     includeFootnotes: false,
@@ -23,7 +26,6 @@ export const DEFAULT_SETTINGS: UiSettings = {
     applySerbianQuotes: true,
     curlyProtection: "placeholders",
     setProofingLanguage: true,
-    // Removed: showStats: false,
 };
 
 export const PROFILE_NAMES: Record<string, string> = {
@@ -47,6 +49,8 @@ export const PRESETS: Record<string, Partial<UiSettings> & { userWords: string[]
         confirmWholeDoc: true,
         curlyProtection: "placeholders",
         dialect: "none",
+        // [NEW] IT preset ignores Code by default
+        ignoredStyles: ["Code", "Macro Text", "Source Code", "HTML Preformatted"],
         userWords: [
             "Git",
             "GitHub",
@@ -85,6 +89,7 @@ export const PRESETS: Record<string, Partial<UiSettings> & { userWords: string[]
             "Endpoint",
         ],
     },
+    // ... (ostali preseti ostaju isti, default ignoredStyles se primenjuje ako nije override-ovan)
     finance: {
         direction: "auto",
         protectBrands: true,
