@@ -37,17 +37,20 @@
             </select>
         </div>
 
+        <!-- [NEW] Ignored Styles (i18n fixed) -->
         <div class="field-row" style="margin-top: 15px">
             <div id="lblStyles" class="field-label" style="display: flex; justify-content: space-between">
-                <span>Ignorisani Stilovi</span>
-                <span class="icon-hint" title="Tekst u ovim stilovima (npr. 'Code') se neće menjati."
+                <span data-i18n="opt_ignored_styles_label"></span>
+                <span
+                    class="icon-hint"
+                    data-i18n-attr="title:opt_ignored_styles_hint,aria-label:opt_ignored_styles_hint"
                     >ℹ️</span
                 >
             </div>
             <textarea
                 id="optIgnoredStyles"
                 rows="3"
-                placeholder="Code&#10;Quote"
+                data-i18n-attr="placeholder:opt_ignored_styles_placeholder"
                 aria-labelledby="lblStyles"
                 style="resize: vertical; min-height: 60px"
             ></textarea>

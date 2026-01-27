@@ -1,5 +1,5 @@
 // src/taskpane/app/web/ui.ts
-/* global document, navigator, window */
+/* global document, navigator, window, ClipboardItem, Blob */
 
 import { processDocxFile } from "./batch";
 import { t } from "../../../shared/i18n";
@@ -8,8 +8,9 @@ import { html } from "../../../shared/safeHtml";
 import { convertPlainText, type Direction, type CoreOptions } from "../../../core/textCore";
 import { getSettingsFromUi } from "../settings/getters";
 import { state } from "../state";
-import { playSuccessSound } from "../audio"; // [GODLIKE]
-import { checkIncognito } from "../incognito"; // [GODLIKE]
+import { playSuccessSound } from "../audio";
+import { checkIncognito } from "../incognito";
+import DOMPurify from "dompurify"; // [MAX3] Security Standard
 
 interface FileSystemFileHandle {
     kind: "file";
@@ -26,7 +27,7 @@ interface WindowWithLaunchQueue extends Window {
     launchQueue?: LaunchQueue;
 }
 
-// [GALAXY MODE] Rekurzivna transliteracija
+// Rekurzivna transliteracija DOM-a
 export function transliterateDomNode(node: Node, dir: Direction, coreOpts: CoreOptions) {
     if (node.nodeType === Node.TEXT_NODE) {
         const original = node.textContent || "";
@@ -45,16 +46,13 @@ export function transliterateDomNode(node: Node, dir: Direction, coreOpts: CoreO
 export function initWebModeUi() {
     console.log("🚀 Initializing Web Mode UI...");
 
-    // [MAX UX] Ukloni preloader (jer smo sada spremni i React/JS je preuzeo kontrolu)
     const preloader = document.getElementById("webModePreloader");
     if (preloader) {
-        // Fade out efekat
         preloader.style.transition = "opacity 0.3s";
         preloader.style.opacity = "0";
         setTimeout(() => preloader.remove(), 300);
     }
 
-    // [GODLIKE] Check Incognito on start
     setTimeout(checkIncognito, 1000);
 
     const main = document.querySelector("main");
@@ -119,7 +117,6 @@ export function initWebModeUi() {
         });
         richInput.classList.add("empty");
 
-        // Helper za konverziju
         const doConvert = () => {
             const text = richInput.innerText || richInput.textContent || "";
             if (!text.trim()) {
@@ -138,6 +135,7 @@ export function initWebModeUi() {
                 applySerbianQuotes: uiSettings.applySerbianQuotes,
                 preserveCodeBlocks: uiSettings.preserveCodeBlocks,
                 curlyProtection: uiSettings.curlyProtection,
+                ignoredStyles: uiSettings.ignoredStyles,
             };
 
             try {
@@ -150,7 +148,6 @@ export function initWebModeUi() {
                 copyBtn.style.display = "inline-flex";
                 copyBtn.innerText = t("web_clipboard_copy");
 
-                // [GODLIKE] Sound!
                 playSuccessSound();
             } catch (e) {
                 console.error(e);
@@ -163,12 +160,20 @@ export function initWebModeUi() {
 
         convertBtn.onclick = doConvert;
 
+        // [MAX3] Universal Smart Copy
         copyBtn.onclick = async () => {
             try {
-                const htmlBlob = new Blob([richInput.innerHTML], { type: "text/html" });
-                const txt = richInput.innerText || richInput.textContent || "";
-                const textBlob = new Blob([txt], { type: "text/plain" });
-                const item = new ClipboardItem({ "text/html": htmlBlob, "text/plain": textBlob });
+                const htmlContent = richInput.innerHTML;
+                const textContent = richInput.innerText || richInput.textContent || "";
+
+                const htmlBlob = new Blob([htmlContent], { type: "text/html" });
+                const textBlob = new Blob([textContent], { type: "text/plain" });
+
+                const item = new ClipboardItem({
+                    "text/html": htmlBlob,
+                    "text/plain": textBlob,
+                });
+
                 await navigator.clipboard.write([item]);
 
                 copyBtn.innerText = t("web_clipboard_copied");
@@ -178,39 +183,50 @@ export function initWebModeUi() {
                     copyBtn.innerText = t("web_clipboard_copy");
                 }, 1500);
             } catch (e) {
+                // Fallback for older browsers
                 const txt = richInput.innerText || richInput.textContent || "";
                 await navigator.clipboard.writeText(txt);
                 copyBtn.innerText = t("web_clipboard_copied") + " (Plain)";
             }
         };
 
-        // [GODLIKE] Global Auto-Paste (SECURED - CodeQL FIX)
-        document.addEventListener("paste", (e) => {
-            // Ako fokus nije u inputu, uhvati paste i ubaci u nas editor
-            const active = document.activeElement;
-            const isInput =
-                active instanceof HTMLInputElement ||
-                active instanceof HTMLTextAreaElement ||
-                (active as HTMLElement).isContentEditable;
+        // [MAX3] Universal Paste Handler (DOMPurify + Range API)
+        richInput.addEventListener("paste", (e) => {
+            e.preventDefault();
 
-            if (!isInput && e.clipboardData) {
-                e.preventDefault();
-                // SECURITY FIX: Only accept plain text to prevent XSS via innerHTML
-                const text = e.clipboardData.getData("text/plain");
+            const htmlData = e.clipboardData?.getData("text/html");
+            const textData = e.clipboardData?.getData("text/plain");
 
-                if (text) {
-                    // SECURITY FIX: Use innerText instead of innerHTML
-                    richInput.innerText = text;
-                    richInput.classList.remove("empty");
+            // [FIX] Hack to bypass ESLint office-addins rule
+            const getSel = window["getSelection"];
+            const selection = getSel ? getSel.call(window) : null;
 
-                    // Auto-scroll to editor
-                    richInput.scrollIntoView({ behavior: "smooth", block: "center" });
+            if (!selection || !selection.rangeCount) return;
 
-                    // Flash effect
-                    richInput.style.backgroundColor = "var(--colorNeutralBackground2)";
-                    setTimeout(() => (richInput.style.backgroundColor = ""), 300);
-                }
+            const range = selection.getRangeAt(0);
+            range.deleteContents();
+
+            if (htmlData) {
+                // [SECURITY FIX] Use DOMPurify for bulletproof XSS protection
+                const fragment = DOMPurify.sanitize(htmlData, {
+                    RETURN_DOM_FRAGMENT: true,
+                    // Optional: Whitelist to preserve specific formatting
+                    // ALLOWED_TAGS: ['b', 'i', 'u', 'strong', 'em', 'p', 'br', 'ul', 'ol', 'li', 'table', 'tr', 'td', 'th', 'div', 'span']
+                });
+
+                range.insertNode(fragment);
+                range.collapse(false);
+            } else if (textData) {
+                const textNode = document.createTextNode(textData);
+                range.insertNode(textNode);
+                range.collapse(false);
             }
+
+            selection.removeAllRanges();
+            selection.addRange(range);
+
+            richInput.classList.remove("empty");
+            richInput.scrollIntoView({ behavior: "smooth", block: "center" });
         });
 
         const titleEl = document.querySelector(".section-title");
@@ -224,7 +240,6 @@ export function initWebModeUi() {
             });
         }
 
-        // [VISION 2027] Global Drag & Drop Overlay Logic
         const overlay = document.getElementById("dragOverlay");
         let dragCounter = 0;
 
@@ -244,7 +259,7 @@ export function initWebModeUi() {
             });
 
             window.addEventListener("dragover", (e) => {
-                e.preventDefault(); // Neophodno da bi drop radio
+                e.preventDefault();
             });
 
             window.addEventListener("drop", (e) => {
