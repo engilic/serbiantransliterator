@@ -92,63 +92,72 @@ pub fn convert_dialect_internal(text: &str, mode: &str) -> String {
     let store_opt = guard.get(mode);
 
     let mut result = String::with_capacity(text.len());
-    let chars: Vec<char> = text.chars().collect();
-    let len = chars.len();
-    let mut i = 0;
-
-    while i < len {
-        if !chars[i].is_alphabetic() {
-            result.push(chars[i]);
-            i += 1;
+    
+    // Custom iterator loop to handle word segmentation without Vec<char> alloc
+    let mut char_indices = text.char_indices().peekable();
+    
+    while let Some((idx, c)) = char_indices.next() {
+        if !c.is_alphanumeric() {
+            // Non-word char, just append
+            result.push(c);
             continue;
         }
 
-        let start = i;
-        while i < len && chars[i].is_alphabetic() { i += 1; }
-        let word: String = chars[start..i].iter().collect();
-
-        // CACHE READ (Thread Local)
+        // Start of a word
+        let word_start = idx;
+        let mut word_end = idx + c.len_utf8();
+        
+        // Consume rest of word
+        while let Some(&(peek_idx, peek_c)) = char_indices.peek() {
+            if peek_c.is_alphanumeric() {
+                char_indices.next(); // consume
+                word_end = peek_idx + peek_c.len_utf8();
+            } else {
+                break;
+            }
+        }
+        
+        let word = &text[word_start..word_end];
+        
+        // Process word
+        // CACHE READ
         let cached = WORD_CACHE.with(|cache| {
-            cache.borrow().get(&word).cloned()
+            cache.borrow().get(word).cloned()
         });
 
         if let Some(c) = cached {
             result.push_str(&c);
-            continue;
-        }
-
-        if should_protect(&word) {
-            result.push_str(&word);
-            // CACHE WRITE (Thread Local)
+        } else if should_protect(word) {
+            result.push_str(word);
             WORD_CACHE.with(|cache| {
                 let mut map = cache.borrow_mut();
                 if map.len() > 10000 { map.clear(); }
-                map.insert(word.clone(), word.clone());
+                map.insert(word.to_string(), word.to_string());
             });
-            continue;
+        } else {
+            let replacement = if let Some(store) = store_opt {
+                try_smart_lookup(store, word)
+            } else {
+                None
+            };
+
+            let final_word = if let Some(repl) = replacement {
+                repl
+            } else {
+                word.to_string()
+            };
+
+            result.push_str(&final_word);
+
+            // CACHE WRITE
+            WORD_CACHE.with(|cache| {
+                let mut map = cache.borrow_mut();
+                if map.len() > 10000 { map.clear(); }
+                map.insert(word.to_string(), final_word);
+            });
         }
-
-        let replacement = if let Some(store) = store_opt {
-            try_smart_lookup(store, &word)
-        } else {
-            None
-        };
-
-        let final_word = if let Some(repl) = replacement {
-            repl
-        } else {
-            word.clone()
-        };
-
-        result.push_str(&final_word);
-
-        // CACHE WRITE (Thread Local)
-        WORD_CACHE.with(|cache| {
-            let mut map = cache.borrow_mut();
-            if map.len() > 10000 { map.clear(); }
-            map.insert(word, final_word);
-        });
     }
+    
     result
 }
 
@@ -167,6 +176,7 @@ fn should_split_dz(word_lower: &str) -> bool {
     false
 }
 
+// [OPTIMIZATION] Rewritten to use iterators instead of Vec<char> to save memory
 fn process_word_to_cyr(result: &mut String, word: &str) {
     if should_protect(word) {
         result.push_str(word);
@@ -177,33 +187,31 @@ fn process_word_to_cyr(result: &mut String, word: &str) {
     let split_nj = should_split_nj(&word_lower);
     let split_dz = should_split_dz(&word_lower);
 
-    let chars: Vec<char> = word.chars().collect();
-    let len = chars.len();
-    let mut i = 0;
+    let mut iter = word.chars().peekable();
 
-    while i < len {
-        let c = chars[i];
+    while let Some(c) = iter.next() {
+        // Lookahead for digraphs
+        let next_opt = iter.peek().cloned();
         
-        if i + 1 < len {
-            let next = chars[i + 1];
-            let pair = format!("{}{}", c, next);
-            match pair.as_str() {
-                "Lj" | "LJ" => { result.push('Љ'); i += 2; continue; },
-                "lj" => { result.push('љ'); i += 2; continue; },
-                "Nj" | "NJ" => { 
-                    if !split_nj { result.push('Њ'); i += 2; continue; }
+        if let Some(next) = next_opt {
+             // Handle digraphs Lj, Nj, Dž
+             match (c, next) {
+                ('L', 'j') | ('L', 'J') => { result.push('Љ'); iter.next(); continue; },
+                ('l', 'j') => { result.push('љ'); iter.next(); continue; },
+                ('N', 'j') | ('N', 'J') => {
+                    if !split_nj { result.push('Њ'); iter.next(); continue; }
                 },
-                "nj" => { 
-                    if !split_nj { result.push('њ'); i += 2; continue; }
+                ('n', 'j') => {
+                    if !split_nj { result.push('њ'); iter.next(); continue; }
                 },
-                "Dž" | "DŽ" => { 
-                    if !split_dz { result.push('Џ'); i += 2; continue; }
+                ('D', 'ž') | ('D', 'Ž') => {
+                    if !split_dz { result.push('Џ'); iter.next(); continue; }
                 },
-                "dž" => { 
-                    if !split_dz { result.push('џ'); i += 2; continue; }
+                ('d', 'ž') => {
+                    if !split_dz { result.push('џ'); iter.next(); continue; }
                 },
                 _ => {}
-            }
+             }
         }
 
         let mapped = match c {
@@ -219,42 +227,42 @@ fn process_word_to_cyr(result: &mut String, word: &str) {
             _ => c,
         };
         result.push(mapped);
-        i += 1;
     }
 }
 
 pub fn to_cyrillic_internal(text: &str) -> String {
     let mut result = String::with_capacity(text.len() * 2);
-    let mut current_word = String::new();
-    let mut in_word = false;
-
-    for c in text.chars() {
+    // [OPTIMIZATION] Reuse the buffer-less logic from convert_dialect_internal but specifically for cyrillic mapping
+    
+    let mut current_word_start = None;
+    
+    for (i, c) in text.char_indices() {
         if c.is_alphanumeric() || c == '_' {
-            in_word = true;
-            current_word.push(c);
+            if current_word_start.is_none() {
+                current_word_start = Some(i);
+            }
         } else {
-            if in_word {
-                process_word_to_cyr(&mut result, &current_word);
-                current_word.clear();
-                in_word = false;
+            if let Some(start) = current_word_start {
+                let word = &text[start..i];
+                process_word_to_cyr(&mut result, word);
+                current_word_start = None;
             }
             result.push(c);
         }
     }
-    if in_word {
-        process_word_to_cyr(&mut result, &current_word);
+    // Flush last word
+    if let Some(start) = current_word_start {
+        let word = &text[start..];
+        process_word_to_cyr(&mut result, word);
     }
+    
     result
 }
 
+// [OPTIMIZATION] Direct iterator, no vec
 pub fn to_latin_internal(text: &str) -> String {
     let mut result = String::with_capacity(text.len());
-    let chars: Vec<char> = text.chars().collect();
-    let len = chars.len();
-    let mut i = 0;
-
-    while i < len {
-        let c = chars[i];
+    for c in text.chars() {
         match c {
             'А' => result.push('A'), 'а' => result.push('a'),
             'Б' => result.push('B'), 'б' => result.push('b'),
@@ -288,7 +296,6 @@ pub fn to_latin_internal(text: &str) -> String {
             'Ш' => result.push('Š'), 'ш' => result.push('š'),
             _ => result.push(c),
         }
-        i += 1;
     }
     result
 }

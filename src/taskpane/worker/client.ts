@@ -126,11 +126,20 @@ export class WorkerClient {
         this.jobs.clear();
     }
 
-    private async fetchBinary(url: string): Promise<Uint8Array> {
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`Failed to load dict: ${url}`);
-        const buf = await res.arrayBuffer();
-        return new Uint8Array(buf);
+    private async fetchBinary(url: string, retries = 3): Promise<Uint8Array> {
+        for (let i = 0; i < retries; i++) {
+            try {
+                const res = await fetch(url);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const buf = await res.arrayBuffer();
+                return new Uint8Array(buf);
+            } catch (e) {
+                if (i === retries - 1) throw e;
+                // Exponential backoff: 500ms, 1000ms, 2000ms
+                await new Promise((r) => setTimeout(r, 500 * Math.pow(2, i)));
+            }
+        }
+        throw new Error("Failed to fetch dictionary after retries");
     }
 
     private handleMessage(event: MessageEvent) {
