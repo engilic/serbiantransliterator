@@ -1,42 +1,55 @@
-<div class="section fade-in">
-    <div class="section-header">
-        <div class="section-title" data-i18n="section_direction"></div>
-    </div>
-
-    <div role="radiogroup" aria-label="Ciljno pismo">
-        <div class="direction-row">
-            <label>
-                <input type="radio" id="dirAuto" name="direction" value="auto" checked /><span
-                    data-i18n="dir_auto"
-                ></span>
-            </label>
-            <label>
-                <input type="radio" id="dirToAscii" name="direction" value="to-ascii" /><span
-                    data-i18n="dir_to_ascii_short"
-                ></span>
-            </label>
-            <label>
-                <input type="radio" id="dirLatToCyr" name="direction" value="lat-to-cyr" /><span
-                    data-i18n="dir_lat_to_cyr"
-                ></span>
-            </label>
-            <label>
-                <input type="radio" id="dirCyrToLat" name="direction" value="cyr-to-lat" /><span
-                    data-i18n="dir_cyr_to_lat"
-                ></span>
-            </label>
+<div id="directionBox" class="accordion fade-in">
+    <button
+        id="directionHeader"
+        class="accordion-header"
+        type="button"
+        aria-expanded="true"
+        aria-controls="directionContent"
+    >
+        <div class="accordion-header-left">
+            <svg class="accordion-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                <path d="M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z" />
+            </svg>
+            <span class="accordion-title" data-i18n="section_direction"></span>
         </div>
-    </div>
+        <svg class="accordion-chevron" viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z" />
+        </svg>
+    </button>
 
-    <div style="margin-top: 15px">
-        <div class="lang-group">
-            <label for="optUiLanguage" class="lang-label" data-i18n="opt_ui_language_label"></label>
-            <select id="optUiLanguage">
-                <option value="sr" data-i18n="opt_ui_language_sr"></option>
-                <option value="en" data-i18n="opt_ui_language_en"></option>
-                <option value="auto" data-i18n="opt_ui_language_auto"></option>
-            </select>
+    <div id="directionContent" class="accordion-content open" style="padding: 15px">
+        <div role="radiogroup" aria-label="Ciljno pismo" class="segmented-control">
+            <!-- Auto -->
+            <div class="segment-item">
+                <input type="radio" id="dirAuto" name="direction" value="auto" checked />
+                <label for="dirAuto" class="segment-label" title="Automatski / Automatic">
+                    <span data-i18n="dir_auto_short">Auto</span>
+                </label>
+            </div>
+
+            <!-- Lat -> Cyr -->
+            <div class="segment-item">
+                <input type="radio" id="dirLatToCyr" name="direction" value="lat-to-cyr" />
+                <label for="dirLatToCyr" class="segment-label" title="Latinica u Ćirilicu">
+                    <span data-i18n="dir_lat_to_cyr_short">→ Ćir</span>
+                </label>
+            </div>
+
+            <!-- Cyr -> Lat -->
+            <div class="segment-item">
+                <input type="radio" id="dirCyrToLat" name="direction" value="cyr-to-lat" />
+                <label for="dirCyrToLat" class="segment-label" title="Ćirilica u Latinicu">
+                    <span data-i18n="dir_cyr_to_lat_short">→ Lat</span>
+                </label>
+            </div>
+
+            <!-- ASCII -->
+            <div class="segment-item">
+                <input type="radio" id="dirToAscii" name="direction" value="to-ascii" />
+                <label for="dirToAscii" class="segment-label" title="Ošišana latinica (ASCII)">
+                    <span data-i18n="dir_to_ascii_short">→ ASCII</span>
+                </label>
+            </div>
         </div>
-        <!-- Theme Select REMOVED -->
     </div>
 </div>

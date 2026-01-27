@@ -229,3 +229,10 @@ input[type="radio"]:focus-visible {
     height: 14px;
     fill: currentColor;
 }
+
+.hint {
+    font-size: 12px; /* Još manje */
+    color: var(--colorNeutralForeground3);
+    margin-top: 6px;
+    font-style: italic; /* Opciono, da izgleda više kao hint */
+}

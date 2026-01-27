@@ -1,4 +1,3 @@
-// src/shared/locales/en.ts
 import { SR_RS } from "./sr";
 
 export type TranslationKey = keyof typeof SR_RS;
@@ -12,14 +11,14 @@ export const EN_US: Record<TranslationKey, string> = {
     btn_export_title: "Export settings",
     btn_import_title: "Import settings",
     section_profile: "PROFILE",
-    btn_reset_factory: "Factory settings",
+    btn_reset_factory: "Reset", // [CHANGE]
     profile_select_aria: "Profile select",
     section_direction: "TARGET SCRIPT",
     dir_auto: "Automatic",
     dir_to_ascii: "→ ASCII Lat",
-    dir_to_ascii_short: "→ ASCII",
     dir_lat_to_cyr: "→ Cyrillic",
     dir_cyr_to_lat: "→ Latin",
+    dir_auto_short: "Auto",
     section_options: "OPTIONS",
     opt_confirm_whole_doc: "Confirm processing the whole document",
     opt_include_headers_footers: "Include headers/footers",
@@ -37,7 +36,7 @@ export const EN_US: Record<TranslationKey, string> = {
     section_advanced: "ADVANCED",
     btn_toggle_advanced: "Advanced",
     btn_toggle_advanced_title: "Show/hide advanced settings",
-    opt_ui_language_label: "UI language",
+    opt_ui_language_label: "Language", // [CHANGE] Shortened
     opt_ui_language_aria: "UI language selection",
     opt_ui_language_sr: "Serbian (default)",
     opt_ui_language_en: "English",
@@ -46,6 +45,9 @@ export const EN_US: Record<TranslationKey, string> = {
     ui_theme_label: "Theme",
     ui_theme_aria: "Theme selection",
     ui_theme_auto: "Auto",
+    dir_lat_to_cyr_short: "→ Cyr",
+    dir_cyr_to_lat_short: "→ Lat",
+    dir_to_ascii_short: "→ ASCII",
     ui_theme_light: "Light ☀️",
     ui_theme_dark: "Dark 🌙",
     opt_curly_label_before: "Protection for ",

@@ -1,5 +1,3 @@
-// src/shared/locales/sr.ts
-
 export const SR_RS = {
     app_title: "Serbian Transliterator",
     ui_version_prefix: "v",
@@ -9,14 +7,17 @@ export const SR_RS = {
     btn_export_title: "Izvezi podešavanja",
     btn_import_title: "Uvezi podešavanja",
     section_profile: "PROFIL",
-    btn_reset_factory: "Fabrička podešavanja",
+    btn_reset_factory: "Resetuj",
     profile_select_aria: "Izbor profila",
     section_direction: "CILJNO PISMO",
     dir_auto: "Automatski",
     dir_to_ascii: "→ ASCII Lat",
-    dir_to_ascii_short: "→ ASCII",
     dir_lat_to_cyr: "→ Ćirilica",
     dir_cyr_to_lat: "→ Latinica",
+    dir_auto_short: "Auto",
+    dir_lat_to_cyr_short: "→ Ćir",
+    dir_cyr_to_lat_short: "→ Lat",
+    dir_to_ascii_short: "→ ASCII",
     section_options: "OPCIJE",
     opt_confirm_whole_doc: "Potvrdi preslovljavanje celog dokumenta",
     opt_include_headers_footers: "Uključi zaglavlja/podnožja (header/footer)",
@@ -29,18 +30,17 @@ export const SR_RS = {
     opt_preserve_code_between: " / ",
     ui_block_code_word: "blok",
     opt_preserve_code_after: ")",
-    // REMOVED: opt_show_stats
     section_corrections: "KOREKCIJA",
     opt_fix_spaces: "Ukloni višak razmaka",
     section_advanced: "NAPREDNO",
     btn_toggle_advanced: "Napredno",
     btn_toggle_advanced_title: "Prikaži/sakrij napredna podešavanja",
-    opt_ui_language_label: "Jezik interfejsa",
+    opt_ui_language_label: "Jezik", // [CHANGE] Shortened
     opt_ui_language_aria: "Izbor jezika interfejsa",
     opt_ui_language_sr: "Srpski (podrazumevano)",
     opt_ui_language_en: "English",
     opt_ui_language_auto: "Auto (Office/browser)",
-    opt_ui_language_hint: "Menja jezik UI-ja. Podrazumevano je srpski. Auto prati Office/browser jezik.",
+    opt_ui_language_hint: "Menja jezik UI-ja.",
     ui_theme_label: "Tema / Theme",
     ui_theme_aria: "Izbor teme",
     ui_theme_auto: "Auto",
@@ -89,10 +89,8 @@ export const SR_RS = {
     footer_privacy: "Privatnost",
     footer_copyright: "© 2026",
     footer_donate: "Podrži ❤️",
-
     ui_stats_accordion_header: "STATISTIKA",
     ui_stats_empty_placeholder: "(Nema podataka)",
-
     status_ready: "Spreman za rad.",
     status_generating_preview: "Generišem pregled...",
     status_processing: "Obrada u toku...",
@@ -129,7 +127,6 @@ export const SR_RS = {
     btn_apply: "PRESLOVI",
     ui_btn_run: "PRESLOVI",
     ui_btn_preview: "PREGLED",
-
     ui_tag_remove: "Ukloni",
     ui_web_mode: "Web režim",
     web_drop_title: "Prevucite .docx fajl ovde",
@@ -229,7 +226,6 @@ export const SR_RS = {
     msg_enter_text: "Unesite neki tekst.",
     live_empty_doc: "Prazan dokument",
     live_no_text: "Nema teksta",
-
     live_sel_words: "Selekcija: {0}",
     live_doc_words: "Dokument: {0}",
     word_count: "{0} reči",
@@ -240,7 +236,6 @@ export const SR_RS = {
     char_count_one: "{0} znak",
     char_count_few: "{0} znaka",
     char_count_many: "{0} znakova",
-
     live_auto_to_cyr: "Auto (→ Ćir)",
     live_auto_to_lat: "Auto (→ Lat)",
     live_target_cyr: "→ Ćirilica",

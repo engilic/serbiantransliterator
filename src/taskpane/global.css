@@ -38,8 +38,6 @@
 
 /* 
    [AUTOMATIC DARK MODE]
-   Browser/Office automatski aktivira ovo kad je sistem taman.
-   Nema potrebe za JavaScript-om.
 */
 @media (prefers-color-scheme: dark) {
     :root {
@@ -87,6 +85,19 @@ body {
     overflow: hidden;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+}
+
+/* A11y Helper */
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
 }
 
 /* --- Layout --- */
@@ -253,97 +264,329 @@ textarea:focus {
     }
 }
 
-/* --- Stats Box Styling (Fixed Layout) --- */
-#statsBox {
-    display: flex; /* Vraćamo Flex jer najbolje kontroliše decu */
-    flex-direction: column;
-    width: 100%; /* Osigurava punu širinu */
-    margin-top: 15px;
+/* Cards (Sections) */
+.section {
     background: var(--colorNeutralBackground1);
     border: 1px solid var(--colorNeutralStroke1);
     border-radius: var(--radius12);
+    padding: 15px;
+    margin-bottom: 0;
     box-shadow: var(--shadow2);
+    transition: box-shadow 0.3s ease;
+    contain-intrinsic-size: 1px 300px;
+    content-visibility: auto;
+}
+
+.section:hover {
+    box-shadow: var(--shadow4);
+    z-index: 1;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+    border-bottom: 1px solid transparent;
+}
+
+.section-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--colorBrandForeground1);
+}
+
+/* Direction Grid */
+.direction-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+/* Modern Checkboxes & Radios Wrapper */
+label {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 8px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.2s;
+    border-radius: var(--radius4);
+    margin: 0 -8px;
+}
+
+label:hover {
+    background-color: var(--colorNeutralBackground3);
+}
+
+.icon-hint {
+    margin-left: auto;
+    opacity: 0.5;
+    font-size: 16px;
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border: 1px solid var(--colorNeutralForeground3);
+    border-radius: 4px;
+    background: var(--colorNeutralBackground1);
+    display: grid;
+    place-content: center;
+    transition: all 0.2s;
+    margin: 0;
+}
+
+input[type="radio"] {
+    border-radius: 50%;
+}
+
+input[type="checkbox"]:checked,
+input[type="radio"]:checked {
+    background-color: var(--colorBrandBackground);
+    border-color: var(--colorBrandBackground);
+}
+
+/* Checkmark */
+input[type="checkbox"]::before {
+    content: "";
+    width: 10px;
+    height: 5px;
+    border-left: 2px solid white;
+    border-bottom: 2px solid white;
+    transform: rotate(-45deg) translate(1px, -2px);
+    opacity: 0;
+}
+
+input[type="checkbox"]:checked::before {
+    opacity: 1;
+}
+
+/* Radio Dot */
+input[type="radio"]::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    background: white;
+    border-radius: 50%;
+    transform: scale(0);
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+input[type="radio"]:checked::before {
+    transform: scale(1);
+}
+
+input[type="checkbox"]:focus-visible,
+input[type="radio"]:focus-visible {
+    outline: 2px solid var(--colorBrandBackground);
+    outline-offset: 2px;
+}
+
+/* Tags (Pills) */
+.tags-container {
+    background: var(--colorNeutralBackground2);
+    border: 1px solid var(--colorNeutralStroke1);
+    border-radius: var(--radius8);
+    padding: 8px;
+    min-height: 48px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.tag {
+    background: var(--colorNeutralBackground1);
+    border: none;
+    box-shadow: var(--shadow2);
+    color: var(--colorNeutralForeground1);
+    padding: 4px 12px;
+    border-radius: var(--radiusPill);
+    font-size: 13px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    user-select: none;
+    transition:
+        transform 0.1s,
+        box-shadow 0.1s;
+}
+
+.tag:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow4);
+}
+
+.tag.custom {
+    border-left: 3px solid var(--colorBrandBackground);
+}
+
+.tag-remove {
+    color: var(--colorNeutralForeground3);
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 2px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tag-remove:hover {
+    color: var(--colorStatusDangerForeground);
+    background: var(--colorStatusDangerBackground);
+}
+
+/* Header Mini Actions */
+.header-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.mini-btn {
+    height: 32px;
+    padding: 0 12px;
+    background: transparent;
+    border: 1px solid transparent; /* Ghost Style */
+    border-radius: var(--radius4);
+    font-weight: 600;
+    color: var(--colorNeutralForeground1);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.1s;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.mini-btn:hover:not(:disabled) {
+    background: var(--colorNeutralBackground3);
+}
+
+.mini-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.mini-btn.success {
+    color: var(--colorStatusSuccessForeground);
+    background: var(--colorStatusSuccessBackground);
+    border-color: transparent;
+}
+
+.mini-btn.danger:hover {
+    color: var(--colorStatusDangerForeground);
+    background: var(--colorStatusDangerBackground);
+    border-color: var(--colorStatusDangerForeground);
+}
+
+.mini-btn svg {
+    width: 14px;
+    height: 14px;
+    fill: currentColor;
+}
+
+.hint {
+    font-size: 12px;
+    color: var(--colorNeutralForeground3);
+    margin-top: 6px;
+    font-style: italic;
+}
+
+/* --- Generic Accordion Styling --- */
+.accordion {
+    /* Configurable Radius */
+    --acc-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    margin-top: 15px;
+    background: var(--colorNeutralBackground1);
+    border: 1px solid var(--colorNeutralStroke1);
+    padding: 0;
+    border-radius: var(--acc-radius);
+    box-shadow: var(--shadow2);
+    flex-shrink: 0;
     overflow: hidden;
 }
 
-#statsBox:hover {
+.accordion:hover {
     box-shadow: var(--shadow4);
 }
 
-.stats-header {
-    /* KLJUČNO: Ovo natera dugme da se raširi */
+.accordion-header {
     width: 100%;
+    height: 44px; /* Standard height */
     display: flex;
     justify-content: space-between;
     align-items: center;
     background: transparent;
     border: none;
-    padding: 12px 15px;
+    padding: 0 15px;
     cursor: pointer;
     color: var(--colorNeutralForeground1);
     font-family: inherit;
-    min-height: 48px;
     transition: background-color 0.2s;
-    /* Uklanjamo default button stilove */
-    margin: 0;
     outline: none;
-}
-
-.stats-header:hover {
+    flex-shrink: 0;
+    user-select: none;
+    /* [1] Zatvoren: Malo tamnije */
     background-color: var(--colorNeutralBackground2);
+    border-top-left-radius: var(--acc-radius);
+    border-top-right-radius: var(--acc-radius);
+    border-bottom-left-radius: var(--acc-radius);
+    border-bottom-right-radius: var(--acc-radius);
 }
 
-/* --- Stats Box Styling (Hardened) --- */
-#statsBox {
-    display: flex; /* Flex da bi bio dobar gradjanin u main flex-u */
-    flex-direction: column;
-    width: 100%;
-    margin-top: 15px;
-    background: var(--colorNeutralBackground1);
-    border: 1px solid var(--colorNeutralStroke1);
-    border-radius: var(--radius12);
-    box-shadow: var(--shadow2);
-    flex-shrink: 0; /* NE DOZVOLI SKUPLJANJE */
-}
-
-#statsBox:hover {
-    box-shadow: var(--shadow4);
-}
-
-.stats-header {
-    width: 100%;
-    height: 48px; /* FIKSNA VISINA */
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: transparent;
-    border: none;
-    padding: 0 15px; /* Padding samo levo/desno */
-    cursor: pointer;
-    color: var(--colorNeutralForeground1);
-    font-family: inherit;
-    transition: background-color 0.2s;
-    outline: none;
-    flex-shrink: 0; /* Dugme se NE SME smanjiti */
-}
-
-/* Klik prolazi kroz decu direktno na dugme */
-.stats-header * {
+.accordion-header * {
     pointer-events: none;
 }
 
-.stats-header:hover {
-    background-color: var(--colorNeutralBackground2);
+.accordion-header:hover {
+    /* [2] Zatvoren Hover: Još tamnije */
+    background-color: var(--colorNeutralBackground3);
 }
 
-.stats-header-left {
+.accordion-header[aria-expanded="true"] {
+    /* [3] Otvoren: Najtamniji */
+    background-color: var(--colorNeutralStroke1);
+    border-bottom: none;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.accordion-header[aria-expanded="true"]:hover {
+    /* [4] Otvoren Hover: Malo svetliji */
+    background-color: var(--colorNeutralBackground3);
+}
+
+.accordion-header-left {
     display: flex;
     align-items: center;
     gap: 10px;
-    height: 100%; /* Puna visina */
+    height: 100%;
 }
 
-.stats-icon {
+.accordion-title {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--colorBrandBackgroundPressed);
+    text-align: left;
+    line-height: 1;
+}
+
+.accordion-icon {
     fill: var(--colorBrandForeground1);
     opacity: 0.9;
     width: 16px;
@@ -351,41 +594,37 @@ textarea:focus {
     display: block;
 }
 
-.stats-title {
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    color: var(--colorBrandForeground1);
-    text-align: left;
-    line-height: 1; /* Sprečava čudna poravnanja */
-}
-
-.stats-chevron {
-    transition: transform 0.2s ease;
+.accordion-chevron {
+    transition: transform 0.3s cubic-bezier(0.87, 0, 0.13, 1);
     color: var(--colorNeutralForeground3);
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     display: block;
+    opacity: 0.6;
 }
 
-.stats-header[aria-expanded="true"] .stats-chevron {
+.accordion-header:hover .accordion-chevron {
+    opacity: 1;
+}
+
+.accordion-header[aria-expanded="true"] .accordion-chevron {
     transform: rotate(180deg);
 }
 
 /* --- Content --- */
-.stats-content {
+.accordion-content {
     display: none;
     width: 100%;
-    background-color: var(--colorNeutralBackground2); /* Blago siva pozadina za ceo content */
+    /* [5] Content: Svetliji (bela) */
+    background-color: var(--colorNeutralBackground1);
     box-sizing: border-box;
+    border-bottom-left-radius: var(--acc-radius);
+    border-bottom-right-radius: var(--acc-radius);
 }
 
-.stats-content.open {
+.accordion-content.open {
     display: block;
-    /* [FIX] Uklonjen padding da bi sadržaj išao od ivice do ivice */
     padding: 0;
-    border-top: 1px solid var(--colorNeutralStroke2);
     animation: fadeInContent 0.2s ease-out;
 }
 
@@ -401,33 +640,82 @@ textarea:focus {
     }
 }
 
+/* Helper for specific content types (e.g. pre formatted text) */
 #statsText {
     margin: 0;
     white-space: pre-wrap;
     font-family: Consolas, "Courier New", monospace;
-    font-size: 11px;
+    font-size: 10px;
     color: var(--colorNeutralForeground2);
-    line-height: 1.5;
-    /* [FIX] Transparentna pozadina da se stopi sa stats-content */
+    line-height: 1.4;
     background-color: transparent;
-    /* [FIX] Padding unutar teksta da se odvoji od ivica */
     padding: 15px;
-    /* [FIX] Uklonjen border i radius jer je sad deo celina */
     border: none;
-    border-radius: 0;
     display: block;
     width: 100%;
 }
 
-/* A11y Helper: Hide visually but keep for screen readers */
-.visually-hidden {
+/* --- Segmented Control (Button Group) --- */
+.segmented-control {
+    display: flex;
+    width: 100%;
+    background-color: var(--colorNeutralBackground2);
+    padding: 2px;
+    border-radius: var(--radius8);
+    border: 1px solid transparent; /* Ghost border */
+    gap: 2px;
+}
+
+.segment-item {
+    flex: 1;
+    position: relative;
+    text-align: center;
+    min-width: 0;
+}
+
+.segment-item input[type="radio"] {
     position: absolute;
-    width: 1px;
-    height: 1px;
-    margin: -1px;
-    padding: 0;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.segment-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 4px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--colorNeutralForeground2);
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.2s cubic-bezier(0.25, 1, 0.5, 1);
     white-space: nowrap;
-    border: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    user-select: none;
+    height: 100%;
+}
+
+/* Hover on inactive segment */
+.segment-label:hover {
+    color: var(--colorNeutralForeground1);
+    background-color: var(--colorNeutralBackground3);
+}
+
+.segment-item input[type="radio"]:checked + .segment-label {
+    background-color: var(--colorBrandBackground);
+    color: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.segment-item input[type="radio"]:focus-visible + .segment-label {
+    outline: 2px solid var(--colorBrandForeground1);
+    outline-offset: 2px;
+}
+
+.segment-item input[type="radio"]:checked + .segment-label:hover {
+    background-color: var(--colorBrandBackgroundHover);
+    color: white;
 }

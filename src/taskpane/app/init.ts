@@ -14,11 +14,12 @@ import { showModalInfo } from "./modal/modal";
 import { html } from "../../shared/safeHtml";
 import pkg from "../../../package.json";
 import { t } from "../../shared/i18n";
-import { setStatus, setProgress, initStatsAccordion } from "./status";
+import { setStatus, setProgress } from "./status";
 import { abortActiveOperation } from "./uiLock";
 import { getOptional } from "./utils/dom";
-import * as wasm from "../../wasm-core/pkg"; // [MAX20] Full import for init_debug
-import { initGlobalErrorBoundary } from "./error/uiErrorBoundary"; // [MAX20]
+import * as wasm from "../../wasm-core/pkg";
+import { initGlobalErrorBoundary } from "./error/uiErrorBoundary";
+import { initAccordions } from "./ui/accordion";
 
 function registerServiceWorker() {
     if ("serviceWorker" in navigator) {
@@ -31,7 +32,6 @@ function registerServiceWorker() {
 }
 
 export function initTaskpane(isWebMode = false) {
-    // [MAX20] 1. Install Global Error Boundary FIRST (Safety Net)
     initGlobalErrorBoundary();
 
     window.onerror = (msg, url, line, col, error) => {
@@ -48,19 +48,17 @@ export function initTaskpane(isWebMode = false) {
 
     try {
         initUi();
-        initStatsAccordion();
+        initAccordions();
     } catch (e) {
         logger.error("UI Init failed", e);
     }
 
-    // [MAX20] Init WASM Debug hook (Panic -> JS Console)
     try {
         if (typeof wasm.init_debug === "function") {
             wasm.init_debug();
         }
     } catch {
-        // ignore if fails (not critical)
-        console.warn("WASM debug hook failed to load");
+        // ignore
     }
 
     initWasm().catch((e) => logger.error("WASM init failed", e));

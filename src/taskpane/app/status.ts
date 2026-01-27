@@ -3,10 +3,6 @@
 
 import { state } from "./state";
 import { t } from "../../shared/i18n";
-import { safeGetItem, safeSetItem } from "../../shared/storage/safeLocalStorage";
-import { scrollIntoViewIfNeeded } from "./utils/dom"; // [NEW]
-
-const STATS_OPEN_KEY = "serbiantransliterator.ui.stats.open";
 
 function triggerSuccessPulse() {
     const progressBar = document.getElementById("progressBar");
@@ -53,48 +49,13 @@ export function setProgress(percent: number | null) {
     }
 }
 
-// === Accordion Logic ===
-
-function setStatsOpen(open: boolean) {
-    const header = document.getElementById("statsHeader");
-    const content = document.getElementById("statsContent");
-    const box = document.getElementById("statsBox"); // [NEW] Wrapper element
-
-    if (header && content) {
-        header.setAttribute("aria-expanded", open ? "true" : "false");
-
-        if (open) {
-            content.classList.add("open");
-            // [NEW] Auto-scroll logic: if expanding pushes content off-screen, scroll to it
-            if (box) scrollIntoViewIfNeeded(box);
-        } else {
-            content.classList.remove("open");
-        }
-
-        safeSetItem(STATS_OPEN_KEY, open ? "1" : "0");
-    }
-}
-
-export function initStatsAccordion() {
-    const header = document.getElementById("statsHeader");
-    if (!header) return;
-
-    const saved = safeGetItem(STATS_OPEN_KEY);
-    const isOpen = saved === "1";
-    setStatsOpen(isOpen);
-
-    header.addEventListener("click", (e) => {
-        e.stopPropagation();
-
-        const currentlyOpen = header.getAttribute("aria-expanded") === "true";
-        setStatsOpen(!currentlyOpen);
-    });
-}
-
 export function refreshStats() {
+    // Stats accordion is now handled by generic initAccordions in init.ts
+    // This function only updates the text content
     const box = document.getElementById("statsBox") as HTMLDivElement | null;
     if (!box) return;
 
+    // Ensure it's visible if hidden
     box.style.display = "flex";
 
     const text = document.getElementById("statsText") as HTMLPreElement | null;

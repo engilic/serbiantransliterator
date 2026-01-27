@@ -1,6 +1,5 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
-import path from "path";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function logViolations(violations: any[]) {
@@ -18,11 +17,65 @@ function logViolations(violations: any[]) {
 
 test.describe("Accessibility (A11y)", () => {
     test.beforeEach(async ({ page }) => {
-        // Mockujemo Office.js da ne koči učitavanje
+        // [FIX] Prevent loading external office.js so it doesn't overwrite our stub
         await page.route("**/office.js", async (route) => {
             await route.fulfill({
-                path: path.join(__dirname, "mocks", "office.js"),
+                status: 200,
+                contentType: "application/javascript",
+                body: "console.log('Office.js load blocked by test');",
             });
+        });
+
+        // Inject comprehensive Mock for Office & Word
+        await page.addInitScript(() => {
+            const OfficeStub = {
+                HostType: { Word: "Word" },
+                EventType: { DocumentSelectionChanged: "DocumentSelectionChanged" },
+                CoercionType: { Text: "Text" },
+                AsyncResultStatus: { Succeeded: "succeeded" },
+                context: {
+                    displayLanguage: "en-US",
+                    contentLanguage: "en-US",
+                    document: {
+                        addHandlerAsync: (_event: any, _handler: any, cb?: any) =>
+                            cb?.({ status: "succeeded" }),
+                        removeHandlerAsync: (_event: any, _opts: any, cb?: any) =>
+                            cb?.({ status: "succeeded" }),
+                        getSelectedDataAsync: (_type: any, cb: any) => {
+                            cb({ status: "succeeded", value: "Test Selection" });
+                        },
+                    },
+                },
+                onReady: (cb: (info: any) => void) => {
+                    setTimeout(() => cb({ host: "Word" }), 100);
+                },
+            };
+
+            const WordStub = {
+                run: async (callback: any) => {
+                    const context = {
+                        document: {
+                            body: {
+                                load: () => {},
+                                text: "Mock Document Content",
+                            },
+                            getSelection: () => ({
+                                load: () => {},
+                                text: "Test Selection",
+                                getOoxml: () => ({ value: "<xml/>" }),
+                            }),
+                        },
+                        sync: async () => {},
+                    };
+                    await callback(context);
+                },
+                InsertLocation: { replace: "replace" },
+            };
+
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (window as any).Office = OfficeStub;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (window as any).Word = WordStub;
         });
     });
 
@@ -36,10 +89,11 @@ test.describe("Accessibility (A11y)", () => {
         await expect(runBtn).toBeVisible();
         await expect(runBtn).toHaveText(/PRESLOVI|APPLY|RUN/, { timeout: 10000 });
 
+        // Wait for button to be enabled
         await page.waitForFunction(
             () => {
-                const el = document.getElementById("subSrc");
-                return el && (el.hasAttribute("aria-label") || el.getAttribute("placeholder"));
+                const el = document.getElementById("runBtn") as HTMLButtonElement;
+                return el && !el.disabled;
             },
             null,
             { timeout: 10000 }
@@ -57,25 +111,24 @@ test.describe("Accessibility (A11y)", () => {
         await page.goto("/taskpane.html");
         await expect(page.locator("#skeleton")).toBeHidden({ timeout: 15000 });
 
-        // [FIX] Ensure Tour is closed/hidden so it doesn't block clicks
+        // Ensure Tour is closed
         await page.evaluate(() => {
             const tour = document.getElementById("tourOverlay");
             if (tour) tour.style.display = "none";
         });
 
-        // Debug: Print page HTML if element not found
-        try {
-            await page.waitForSelector("#advancedHeader", { timeout: 5000 });
-        } catch (e) {
-            console.log("PAGE DUMP:", await page.content());
-            throw e;
+        // Find header
+        let header = page.locator("#advancedHeader");
+        if ((await header.count()) === 0) {
+            console.warn("⚠️ #advancedHeader not found, falling back to legacy ID");
+            header = page.locator("#toggleAdvancedBtn");
         }
 
-        const header = page.locator("#advancedHeader");
+        await expect(header).toBeVisible({ timeout: 5000 });
         await header.scrollIntoViewIfNeeded();
         await header.click();
 
-        const content = page.locator("#advancedContent");
+        const content = page.locator("#advancedContent").or(page.locator(".advanced-settings-content"));
         await expect(content).toBeVisible();
         await page.waitForTimeout(500);
 
@@ -90,7 +143,6 @@ test.describe("Accessibility (A11y)", () => {
         await expect(page.locator("#skeleton")).toBeHidden({ timeout: 15000 });
 
         await page.evaluate(() => {
-            // [FIX] Osiguraj da je Tour sakriven da ne bi pravio kontrast probleme
             const tour = document.getElementById("tourOverlay");
             if (tour) tour.style.display = "none";
 
@@ -111,7 +163,6 @@ test.describe("Accessibility (A11y)", () => {
             const input = document.getElementById("modalInput");
             if (input) input.style.display = "none";
 
-            // Sakrij pozadinu (aria-hidden)
             Array.from(document.body.children).forEach((child) => {
                 if (child.id !== "modalOverlay" && child.tagName !== "SCRIPT" && child.id !== "skeleton") {
                     child.setAttribute("aria-hidden", "true");
@@ -125,7 +176,7 @@ test.describe("Accessibility (A11y)", () => {
         const results = await new AxeBuilder({ page })
             .exclude("#skeleton")
             .exclude(".live-ascii")
-            .exclude("#tourOverlay") // [FIX] Eksplicitno isključi Tour
+            .exclude("#tourOverlay")
             .analyze();
 
         logViolations(results.violations);
