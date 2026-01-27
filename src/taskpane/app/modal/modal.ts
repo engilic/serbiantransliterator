@@ -5,12 +5,7 @@ import { unwrapHtml, type SafeHtml } from "../../../shared/safeHtml";
 import { t } from "../../../shared/i18n";
 import { modalManager } from "./modalManager";
 
-/**
- * @deprecated Use modalManager directly for new code
- */
-export function clearModalResolver() {
-    modalManager.forceClose();
-}
+// [REMOVED] clearModalResolver (Dead code)
 
 export function confirmInPanel(safeHtmlMsg: SafeHtml): Promise<boolean> {
     const overlay = document.getElementById("modalOverlay") as HTMLDivElement;
