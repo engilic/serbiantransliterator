@@ -72,9 +72,12 @@ export const EN_US: Record<TranslationKey, string> = {
     opt_dialect_none: "Transliteration only (Standard)",
     opt_dialect_ei: "Ekavica → Ijekavica (beta)",
     opt_dialect_ie: "Ijekavica → Ekavica (beta)",
+
+    // [FIX] Added missing keys
     opt_ignored_styles_label: "Ignored Styles",
     opt_ignored_styles_hint: "Text in these styles (e.g. 'Code') will not be transliterated.",
     opt_ignored_styles_placeholder: "Code\nQuote",
+
     section_protected: "PROTECTED",
     btn_add_word_title: "Add word",
     btn_clear_custom: "Mine",

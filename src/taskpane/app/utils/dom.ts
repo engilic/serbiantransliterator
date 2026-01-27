@@ -1,3 +1,4 @@
+// src/taskpane/app/utils/dom.ts
 /* global document */
 
 /**
@@ -21,4 +22,14 @@ export function get<T extends HTMLElement>(id: string): T {
  */
 export function getOptional<T extends HTMLElement>(id: string): T | null {
     return (document.getElementById(id) as T) || null;
+}
+
+// [NEW] Scrolls element into view if not fully visible
+export function scrollIntoViewIfNeeded(el: HTMLElement) {
+    if (!el) return;
+
+    // Malo kašnjenje da sačekamo CSS animaciju otvaranja (ako je ima)
+    setTimeout(() => {
+        el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 300);
 }

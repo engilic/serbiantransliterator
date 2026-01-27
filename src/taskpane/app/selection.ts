@@ -6,7 +6,6 @@ import { invalidatePreviewCache } from "./preview/cache";
 import { t, tPlural } from "../../shared/i18n";
 import { getSettingsFromUi } from "./settings/getters";
 
-// Keširamo informacije o dokumentu da ne bi učitavali ceo body na svaki klik
 let cachedDocInfo: { count: number; sample: string; hasLat: boolean; hasCyr: boolean } | null = null;
 let lastDocCheck = 0;
 const DOC_INFO_CACHE_MS = 5000;
@@ -83,7 +82,6 @@ async function getDocInfoAsync(
             return cachedDocInfo;
         });
     } catch {
-        // [FIX] Vraćamo validan objekat čak i u catch bloku
         return { count: 0, sample: "", hasLat: false, hasCyr: false };
     }
 }
@@ -110,7 +108,6 @@ function getTargetScriptInfo(): DetectionResult {
 }
 
 function detectDirectionInfo(text: string): DetectionResult {
-    // [FIX] Defensive: ako je text null/undefined, tretiraj kao prazan
     const safeText = text || "";
     let cyr = 0;
     let lat = 0;
@@ -180,9 +177,6 @@ export async function checkSelectionAndUpdateButtons() {
             }
         } else {
             const docInfo = await getDocInfoAsync(cachedDocInfo === null);
-            // [FIX] Provera da li docInfo postoji pre pristupa sample-u
-            // Ako je docInfo undefined (što ne bi smelo da se desi zbog try/catch u getDocInfoAsync, ali JS je čudan),
-            // koristimo prazan string.
             const sample = docInfo?.sample || "";
 
             if (settings.direction === "auto") {
@@ -199,8 +193,11 @@ export async function checkSelectionAndUpdateButtons() {
 
         if (settings.direction === "lat-to-cyr") {
             shouldEnable = !!contentInfo?.hasLat;
-        } else if (settings.direction === "cyr-to-lat" || settings.direction === "to-ascii") {
+        } else if (settings.direction === "cyr-to-lat") {
             shouldEnable = !!contentInfo?.hasCyr;
+        } else if (settings.direction === "to-ascii") {
+            // [FIX] Enable for ANY script (Cyrillic OR Latin)
+            shouldEnable = !!(contentInfo?.hasLat || contentInfo?.hasCyr);
         } else {
             shouldEnable = !!(contentInfo?.hasLat || contentInfo?.hasCyr);
         }
@@ -278,6 +275,7 @@ export async function checkSelectionAndUpdateButtons() {
     }
 }
 
+// ... (normalize funcs remain same) ...
 export function normalizeWeirdBreaks(s: string): string {
     return (s ?? "").replace(/\u000b/g, "\n").replace(/\u000c/g, "\n");
 }
