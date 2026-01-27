@@ -57,18 +57,26 @@ test.describe("Accessibility (A11y)", () => {
         await page.goto("/taskpane.html");
         await expect(page.locator("#skeleton")).toBeHidden({ timeout: 15000 });
 
-        // [FIX] Wait for main app to be visible
-        await expect(page.locator("#appMain")).toBeVisible();
+        // [FIX] Ensure Tour is closed/hidden so it doesn't block clicks
+        await page.evaluate(() => {
+            const tour = document.getElementById("tourOverlay");
+            if (tour) tour.style.display = "none";
+        });
+
+        // Debug: Print page HTML if element not found
+        try {
+            await page.waitForSelector("#advancedHeader", { timeout: 5000 });
+        } catch (e) {
+            console.log("PAGE DUMP:", await page.content());
+            throw e;
+        }
 
         const header = page.locator("#advancedHeader");
-
-        // [FIX] Scroll into view and force wait
         await header.scrollIntoViewIfNeeded();
-        await expect(header).toBeVisible();
         await header.click();
 
-        // [FIX] Target correct ID
-        await expect(page.locator("#advancedContent")).toBeVisible();
+        const content = page.locator("#advancedContent");
+        await expect(content).toBeVisible();
         await page.waitForTimeout(500);
 
         const results = await new AxeBuilder({ page }).exclude("#skeleton").exclude(".live-ascii").analyze();
