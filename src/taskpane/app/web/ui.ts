@@ -43,10 +43,11 @@ export function transliterateDomNode(node: Node, dir: Direction, coreOpts: CoreO
 }
 
 // [MAX3] Sanitizer za Paste (čuva formatiranje, sklanja opasnost)
-// [SECURITY FIX] Uklanja SVE atribute da spreči XSS
-function sanitizePaste(htmlContent: string): string {
+// [SECURITY FIX] Returns DocumentFragment to avoid innerHTML sink issues
+function sanitizePasteToFragment(htmlContent: string): DocumentFragment {
     const parser = new DOMParser();
     const doc = parser.parseFromString(htmlContent, "text/html");
+    const fragment = document.createDocumentFragment();
 
     // Whitelist tags: p, br, b, i, u, strong, em, ul, ol, li, table, tr, td, th, span, div
     const allowedTags = new Set([
@@ -70,42 +71,50 @@ function sanitizePaste(htmlContent: string): string {
         "DIV",
     ]);
 
-    function walk(node: Node) {
+    function walkAndClean(node: Node): Node | null {
+        if (node.nodeType === Node.TEXT_NODE) {
+            return node.cloneNode(true);
+        }
+
         if (node.nodeType === Node.ELEMENT_NODE) {
             const el = node as Element;
 
-            // [SECURITY FIX] Remove ALL attributes to prevent XSS via event handlers or javascript: URIs
-            while (el.attributes.length > 0) {
-                el.removeAttribute(el.attributes[0].name);
-            }
+            // If tag is allowed, clone it cleanly (without attributes)
+            if (allowedTags.has(el.tagName)) {
+                const newEl = document.createElement(el.tagName);
 
-            if (!allowedTags.has(el.tagName)) {
-                // Unwrap disallowed tags (replace with children)
-                while (el.firstChild) {
-                    el.parentNode?.insertBefore(el.firstChild, el);
-                }
-                el.parentNode?.removeChild(el);
-            } else {
-                // Recursively clean children
+                // Recursively handle children
                 let child = el.firstChild;
                 while (child) {
-                    const next = child.nextSibling;
-                    walk(child);
-                    child = next;
+                    const cleanChild = walkAndClean(child);
+                    if (cleanChild) newEl.appendChild(cleanChild);
+                    child = child.nextSibling;
                 }
+                return newEl;
+            } else {
+                // If tag is NOT allowed, strip tag but keep children (unwrap)
+                const docFrag = document.createDocumentFragment();
+                let child = el.firstChild;
+                while (child) {
+                    const cleanChild = walkAndClean(child);
+                    if (cleanChild) docFrag.appendChild(cleanChild);
+                    child = child.nextSibling;
+                }
+                return docFrag;
             }
         }
+        return null;
     }
 
-    // Clean body
+    // Process body children
     let child = doc.body.firstChild;
     while (child) {
-        const next = child.nextSibling;
-        walk(child);
-        child = next;
+        const cleanNode = walkAndClean(child);
+        if (cleanNode) fragment.appendChild(cleanNode);
+        child = child.nextSibling;
     }
 
-    return doc.body.innerHTML;
+    return fragment;
 }
 
 export function initWebModeUi() {
@@ -273,11 +282,9 @@ export function initWebModeUi() {
             range.deleteContents();
 
             if (htmlData) {
-                const cleanHtml = sanitizePaste(htmlData);
-                // Modern insert HTML via DocumentFragment
-                const fragment = range.createContextualFragment(cleanHtml);
+                // [FIX] Use fragment directly
+                const fragment = sanitizePasteToFragment(htmlData);
                 range.insertNode(fragment);
-                // Move cursor to end
                 range.collapse(false);
             } else if (textData) {
                 const textNode = document.createTextNode(textData);
