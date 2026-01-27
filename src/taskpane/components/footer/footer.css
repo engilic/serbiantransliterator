@@ -1,3 +1,5 @@
+/* src/taskpane/components/footer/footer.css */
+
 /* App Footer (Legacy - Hide) */
 .app-footer {
     display: none;
@@ -228,4 +230,43 @@
 .footer-version-click:hover {
     color: var(--colorBrandBackground);
     text-decoration: underline;
+}
+
+/* [MAX3 UX] Pulsirajuća animacija za glavno dugme */
+@keyframes pulse-glow {
+    0% {
+        box-shadow: 0 0 0 0 rgba(0, 120, 212, 0.4);
+    }
+
+    70% {
+        box-shadow: 0 0 0 6px rgba(0, 120, 212, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(0, 120, 212, 0);
+    }
+}
+
+.pulse-action {
+    animation: pulse-glow 2s infinite;
+    border-color: var(--colorBrandBackgroundHover) !important;
+}
+
+/* Dark mode prilagođavanje */
+[data-theme="dark"] .pulse-action {
+    animation: pulse-glow-dark 2s infinite;
+}
+
+@keyframes pulse-glow-dark {
+    0% {
+        box-shadow: 0 0 0 0 rgba(71, 158, 245, 0.4);
+    }
+
+    70% {
+        box-shadow: 0 0 0 6px rgba(71, 158, 245, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(71, 158, 245, 0);
+    }
 }
