@@ -4,6 +4,7 @@
 import { state } from "./state";
 import { t } from "../../shared/i18n";
 import { safeGetItem, safeSetItem } from "../../shared/storage/safeLocalStorage";
+import { scrollIntoViewIfNeeded } from "./utils/dom"; // [NEW]
 
 const STATS_OPEN_KEY = "serbiantransliterator.ui.stats.open";
 
@@ -57,12 +58,15 @@ export function setProgress(percent: number | null) {
 function setStatsOpen(open: boolean) {
     const header = document.getElementById("statsHeader");
     const content = document.getElementById("statsContent");
+    const box = document.getElementById("statsBox"); // [NEW] Wrapper element
 
     if (header && content) {
         header.setAttribute("aria-expanded", open ? "true" : "false");
 
         if (open) {
             content.classList.add("open");
+            // [NEW] Auto-scroll logic: if expanding pushes content off-screen, scroll to it
+            if (box) scrollIntoViewIfNeeded(box);
         } else {
             content.classList.remove("open");
         }
@@ -80,12 +84,9 @@ export function initStatsAccordion() {
     setStatsOpen(isOpen);
 
     header.addEventListener("click", (e) => {
-        // [FIX] Uklonili smo preventDefault jer to može da spreči fokusiranje
-        // e.preventDefault();
         e.stopPropagation();
 
         const currentlyOpen = header.getAttribute("aria-expanded") === "true";
-        console.log("CLICKED! Old:", currentlyOpen, "New:", !currentlyOpen); // Debug log
         setStatsOpen(!currentlyOpen);
     });
 }
@@ -94,7 +95,6 @@ export function refreshStats() {
     const box = document.getElementById("statsBox") as HTMLDivElement | null;
     if (!box) return;
 
-    // [FIX] Flex opet
     box.style.display = "flex";
 
     const text = document.getElementById("statsText") as HTMLPreElement | null;
