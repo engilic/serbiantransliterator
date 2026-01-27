@@ -1,18 +1,16 @@
-// src/taskpane/app/word/chunking.ts
 /* global Word */
 
-import type { OoxmlOptions, ConvertStats } from "../../../shared/ooxml/convertOoxml";
+import { convertOoxml, type OoxmlOptions, type ConvertStats } from "../../../shared/ooxml/convertOoxml";
 import { setStatus, setProgress } from "../status";
 import { t } from "../../../shared/i18n";
-import { workerClient } from "../../worker/client";
 import { state } from "../state";
-import { perfMonitor } from "../telemetry/performanceMonitor"; // [MAX20] Import monitor
+import { perfMonitor } from "../telemetry/performanceMonitor";
 
-// [MAX20] Adaptive limits
+// Adaptive limits
 const BATCH_SIZE_START = 50;
 const MIN_BATCH = 10;
 const MAX_BATCH = 150;
-const TARGET_TIME_MS = 800; // Cilj: ~800ms po ciklusu (brz UI response)
+const TARGET_TIME_MS = 800;
 const YIELD_DELAY_MS = 5;
 
 export type ChunkingResult = {
@@ -64,17 +62,6 @@ function emptyStats(direction: ConvertStats["direction"]): ConvertStats {
     };
 }
 
-function addSkippedByReason(
-    into: Record<string, number>,
-    from: Record<string, number> | undefined
-): Record<string, number> {
-    if (!from) return into;
-    for (const [k, v] of Object.entries(from)) {
-        into[k] = (into[k] ?? 0) + (v ?? 0);
-    }
-    return into;
-}
-
 function mergeStats(into: ConvertStats, from: ConvertStats) {
     into.textNodes += from.textNodes || 0;
     into.charsBefore += from.charsBefore || 0;
@@ -106,28 +93,24 @@ function mergeStats(into: ConvertStats, from: ConvertStats) {
     into.proofing.changedRuns += from.proofing?.changedRuns || 0;
     into.proofing.skippedRuns += from.proofing?.skippedRuns || 0;
 
-    addSkippedByReason(into.proofing.skippedByReason, from.proofing?.skippedByReason);
+    if (from.proofing?.skippedByReason) {
+        for (const [k, v] of Object.entries(from.proofing.skippedByReason)) {
+            into.proofing.skippedByReason[k] = (into.proofing.skippedByReason[k] ?? 0) + (v ?? 0);
+        }
+    }
 }
 
 function isCancelled(): boolean {
     return !!state.activeAbortController?.signal.aborted;
 }
 
-/**
- * PR4: ESC cancels long operation by aborting state.activeAbortController.
- * PR5: Adaptive Chunking + Dirty Check (Smart Write)
- */
 export async function processDocumentInChunks(
     context: Word.RequestContext,
     opts: OoxmlOptions
 ): Promise<ChunkingResult> {
     const t0 = nowMs();
 
-    setStatus(t("status_processing") + " (Inicijalizacija...)", "info");
-    await workerClient.init();
-
     const paragraphs = context.document.body.paragraphs;
-    // eslint-disable-next-line office-addins/no-context-sync-in-loop
     paragraphs.load("items");
     await context.sync();
 
@@ -151,8 +134,6 @@ export async function processDocumentInChunks(
 
         let processedCount = 0;
         let i = 0;
-
-        // [MAX20] Adaptive Start
         let batchSize = BATCH_SIZE_START;
 
         while (i < totalParagraphs) {
@@ -169,14 +150,12 @@ export async function processDocumentInChunks(
             const batchRange = firstPara.getRange("Whole").expandTo(lastPara.getRange("Whole"));
 
             const ooxmlRes = batchRange.getOoxml();
-            // eslint-disable-next-line office-addins/no-context-sync-in-loop
             await context.sync();
 
             if (isCancelled()) break;
 
             const rawXml = ooxmlRes.value;
             if (!rawXml) {
-                // Empty range, skip processing but advance counter
                 processedCount += batchItems.length;
                 i += batchItems.length;
                 const progress = Math.round((processedCount / totalParagraphs) * 100);
@@ -196,7 +175,8 @@ export async function processDocumentInChunks(
                 continue;
             }
 
-            const result = await workerClient.convert(rawXml, opts);
+            // [MODIFIED] Direct Main Thread Conversion (Sync)
+            const result = convertOoxml(rawXml, opts);
 
             if (!agg) {
                 agg = emptyStats(result.stats.direction);
@@ -209,7 +189,6 @@ export async function processDocumentInChunks(
 
             if (isCancelled()) break;
 
-            // [MAX20] Dirty Check: Write ONLY if changed
             let skippedWrite = false;
             if (result.type !== "Nema teksta" && result.xml !== rawXml) {
                 batchRange.insertOoxml(result.xml, Word.InsertLocation.replace);
@@ -235,37 +214,27 @@ export async function processDocumentInChunks(
                 ")";
             setStatus(statusMsg, "info");
 
-            // [MAX20] Measure & Adapt
-            // Sync is needed for UI refresh and Word queue flush
             await new Promise((resolve) => setTimeout(resolve, YIELD_DELAY_MS));
-
-            // Sync after insert (implicitly handled by next read or loop end, but we measure full cycle)
 
             const dur = Math.max(0, nowMs() - batchStart);
 
-            // [MAX20] TELEMETRY RECORDING
             if (typeof perfMonitor !== "undefined") {
                 perfMonitor.record("processChunk", batchItems.length, dur, {
                     batchSize: batchItems.length,
                     skippedWrite: skippedWrite,
+                    thread: "main",
                 });
             }
 
-            // [MAX20] Adaptive Logic
             if (dur > 0) {
                 const msPerPara = dur / batchItems.length;
                 const idealBatch = Math.floor(TARGET_TIME_MS / msPerPara);
-
-                // Smoothing: (old + ideal) / 2
                 let newBatch = Math.floor((batchSize + idealBatch) / 2);
-
-                // Clamp
                 newBatch = Math.max(MIN_BATCH, Math.min(newBatch, MAX_BATCH));
                 batchSize = newBatch;
             }
         }
 
-        // flush only if we inserted and not cancelled mid-batch
         if (didInsert) {
             await context.sync();
         }
