@@ -1,9 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import {
-    buildApplyStatsText,
-    // REMOVED: buildApplyStatsTitle,
-    buildPreviewAppliedStats,
-} from "../src/taskpane/app/word/statsText";
+import { buildApplyStatsText, buildPreviewAppliedStats } from "../src/taskpane/app/word/statsText";
 import type { ConvertStats } from "../src/shared/ooxml/convertOoxml";
 import { setLanguage } from "../src/shared/i18n";
 
@@ -35,15 +31,12 @@ function makeStats(textNodes: number): ConvertStats {
 describe("word/statsText", () => {
     beforeEach(() => setLanguage("sr"));
 
-    // REMOVED: test for buildApplyStatsTitle
-
     it("buildPreviewAppliedStats (smoke)", () => {
         const s = buildPreviewAppliedStats();
         expect(s.title).toBeTruthy();
         expect(s.text).toBeTruthy();
     });
 
-    // ... (ostatak fajla ostaje isti) ...
     it("uključuje proofing statistiku kada je enabled", () => {
         const stats = makeStats(10);
         stats.proofing = {
