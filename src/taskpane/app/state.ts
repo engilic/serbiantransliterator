@@ -17,7 +17,6 @@ interface AppState {
     customWordsSet: Set<string>;
     presetWordsSet: Set<string>;
 
-    // REMOVED: lastStatsTitle
     lastStatsText: string;
 
     selectionChangeHandler: ((args: unknown) => void) | null;
@@ -35,7 +34,6 @@ export const state: AppState = {
     customWordsSet: new Set(),
     presetWordsSet: new Set(),
 
-    // REMOVED: lastStatsTitle
     lastStatsText: "",
 
     selectionChangeHandler: null,

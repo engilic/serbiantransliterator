@@ -19,7 +19,6 @@ function baseSettings() {
         includeHeadersFooters: false,
         includeFootnotes: false,
         includeEndnotes: false,
-        // Removed: showStats
         direction: "lat-to-cyr" as "auto" | "lat-to-cyr" | "cyr-to-lat" | "to-ascii",
     };
 }

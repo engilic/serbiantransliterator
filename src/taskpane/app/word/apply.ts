@@ -105,7 +105,6 @@ export async function runSmart() {
                 setStatus(t("status_done_document", result.type, time, extraInfo), "success");
             }
 
-            // REMOVED: state.lastStatsTitle update
             state.lastStatsText = buildApplyStatsText(result, scope, extras);
 
             refreshStats();
@@ -133,7 +132,6 @@ export async function applyFromPreview(scope: "selection" | "document") {
                     range.insertText(finalCustomText, Word.InsertLocation.replace);
                     await context.sync();
                     setStatus(t("status_preview_applied") + " (Plain Text)", "success");
-                    // REMOVED: state.lastStatsTitle update
                     state.lastStatsText = "Primenjene ručne izmene.";
                     refreshStats();
                     return;
@@ -183,7 +181,6 @@ export async function applyFromPreview(scope: "selection" | "document") {
                     await context.sync();
                     setStatus(t("status_preview_applied"), "success");
                     const s = buildPreviewAppliedStats();
-                    // REMOVED: state.lastStatsTitle update
                     state.lastStatsText = s.text;
                     refreshStats();
                     return;
@@ -207,7 +204,6 @@ export async function applyFromPreview(scope: "selection" | "document") {
 
                 const time = result.stats.timingMs.toFixed(0);
                 setStatus(t("status_done_selection", result.type, time), "success");
-                // REMOVED: state.lastStatsTitle update
                 state.lastStatsText = buildApplyStatsText(result, "selection");
                 refreshStats();
                 return;
@@ -228,7 +224,6 @@ export async function applyFromPreview(scope: "selection" | "document") {
             const extraInfo = buildDocumentExtraStatus(ui, extras);
 
             setStatus(t("status_done_document", result.type, time, extraInfo), "success");
-            // REMOVED: state.lastStatsTitle update
             state.lastStatsText = buildApplyStatsText(result, "document", extras);
             refreshStats();
         });

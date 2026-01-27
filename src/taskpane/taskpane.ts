@@ -6,7 +6,6 @@ import "./components/settings/settings.css";
 import "./components/advanced/advanced.css";
 import "./components/modals/modals.css";
 import "./components/footer/footer.css";
-// [REMOVED] import "./components/header/header.css";
 
 // Import version directly from package.json
 import pkg from "../../package.json";

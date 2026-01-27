@@ -56,7 +56,6 @@ beforeEach(() => {
         applySerbianQuotes: false,
         curlyProtection: "placeholders",
         setProofingLanguage: false,
-        // Removed: showStats: false
     };
 
     state.customWordsSet.clear();
