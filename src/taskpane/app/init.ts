@@ -14,9 +14,11 @@ import { showModalInfo } from "./modal/modal";
 import { html } from "../../shared/safeHtml";
 import pkg from "../../../package.json";
 import { t } from "../../shared/i18n";
-import { setStatus, setProgress, initStatsAccordion } from "./status"; // IMPORTED initStatsAccordion
+import { setStatus, setProgress, initStatsAccordion } from "./status";
 import { abortActiveOperation } from "./uiLock";
 import { getOptional } from "./utils/dom";
+import * as wasm from "../../wasm-core/pkg"; // [MAX20] Full import for init_debug
+import { initGlobalErrorBoundary } from "./error/uiErrorBoundary"; // [MAX20]
 
 function registerServiceWorker() {
     if ("serviceWorker" in navigator) {
@@ -29,6 +31,9 @@ function registerServiceWorker() {
 }
 
 export function initTaskpane(isWebMode = false) {
+    // [MAX20] 1. Install Global Error Boundary FIRST (Safety Net)
+    initGlobalErrorBoundary();
+
     window.onerror = (msg, url, line, col, error) => {
         logger.error("Global Error: " + msg, { url, line, col, stack: error?.stack });
     };
@@ -43,13 +48,21 @@ export function initTaskpane(isWebMode = false) {
 
     try {
         initUi();
-        // [NEW] Initialize Stats Accordion Logic
         initStatsAccordion();
     } catch (e) {
         logger.error("UI Init failed", e);
     }
 
-    // ... ostatak fajla isti kao pre ...
+    // [MAX20] Init WASM Debug hook (Panic -> JS Console)
+    try {
+        if (typeof wasm.init_debug === "function") {
+            wasm.init_debug();
+        }
+    } catch {
+        // ignore if fails (not critical)
+        console.warn("WASM debug hook failed to load");
+    }
+
     initWasm().catch((e) => logger.error("WASM init failed", e));
     setupVersionHandler();
 

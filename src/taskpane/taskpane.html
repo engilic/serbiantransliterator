@@ -53,10 +53,10 @@
             <div class="sk-line" style="width: 70%"></div>
         </div>
 
-        <!-- [FIX] Dodat Header -->
-        <%= readPart('components/header/header.html') %>
-
         <main id="appMain" role="main" style="display: none">
+            <!-- [FIX] A11y: Hidden H1 inside landmark -->
+            <h1 class="visually-hidden" data-i18n="app_title">Serbian Transliterator</h1>
+
             <%= readPart('components/settings/profile.html') %> <%=
             readPart('components/settings/direction.html') %> <%= readPart('components/settings/options.html')
             %> <%= readPart('components/advanced/advanced.html') %> <%=

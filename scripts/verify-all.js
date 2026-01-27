@@ -1,3 +1,4 @@
+// scripts/verify-all.js
 const { spawnSync } = require("child_process");
 const path = require("path");
 
@@ -37,36 +38,41 @@ function run(stepName, cmd, args, cwd = ROOT) {
 console.log(`${C.bold}🚀 STARTING FULL VERIFICATION WORKFLOW${C.reset}`);
 const totalStart = Date.now();
 
-// 0. Format Fix
-run("0. Format Fix", "npm", ["run", "format:fix"]);
+// 0. Clean (Simulacija CI okruženja - brišemo stare artefakte)
+// Ovo osigurava da Typecheck ne prolazi "slučajno" zbog starog wasm builda.
+run("0. Clean Environment", "npm", ["run", "clean"]);
 
-// 1. Linting & Types
-run("1.1 Lint Fix", "npm", ["run", "lint:fix"]);
-run("1.2 Typecheck", "npm", ["run", "typecheck"]);
+// 1. Format Fix
+run("1. Format Fix", "npm", ["run", "format:fix"]);
 
-// 2. Rust Core Logic
-run("2. Rust Core Tests", "cargo", ["test"], WASM_DIR);
+// 2. Linting & Types
+// Sada se ovo izvršava u čistom okruženju.
+run("2.1 Lint Fix", "npm", ["run", "lint:fix"]);
+run("2.2 Typecheck", "npm", ["run", "typecheck"]);
 
-// 3. Security Audit
-run("3. Security Audit", "npm", ["audit"]);
+// 3. Rust Core Logic
+run("3. Rust Core Tests", "cargo", ["test"], WASM_DIR);
 
-// 4. Build (Clean + Build)
-run("4.1 Clean", "npm", ["run", "clean"]);
-run("4.2 Build (Production)", "npm", ["run", "build"]);
+// 4. Security Audit
+run("4. Security Audit", "npm", ["audit"]);
 
-// 5. JS Unit & Fuzz Tests
-run("5. JS Tests (Coverage)", "npm", ["run", "test:coverage"]);
+// 5. Build (Production)
+// Ovo će generisati nove WASM artefakte.
+run("5. Build (Production)", "npm", ["run", "build"]);
 
-// 6. Manifest Validation
-run("6. Manifest Validation", "npm", ["run", "validate:prod"]);
+// 6. JS Unit & Fuzz Tests (Zahtevaju build ako testiraju integraciju)
+run("6. JS Tests (Coverage)", "npm", ["run", "test:coverage"]);
 
-// 7. Internal Security Checks
-run("7.1 i18n Guard", "npm", ["run", "check:i18n"]);
-run("7.2 Conflict Guard", "npm", ["run", "check:conflicts"]);
+// 7. Manifest Validation
+run("7. Manifest Validation", "npm", ["run", "validate:prod"]);
 
-// 8. E2E Tests (Playwright)
-// Ovo ide na kraj jer je najsporije i zahteva prethodni build
-run("8. E2E Tests", "npm", ["run", "test:e2e"]);
+// 8. Internal Security Checks
+run("8.1 i18n Guard", "npm", ["run", "check:i18n"]);
+run("8.2 Conflict Guard", "npm", ["run", "check:conflicts"]);
+
+// 9. E2E Tests (Playwright)
+// Najsporiji deo, ide na kraj.
+run("9. E2E Tests", "npm", ["run", "test:e2e"]);
 
 const totalEnd = Date.now();
 const duration = ((totalEnd - totalStart) / 1000 / 60).toFixed(2);

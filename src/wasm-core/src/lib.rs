@@ -6,7 +6,7 @@ use aho_corasick::AhoCorasick;
 
 mod dictionary;
 mod convert;
-mod tests; // <--- REGISTER TESTS MODULE
+mod tests;
 
 use dictionary::load_dictionary_internal;
 use convert::{to_cyrillic_internal, to_latin_internal, convert_dialect_internal};
@@ -34,6 +34,10 @@ const SYSTEM_EXCEPTIONS: &[(&str, &str)] = &[
 ];
 
 #[wasm_bindgen]
+pub fn init_debug() {
+    console_error_panic_hook::set_once();
+}
+
 pub fn init_replacer(custom_json: &str) -> Result<(), JsValue> {
     let custom_map: HashMap<String, String> = if custom_json.is_empty() {
         HashMap::new()

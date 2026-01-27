@@ -73,8 +73,8 @@ describe("PerformanceMonitor", () => {
         const csv = monitor.exportCsv();
         const lines = csv.split("\n");
 
-        expect(lines[0]).toBe("Timestamp,Operation,Nodes,Duration (ms),Nodes/sec");
-        expect(lines.length).toBe(3); // header + 2 records
+        expect(lines[0]).toBe("Timestamp,Operation,Nodes,Duration (ms),BatchSize,SkippedWrite");
+        expect(lines.length).toBe(3);
         expect(lines[1]).toContain("op1,100,150");
         expect(lines[2]).toContain("op2,200,250");
     });
