@@ -1,12 +1,16 @@
 use crate::dictionary::{DictionaryStore, DICTIONARIES};
-use std::sync::Mutex;
-use once_cell::sync::Lazy;
+use std::cell::RefCell;
 use rustc_hash::FxHashMap;
 
-// [MAXMAXMAX] FxHashMap: 3x brži hashing od standardnog.
-static WORD_CACHE: Lazy<Mutex<FxHashMap<String, String>>> = Lazy::new(|| {
-    Mutex::new(FxHashMap::with_capacity_and_hasher(10000, Default::default()))
-});
+// [MAX3 OPTIMIZATION] Thread-Local Storage (TLS)
+// Pošto se WASM izvršava u Web Worker-u (single-threaded context po instanci),
+// Mutex je bio nepotreban overhead (atomics/locking).
+// Prebacujemo se na thread_local! + RefCell za Zero-Overhead pristup kešu.
+thread_local! {
+    static WORD_CACHE: RefCell<FxHashMap<String, String>> = RefCell::new(
+        FxHashMap::with_capacity_and_hasher(10000, Default::default())
+    );
+}
 
 // [MAX4] Force Inline
 #[inline(always)]
@@ -103,11 +107,10 @@ pub fn convert_dialect_internal(text: &str, mode: &str) -> String {
         while i < len && chars[i].is_alphabetic() { i += 1; }
         let word: String = chars[start..i].iter().collect();
 
-        // CACHE
-        let cached = {
-            let cache = WORD_CACHE.lock().unwrap();
-            cache.get(&word).cloned()
-        };
+        // CACHE READ (Thread Local)
+        let cached = WORD_CACHE.with(|cache| {
+            cache.borrow().get(&word).cloned()
+        });
 
         if let Some(c) = cached {
             result.push_str(&c);
@@ -116,9 +119,12 @@ pub fn convert_dialect_internal(text: &str, mode: &str) -> String {
 
         if should_protect(&word) {
             result.push_str(&word);
-            let mut cache = WORD_CACHE.lock().unwrap();
-            if cache.len() > 10000 { cache.clear(); }
-            cache.insert(word.clone(), word.clone());
+            // CACHE WRITE (Thread Local)
+            WORD_CACHE.with(|cache| {
+                let mut map = cache.borrow_mut();
+                if map.len() > 10000 { map.clear(); }
+                map.insert(word.clone(), word.clone());
+            });
             continue;
         }
 
@@ -136,12 +142,12 @@ pub fn convert_dialect_internal(text: &str, mode: &str) -> String {
 
         result.push_str(&final_word);
 
-        // Save
-        {
-            let mut cache = WORD_CACHE.lock().unwrap();
-            if cache.len() > 10000 { cache.clear(); }
-            cache.insert(word, final_word);
-        }
+        // CACHE WRITE (Thread Local)
+        WORD_CACHE.with(|cache| {
+            let mut map = cache.borrow_mut();
+            if map.len() > 10000 { map.clear(); }
+            map.insert(word, final_word);
+        });
     }
     result
 }
