@@ -1,22 +1,29 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { processDocumentInChunks } from "../src/taskpane/app/word/chunking";
-import { workerClient } from "../src/taskpane/worker/client";
 import { setStatus, setProgress } from "../src/taskpane/app/status";
+import { convertOoxml } from "../src/shared/ooxml/convertOoxml";
 
-vi.mock("../src/taskpane/worker/client", () => ({
-    workerClient: {
-        init: vi.fn(async () => {}),
-        convert: vi.fn(async (_xml: string) => ({
-            xml: "<out/>",
-            type: "Lat → Ćir",
-            stats: { direction: "lat-to-cyr", textNodes: 1 },
-        })),
-    },
-}));
-
+// Mock status
 vi.mock("../src/taskpane/app/status", () => ({
     setStatus: vi.fn(),
     setProgress: vi.fn(),
+}));
+
+// Mock convertOoxml (main thread)
+vi.mock("../src/shared/ooxml/convertOoxml", () => ({
+    convertOoxml: vi.fn(() => ({
+        xml: "<out/>",
+        type: "Lat → Ćir",
+        stats: { direction: "lat-to-cyr", textNodes: 1 },
+    })),
+}));
+
+// Mock workerClient (više se ne koristi, ali za svaki slučaj ako je ostao negde import)
+vi.mock("../src/taskpane/worker/client", () => ({
+    workerClient: {
+        init: vi.fn(),
+        convert: vi.fn(),
+    },
 }));
 
 function makeMockContext(paragraphsCount: number) {
@@ -42,10 +49,9 @@ function makeMockContext(paragraphsCount: number) {
     } as any;
 }
 
-describe("chunking.ts - Smart Chunking Logic", () => {
+describe("chunking.ts - Smart Chunking Logic (Main Thread)", () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        // [FIX] Mock Word global object
         (globalThis as any).Word = {
             InsertLocation: { replace: "replace" },
         };
@@ -55,12 +61,12 @@ describe("chunking.ts - Smart Chunking Logic", () => {
         delete (globalThis as any).Word;
     });
 
-    it("processes document in batches (simulated)", async () => {
+    it("processes document in batches using convertOoxml directly", async () => {
         const ctx = makeMockContext(150);
         const result = await processDocumentInChunks(ctx, { direction: "lat-to-cyr" } as any);
 
-        expect(workerClient.init).toHaveBeenCalled();
-        expect(workerClient.convert).toHaveBeenCalled();
+        // [FIX] Expect convertOoxml to be called, NOT workerClient
+        expect(convertOoxml).toHaveBeenCalled();
         expect(result.type).toBe("Lat → Ćir");
         expect(setProgress).toHaveBeenCalled();
     });
