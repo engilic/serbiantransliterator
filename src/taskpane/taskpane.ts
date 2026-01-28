@@ -16,11 +16,13 @@ if (!String.prototype.normalize) {
 }
 // -----------------------------------------------------------
 
+// [MAX3 ARCHITECTURE] Consolidated CSS Strategy
+// 1. Global (Tokens, Reset, Dark Mode)
 import "./global.css";
-import "./components/settings/settings.css";
-import "./components/advanced/advanced.css";
+// 2. Components (Buttons, Inputs, Accordions, Tags, Footer) - Merged file
+import "./components.css";
+// 3. Complex Modals (Specific overrides)
 import "./components/modals/modals.css";
-import "./components/footer/footer.css";
 
 import pkg from "../../package.json";
 import { initTaskpane } from "./app";

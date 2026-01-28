@@ -63,6 +63,43 @@
     }
 }
 
+/* 
+   [MANUAL THEME OVERRIDES via data-theme attribute] 
+*/
+[data-theme="light"] {
+    --colorNeutralBackground1: #ffffff;
+    --colorNeutralBackground2: #f5f5f5;
+    --colorNeutralBackground3: #eaeaea;
+    --colorNeutralBackground4: #faf9f8;
+    --colorNeutralForeground1: #242424;
+    --colorNeutralForeground2: #424242;
+    --colorNeutralForeground3: #616161;
+    --colorBrandBackground: #0078d4;
+    --colorBrandBackgroundHover: #106ebe;
+    --colorBrandForeground1: #0078d4;
+    --colorNeutralStroke1: #e0e0e0;
+    --colorNeutralStroke2: #d1d1d1;
+    --shadow2: 0 2px 4px rgba(0, 0, 0, 0.04);
+    --shadow4: 0 4px 8px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="dark"] {
+    --colorNeutralBackground1: #2c2c2c;
+    --colorNeutralBackground2: #202020;
+    --colorNeutralBackground3: #383838;
+    --colorNeutralBackground4: #181818;
+    --colorNeutralForeground1: #ffffff;
+    --colorNeutralForeground2: #d0d0d0;
+    --colorNeutralForeground3: #9e9e9e;
+    --colorBrandBackground: #479ef5;
+    --colorBrandBackgroundHover: #2886de;
+    --colorBrandForeground1: #479ef5;
+    --colorNeutralStroke1: #3e3e3e;
+    --colorNeutralStroke2: #505050;
+    --shadow2: 0 2px 4px rgba(0, 0, 0, 0.3);
+    --shadow4: 0 4px 8px rgba(0, 0, 0, 0.4);
+}
+
 * {
     box-sizing: border-box;
     scrollbar-width: thin;
@@ -110,42 +147,8 @@ main {
     gap: 15px;
 }
 
-/* --- Modern Inputs --- */
-input[type="text"],
-select,
-textarea {
-    width: 100%;
-    background: var(--colorNeutralBackground1);
-    border: 1px solid var(--colorNeutralStroke2);
-    border-radius: var(--radius4);
-    padding: 8px 12px;
-    font-size: 14px;
-    font-family: inherit;
-    color: var(--colorNeutralForeground1);
-    transition:
-        border-color 0.2s,
-        box-shadow 0.2s,
-        background-color 0.2s;
-}
-
-input[type="text"]:hover,
-select:hover,
-textarea:hover {
-    border-color: var(--colorNeutralForeground3);
-    background-color: var(--colorNeutralBackground1);
-}
-
-input[type="text"]:focus,
-select:focus,
-textarea:focus {
-    outline: none;
-    border-color: var(--colorBrandBackground);
-    box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.2);
-}
-
 /* --- Animations --- */
-.fade-in,
-.modal-overlay {
+.fade-in {
     animation: fadeIn 0.3s cubic-bezier(0.33, 1, 0.68, 1) forwards;
     will-change: opacity, transform;
 }

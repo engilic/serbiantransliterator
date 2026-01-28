@@ -1,3 +1,5 @@
+/* src/taskpane/components/modals/modals.css */
+
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -51,6 +53,8 @@
     gap: 12px;
 }
 
+/* --- PREVIEW PANE --- */
+
 .preview-text-pane {
     background: var(--colorNeutralBackground3);
     border: 1px solid var(--colorNeutralStroke2);
@@ -62,9 +66,10 @@
 }
 
 /* [MAX3 OPTIMIZATION] Smart Rendering for large diff chunks */
+/* Browser preskače rendering (layout/paint) za blokove van ekrana */
 .preview-block {
     content-visibility: auto;
-    contain-intrinsic-size: 1px 50px;
+    contain-intrinsic-size: 1px 50px; /* Približna visina da scrollbar ne skače */
 }
 
 .preview-sticky-header {
@@ -95,6 +100,8 @@
     cursor: pointer;
     color: var(--colorNeutralForeground1);
 }
+
+/* --- TOUR MODAL --- */
 
 .tour-overlay {
     position: fixed;
@@ -155,4 +162,75 @@
     justify-content: space-between;
     align-items: center;
     margin-top: 20px;
+}
+
+/* --- DIFF COLORS --- */
+.diff-added {
+    background-color: var(--colorStatusSuccessBackground);
+    color: var(--colorStatusSuccessForeground);
+    text-decoration: none;
+}
+
+.diff-removed {
+    background-color: var(--colorStatusDangerBackground);
+    color: var(--colorStatusDangerForeground);
+    text-decoration: line-through;
+}
+
+/* Interactive states */
+.clickable {
+    cursor: pointer;
+    border-bottom: 1px dotted currentColor;
+}
+
+.diff-rejected {
+    opacity: 0.5;
+    text-decoration: none !important;
+    background-color: transparent !important;
+    color: var(--colorNeutralForeground3) !important;
+    border-bottom: none;
+}
+
+/* Side-by-side grid */
+.preview-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.preview-col {
+    border: 1px solid var(--colorNeutralStroke1);
+    padding: 8px;
+    background: var(--colorNeutralBackground1);
+    overflow-x: auto;
+    white-space: pre-wrap;
+}
+
+/* Toast Notification */
+.preview-toast {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #323130;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 12px;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+    z-index: 2000;
+}
+
+.preview-toast.show {
+    opacity: 1;
+}
+
+.preview-toast.success {
+    background-color: var(--colorStatusSuccessForeground);
+}
+
+.preview-toast.error {
+    background-color: var(--colorStatusDangerForeground);
 }
