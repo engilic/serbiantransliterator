@@ -1,3 +1,4 @@
+// src/taskpane/taskpane.ts
 /* global Office, window, document */
 
 // HITNO: Polyfills za starije Word engine (IE11/Edge Legacy)

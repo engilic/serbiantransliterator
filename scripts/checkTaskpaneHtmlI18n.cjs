@@ -3,10 +3,23 @@
 const fs = require("node:fs");
 const path = require("node:path");
 
+// --- CONFIG ---
 const ROOT = process.cwd();
 const FILE = path.join(ROOT, "src", "taskpane", "taskpane.html");
 
+// Regex za slova (Latinica + Ćirilica)
 const LETTER_RE = /[A-Za-zČĆĐŠŽčćđšž\u0400-\u052F]/;
+
+// --- ANSI COLORS ---
+const C = {
+    reset: "\x1b[0m",
+    red: "\x1b[31m",
+    green: "\x1b[32m",
+    yellow: "\x1b[33m",
+    blue: "\x1b[34m",
+    bold: "\x1b[1m",
+    gray: "\x1b[90m",
+};
 
 function posFromIndex(text, idx) {
     const before = text.slice(0, idx);
@@ -16,86 +29,90 @@ function posFromIndex(text, idx) {
     return { line, col };
 }
 
-function snippetAt(text, idx, maxLen = 160) {
-    const s = text.slice(idx, Math.min(text.length, idx + maxLen));
-    return s.replace(/\s+/g, " ").trim();
+function snippetAt(text, idx, maxLen = 80) {
+    const start = Math.max(0, idx - 10);
+    const end = Math.min(text.length, idx + maxLen);
+    let s = text.slice(start, end);
+    return s.replace(/\n/g, "↵").trim();
 }
 
 function main() {
+    console.log(`${C.blue}🔍 Scanning taskpane.html for hardcoded strings...${C.reset}`);
+
     if (!fs.existsSync(FILE)) {
-        console.error("ERROR: taskpane.html not found:", FILE);
+        console.error(`${C.red}❌ ERROR: taskpane.html not found at ${FILE}${C.reset}`);
         process.exit(2);
     }
 
     let html = fs.readFileSync(FILE, "utf8");
 
-    // Strip template tags
-    html = html.replace(/<%[\s\S]*?%>/g, "");
+    // --- PRE-PROCESSING (Cleaning) ---
+    // Using .repeat(m.length) to preserve line numbers/positions
 
-    // Strip title (special case)
-    html = html.replace(/<title\s+[^>]*data-i18n[^>]*>.*?<\/title>/gs, "");
+    // 1. Remove Comments <!-- ... -->
+    html = html.replace(/<!--[\s\S]*?-->/g, (m) => " ".repeat(m.length));
+
+    // 2. Remove Scripts <script>...</script>
+    // [FIX] CodeQL Compliant: Catch malformed closing tags like </script foo>
+    html = html.replace(/<script\b[^>]*>[\s\S]*?<\/script[^>]*>/gi, (m) => " ".repeat(m.length));
+
+    // 3. Remove Styles <style>...</style>
+    // [FIX] CodeQL Compliant
+    html = html.replace(/<style\b[^>]*>[\s\S]*?<\/style[^>]*>/gi, (m) => " ".repeat(m.length));
+
+    // 4. Remove EJS/Template tags <% ... %>
+    html = html.replace(/<%[\s\S]*?%>/g, (m) => " ".repeat(m.length));
 
     const violations = [];
 
-    // 1) Visible text nodes: > ... <
-    const reText = />[^<]*</g;
+    // --- RULE 1: Visible text nodes (> TEXT <) ---
+    const reText = />([^<]+)</g;
     let m;
     while ((m = reText.exec(html)) !== null) {
-        const raw = m[0].slice(1, -1);
-        const txt = raw.replace(/\s+/g, " ").trim();
+        const content = m[1];
+        const trimmed = content.replace(/\s+/g, " ").trim();
 
-        if (!txt) continue;
-        if (!LETTER_RE.test(txt)) continue;
+        if (!trimmed) continue;
+        if (!LETTER_RE.test(trimmed)) continue;
 
-        // Context check: look at the tag opening before this text
+        // Context Check
         const before = html.slice(0, m.index);
-        const lastTagOpenIndex = before.lastIndexOf("<");
-        if (lastTagOpenIndex === -1) continue;
+        const lastTagOpen = before.lastIndexOf("<");
+        if (lastTagOpen === -1) continue;
 
-        const tagContent = before.slice(lastTagOpenIndex);
+        const tagStr = before.slice(lastTagOpen); // e.g. <div id="app" data-i18n="key">
 
-        // [FIX] Ignore if tag has data-i18n attribute
-        if (tagContent.includes("data-i18n=")) continue;
-        if (tagContent.includes("data-i18n ")) continue; // data-i18n without value (boolean style, though rare here)
+        // Ignore if tag has data-i18n
+        if (tagStr.includes("data-i18n")) continue;
 
-        // Ignore style/script
-        if (tagContent.startsWith("<style")) continue;
-        if (tagContent.startsWith("<script")) continue;
-
-        const idx = m.index;
+        const idx = m.index + 1;
         const { line, col } = posFromIndex(html, idx);
 
         violations.push({
-            rule: "hardcoded-visible-text",
+            rule: "Hardcoded Text",
             line,
             col,
-            snippet: snippetAt(html, idx),
+            snippet: trimmed.substring(0, 50) + (trimmed.length > 50 ? "..." : ""),
+            fullSnippet: snippetAt(html, idx),
         });
-
-        if (reText.lastIndex === idx) reText.lastIndex++;
     }
 
-    // 2) Attributes
+    // --- RULE 2: Attributes (title, placeholder, aria-label) ---
     const reAttr = /\b(title|placeholder|aria-label)\s*=\s*"([^"]*)"/g;
     while ((m = reAttr.exec(html)) !== null) {
         const attrName = m[1];
         const attrVal = m[2] || "";
+
         if (!LETTER_RE.test(attrVal)) continue;
 
-        // Check if data-i18n-attr handles this attribute
-        // Simple heuristic: check if data-i18n-attr exists in the vicinity (same tag)
-        // We look backwards for < and forwards for >
         const idx = m.index;
 
-        // Scan backwards to find start of tag
-        let startTag = html.lastIndexOf("<", idx);
-        // Scan forwards to find end of tag
-        let endTag = html.indexOf(">", idx);
+        const startTag = html.lastIndexOf("<", idx);
+        const endTag = html.indexOf(">", idx);
 
         if (startTag !== -1 && endTag !== -1) {
             const fullTag = html.slice(startTag, endTag);
-            // If data-i18n-attr contains the attribute name (e.g. title:KEY)
-            if (fullTag.includes(`data-i18n-attr`) && fullTag.includes(`${attrName}:`)) {
+            if (fullTag.includes("data-i18n-attr") && fullTag.includes(`${attrName}:`)) {
                 continue;
             }
         }
@@ -103,27 +120,30 @@ function main() {
         const { line, col } = posFromIndex(html, idx);
 
         violations.push({
-            rule: "hardcoded-attr-text",
+            rule: `Hardcoded Attribute (${attrName})`,
             line,
             col,
-            snippet: snippetAt(html, idx),
+            snippet: `${attrName}="${attrVal}"`,
+            fullSnippet: snippetAt(html, idx),
         });
-
-        if (reAttr.lastIndex === idx) reAttr.lastIndex++;
     }
 
+    // --- REPORTING ---
     if (violations.length === 0) {
+        console.log(`${C.green}✅ HTML is clean (No hardcoded strings detected).${C.reset}`);
         process.exit(0);
     }
 
-    console.error(
-        "ERROR: Hardcoded user-facing strings detected in src/taskpane/taskpane.html.\n" +
-            "- Use data-i18n for element text.\n" +
-            '- Use data-i18n-attr="title:KEY,placeholder:KEY,aria-label:KEY" for attributes.\n'
-    );
+    console.error(`\n${C.red}${C.bold}🚨 HARDCODED STRINGS DETECTED IN HTML!${C.reset}`);
+    console.error(`${C.yellow}Please verify and use data-i18n for these:${C.reset}\n`);
 
-    for (const v of violations.slice(0, 60)) {
-        console.error(`taskpane.html:${v.line}:${v.col}  ${v.rule}\n  ${v.snippet}\n`);
+    for (const v of violations.slice(0, 50)) {
+        console.error(`  📄 ${C.bold}Line ${v.line}:${v.col}${C.reset}  ${C.red}[${v.rule}]${C.reset}`);
+        console.error(`     ${C.gray}${v.snippet}${C.reset}\n`);
+    }
+
+    if (violations.length > 50) {
+        console.error(`${C.yellow}...and ${violations.length - 50} more errors.${C.reset}`);
     }
 
     process.exit(1);
