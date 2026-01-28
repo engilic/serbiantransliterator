@@ -6,25 +6,30 @@ const CompressionPlugin = require("compression-webpack-plugin");
 
 module.exports = merge(common, {
     mode: "production",
-    devtool: false, // Najmanji bundle, bez mapa
+    devtool: false,
 
     optimization: {
         minimize: true,
-        concatenateModules: true, // Scope Hoisting (Dobro zadržati!)
+        concatenateModules: true,
         minimizer: [
             new TerserPlugin({
                 parallel: true,
                 extractComments: false,
+                // [FIX] Isključi minifikaciju za fajlove veće od 500KB (verovatno sadrže rečnike)
+                // Terser se guši na ogromnim linijama.
+                exclude: /\/node_modules\/|.*\.bin\.js/,
                 terserOptions: {
                     compress: {
                         drop_console: true,
-                        passes: 1, // [FIX] Smanjeno sa 2 na 1 (mnogo brže)
+                        passes: 1,
                     },
                     mangle: {
                         toplevel: true,
                     },
                     output: {
                         comments: false,
+                        // [FIX] Ovo može pomoći: max_line_len
+                        max_line_len: 1000,
                     },
                 },
             }),
@@ -32,6 +37,8 @@ module.exports = merge(common, {
         splitChunks: {
             chunks: "all",
             minSize: 20000,
+            // [FIX] Povećaj limit da ne secka rečnike previše
+            maxSize: 500000,
             cacheGroups: {
                 vendors: {
                     test: /[\\/]node_modules[\\/]/,
@@ -44,12 +51,11 @@ module.exports = merge(common, {
     },
 
     plugins: [
-        // [OPTIMIZED] Samo Gzip. Brotli je prespor za CI, a Cloudflare ga radi automatski.
         new CompressionPlugin({
             filename: "[path][base].gz",
             algorithm: "gzip",
             test: /\.(js|css|html|svg|wasm)$/,
-            threshold: 10240, // [FIX] Ne komprimuj fajlove manje od 10KB (nema poente)
+            threshold: 10240,
             minRatio: 0.8,
         }),
     ],
