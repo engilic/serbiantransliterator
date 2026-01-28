@@ -9,7 +9,7 @@ const FILES_TO_UPDATE = [
     "package.json",
     "src/wasm-core/Cargo.toml", // Rust
     "manifest.xml", // Dev manifest
-    "manifest.prod.xml", // Prod manifest (Removed src/manifest.xml)
+    "manifest.prod.xml", // Prod manifest
 ];
 
 // --- ANSI COLORS ---
@@ -32,11 +32,6 @@ function beep() {
 function printBanner() {
     console.clear();
     console.log(`${C.cyan}${C.bold}
-    ____  ________    _______  __________
-   / __ \\/ ____/ /   / ____/ |/ /_  __/ /
-  / /_/ / __/ / /   / __/ /    / / / / / 
- / _, _/ /___/ /___/ /___/_/| | / / /_/  
-/_/ |_/_____/_____/_____/_/ |_|/_/ (_)   
                                          
    🚀 RELEASE COMMANDER • INTELLIGENT SYNC
 ${C.reset}`);
@@ -67,17 +62,14 @@ async function askSelection(opts) {
         process.stdin.on("data", (key) => {
             if (key === "\u0003") {
                 process.exit(0);
-            } // Ctrl+C
+            }
             if (key === "\u001b[A") {
                 idx = idx > 0 ? idx - 1 : opts.length - 1;
                 render();
-            } // Up
-            else if (key === "\u001b[B") {
+            } else if (key === "\u001b[B") {
                 idx = idx < opts.length - 1 ? idx + 1 : 0;
                 render();
-            } // Down
-            else if (key === "\r") {
-                // Enter
+            } else if (key === "\r") {
                 process.stdin.setRawMode(false);
                 process.stdin.pause();
                 resolve(opts[idx]);
@@ -86,7 +78,6 @@ async function askSelection(opts) {
     });
 }
 
-// --- IZMENJENE KONTROLE ---
 async function askYesNo(q) {
     return new Promise((r) => {
         console.log(`\n${C.magenta}❓ ${q} ${C.gray}(Y/n)${C.reset}`);
@@ -110,12 +101,12 @@ async function askYesNo(q) {
                 k === "\u0008" ||
                 k === "\u001b[D"
             ) {
-                process.stdout.write(`${C.green}DA${C.reset}\n`);
+                process.stdout.write(`${C.green} ✔ DA${C.reset}\n`);
                 cleanup(true);
             }
             // NE: n, N, Esc, Delete, Desno
             else if (k === "n" || k === "N" || k === "\u001b" || k === "\u001b[3~" || k === "\u001b[C") {
-                process.stdout.write(`${C.red}NE${C.reset}\n`);
+                process.stdout.write(`${C.red} ✖ NE${C.reset}\n`);
                 cleanup(false);
             }
         };
@@ -128,8 +119,6 @@ async function askYesNo(q) {
         process.stdin.on("data", l);
     });
 }
-
-// --- LOGIC ---
 
 function updateFiles(newVer) {
     FILES_TO_UPDATE.forEach((f) => {
