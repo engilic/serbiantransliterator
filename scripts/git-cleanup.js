@@ -10,7 +10,6 @@ const BASE_KEEP = [".vs", ".vscode", ".idea", "node_modules", ".git", ".env*"];
 const WASM_DIR = path.join(process.cwd(), "src", "wasm-core");
 const BACKUP_STASH_NAME = "OMEGA_EMERGENCY_BACKUP";
 
-// Fajlovi i folderi koje treba nemilosrdno obrisati
 const NASTY_CACHES = [
     ".eslintcache",
     ".stylelintcache",
@@ -28,7 +27,6 @@ const NASTY_CACHES = [
 const args = process.argv.slice(2);
 const FORCE = args.includes("--yes") || args.includes("-y");
 
-// --- ANSI BOJE ---
 const C = {
     reset: "\x1b[0m",
     green: "\x1b[32m",
@@ -50,6 +48,11 @@ function beep() {
 function printBanner() {
     console.clear();
     console.log(`${C.red}${C.bold}
+   ____  __  ___  __________   ____ 
+  / __ \\/  |/  / ____/ ____/  / __ \\
+ / / / / /|_/ / __/ / / __   / /_/ /
+/ /_/ / /  / / /___/ /_/ /  / __  | 
+\\____/_/  /_/_____/\\____/  /_/  |_| 
                                       
     ☣️  OMEGA SANITIZER • CLEANUP TOOL ☣️
 ${C.reset}`);
@@ -79,16 +82,13 @@ function getOutput(cmd, args) {
         .filter((l) => l.length > 0);
 }
 
-// --- DESKTOP NOTIFICATION ---
 function notifyDone(duration, savedMB) {
     const title = "Omega Cleanup Complete";
     const msg = `Saved: ${savedMB} MB | Time: ${duration}s`;
-
     try {
         if (os.platform() === "darwin") {
             execSync(`osascript -e 'display notification "${msg}" with title "${title}"'`);
         } else if (os.platform() === "win32") {
-            // Powershell toast notification trick
             const psScript = `
             [void] [System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms");
             $objNotifyIcon = New-Object System.Windows.Forms.NotifyIcon;
@@ -100,9 +100,7 @@ function notifyDone(duration, savedMB) {
         } else {
             spawnSync("notify-send", [title, msg], { stdio: "ignore" });
         }
-    } catch (e) {
-        /* Ignore */
-    }
+    } catch (e) {}
 }
 
 async function checkGithubAccess() {
@@ -114,7 +112,6 @@ async function checkGithubAccess() {
 function createEmergencyBackup() {
     const status = getOutput("git", ["status", "--porcelain"]);
     if (status.length === 0) return false;
-
     console.log(`${C.yellow}🛡️  Pravim sigurnosni backup (Stash)...${C.reset}`);
     const res = spawnSync("git", ["stash", "push", "-u", "-m", BACKUP_STASH_NAME], { encoding: "utf8" });
     if (res.status === 0) {
@@ -136,32 +133,45 @@ function getFolderSize(dirPath) {
     return totalSize;
 }
 
-async function askYesNo(sr, en, dangerLevel = 0) {
+// --- IZMENJENE KONTROLE ---
+async function askYesNo(q, dangerLevel = 0) {
     return new Promise((resolve) => {
         let color = C.magenta;
         if (dangerLevel === 1) color = C.yellow;
         if (dangerLevel === 2) color = C.red;
-        console.log(`\n${color}❓ ${C.bold}${sr}${C.reset}`);
-        console.log(`   ${C.gray}${en}${C.reset}`);
+        console.log(`\n${color}❓ ${q}${C.reset}`);
         if (dangerLevel === 2)
             console.log(`   ${C.bgRed}${C.white}${C.bold} 💀 OPASNOST! / DANGER! 💀 ${C.reset}`);
+
         console.log(
-            `   ${C.white}[${C.green}DEL / ➔${C.white}] = ${C.green}DA (YES)${C.reset}  |  ${C.white}[${C.red}BACKSPACE / ⬅${C.white}] = ${C.red}NE (NO)${C.reset}`
+            `   ${C.white}[${C.green}BACKSPACE / ⬅ / Enter${C.white}] = DA   |   [${C.red}DEL / ➔ / Esc${C.white}] = NE${C.reset}`
         );
 
         process.stdin.setRawMode(true);
         process.stdin.resume();
         process.stdin.setEncoding("utf8");
-        const listener = (key) => {
-            if (key === "\u0003") {
+
+        const listener = (k) => {
+            if (k === "\u0003") {
                 process.stdin.setRawMode(false);
                 process.exit(1);
             }
-            if (key === "y" || key === "\u001b[3~" || key === "\u001b[C") {
-                process.stdout.write(`${C.green} ✔ DA / YES${C.reset}\n`);
+
+            // DA: y, Y, Enter, Backspace, Levo
+            if (
+                k === "y" ||
+                k === "Y" ||
+                k === "\r" ||
+                k === "\u007f" ||
+                k === "\u0008" ||
+                k === "\u001b[D"
+            ) {
+                process.stdout.write(`${C.green} ✔ DA${C.reset}\n`);
                 cleanup(true);
-            } else if (key === "n" || key === "\u007f" || key === "\u0008" || key === "\u001b[D") {
-                process.stdout.write(`${C.red} ✖ NE / NO${C.reset}\n`);
+            }
+            // NE: n, N, Esc, Delete, Desno
+            else if (k === "n" || k === "N" || k === "\u001b" || k === "\u001b[3~" || k === "\u001b[C") {
+                process.stdout.write(`${C.red} ✖ NE${C.reset}\n`);
                 cleanup(false);
             }
         };
@@ -187,8 +197,7 @@ async function main() {
         logDual("⚠️  OMEGA CLEANUP", "FULL RESET & OPTIMIZE", C.yellow);
         console.log(`${C.gray} - Nuklearno čišćenje fajlova i grana`);
         console.log(` - Backup nekomitovanih izmena`);
-        console.log(` - Desktop notifikacija na kraju`);
-        if (!(await askYesNo("Pokrenuti?", "Start?", 0))) {
+        if (!(await askYesNo("Pokrenuti?", 0))) {
             console.log("❌ Prekinuto.");
             process.exit(0);
         }
@@ -198,7 +207,6 @@ async function main() {
     const start = Date.now();
     const hasNet = await checkGithubAccess();
 
-    // 1. CALCULATE SIZE
     process.stdout.write(`${C.gray}📊 Računam smeće... ${C.reset}`);
     const pathsToMeasure = ["node_modules", "dist", "build", "coverage", "target"];
     let totalBytes = 0;
@@ -206,16 +214,13 @@ async function main() {
     const mbReclaimed = (totalBytes / (1024 * 1024)).toFixed(2);
     console.log(`${C.green}${mbReclaimed} MB${C.reset}`);
 
-    // 2. EMERGENCY BACKUP
     createEmergencyBackup();
 
-    // 3. CACHE SNIPER
     logDual("🔫 1. Cache Sniper", "1. Removing Hidden Caches", C.green);
     NASTY_CACHES.forEach((file) => {
         if (fs.existsSync(file)) fs.rmSync(file, { recursive: true, force: true });
     });
 
-    // 4. GIT RESET
     logDual("🔄 2. Git Reset", "2. Git Reset", C.green);
     run("git", ["checkout", baseBranch]);
 
@@ -227,7 +232,6 @@ async function main() {
         console.log(`${C.yellow}⚠️ Nema interneta. Preskačem fetch origin.${C.reset}`);
     }
 
-    // 5. CLEAN BRANCHES
     logDual("🧹 3. Lokalne Grane", "3. Local Branches", C.green);
     const localBranches = getOutput("git", ["branch"]);
     const safeBranches = [baseBranch, "master", "main", "dev", "* " + baseBranch];
@@ -236,12 +240,11 @@ async function main() {
         if (!safeBranches.includes(name)) run("git", ["branch", "-D", name], true);
     });
 
-    // 6. REMOTE BRANCHES
     if (!FORCE && hasNet) {
         console.log(`\n${C.red}---------------------------------------------------${C.reset}`);
-        if (await askYesNo("Obrisati REMOTE grane?", "Delete REMOTE branches?", 1)) {
+        if (await askYesNo("Obrisati REMOTE grane?", 1)) {
             beep();
-            if (await askYesNo("SIGURNO? (Nema nazad)", "REALLY SURE?", 2)) {
+            if (await askYesNo("SIGURNO? (Nema nazad)", 2)) {
                 console.log(`${C.bgRed}${C.white} 🔥 BRISANJE... 🔥 ${C.reset}`);
                 const rBranches = getOutput("git", ["branch", "-r"]);
                 let cnt = 0;
@@ -260,7 +263,6 @@ async function main() {
         }
     }
 
-    // 7. NUCLEAR FILE CLEAN
     logDual("☢️  4. Brisanje fajlova", "4. File Cleanup", C.green);
     if (fs.existsSync(path.join(WASM_DIR, "Cargo.toml"))) {
         try {
@@ -268,7 +270,6 @@ async function main() {
         } catch (e) {}
     }
 
-    // Smart Keep: .env fajlovi se automatski čuvaju
     const keepArgs = [];
     BASE_KEEP.forEach((f) => keepArgs.push("-e", f));
     fs.readdirSync(process.cwd()).forEach((file) => {
@@ -277,14 +278,11 @@ async function main() {
 
     run("git", ["clean", "-ffdx", ...keepArgs]);
 
-    // 8. GIT OPTIMIZE
     logDual("♻️  5. Git Optimize", "5. Git GC", C.green);
     run("git", ["gc", "--prune=now", "--aggressive"]);
 
-    // 9. INSTALL
     logDual("📦 6. Instalacija", "6. Installation", C.green);
     if (fs.existsSync("package-lock.json")) {
-        // Probaj npm ci, ako ne uspe (npr konflikt), uradi npm install
         if (!run("npm", ["ci"], true)) {
             console.log(`${C.yellow}⚠️ npm ci failed, fallback to npm install...${C.reset}`);
             run("npm", ["install"]);
@@ -294,7 +292,6 @@ async function main() {
     }
 
     const dur = ((Date.now() - start) / 1000).toFixed(2);
-
     beep();
     notifyDone(dur, mbReclaimed);
     console.log(`\n${C.green}${C.bold}✨ OMEGA COMPLETE ✨${C.reset}`);

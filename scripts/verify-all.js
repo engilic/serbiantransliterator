@@ -56,21 +56,39 @@ function run(step, cmd, args, cwd = ROOT) {
     console.log(`${C.green}✅ OK${C.reset}`);
 }
 
+// --- IZMENJENE KONTROLE ---
 async function askYesNo(q) {
     return new Promise((r) => {
         console.log(`\n${C.magenta}❓ ${q} ${C.gray}(Y/n)${C.reset}`);
+        console.log(
+            `   ${C.white}[${C.green}BACKSPACE / ⬅ / Enter${C.white}] = DA   |   [${C.red}DEL / ➔ / Esc${C.white}] = NE${C.reset}`
+        );
+
         process.stdin.setRawMode(true);
         process.stdin.resume();
         process.stdin.setEncoding("utf8");
+
         const l = (k) => {
-            if (k === "\u0003") process.exit(1);
-            if (k === "y" || k === "Y" || k === "\r") {
+            if (k === "\u0003") process.exit(1); // Ctrl+C uvek gasi
+
+            // DA: y, Y, Enter, Backspace (\u007f, \u0008), Levo (\u001b[D)
+            if (
+                k === "y" ||
+                k === "Y" ||
+                k === "\r" ||
+                k === "\u007f" ||
+                k === "\u0008" ||
+                k === "\u001b[D"
+            ) {
                 cleanup(true);
-            } else {
+            }
+            // NE: n, N, Esc, Delete (\u001b[3~), Desno (\u001b[C)
+            else if (k === "n" || k === "N" || k === "\u001b" || k === "\u001b[3~" || k === "\u001b[C") {
                 cleanup(false);
             }
         };
         const cleanup = (res) => {
+            process.stdout.write(res ? `${C.green}DA${C.reset}\n` : `${C.red}NE${C.reset}\n`);
             process.stdin.setRawMode(false);
             process.stdin.pause();
             process.stdin.removeListener("data", l);
@@ -104,12 +122,9 @@ async function runSniffer() {
     ];
 
     files.forEach((f) => {
-        // 1. Ignorisanje sistemskih fajlova i testova
         if (f.startsWith("scripts/") || f.includes("test") || f.includes("spec")) return;
 
         const content = fs.readFileSync(f, "utf8");
-
-        // 2. Trazenje Tajni
         secrets.forEach((re) => {
             if (re.test(content)) {
                 console.error(`${C.red}💀 SECRET NAĐEN U FAJLU: ${f}${C.reset}`);
@@ -117,13 +132,10 @@ async function runSniffer() {
             }
         });
 
-        // 3. Trazenje Debugger-a (Kriticno)
         if (content.includes("debugger")) {
             console.error(`${C.red}❌ 'debugger' u fajlu: ${f}${C.reset}`);
             issues++;
         }
-
-        // --- NAPOMENA: console.log proveru smo uklonili da ne blokira ---
     });
 
     if (issues > 0) {
@@ -139,7 +151,7 @@ async function runSniffer() {
 async function main() {
     printBanner();
     checkEnv();
-    await runSniffer(); // Sada nece blokirati zbog console.log
+    await runSniffer();
 
     run("1. Install", "npm", ["ci"]);
     run("2. Format", "npm", ["run", "format:fix"]);

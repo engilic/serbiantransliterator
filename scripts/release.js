@@ -9,8 +9,7 @@ const FILES_TO_UPDATE = [
     "package.json",
     "src/wasm-core/Cargo.toml", // Rust
     "manifest.xml", // Dev manifest
-    "manifest.prod.xml", // Prod manifest
-    "src/manifest.xml", // Backup manifest
+    "manifest.prod.xml", // Prod manifest (Removed src/manifest.xml)
 ];
 
 // --- ANSI COLORS ---
@@ -23,6 +22,7 @@ const C = {
     cyan: "\x1b[36m",
     bold: "\x1b[1m",
     gray: "\x1b[90m",
+    white: "\x1b[97m",
 };
 
 function beep() {
@@ -32,12 +32,16 @@ function beep() {
 function printBanner() {
     console.clear();
     console.log(`${C.cyan}${C.bold}
+    ____  ________    _______  __________
+   / __ \\/ ____/ /   / ____/ |/ /_  __/ /
+  / /_/ / __/ / /   / __/ /    / / / / / 
+ / _, _/ /___/ /___/ /___/_/| | / / /_/  
+/_/ |_/_____/_____/_____/_/ |_|/_/ (_)   
                                          
    🚀 RELEASE COMMANDER • INTELLIGENT SYNC
 ${C.reset}`);
 }
 
-// --- INPUT HANDLER ---
 async function askSelection(opts) {
     return new Promise((resolve) => {
         let idx = 0;
@@ -82,22 +86,40 @@ async function askSelection(opts) {
     });
 }
 
+// --- IZMENJENE KONTROLE ---
 async function askYesNo(q) {
     return new Promise((r) => {
-        process.stdout.write(`\n${C.magenta}❓ ${q} ${C.gray}[Y/n]${C.reset} `);
+        console.log(`\n${C.magenta}❓ ${q} ${C.gray}(Y/n)${C.reset}`);
+        console.log(
+            `   ${C.white}[${C.green}BACKSPACE / ⬅ / Enter${C.white}] = DA   |   [${C.red}DEL / ➔ / Esc${C.white}] = NE${C.reset}`
+        );
+
         process.stdin.setRawMode(true);
         process.stdin.resume();
         process.stdin.setEncoding("utf8");
+
         const l = (k) => {
             if (k === "\u0003") process.exit(1);
-            if (k === "y" || k === "Y" || k === "\r") {
+
+            // DA: y, Y, Enter, Backspace, Levo
+            if (
+                k === "y" ||
+                k === "Y" ||
+                k === "\r" ||
+                k === "\u007f" ||
+                k === "\u0008" ||
+                k === "\u001b[D"
+            ) {
+                process.stdout.write(`${C.green}DA${C.reset}\n`);
                 cleanup(true);
-            } else {
+            }
+            // NE: n, N, Esc, Delete, Desno
+            else if (k === "n" || k === "N" || k === "\u001b" || k === "\u001b[3~" || k === "\u001b[C") {
+                process.stdout.write(`${C.red}NE${C.reset}\n`);
                 cleanup(false);
             }
         };
         const cleanup = (res) => {
-            process.stdout.write(res ? `${C.green}Yes${C.reset}\n` : `${C.red}No${C.reset}\n`);
             process.stdin.setRawMode(false);
             process.stdin.pause();
             process.stdin.removeListener("data", l);
@@ -124,21 +146,16 @@ function updateFiles(newVer) {
             content = JSON.stringify(json, null, 2) + "\n";
             updated = true;
         } else if (name === "Cargo.toml") {
-            // version = "1.2.3"
             content = content.replace(/^version\s*=\s*".*"/m, `version = "${newVer}"`);
             updated = true;
         } else if (name.endsWith(".xml")) {
-            // Office XML Logic
-            // 1. Version (4 digits): 1.2.3 -> 1.2.3.0
             const officeVer = newVer.split(".").length === 3 ? `${newVer}.0` : newVer;
             const dispName = `${EXTENSION_NAME} (v${newVer})`;
 
-            // A. <Version>
             if (content.includes("<Version>")) {
                 content = content.replace(/<Version>.*?<\/Version>/, `<Version>${officeVer}</Version>`);
                 updated = true;
             }
-            // B. <DisplayName>
             if (content.includes("<DisplayName")) {
                 content = content.replace(
                     /<DisplayName DefaultValue=".*?"\/>/,
@@ -146,7 +163,6 @@ function updateFiles(newVer) {
                 );
                 updated = true;
             }
-            // C. GetStarted.Title
             if (content.includes('id="GetStarted.Title"')) {
                 content = content.replace(
                     /(<bt:String id="GetStarted.Title" DefaultValue=").*?("\/>)/,
@@ -164,7 +180,6 @@ function updateFiles(newVer) {
 }
 
 function updateChangelog(newVer) {
-    // Get commits since last tag
     let lastTag = "";
     try {
         lastTag = execSync("git describe --tags --abbrev=0 2>/dev/null").toString().trim();
@@ -187,11 +202,8 @@ function updateChangelog(newVer) {
 }
 
 async function main() {
-    // 1. Check Git Clean
     if (execSync("git status --porcelain").toString().trim()) {
-        console.error(
-            `${C.red}⛔ ERROR: Git working directory is not clean! Commit changes first.${C.reset}`
-        );
+        console.error(`${C.red}⛔ ERROR: Git dirty! Commit changes first.${C.reset}`);
         process.exit(1);
     }
 
@@ -205,31 +217,29 @@ async function main() {
 
     const sel = await askSelection(opts);
 
-    console.log(`\n${C.blue}🚀 Bumping version: ${C.bold}${currVer} -> ${sel.ver}${C.reset}`);
+    console.log(`\n${C.blue}🚀 Bumping: ${C.bold}${currVer} -> ${sel.ver}${C.reset}`);
 
-    if (!(await askYesNo("Apply changes to files?"))) process.exit(0);
+    if (!(await askYesNo("Apply changes?"))) process.exit(0);
 
-    // 2. Update Files
     updateFiles(sel.ver);
     updateChangelog(sel.ver);
 
-    // 3. Commit & Tag
-    console.log(`\n${C.yellow}👀 Please review changes now.${C.reset}`);
-    if (!(await askYesNo("Commit and Tag this release?"))) {
-        console.log(`${C.red}↺ Reverting changes...${C.reset}`);
+    console.log(`\n${C.yellow}👀 Review changes.${C.reset}`);
+    if (!(await askYesNo("Commit and Tag?"))) {
+        console.log(`${C.red}↺ Reverting...${C.reset}`);
         execSync("git checkout .");
         process.exit(0);
     }
 
     try {
-        console.log(`\n${C.blue}💾 Creating Git Commit & Tag...${C.reset}`);
+        console.log(`\n${C.blue}💾 Git Commit & Tag...${C.reset}`);
         execSync("git add .");
         execSync(`git commit -m "chore(release): v${sel.ver}"`);
         execSync(`git tag -a v${sel.ver} -m "Release v${sel.ver}"`);
 
         beep();
-        console.log(`\n${C.green}${C.bold}✅ RELEASE v${sel.ver} COMPLETED!${C.reset}`);
-        console.log(`${C.gray}Run 'git push --follow-tags' to publish.${C.reset}\n`);
+        console.log(`\n${C.green}${C.bold}✅ RELEASE v${sel.ver} DONE!${C.reset}`);
+        console.log(`${C.gray}Run 'git push --follow-tags'${C.reset}\n`);
     } catch (e) {
         console.error(`${C.red}❌ Git Error: ${e.message}${C.reset}`);
         process.exit(1);
