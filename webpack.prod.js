@@ -1,34 +1,39 @@
 /* eslint-disable no-undef */
 const TerserPlugin = require("terser-webpack-plugin");
-const CompressionPlugin = require("compression-webpack-plugin"); // [MAX4]
+const CompressionPlugin = require("compression-webpack-plugin");
 
 module.exports = {
     mode: "production",
     devtool: false,
+
     optimization: {
         minimize: true,
-        // [MAX] Scope Hoisting: Spaja male module u jedan scope = brže izvršavanje
         concatenateModules: true,
         minimizer: [
             new TerserPlugin({
+                parallel: true,
+                extractComments: false,
+                // [FIX] Isključi minifikaciju za velike binarne fajlove
+                exclude: /\/node_modules\/|.*\.bin\.js/,
                 terserOptions: {
                     compress: {
                         drop_console: true,
-                        // [MAX] Dva prolaza optimizacije
-                        passes: 2,
+                        passes: 1, // Brzina
                     },
                     mangle: {
                         toplevel: true,
                     },
                     output: {
                         comments: false,
+                        max_line_len: 1000, // Brzina za velike linije
                     },
                 },
-                extractComments: false,
             }),
         ],
         splitChunks: {
             chunks: "all",
+            minSize: 20000,
+            maxSize: 500000, // Veći chunkovi za rečnike
             cacheGroups: {
                 vendors: {
                     test: /[\\/]node_modules[\\/]/,
@@ -39,25 +44,17 @@ module.exports = {
             },
         },
     },
+
     plugins: [
-        // [MAX4] Pre-compressed assets (Gzip)
-        // Cloudflare automatski servira .gz ako browser podržava
         new CompressionPlugin({
             filename: "[path][base].gz",
             algorithm: "gzip",
             test: /\.(js|css|html|svg|wasm)$/,
-            threshold: 0, // Komprimuj sve (čak i male fajlove)
-            minRatio: 0.8,
-        }),
-        // [MAX4] Pre-compressed assets (Brotli - još bolja kompresija)
-        new CompressionPlugin({
-            filename: "[path][base].br",
-            algorithm: "brotliCompress",
-            test: /\.(js|css|html|svg|wasm)$/,
-            threshold: 0, // Komprimuj sve
+            threshold: 10240,
             minRatio: 0.8,
         }),
     ],
+
     performance: {
         hints: false,
     },
