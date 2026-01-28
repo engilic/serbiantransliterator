@@ -12,7 +12,7 @@
 }
 
 .section:hover {
-    box-shadow: var(--shadow4); /* Subtle lift */
+    box-shadow: var(--shadow4);
     z-index: 1;
 }
 
@@ -125,7 +125,7 @@ input[type="radio"]:focus-visible {
 /* Tags (Pills) */
 .tags-container {
     background: var(--colorNeutralBackground2);
-    border: 1px solid var(--colorNeutralStroke1); /* Clean border */
+    border: 1px solid var(--colorNeutralStroke1);
     border-radius: var(--radius8);
     padding: 8px;
     min-height: 48px;
@@ -189,7 +189,7 @@ input[type="radio"]:focus-visible {
     height: 32px;
     padding: 0 12px;
     background: transparent;
-    border: 1px solid var(--colorNeutralStroke2);
+    border: 1px solid transparent; /* Ghost Style */
     border-radius: var(--radius4);
     font-weight: 600;
     color: var(--colorNeutralForeground1);
@@ -204,7 +204,6 @@ input[type="radio"]:focus-visible {
 
 .mini-btn:hover:not(:disabled) {
     background: var(--colorNeutralBackground3);
-    border-color: var(--colorNeutralForeground2);
 }
 
 .mini-btn:disabled {
@@ -231,8 +230,229 @@ input[type="radio"]:focus-visible {
 }
 
 .hint {
-    font-size: 12px; /* Još manje */
+    font-size: 12px;
     color: var(--colorNeutralForeground3);
     margin-top: 6px;
-    font-style: italic; /* Opciono, da izgleda više kao hint */
+    font-style: italic;
+}
+
+/* --- Generic Accordion Styling --- */
+.accordion {
+    /* Configurable Radius */
+    --acc-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    margin-top: 15px;
+    background: var(--colorNeutralBackground1);
+    border: 1px solid var(--colorNeutralStroke1);
+    padding: 0;
+    border-radius: var(--acc-radius);
+    box-shadow: var(--shadow2);
+    flex-shrink: 0;
+    overflow: hidden;
+    /* [MAX3 FIX] Breathing room for sticky headers & GPU Layer Promotion */
+    scroll-margin-top: 20px;
+    will-change: transform, opacity;
+}
+
+.accordion:hover {
+    box-shadow: var(--shadow4);
+}
+
+.accordion-header {
+    width: 100%;
+    height: 44px; /* Standard height */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: transparent;
+    border: none;
+    padding: 0 15px;
+    cursor: pointer;
+    color: var(--colorNeutralForeground1);
+    font-family: inherit;
+    transition: background-color 0.2s;
+    outline: none;
+    flex-shrink: 0;
+    user-select: none;
+    /* [1] Zatvoren: Malo tamnije */
+    background-color: var(--colorNeutralBackground2);
+    border-top-left-radius: var(--acc-radius);
+    border-top-right-radius: var(--acc-radius);
+    border-bottom-left-radius: var(--acc-radius);
+    border-bottom-right-radius: var(--acc-radius);
+}
+
+.accordion-header * {
+    pointer-events: none;
+}
+
+.accordion-header:hover {
+    /* [2] Zatvoren Hover: Još tamnije */
+    background-color: var(--colorNeutralBackground3);
+}
+
+.accordion-header[aria-expanded="true"] {
+    /* [3] Otvoren: Najtamniji */
+    background-color: var(--colorNeutralStroke1);
+    border-bottom: none;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.accordion-header[aria-expanded="true"]:hover {
+    /* [4] Otvoren Hover: Malo svetliji */
+    background-color: var(--colorNeutralBackground3);
+}
+
+.accordion-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 100%;
+}
+
+.accordion-title {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--colorBrandBackgroundPressed);
+    text-align: left;
+    line-height: 1;
+}
+
+.accordion-icon {
+    fill: var(--colorBrandForeground1);
+    opacity: 0.9;
+    width: 16px;
+    height: 16px;
+    display: block;
+}
+
+.accordion-chevron {
+    transition: transform 0.3s cubic-bezier(0.87, 0, 0.13, 1);
+    color: var(--colorNeutralForeground3);
+    width: 18px;
+    height: 18px;
+    display: block;
+    opacity: 0.6;
+}
+
+.accordion-header:hover .accordion-chevron {
+    opacity: 1;
+}
+
+.accordion-header[aria-expanded="true"] .accordion-chevron {
+    transform: rotate(180deg);
+}
+
+/* --- Content --- */
+.accordion-content {
+    display: none;
+    width: 100%;
+    /* [5] Content: Svetliji (bela) */
+    background-color: var(--colorNeutralBackground1);
+    box-sizing: border-box;
+    border-bottom-left-radius: var(--acc-radius);
+    border-bottom-right-radius: var(--acc-radius);
+}
+
+.accordion-content.open {
+    display: block;
+    padding: 0;
+    animation: fadeInContent 0.2s ease-out;
+}
+
+@keyframes fadeInContent {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Helper for specific content types (e.g. pre formatted text) */
+#statsText {
+    margin: 0;
+    white-space: pre-wrap;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 10px;
+    color: var(--colorNeutralForeground2);
+    line-height: 1.4;
+    background-color: transparent;
+    padding: 15px;
+    border: none;
+    display: block;
+    width: 100%;
+}
+
+/* --- Segmented Control (Button Group) --- */
+.segmented-control {
+    display: flex;
+    width: 100%;
+    background-color: var(--colorNeutralBackground2);
+    padding: 2px;
+    border-radius: var(--radius8);
+    border: 1px solid transparent; /* Ghost border */
+    gap: 2px;
+}
+
+.segment-item {
+    flex: 1;
+    position: relative;
+    text-align: center;
+    min-width: 0;
+}
+
+.segment-item input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.segment-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 4px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--colorNeutralForeground2);
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.2s cubic-bezier(0.25, 1, 0.5, 1);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    user-select: none;
+    height: 100%;
+}
+
+/* Hover on inactive segment */
+.segment-label:hover {
+    color: var(--colorNeutralForeground1);
+    background-color: var(--colorNeutralBackground3);
+}
+
+.segment-item input[type="radio"]:checked + .segment-label {
+    background-color: var(--colorBrandBackground);
+    color: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.segment-item input[type="radio"]:focus-visible + .segment-label {
+    outline: 2px solid var(--colorBrandForeground1);
+    outline-offset: 2px;
+}
+
+.segment-item input[type="radio"]:checked + .segment-label:hover {
+    background-color: var(--colorBrandBackgroundHover);
+    color: white;
 }
