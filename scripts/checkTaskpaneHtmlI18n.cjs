@@ -30,11 +30,9 @@ function posFromIndex(text, idx) {
 }
 
 function snippetAt(text, idx, maxLen = 80) {
-    // Uzimamo malo pre i malo posle
     const start = Math.max(0, idx - 10);
     const end = Math.min(text.length, idx + maxLen);
     let s = text.slice(start, end);
-    // Escape newlines for display
     return s.replace(/\n/g, "↵").trim();
 }
 
@@ -49,18 +47,22 @@ function main() {
     let html = fs.readFileSync(FILE, "utf8");
 
     // --- PRE-PROCESSING (Cleaning) ---
-    // Zamenjujemo sadržaj razmakom da bismo sačuvali indekse (line numbers), ali da ne parsiramo sadržaj
+    // Koristimo .repeat(m.length) da bismo zamenili sadrzaj razmacima,
+    // kako bismo ocuvali tacne brojeve linija i kolona za izvestaj.
 
-    // 1. Remove Comments <!-- -->
+    // 1. Remove Comments <!-- ... -->
     html = html.replace(/<!--[\s\S]*?-->/g, (m) => " ".repeat(m.length));
 
     // 2. Remove Scripts <script>...</script>
-    html = html.replace(/<script[\s\S]*?<\/script>/gi, (m) => " ".repeat(m.length));
+    // [FIX] Robusniji regex da zadovolji CodeQL security check
+    // Hvata <script...> sadrzaj < / script > (sa razmacima)
+    html = html.replace(/<script\b[^>]*>[\s\S]*?<\s*\/script\s*>/gi, (m) => " ".repeat(m.length));
 
     // 3. Remove Styles <style>...</style>
-    html = html.replace(/<style[\s\S]*?<\/style>/gi, (m) => " ".repeat(m.length));
+    // [FIX] Robusniji regex
+    html = html.replace(/<style\b[^>]*>[\s\S]*?<\s*\/style\s*>/gi, (m) => " ".repeat(m.length));
 
-    // 4. Remove EJS/Template tags <% %>
+    // 4. Remove EJS/Template tags <% ... %>
     html = html.replace(/<%[\s\S]*?%>/g, (m) => " ".repeat(m.length));
 
     const violations = [];
@@ -72,8 +74,8 @@ function main() {
         const content = m[1];
         const trimmed = content.replace(/\s+/g, " ").trim();
 
-        if (!trimmed) continue; // Empty or whitespace
-        if (!LETTER_RE.test(trimmed)) continue; // Only symbols/numbers
+        if (!trimmed) continue;
+        if (!LETTER_RE.test(trimmed)) continue;
 
         // Context Check
         const before = html.slice(0, m.index);
@@ -107,13 +109,11 @@ function main() {
 
         const idx = m.index;
 
-        // Find enclosing tag boundaries
         const startTag = html.lastIndexOf("<", idx);
         const endTag = html.indexOf(">", idx);
 
         if (startTag !== -1 && endTag !== -1) {
             const fullTag = html.slice(startTag, endTag);
-            // Check for data-i18n-attr="title:KEY"
             if (fullTag.includes("data-i18n-attr") && fullTag.includes(`${attrName}:`)) {
                 continue;
             }
