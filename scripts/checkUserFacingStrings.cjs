@@ -3,8 +3,45 @@
 const fs = require("node:fs");
 const path = require("node:path");
 
+// --- CONFIG ---
 const ROOT = process.cwd();
 const SRC_DIR = path.join(ROOT, "src");
+
+// --- ANSI COLORS ---
+const C = {
+    reset: "\x1b[0m",
+    red: "\x1b[31m",
+    green: "\x1b[32m",
+    yellow: "\x1b[33m",
+    blue: "\x1b[34m",
+    bold: "\x1b[1m",
+    gray: "\x1b[90m",
+};
+
+// --- RULES DEFINITION ---
+// Ovde definišemo šta je zabranjeno.
+const RULES = [
+    {
+        id: "setStatus-hardcoded",
+        // Hvata: setStatus("..." ili setStatus('...' ili setStatus(`...`
+        regex: /\bsetStatus\s*\(\s*([`'"])/g,
+        message: "setStatus() expects a variable or t('key'), not a hardcoded string.",
+    },
+    {
+        id: "showModalInfo-hardcoded",
+        // Hvata: showModalInfo("..."
+        regex: /\bshowModalInfo\s*\(\s*([`'"])/g,
+        message: "showModalInfo() title must be translated via t('key').",
+    },
+    {
+        id: "t-error-prefix-hardcoded",
+        // Hvata: t("status_error_prefix", "..."
+        regex: /\bt\s*\(\s*["']status_error_prefix["']\s*,\s*([`'"])/g,
+        message: "Do not pass hardcoded strings to status_error_prefix. Use t('key') or variables.",
+    },
+];
+
+// --- HELPERS ---
 
 function isDir(p) {
     try {
@@ -15,157 +52,106 @@ function isDir(p) {
 }
 
 function walk(dir) {
-    /** @type {string[]} */
-    const out = [];
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
-
-    for (const e of entries) {
-        const full = path.join(dir, e.name);
-
-        if (e.isDirectory()) {
-            if (e.name === "node_modules" || e.name === "dist" || e.name === "coverage") continue;
-            out.push(...walk(full));
-            continue;
+    const results = [];
+    const list = fs.readdirSync(dir);
+    list.forEach((file) => {
+        const full = path.join(dir, file);
+        if (isDir(full)) {
+            // Ignorišemo sistemske foldere
+            if (!["node_modules", "dist", "coverage", ".git", "wasm-core"].includes(file)) {
+                results.push(...walk(full));
+            }
+        } else {
+            // Skeniramo samo TypeScript fajlove (ignorišemo definicije .d.ts)
+            if (file.endsWith(".ts") && !file.endsWith(".d.ts")) {
+                results.push(full);
+            }
         }
-
-        if (!e.isFile()) continue;
-        if (!e.name.endsWith(".ts")) continue;
-        if (e.name.endsWith(".d.ts")) continue;
-
-        out.push(full);
-    }
-
-    return out;
+    });
+    return results;
 }
 
 function posFromIndex(text, idx) {
     const before = text.slice(0, idx);
     const lines = before.split("\n");
-    const line = lines.length; // 1-based
-    const col = (lines[lines.length - 1] || "").length + 1; // 1-based
+    const line = lines.length;
+    const col = (lines[lines.length - 1] || "").length + 1;
     return { line, col };
 }
 
-function snippetAt(text, idx, maxLen = 140) {
+function snippetAt(text, idx, maxLen = 60) {
     const s = text.slice(idx, Math.min(text.length, idx + maxLen));
-    return s.replace(/\s+/g, " ").trim();
+    return s.replace(/\s+/g, " ").trim() + "...";
 }
 
-/**
- * Returns array of violations for a single file.
- * Each violation: { file, line, col, rule, snippet }
- */
 function checkFile(filePath) {
-    const rel = path.relative(ROOT, filePath);
-    const text = fs.readFileSync(filePath, "utf8");
-
-    /** @type {Array<{file:string,line:number,col:number,rule:string,snippet:string}>} */
+    const content = fs.readFileSync(filePath, "utf8");
+    const relative = path.relative(ROOT, filePath);
     const violations = [];
 
-    // Rule 1: setStatus(...) first arg must NOT be a string literal.
-    // Disallowed:
-    //   setStatus("...", ...)
-    //   setStatus('...', ...)
-    //   setStatus(`...`, ...)
-    // Allowed:
-    //   setStatus(t("..."), ...)
-    //   setStatus(msgVar, ...)
-    const reSetStatusHardcoded = /\bsetStatus\s*\(\s*([`'"])/g;
+    RULES.forEach((rule) => {
+        let m;
+        // Reset regex state (bitno kada se koristi global flag u petlji)
+        rule.regex.lastIndex = 0;
 
-    let m;
-    while ((m = reSetStatusHardcoded.exec(text)) !== null) {
-        const idx = m.index;
-        const { line, col } = posFromIndex(text, idx);
+        while ((m = rule.regex.exec(content)) !== null) {
+            const idx = m.index;
+            const { line, col } = posFromIndex(content, idx);
 
-        violations.push({
-            file: rel,
-            line,
-            col,
-            rule: "setStatus-hardcoded-string",
-            snippet: snippetAt(text, idx),
-        });
-
-        if (reSetStatusHardcoded.lastIndex === idx) reSetStatusHardcoded.lastIndex++;
-    }
-
-    // Rule 2: showModalInfo(...) first arg must NOT be a string literal.
-    // Disallowed:
-    //   showModalInfo("Greška", ...)
-    // Allowed:
-    //   showModalInfo(t("modal_title_error"), ...)
-    const reShowModalInfoHardcoded = /\bshowModalInfo\s*\(\s*([`'"])/g;
-
-    while ((m = reShowModalInfoHardcoded.exec(text)) !== null) {
-        const idx = m.index;
-        const { line, col } = posFromIndex(text, idx);
-
-        violations.push({
-            file: rel,
-            line,
-            col,
-            rule: "showModalInfo-hardcoded-string",
-            snippet: snippetAt(text, idx),
-        });
-
-        if (reShowModalInfoHardcoded.lastIndex === idx) reShowModalInfoHardcoded.lastIndex++;
-    }
-
-    // Rule 3 (NEW): t("status_error_prefix", <arg>) must NOT use a string literal as the 2nd arg.
-    // Disallowed:
-    //   t("status_error_prefix", "Dokument prevelik")
-    //   t("status_error_prefix", `...`)
-    // Allowed:
-    //   t("status_error_prefix", t("status_doc_too_large_short"))
-    //   t("status_error_prefix", someVar)
-    //   t("status_error_prefix", err.message)
-    const reStatusErrorPrefixHardcodedArg = /\bt\s*\(\s*["']status_error_prefix["']\s*,\s*([`'"])/g;
-
-    while ((m = reStatusErrorPrefixHardcodedArg.exec(text)) !== null) {
-        const idx = m.index;
-        const { line, col } = posFromIndex(text, idx);
-
-        violations.push({
-            file: rel,
-            line,
-            col,
-            rule: "t(status_error_prefix)-hardcoded-arg",
-            snippet: snippetAt(text, idx),
-        });
-
-        if (reStatusErrorPrefixHardcodedArg.lastIndex === idx) reStatusErrorPrefixHardcodedArg.lastIndex++;
-    }
+            violations.push({
+                file: relative,
+                line,
+                col,
+                ruleId: rule.id,
+                msg: rule.message,
+                snippet: snippetAt(content, idx),
+            });
+        }
+    });
 
     return violations;
 }
 
 function main() {
+    console.log(`${C.blue}🔍 Scanning source code for hardcoded user-facing strings...${C.reset}`);
+
     if (!isDir(SRC_DIR)) {
-        console.error("ERROR: src directory not found:", SRC_DIR);
+        console.error(`${C.red}ERROR: src directory not found at ${SRC_DIR}${C.reset}`);
         process.exit(2);
     }
 
     const files = walk(SRC_DIR);
-
-    /** @type {Array<{file:string,line:number,col:number,rule:string,snippet:string}>} */
-    const all = [];
+    const allViolations = [];
 
     for (const f of files) {
-        all.push(...checkFile(f));
+        allViolations.push(...checkFile(f));
     }
 
-    if (all.length === 0) {
+    if (allViolations.length === 0) {
+        console.log(`${C.green}✅ No hardcoded user strings found in Logic/UI calls.${C.reset}`);
         process.exit(0);
     }
 
+    console.error(`\n${C.red}${C.bold}🚨 HARDCODED USER STRINGS DETECTED!${C.reset}`);
     console.error(
-        "ERROR: Hardcoded user-facing strings detected.\n" +
-            '- Use i18n: t("...") for user-visible text\n' +
-            '- Do not pass string literals into t("status_error_prefix", ...)\n'
+        `${C.yellow}The following strings are not translatable and will appear hardcoded to users:${C.reset}\n`
     );
 
-    for (const v of all) {
-        console.error(`${v.file}:${v.line}:${v.col}  ${v.rule}\n  ${v.snippet}\n`);
-    }
+    // Group by file for cleaner output
+    const grouped = {};
+    allViolations.forEach((v) => {
+        if (!grouped[v.file]) grouped[v.file] = [];
+        grouped[v.file].push(v);
+    });
+
+    Object.keys(grouped).forEach((file) => {
+        console.error(`${C.bold}📄 ${file}${C.reset}`);
+        grouped[file].forEach((v) => {
+            console.error(`   ${C.gray}Line ${v.line}:${v.col}${C.reset}  ${C.red}[${v.ruleId}]${C.reset}`);
+            console.error(`     Snippet: ${C.yellow}${v.snippet}${C.reset}`);
+            console.error(`     Fix:     ${v.msg}\n`);
+        });
+    });
 
     process.exit(1);
 }

@@ -1,44 +1,75 @@
 // scripts/git-cleanup.js
-const { spawnSync } = require("child_process");
-const readline = require("readline");
+const { spawnSync, execSync } = require("child_process");
 const path = require("path");
+const fs = require("fs");
+const os = require("os");
+const dns = require("dns");
 
 // --- KONFIGURACIJA ---
-// Grane koje NIKAD ne brišemo
-const SAFE_BRANCHES = ["master", "main", "dev", "HEAD"];
-// Fajlovi koje ne želimo da brišemo tokom čišćenja (npr. lokalne tajne, VS podešavanja)
-const KEEP_FILES = [".vs", ".env", ".vscode"];
+const BASE_KEEP = [".vs", ".vscode", ".idea", "node_modules", ".git", ".env*"];
+const WASM_DIR = path.join(process.cwd(), "src", "wasm-core");
+const BACKUP_STASH_NAME = "OMEGA_EMERGENCY_BACKUP";
 
-// Argumenti
+// Fajlovi i folderi koje treba nemilosrdno obrisati
+const NASTY_CACHES = [
+    ".eslintcache",
+    ".stylelintcache",
+    "tsconfig.tsbuildinfo",
+    ".npm-cache",
+    ".jest-cache",
+    ".parcel-cache",
+    ".cache",
+    "dist",
+    "build",
+    "coverage",
+    "target",
+];
+
 const args = process.argv.slice(2);
 const FORCE = args.includes("--yes") || args.includes("-y");
 
-// ANSI boje
+// --- ANSI BOJE ---
 const C = {
     reset: "\x1b[0m",
     green: "\x1b[32m",
     yellow: "\x1b[33m",
     red: "\x1b[31m",
     blue: "\x1b[34m",
+    magenta: "\x1b[35m",
     bold: "\x1b[1m",
     gray: "\x1b[90m",
+    white: "\x1b[97m",
+    bgRed: "\x1b[41m",
+    cyan: "\x1b[36m",
 };
 
-/**
- * Pomoćna funkcija za izvršavanje komandi
- */
+function beep() {
+    process.stdout.write("\x07");
+}
+
+function printBanner() {
+    console.clear();
+    console.log(`${C.red}${C.bold}
+                                      
+    ☣️  OMEGA SANITIZER • CLEANUP TOOL ☣️
+${C.reset}`);
+}
+
+function logDual(emoji, sr, en, color = C.reset) {
+    console.log(`${color}${emoji} ${C.bold}${sr}${C.reset}`);
+    console.log(`   ${C.gray}└─ ${en}${C.reset}`);
+}
+
 function run(cmd, args, ignoreError = false) {
     console.log(`${C.gray}$ ${cmd} ${args.join(" ")}${C.reset}`);
     const result = spawnSync(cmd, args, { stdio: "inherit", shell: true });
     if (result.status !== 0 && !ignoreError) {
-        console.error(`${C.red}❌ Komanda nije uspela: ${cmd} ${args.join(" ")}${C.reset}`);
-        process.exit(1);
+        console.error(`${C.red}❌ Fail: ${cmd} ${args.join(" ")}${C.reset}`);
+        if (!ignoreError) process.exit(1);
     }
+    return result.status === 0;
 }
 
-/**
- * Pomoćna funkcija za hvatanje output-a komande
- */
 function getOutput(cmd, args) {
     const result = spawnSync(cmd, args, { encoding: "utf8", shell: true });
     if (result.status !== 0) return [];
@@ -48,109 +79,227 @@ function getOutput(cmd, args) {
         .filter((l) => l.length > 0);
 }
 
-async function main() {
-    console.clear();
-    console.log(`${C.blue}${C.bold}🧹 PROJECT DEEP CLEAN UTILITY${C.reset}\n`);
+// --- DESKTOP NOTIFICATION ---
+function notifyDone(duration, savedMB) {
+    const title = "Omega Cleanup Complete";
+    const msg = `Saved: ${savedMB} MB | Time: ${duration}s`;
 
-    // --- 1. POTVRDA ---
-    if (!FORCE) {
-        console.log(`${C.red}${C.bold}⚠️  UPOZORENJE: OVO JE DESTRUKTIVNA AKCIJA! ⚠️${C.reset}`);
-        console.log(`${C.yellow}Ova skripta će:`);
-        console.log(` 1. Obrisati SVE tvoje lokalne izmene (uključujući one koje nisi komitovao!)`);
-        console.log(` 2. Resetovati master na stanje sa GitHub-a`);
-        console.log(` 3. Obrisati node_modules, dist, build foldere`);
-        console.log(` 4. Obrisati lokalne grane koje nisu master${C.reset}`);
-        console.log(`---------------------------------------------------`);
-
-        const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-        const ask = (q) => new Promise((resolve) => rl.question(q, resolve));
-
-        const answer = await ask(`${C.bold}Da li ste sigurni da želite reset na nulu? (yes/NO): ${C.reset}`);
-
-        let deleteRemote = "no";
-        if (answer.toLowerCase() === "yes") {
-            // Dodatna provera za remote brisanje jer je to opasno za tim
-            deleteRemote = await ask(
-                `${C.red}Da li želite da obrišete i REMOTE grane na GitHub-u? (yes/NO): ${C.reset}`
-            );
+    try {
+        if (os.platform() === "darwin") {
+            execSync(`osascript -e 'display notification "${msg}" with title "${title}"'`);
+        } else if (os.platform() === "win32") {
+            // Powershell toast notification trick
+            const psScript = `
+            [void] [System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms");
+            $objNotifyIcon = New-Object System.Windows.Forms.NotifyIcon;
+            $objNotifyIcon.Icon = [System.Drawing.SystemIcons]::Information;
+            $objNotifyIcon.Visible = $True;
+            $objNotifyIcon.ShowBalloonTip(5000, "${title}", "${msg}", "Info");
+            `;
+            spawnSync("powershell", ["-command", psScript], { stdio: "ignore" });
+        } else {
+            spawnSync("notify-send", [title, msg], { stdio: "ignore" });
         }
+    } catch (e) {
+        /* Ignore */
+    }
+}
 
-        rl.close();
+async function checkGithubAccess() {
+    return new Promise((resolve) => {
+        dns.lookup("github.com", (err) => resolve(!err));
+    });
+}
 
-        if (answer.toLowerCase() !== "yes") {
+function createEmergencyBackup() {
+    const status = getOutput("git", ["status", "--porcelain"]);
+    if (status.length === 0) return false;
+
+    console.log(`${C.yellow}🛡️  Pravim sigurnosni backup (Stash)...${C.reset}`);
+    const res = spawnSync("git", ["stash", "push", "-u", "-m", BACKUP_STASH_NAME], { encoding: "utf8" });
+    if (res.status === 0) {
+        console.log(`${C.green}✅ Backup sačuvan: "${BACKUP_STASH_NAME}"${C.reset}`);
+        return true;
+    }
+    return false;
+}
+
+function getFolderSize(dirPath) {
+    if (!fs.existsSync(dirPath)) return 0;
+    let totalSize = 0;
+    try {
+        const stats = fs.statSync(dirPath);
+        if (stats.isDirectory()) {
+            fs.readdirSync(dirPath).forEach((f) => (totalSize += getFolderSize(path.join(dirPath, f))));
+        } else totalSize += stats.size;
+    } catch (e) {}
+    return totalSize;
+}
+
+async function askYesNo(sr, en, dangerLevel = 0) {
+    return new Promise((resolve) => {
+        let color = C.magenta;
+        if (dangerLevel === 1) color = C.yellow;
+        if (dangerLevel === 2) color = C.red;
+        console.log(`\n${color}❓ ${C.bold}${sr}${C.reset}`);
+        console.log(`   ${C.gray}${en}${C.reset}`);
+        if (dangerLevel === 2)
+            console.log(`   ${C.bgRed}${C.white}${C.bold} 💀 OPASNOST! / DANGER! 💀 ${C.reset}`);
+        console.log(
+            `   ${C.white}[${C.green}DEL / ➔${C.white}] = ${C.green}DA (YES)${C.reset}  |  ${C.white}[${C.red}BACKSPACE / ⬅${C.white}] = ${C.red}NE (NO)${C.reset}`
+        );
+
+        process.stdin.setRawMode(true);
+        process.stdin.resume();
+        process.stdin.setEncoding("utf8");
+        const listener = (key) => {
+            if (key === "\u0003") {
+                process.stdin.setRawMode(false);
+                process.exit(1);
+            }
+            if (key === "y" || key === "\u001b[3~" || key === "\u001b[C") {
+                process.stdout.write(`${C.green} ✔ DA / YES${C.reset}\n`);
+                cleanup(true);
+            } else if (key === "n" || key === "\u007f" || key === "\u0008" || key === "\u001b[D") {
+                process.stdout.write(`${C.red} ✖ NE / NO${C.reset}\n`);
+                cleanup(false);
+            }
+        };
+        function cleanup(result) {
+            process.stdin.setRawMode(false);
+            process.stdin.pause();
+            process.stdin.removeListener("data", listener);
+            resolve(result);
+        }
+        process.stdin.on("data", listener);
+    });
+}
+
+function detectBaseBranch() {
+    const branches = getOutput("git", ["branch", "-a"]).join(" ");
+    return branches.includes("main") || branches.includes("remotes/origin/main") ? "main" : "master";
+}
+
+async function main() {
+    printBanner();
+
+    if (!FORCE) {
+        logDual("⚠️  OMEGA CLEANUP", "FULL RESET & OPTIMIZE", C.yellow);
+        console.log(`${C.gray} - Nuklearno čišćenje fajlova i grana`);
+        console.log(` - Backup nekomitovanih izmena`);
+        console.log(` - Desktop notifikacija na kraju`);
+        if (!(await askYesNo("Pokrenuti?", "Start?", 0))) {
             console.log("❌ Prekinuto.");
             process.exit(0);
         }
-
-        global.deleteRemoteInteractive = deleteRemote.toLowerCase() === "yes";
-    } else {
-        console.log(`${C.red}${C.bold}⚡ FORCE MODE: Izvršavam bez pitanja.${C.reset}`);
     }
 
-    // --- 2. RESET MASTER ---
-    console.log(`\n${C.green}>>> 1. Osvežavam Master...${C.reset}`);
-    run("git", ["checkout", "master"]);
-    run("git", ["fetch", "origin"]);
-    run("git", ["reset", "--hard", "origin/master"]);
+    const baseBranch = detectBaseBranch();
+    const start = Date.now();
+    const hasNet = await checkGithubAccess();
 
-    // [NOVO] Prune briše lokalne reference na grane koje više ne postoje na remote-u
-    run("git", ["remote", "prune", "origin"]);
+    // 1. CALCULATE SIZE
+    process.stdout.write(`${C.gray}📊 Računam smeće... ${C.reset}`);
+    const pathsToMeasure = ["node_modules", "dist", "build", "coverage", "target"];
+    let totalBytes = 0;
+    pathsToMeasure.forEach((p) => (totalBytes += getFolderSize(path.resolve(process.cwd(), p))));
+    const mbReclaimed = (totalBytes / (1024 * 1024)).toFixed(2);
+    console.log(`${C.green}${mbReclaimed} MB${C.reset}`);
 
-    // --- 3. BRISANJE LOKALNIH GRANA ---
-    console.log(`\n${C.green}>>> 2. Čistim lokalne grane...${C.reset}`);
-    const localBranches = getOutput("git", ["branch"]);
-    for (const b of localBranches) {
-        const branchName = b.replace(/\*/g, "").trim();
-        // Preskačemo safe branches i trenutnu granu (iako smo na masteru)
-        if (!SAFE_BRANCHES.includes(branchName)) {
-            run("git", ["branch", "-D", branchName], true); // -D force delete
-        }
-    }
+    // 2. EMERGENCY BACKUP
+    createEmergencyBackup();
 
-    // --- 4. BRISANJE REMOTE GRANA (OPCIONO) ---
-    const shouldDeleteRemote = FORCE || global.deleteRemoteInteractive;
-    if (shouldDeleteRemote) {
-        console.log(`\n${C.red}${C.bold}>>> 3. Čistim REMOTE grane na GitHub-u...${C.reset}`);
-        const remoteBranches = getOutput("git", ["branch", "-r"]);
-
-        for (const rb of remoteBranches) {
-            if (rb.includes("->")) continue; // Preskoči HEAD pointere
-
-            const parts = rb.split("/");
-            // obično: origin/ime-grane. Ali može biti origin/feat/ime
-            const remoteName = parts[0];
-            const branchName = parts.slice(1).join("/");
-
-            if (!SAFE_BRANCHES.includes(branchName)) {
-                console.log(`${C.yellow}Brišem remote granu: ${branchName}${C.reset}`);
-                run("git", ["push", remoteName, "--delete", branchName], true);
-            }
-        }
-    } else {
-        console.log(`\n${C.gray}>>> 3. Preskačem brisanje remote grana.${C.reset}`);
-    }
-
-    // --- 5. CLEAN FAJLOVA (Nuclear Clean) ---
-    console.log(`\n${C.green}>>> 4. Fizičko čišćenje fajlova (Git Clean & NPM)...${C.reset}`);
-
-    // Konstruišemo argumente za git clean
-    // -f: force, -d: directories, -x: ignored files too
-    const cleanArgs = ["clean", "-ffdx"];
-
-    // [BITNO] Dodajemo exceptione da ne brišemo .env i .vs
-    KEEP_FILES.forEach((file) => {
-        cleanArgs.push("-e", file);
+    // 3. CACHE SNIPER
+    logDual("🔫 1. Cache Sniper", "1. Removing Hidden Caches", C.green);
+    NASTY_CACHES.forEach((file) => {
+        if (fs.existsSync(file)) fs.rmSync(file, { recursive: true, force: true });
     });
 
-    run("git", cleanArgs);
+    // 4. GIT RESET
+    logDual("🔄 2. Git Reset", "2. Git Reset", C.green);
+    run("git", ["checkout", baseBranch]);
 
-    // --- 6. REINSTALL ---
-    console.log(`\n${C.green}>>> 5. Instalacija zavisnosti (npm ci)...${C.reset}`);
-    // npm ci je brži i striktniji od npm install (poštuje lock file 100%)
-    run("npm", ["ci"]);
+    if (hasNet) {
+        run("git", ["fetch", "origin"]);
+        run("git", ["reset", "--hard", `origin/${baseBranch}`]);
+        run("git", ["remote", "prune", "origin"]);
+    } else {
+        console.log(`${C.yellow}⚠️ Nema interneta. Preskačem fetch origin.${C.reset}`);
+    }
 
-    console.log(`\n${C.green}${C.bold}✅ PROJECT RESET COMPLETE!${C.reset}`);
-    console.log(`${C.gray}Sada si na čistom masteru, sinhronizovan sa origin/master.${C.reset}\n`);
+    // 5. CLEAN BRANCHES
+    logDual("🧹 3. Lokalne Grane", "3. Local Branches", C.green);
+    const localBranches = getOutput("git", ["branch"]);
+    const safeBranches = [baseBranch, "master", "main", "dev", "* " + baseBranch];
+    localBranches.forEach((b) => {
+        const name = b.replace("*", "").trim();
+        if (!safeBranches.includes(name)) run("git", ["branch", "-D", name], true);
+    });
+
+    // 6. REMOTE BRANCHES
+    if (!FORCE && hasNet) {
+        console.log(`\n${C.red}---------------------------------------------------${C.reset}`);
+        if (await askYesNo("Obrisati REMOTE grane?", "Delete REMOTE branches?", 1)) {
+            beep();
+            if (await askYesNo("SIGURNO? (Nema nazad)", "REALLY SURE?", 2)) {
+                console.log(`${C.bgRed}${C.white} 🔥 BRISANJE... 🔥 ${C.reset}`);
+                const rBranches = getOutput("git", ["branch", "-r"]);
+                let cnt = 0;
+                rBranches.forEach((rb) => {
+                    if (rb.includes("->") || rb.includes(baseBranch)) return;
+                    const bName = rb.split("/").slice(1).join("/");
+                    const rName = rb.split("/")[0];
+                    if (bName !== baseBranch && bName !== "master" && bName !== "main") {
+                        console.log(`${C.yellow}Del: ${bName}${C.reset}`);
+                        run("git", ["push", rName, "--delete", bName], true);
+                        cnt++;
+                    }
+                });
+                if (cnt === 0) console.log(`${C.gray}Nema remote grana.${C.reset}`);
+            }
+        }
+    }
+
+    // 7. NUCLEAR FILE CLEAN
+    logDual("☢️  4. Brisanje fajlova", "4. File Cleanup", C.green);
+    if (fs.existsSync(path.join(WASM_DIR, "Cargo.toml"))) {
+        try {
+            spawnSync("cargo", ["clean"], { cwd: WASM_DIR });
+        } catch (e) {}
+    }
+
+    // Smart Keep: .env fajlovi se automatski čuvaju
+    const keepArgs = [];
+    BASE_KEEP.forEach((f) => keepArgs.push("-e", f));
+    fs.readdirSync(process.cwd()).forEach((file) => {
+        if (file.startsWith(".env")) keepArgs.push("-e", file);
+    });
+
+    run("git", ["clean", "-ffdx", ...keepArgs]);
+
+    // 8. GIT OPTIMIZE
+    logDual("♻️  5. Git Optimize", "5. Git GC", C.green);
+    run("git", ["gc", "--prune=now", "--aggressive"]);
+
+    // 9. INSTALL
+    logDual("📦 6. Instalacija", "6. Installation", C.green);
+    if (fs.existsSync("package-lock.json")) {
+        // Probaj npm ci, ako ne uspe (npr konflikt), uradi npm install
+        if (!run("npm", ["ci"], true)) {
+            console.log(`${C.yellow}⚠️ npm ci failed, fallback to npm install...${C.reset}`);
+            run("npm", ["install"]);
+        }
+    } else {
+        run("npm", ["install"]);
+    }
+
+    const dur = ((Date.now() - start) / 1000).toFixed(2);
+
+    beep();
+    notifyDone(dur, mbReclaimed);
+    console.log(`\n${C.green}${C.bold}✨ OMEGA COMPLETE ✨${C.reset}`);
+    console.log(`${C.cyan}💾 Space Saved: ${mbReclaimed} MB${C.reset}`);
+    console.log(`${C.gray}⏱️  Time: ${dur}s${C.reset}\n`);
 }
 
 main();
