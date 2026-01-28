@@ -39,6 +39,10 @@ jobs:
             - name: Install deps (npm ci)
               run: npm ci
 
+            # --- NOVO: Instalacija wasm-pack alata ---
+            - name: Install wasm-pack
+              run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
             - name: Security audit (npm audit --audit-level=high)
               run: npm run audit:high
 
