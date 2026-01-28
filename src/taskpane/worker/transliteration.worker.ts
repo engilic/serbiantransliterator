@@ -21,21 +21,29 @@ import * as wasmPkg from "../../wasm-core/pkg";
 
 const ctx = self as unknown as Worker;
 
+// [SAFETY NET] Global Error Handler za Worker
+self.onerror = (e) => {
+    console.error("[Worker Critical Error]", e);
+    postReply({
+        type: "ERROR",
+        error: `Worker Crash: ${e instanceof Event ? "Unknown Event Error" : String(e)}`,
+    });
+};
+
 function initWasm(payload: { dictE2i: Uint8Array; dictI2e: Uint8Array; wasmModule: Uint8Array }) {
     try {
         const wasmModule = new WebAssembly.Module(payload.wasmModule as BufferSource);
 
+        // Kastujemo paket u tip koji ima initSync
         const pkg = wasmPkg as unknown as { initSync: (m: WebAssembly.Module) => unknown };
 
         // 1. Inicijalizuj WASM (ovo setuje interni state u pkg modulu)
         pkg.initSync(wasmModule);
 
         // [CRITICAL FIX] 2. Prosledi CEO PAKET (wrappere), a ne sirovu instancu!
-        // Ovo rešava problem gde dobijaš "1,0" umesto teksta.
         textCore.setWasmModule(wasmPkg);
 
         // 3. Učitaj rečnike koristeći wrapper funkcije iz paketa
-        // (Kastujemo u any/interfejs jer TS ponekad ne vidi funkcije direktno na * importu)
         const wrapper = wasmPkg as unknown as {
             load_dictionary_bin: (m: string, d: Uint8Array) => void;
             init_replacer: (j: string) => void;
@@ -44,12 +52,12 @@ function initWasm(payload: { dictE2i: Uint8Array; dictI2e: Uint8Array; wasmModul
         wrapper.load_dictionary_bin("e2i", payload.dictE2i);
         wrapper.load_dictionary_bin("i2e", payload.dictI2e);
 
-        // Inicijalizuj replacer (za brze zamene stringova u Rust-u)
+        // Inicijalizuj replacer
         wrapper.init_replacer("{}");
 
         postReply({ type: "INIT_DONE" });
     } catch (e) {
-        // Šaljemo jasnu poruku greške nazad klijentu
+        console.error("[Worker Init Error]", e);
         postReply({ type: "ERROR", error: e instanceof Error ? e.message : String(e) });
     }
 }
@@ -63,6 +71,7 @@ function handleConvert(id: string, xml: string, options: OoxmlOptions) {
             payload: { xml: res.xml, type: res.type, stats: res.stats },
         });
     } catch (e) {
+        console.error(`[Worker Job Error ${id}]`, e);
         postReply({ type: "ERROR", id, error: e instanceof Error ? e.message : String(e) });
     }
 }
@@ -82,3 +91,6 @@ ctx.addEventListener("message", (event) => {
             break;
     }
 });
+
+// [FIX] Force Module Mode
+export {};
