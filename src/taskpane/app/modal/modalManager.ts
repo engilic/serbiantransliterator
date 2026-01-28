@@ -18,30 +18,27 @@ export class ModalManager {
     private readonly MODAL_TIMEOUT_MS = 300000; // 5 minutes
     private readonly listeners = new Set<(state: ModalState | null) => void>();
 
-    private setTimer(cb: () => void, ms: number): ReturnType<typeof setTimeout> {
-        // Prefer window timers in jsdom/browser environments
-        const w = typeof window !== "undefined" ? window : undefined;
+    // [MAX3 A11Y] Track element that triggered the modal
+    private lastFocusedElement: HTMLElement | null = null;
 
+    private setTimer(cb: () => void, ms: number): ReturnType<typeof setTimeout> {
+        const w = typeof window !== "undefined" ? window : undefined;
         const fn =
             (w && typeof w.setTimeout === "function" ? w.setTimeout : undefined) ??
             (typeof globalThis.setTimeout === "function" ? globalThis.setTimeout : undefined);
 
-        // Last resort: throw early (should not happen in real taskpane or vitest jsdom)
         if (!fn) {
             throw new Error("setTimeout is not available in this environment.");
         }
-
         return fn(cb, ms) as ReturnType<typeof setTimeout>;
     }
 
     private clearTimer(handle: ReturnType<typeof setTimeout>): void {
         const w = typeof window !== "undefined" ? window : undefined;
-
         const fn =
             (w && typeof w.clearTimeout === "function" ? w.clearTimeout : undefined) ??
             (typeof globalThis.clearTimeout === "function" ? globalThis.clearTimeout : undefined);
 
-        // Best-effort (do not throw during cleanup)
         if (typeof fn === "function") {
             fn(handle as unknown as number);
         }
@@ -51,7 +48,12 @@ export class ModalManager {
      * Opens a modal with automatic cleanup after timeout.
      */
     public open(type: ModalType, resolver?: (value: boolean) => void): void {
-        this.cleanup();
+        // [MAX3 A11Y] Capture focus before opening logic overwrites anything
+        if (document.activeElement instanceof HTMLElement) {
+            this.lastFocusedElement = document.activeElement;
+        }
+
+        this.cleanup(false); // false = don't restore focus yet (we are opening new one)
 
         const timeoutHandle = this.setTimer(() => {
             console.warn(`Modal '${type}' timed out after ${this.MODAL_TIMEOUT_MS}ms`);
@@ -77,16 +79,15 @@ export class ModalManager {
             const type = this.state.type;
             const duration = Date.now() - this.state.openedAt;
 
-            this.cleanup();
+            this.cleanup(true); // true = restore focus
 
-            // Log modal interaction time for analytics
             if (duration > 30000) {
                 console.info(`Modal '${type}' resolved after ${(duration / 1000).toFixed(1)}s`);
             }
 
             resolver(value);
         } else {
-            this.cleanup();
+            this.cleanup(true);
         }
     }
 
@@ -94,18 +95,33 @@ export class ModalManager {
      * Force close modal without resolving (for preview modal).
      */
     public forceClose(): void {
-        this.cleanup();
+        this.cleanup(true);
     }
 
     /**
      * Cleanup current modal state.
      */
-    private cleanup(): void {
+    private cleanup(restoreFocus: boolean): void {
         if (this.state?.timeoutHandle) {
             this.clearTimer(this.state.timeoutHandle);
         }
         this.state = null;
         this.notifyListeners();
+
+        // [MAX3 A11Y] Restore focus to the trigger button
+        if (restoreFocus && this.lastFocusedElement) {
+            // Small timeout to allow UI to update (modal closing animation)
+            setTimeout(() => {
+                try {
+                    if (this.lastFocusedElement && document.body.contains(this.lastFocusedElement)) {
+                        this.lastFocusedElement.focus();
+                    }
+                } catch {
+                    // ignore if element is gone or not focusable
+                }
+                this.lastFocusedElement = null;
+            }, 50);
+        }
     }
 
     /**
@@ -138,8 +154,9 @@ export class ModalManager {
      * Emergency cleanup (call on app unmount).
      */
     public destroy(): void {
-        this.cleanup();
+        this.cleanup(false);
         this.listeners.clear();
+        this.lastFocusedElement = null;
     }
 }
 
