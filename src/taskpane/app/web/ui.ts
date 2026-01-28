@@ -8,8 +8,8 @@ import { html } from "../../../shared/safeHtml";
 import { convertPlainText, type Direction, type CoreOptions } from "../../../core/textCore";
 import { getSettingsFromUi } from "../settings/getters";
 import { state } from "../state";
-import { playSuccessSound } from "../audio";
-import { checkIncognito } from "../incognito";
+import { playSuccessSound } from "../utils/audio"; // [CHANGED] Updated path
+import { checkIncognito } from "../utils/incognito"; // [CHANGED] Updated path
 import DOMPurify from "dompurify"; // [MAX3] Security Standard
 
 interface FileSystemFileHandle {
