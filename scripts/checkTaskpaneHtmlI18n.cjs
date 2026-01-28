@@ -47,20 +47,18 @@ function main() {
     let html = fs.readFileSync(FILE, "utf8");
 
     // --- PRE-PROCESSING (Cleaning) ---
-    // Koristimo .repeat(m.length) da bismo zamenili sadrzaj razmacima,
-    // kako bismo ocuvali tacne brojeve linija i kolona za izvestaj.
+    // Using .repeat(m.length) to preserve line numbers/positions
 
     // 1. Remove Comments <!-- ... -->
     html = html.replace(/<!--[\s\S]*?-->/g, (m) => " ".repeat(m.length));
 
     // 2. Remove Scripts <script>...</script>
-    // [FIX] Robusniji regex da zadovolji CodeQL security check
-    // Hvata <script...> sadrzaj < / script > (sa razmacima)
-    html = html.replace(/<script\b[^>]*>[\s\S]*?<\s*\/script\s*>/gi, (m) => " ".repeat(m.length));
+    // [FIX] CodeQL Compliant: Catch malformed closing tags like </script foo>
+    html = html.replace(/<script\b[^>]*>[\s\S]*?<\/script[^>]*>/gi, (m) => " ".repeat(m.length));
 
     // 3. Remove Styles <style>...</style>
-    // [FIX] Robusniji regex
-    html = html.replace(/<style\b[^>]*>[\s\S]*?<\s*\/style\s*>/gi, (m) => " ".repeat(m.length));
+    // [FIX] CodeQL Compliant
+    html = html.replace(/<style\b[^>]*>[\s\S]*?<\/style[^>]*>/gi, (m) => " ".repeat(m.length));
 
     // 4. Remove EJS/Template tags <% ... %>
     html = html.replace(/<%[\s\S]*?%>/g, (m) => " ".repeat(m.length));
@@ -82,12 +80,12 @@ function main() {
         const lastTagOpen = before.lastIndexOf("<");
         if (lastTagOpen === -1) continue;
 
-        const tagStr = before.slice(lastTagOpen); // npr: <div id="app" data-i18n="key">
+        const tagStr = before.slice(lastTagOpen); // e.g. <div id="app" data-i18n="key">
 
         // Ignore if tag has data-i18n
         if (tagStr.includes("data-i18n")) continue;
 
-        const idx = m.index + 1; // +1 jer preskačemo '>'
+        const idx = m.index + 1;
         const { line, col } = posFromIndex(html, idx);
 
         violations.push({
