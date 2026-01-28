@@ -1,7 +1,14 @@
 import type { OoxmlOptions, ConvertStats } from "../../shared/ooxml/convertOoxml";
 
 export type WorkerMessage =
-    | { type: "INIT"; payload: { dictE2i: Uint8Array; dictI2e: Uint8Array } }
+    | {
+          type: "INIT";
+          payload: {
+              dictE2i: Uint8Array;
+              dictI2e: Uint8Array;
+              wasmModule: Uint8Array; // [FIX] Added WASM module bytes
+          };
+      }
     | { type: "CONVERT"; id: string; payload: { xml: string; options: OoxmlOptions } };
 
 export type WorkerResponse =

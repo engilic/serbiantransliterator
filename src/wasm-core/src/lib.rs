@@ -6,24 +6,24 @@ use aho_corasick::AhoCorasick;
 
 mod dictionary;
 mod convert;
-mod rules; // <--- NEW MOD
+mod rules;
 mod tests;
 
 use dictionary::load_dictionary_internal;
 use convert::{to_cyrillic_internal, to_latin_internal, convert_dialect_internal};
-use rules::SYSTEM_EXCEPTIONS; // <--- USE
+use rules::SYSTEM_EXCEPTIONS;
 
 static REPLACER: Lazy<Mutex<Option<(AhoCorasick, Vec<String>)>>> = Lazy::new(|| {
     Mutex::new(None)
 });
-
-// [REMOVED] SYSTEM_EXCEPTIONS constant (moved to rules.rs)
 
 #[wasm_bindgen]
 pub fn init_debug() {
     console_error_panic_hook::set_once();
 }
 
+// [FIX] Added #[wasm_bindgen] attribute here so it gets exported to JS!
+#[wasm_bindgen]
 pub fn init_replacer(custom_json: &str) -> Result<(), JsValue> {
     let custom_map: HashMap<String, String> = if custom_json.is_empty() {
         HashMap::new()

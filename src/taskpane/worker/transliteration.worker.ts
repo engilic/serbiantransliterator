@@ -1,56 +1,69 @@
+// === FILE: src/taskpane/worker/transliteration.worker.ts ===
+
 /// <reference lib="webworker" />
 
+// [FIX] 1. Učitaj polyfille (bitno za starije Office verzije i WebView)
+import "core-js/stable";
+import "regenerator-runtime/runtime";
+
+// [FIX] 2. Patch za TextEncoder/Decoder ako fale u global scope-u workera
+if (typeof TextEncoder === "undefined") {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { TextEncoder, TextDecoder } = require("util");
+    globalThis.TextEncoder = TextEncoder;
+    globalThis.TextDecoder = TextDecoder;
+}
+
 import { convertOoxml, type OoxmlOptions } from "../../shared/ooxml/convertOoxml";
+import * as textCore from "../../core/textCore";
 import type { WorkerMessage, WorkerResponse } from "./types";
-import * as wasm from "../../../wasm-core/pkg";
+import * as wasmPkg from "../../wasm-core/pkg";
 
 const ctx = self as unknown as Worker;
-let isInitialized = false;
 
-async function initWasm(dictE2i: Uint8Array, dictI2e: Uint8Array) {
+function initWasm(payload: { dictE2i: Uint8Array; dictI2e: Uint8Array; wasmModule: Uint8Array }) {
     try {
-        wasm.load_dictionary_bin("e2i", dictE2i);
-        wasm.load_dictionary_bin("i2e", dictI2e);
-        wasm.init_replacer("{}");
-        isInitialized = true;
+        const wasmModule = new WebAssembly.Module(payload.wasmModule as BufferSource);
+
+        const pkg = wasmPkg as unknown as { initSync: (m: WebAssembly.Module) => unknown };
+
+        // 1. Inicijalizuj WASM (ovo setuje interni state u pkg modulu)
+        pkg.initSync(wasmModule);
+
+        // [CRITICAL FIX] 2. Prosledi CEO PAKET (wrappere), a ne sirovu instancu!
+        // Ovo rešava problem gde dobijaš "1,0" umesto teksta.
+        textCore.setWasmModule(wasmPkg);
+
+        // 3. Učitaj rečnike koristeći wrapper funkcije iz paketa
+        // (Kastujemo u any/interfejs jer TS ponekad ne vidi funkcije direktno na * importu)
+        const wrapper = wasmPkg as unknown as {
+            load_dictionary_bin: (m: string, d: Uint8Array) => void;
+            init_replacer: (j: string) => void;
+        };
+
+        wrapper.load_dictionary_bin("e2i", payload.dictE2i);
+        wrapper.load_dictionary_bin("i2e", payload.dictI2e);
+
+        // Inicijalizuj replacer (za brze zamene stringova u Rust-u)
+        wrapper.init_replacer("{}");
+
         postReply({ type: "INIT_DONE" });
     } catch (e) {
-        postReply({ type: "ERROR", error: String(e) });
+        // Šaljemo jasnu poruku greške nazad klijentu
+        postReply({ type: "ERROR", error: e instanceof Error ? e.message : String(e) });
     }
 }
 
 function handleConvert(id: string, xml: string, options: OoxmlOptions) {
-    if (!isInitialized) {
-        postReply({ type: "ERROR", id, error: "Worker not initialized" });
-        return;
-    }
-
     try {
-        // [UNIVERSE MODE] Hibridna strategija:
-        // Ako je XML ogroman (>1MB) i ne zahteva kompleksne JS mostove (samo clean text),
-        // koristi Rust Streaming parser (Ultra Fast).
-        // Inače koristi JS DOMParser (Precizniji za bridging).
-
-        let resultXml = "";
-        let type = "";
-        let stats = null;
-
-        // Za sada, zadržavamo JS logiku jer je `bridging` (zaštita linkova preko nodova)
-        // previše kompleksan da bi se prebacio u Rust streaming parser u jednom koraku bez rizika.
-        // Ali dodajemo SIMD ubrzanje za samu transliteraciju unutar JS petlje.
-
         const res = convertOoxml(xml, options);
-        resultXml = res.xml;
-        type = res.type;
-        stats = res.stats;
-
         postReply({
             type: "CONVERT_DONE",
             id,
-            payload: { xml: resultXml, type, stats },
+            payload: { xml: res.xml, type: res.type, stats: res.stats },
         });
     } catch (e) {
-        postReply({ type: "ERROR", id, error: String(e) });
+        postReply({ type: "ERROR", id, error: e instanceof Error ? e.message : String(e) });
     }
 }
 
@@ -58,11 +71,11 @@ function postReply(msg: WorkerResponse) {
     ctx.postMessage(msg);
 }
 
-ctx.addEventListener("message", async (event) => {
+ctx.addEventListener("message", (event) => {
     const msg = event.data as WorkerMessage;
     switch (msg.type) {
         case "INIT":
-            await initWasm(msg.payload.dictE2i, msg.payload.dictI2e);
+            initWasm(msg.payload);
             break;
         case "CONVERT":
             handleConvert(msg.id, msg.payload.xml, msg.payload.options);

@@ -1,8 +1,20 @@
-// src/core/heuristics.ts
+// === FILE: src/core/heuristics.ts ===
 import { Tok, prevNextWord, getPrevWord, getNextWord } from "./tokenizer";
 import { ALWAYS_LATIN_TOKENS_AMBIGUOUS, ALWAYS_LATIN_TOKENS_STRICT } from "./rules";
 
-export const normKey = (s: string) => s.normalize("NFC").toLowerCase();
+export const normKey = (s: unknown): string => {
+    if (s === null || s === undefined) return "";
+    const str = String(s);
+    if (!str) return "";
+    if (typeof str.normalize === "function") {
+        try {
+            return str.normalize("NFC").toLowerCase();
+        } catch {
+            return str.toLowerCase();
+        }
+    }
+    return str.toLowerCase();
+};
 
 const ROMAN = /^[IVXLCDM]+$/;
 const RULERS = new Set([
@@ -63,7 +75,7 @@ export function shouldProtectRomanToken(tokens: Tok[], idx: number): boolean {
     const t = tokens[idx];
     if (!t) return false;
     if (t.type !== "word") return false;
-    const v = t.value;
+    const v = String(t.value || ""); // [FIX] Ensure string
     if (!ROMAN.test(v)) return false;
     if (v !== v.toUpperCase()) return false;
     if (v.length > 8) return false;
@@ -98,14 +110,17 @@ export function shouldProtectAmbiguousBrandToken(tokens: Tok[], idx: number): bo
     return false;
 }
 
-// [GALAXY MODE] Smart Heuristics
-export function shouldProtectHeuristic(word: string): boolean {
-    // MixedCase check (npr. "iCloud", "JavaScript", "myVariable")
-    if (word.length < 3) return false;
+export function shouldProtectHeuristic(word: unknown): boolean {
+    // [FIX] Defensive guard: word must be a string
+    if (word == null) return false;
+    const w = String(word);
 
-    const slice = word.slice(1);
+    if (w.length < 3) return false;
+
+    // [FIX] Ovde je pucalo ako w nije string
+    const slice = w.slice(1);
+
     const hasUpper = /[A-ZČĆŽŠĐ]/.test(slice);
     const hasLower = /[a-zčćžšđ]/.test(slice);
-
     return hasUpper && hasLower;
 }

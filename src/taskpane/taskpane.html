@@ -7,10 +7,8 @@
         <title data-i18n="app_title">Serbian Transliterator</title>
         <link rel="manifest" href="manifest.webmanifest" />
 
-        <link rel="preload" href="assets/dict_e2i.bin" as="fetch" crossorigin />
-        <link rel="preload" href="assets/dict_i2e.bin" as="fetch" crossorigin />
+        <!-- PRELOAD JE UKLONJEN JER SU SADA PODACI INLINE U JS-u -->
         <link rel="preconnect" href="https://appsforoffice.microsoft.com" />
-
         <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
     </head>
     <body>
@@ -35,17 +33,6 @@
             <div style="margin-top: 10px; opacity: 0.7" data-i18n="web_clipboard_ready"></div>
         </div>
 
-        <script>
-            (function () {
-                if (new URLSearchParams(window.location.search).get("mode") === "web") {
-                    var el = document.getElementById("webModePreloader");
-                    if (el) el.style.display = "flex";
-                    var sk = document.getElementById("skeleton");
-                    if (sk) sk.style.display = "none";
-                }
-            })();
-        </script>
-
         <div id="skeleton" aria-hidden="true">
             <div class="sk-line" style="width: 40%"></div>
             <div class="sk-rect"></div>
@@ -55,34 +42,15 @@
 
         <main id="appMain" role="main" style="display: none">
             <h1 class="visually-hidden" data-i18n="app_title">Serbian Transliterator</h1>
+            <%= readPart('components/settings/profile.html') %> <%=
+            readPart('components/settings/direction.html') %> <%=
+            readPart('components/settings/protected.html') %> <%= readPart('components/settings/options.html')
+            %> <%= readPart('components/advanced/advanced.html') %>
 
-            <!-- 1. Profile -->
-            <%= readPart('components/settings/profile.html') %>
-
-            <!-- 2. Direction -->
-            <%= readPart('components/settings/direction.html') %>
-
-            <!-- 3. Protected (Moved Up) -->
-            <%= readPart('components/settings/protected.html') %>
-
-            <!-- 4. Options -->
-            <%= readPart('components/settings/options.html') %>
-
-            <!-- 5. Advanced -->
-            <%= readPart('components/advanced/advanced.html') %>
-
-            <div
-                id="progressContainer"
-                class="progress-container"
-                style="display: none"
-                role="progressbar"
-                aria-valuemin="0"
-                aria-valuemax="100"
-            >
+            <div id="progressContainer" class="progress-container" style="display: none" role="progressbar">
                 <div id="progressBar" class="progress-bar"></div>
             </div>
 
-            <!-- 6. Stats Accordion -->
             <div id="statsBox" class="accordion fade-in">
                 <button
                     id="statsHeader"
@@ -91,47 +59,15 @@
                     aria-expanded="false"
                     aria-controls="statsContent"
                 >
-                    <div class="accordion-header-left">
-                        <svg
-                            class="accordion-icon"
-                            viewBox="0 0 24 24"
-                            width="16"
-                            height="16"
-                            aria-hidden="true"
-                        >
-                            <path d="M4 9h4v11H4V9zm6-5h4v16h-4V4zm6 8h4v8h-4V12z" />
-                        </svg>
-                        <span class="accordion-title" data-i18n="ui_stats_accordion_header"></span>
-                    </div>
-
-                    <svg
-                        id="statsArrow"
-                        class="accordion-chevron"
-                        viewBox="0 0 24 24"
-                        width="20"
-                        height="20"
-                        fill="currentColor"
-                        aria-hidden="true"
-                    >
-                        <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z" />
-                    </svg>
+                    <span class="accordion-title" data-i18n="ui_stats_accordion_header"></span>
                 </button>
-
                 <div id="statsContent" class="accordion-content" aria-hidden="true">
-                    <pre id="statsText" data-i18n="ui_stats_empty_placeholder"></pre>
+                    <pre id="statsText"></pre>
                 </div>
             </div>
         </main>
 
-        <div id="dragOverlay" aria-hidden="true" role="presentation" style="display: none">
-            <div class="drag-content">
-                <span class="drag-icon-lg" aria-hidden="true">📂</span>
-                <div class="drag-title" data-i18n="web_drop_overlay_title"></div>
-            </div>
-        </div>
-
         <footer role="contentinfo"><%= readPart('components/footer/sticky-footer.html') %></footer>
-
         <%= readPart('components/modals/confirm-modal.html') %> <%=
         readPart('components/modals/tour-modal.html') %>
     </body>
