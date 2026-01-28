@@ -1,4 +1,3 @@
-// === FILE: webpack.common.js ===
 /* eslint-disable no-undef */
 const path = require("path");
 const fs = require("fs");
@@ -6,7 +5,7 @@ const CopyWebpackPlugin = require("copy-webpack-plugin");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 
-// Helper za injectovanje HTML parcijala (header, footer, modals)
+// Helper za injectovanje HTML parcijala
 function readPart(partialPath) {
     const fullPath = path.resolve(__dirname, "src/taskpane", partialPath);
     return fs.readFileSync(fullPath, "utf8");
@@ -23,8 +22,8 @@ module.exports = {
     output: {
         path: path.resolve(__dirname, "dist"),
         filename: "[name].js",
-        globalObject: "self", // CRITICAL: Fix for Web Workers in Office
-        clean: true, // CRITICAL: Clean dist folder before build
+        globalObject: "self", // OBAVEZNO za Workere u Office-u
+        clean: true, // Brise dist pre builda
     },
 
     // 3. Resolver
@@ -39,29 +38,26 @@ module.exports = {
     // 4. Loaders
     module: {
         rules: [
-            // TypeScript
             {
                 test: /\.ts$/,
                 use: "babel-loader",
                 exclude: /node_modules/,
             },
-            // CSS (Extracted)
             {
                 test: /\.css$/i,
                 use: [MiniCssExtractPlugin.loader, "css-loader"],
             },
-            // Images
             {
                 test: /\.(png|jpg|jpeg|gif|ico)$/,
                 type: "asset/resource",
                 generator: { filename: "assets/[name][ext]" },
             },
-            // Binary Files (Dictionaries) -> Base64 Inline
+            // [CRITICAL] Inline binarni fajlovi (rečnici)
             {
                 test: /\.bin$/,
                 type: "asset/inline",
             },
-            // WASM -> Base64 Inline (Najsigurnije za Office Add-ins)
+            // [CRITICAL] Inline WASM (najsigurnije za Office)
             {
                 test: /\.wasm$/,
                 type: "asset/inline",
@@ -100,7 +96,6 @@ module.exports = {
         }),
     ],
 
-    // 6. Performance Hints (Smanji buku u konzoli)
     performance: {
         hints: false,
     },

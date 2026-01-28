@@ -1,10 +1,8 @@
 /* eslint-disable no-undef */
-const { merge } = require("webpack-merge");
-const common = require("./webpack.common.js");
 const TerserPlugin = require("terser-webpack-plugin");
 const CompressionPlugin = require("compression-webpack-plugin");
 
-module.exports = merge(common, {
+module.exports = {
     mode: "production",
     devtool: false,
 
@@ -15,21 +13,19 @@ module.exports = merge(common, {
             new TerserPlugin({
                 parallel: true,
                 extractComments: false,
-                // [FIX] Isključi minifikaciju za fajlove veće od 500KB (verovatno sadrže rečnike)
-                // Terser se guši na ogromnim linijama.
+                // [FIX] Isključi minifikaciju za velike binarne fajlove
                 exclude: /\/node_modules\/|.*\.bin\.js/,
                 terserOptions: {
                     compress: {
                         drop_console: true,
-                        passes: 1,
+                        passes: 1, // Brzina
                     },
                     mangle: {
                         toplevel: true,
                     },
                     output: {
                         comments: false,
-                        // [FIX] Ovo može pomoći: max_line_len
-                        max_line_len: 1000,
+                        max_line_len: 1000, // Brzina za velike linije
                     },
                 },
             }),
@@ -37,8 +33,7 @@ module.exports = merge(common, {
         splitChunks: {
             chunks: "all",
             minSize: 20000,
-            // [FIX] Povećaj limit da ne secka rečnike previše
-            maxSize: 500000,
+            maxSize: 500000, // Veći chunkovi za rečnike
             cacheGroups: {
                 vendors: {
                     test: /[\\/]node_modules[\\/]/,
@@ -63,4 +58,4 @@ module.exports = merge(common, {
     performance: {
         hints: false,
     },
-});
+};
