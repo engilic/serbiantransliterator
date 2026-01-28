@@ -4,7 +4,7 @@ const path = require("path");
 
 // --- KONFIGURACIJA ---
 const EXTENSION_NAME = "Serbian Transliterator";
-const MANIFESTS = ["manifest.xml", "manifest.prod.xml", "src/manifest.xml"];
+const MANIFESTS = ["manifest.xml", "manifest.prod.xml"];
 
 // --- ANSI BOJE ---
 const C = {
