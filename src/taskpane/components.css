@@ -190,7 +190,7 @@ textarea:focus {
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.8px;
-    color: var(--colorBrandForeground1);
+    color: var(--colorNeutralForeground1);
 }
 
 .accordion-chevron {
