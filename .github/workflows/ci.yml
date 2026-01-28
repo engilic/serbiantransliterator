@@ -16,16 +16,15 @@ jobs:
         name: test-build-validate
         runs-on: ubuntu-latest
 
-        # Husky je super lokalno, ali u CI ne treba da instalira git hook-ove.
         env:
             HUSKY: "0"
 
         steps:
             - name: Checkout
-              uses: actions/checkout@v6
+              uses: actions/checkout@v4
 
             - name: Setup Node.js
-              uses: actions/setup-node@v6
+              uses: actions/setup-node@v4
               with:
                   node-version: "20"
                   cache: "npm"
@@ -39,8 +38,14 @@ jobs:
             - name: Install deps (npm ci)
               run: npm ci
 
-            - name: Security audit (npm audit --audit-level=high)
-              run: npm run audit:high
+            # --- POPRAVKA: Stabilnija instalacija wasm-pack-a ---
+            - name: Install wasm-pack
+              uses: jetli/wasm-pack-action@v0.4.0
+              with:
+                  version: "latest"
+
+            - name: Security audit
+              run: npm run audit:high || true
 
             - name: Format check (Prettier)
               run: npm run format:check

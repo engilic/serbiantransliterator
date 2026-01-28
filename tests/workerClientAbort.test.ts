@@ -41,18 +41,6 @@ describe("WorkerClient - Abort & Queue Logic", () => {
 
     beforeEach(() => {
         vi.useRealTimers();
-
-        // FIX: Ensure fetch is mocked for every test run explicitly
-        (globalThis as any).fetch = vi.fn().mockReturnValue(
-            Promise.resolve({
-                ok: true,
-                status: 200,
-                arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
-                json: () => Promise.resolve({}),
-                text: () => Promise.resolve(""),
-            })
-        );
-
         client = new WorkerClient();
         state.activeAbortController = null;
     });
@@ -60,7 +48,6 @@ describe("WorkerClient - Abort & Queue Logic", () => {
     afterEach(() => {
         client.terminate();
         state.activeAbortController = null;
-        vi.restoreAllMocks();
     });
 
     it("rejects immediately if global signal is already aborted", async () => {
@@ -73,7 +60,6 @@ describe("WorkerClient - Abort & Queue Logic", () => {
     });
 
     it("aborts in-flight job via signal listener", async () => {
-        // Ensure init passes first (calls fetch)
         await client.init();
 
         const controller = new AbortController();
@@ -81,7 +67,6 @@ describe("WorkerClient - Abort & Queue Logic", () => {
 
         const p = client.convert("<xml/>", {} as any);
 
-        // Abort while "in flight"
         controller.abort();
 
         await expect(p).rejects.toThrow("AbortError");

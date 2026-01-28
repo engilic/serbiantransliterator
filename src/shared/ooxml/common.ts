@@ -1,23 +1,44 @@
 // src/shared/ooxml/common.ts
 
-export const normKey = (s: string) => s.normalize("NFC").toLowerCase();
+// --- NOVO: Safe wrapper ---
+export function safeNormalize(s: unknown): string {
+    if (s === null || s === undefined) return "";
 
+    // [FIX] Osiguravamo da je 's' string pre poziva metoda
+    const str = String(s);
+
+    if (!str) return "";
+
+    if (typeof str.normalize === "function") {
+        try {
+            return str.normalize("NFC");
+        } catch {
+            return str;
+        }
+    }
+    return str;
+}
+
+// Ažuriran normKey da koristi safeNormalize i lowerCase
+export const normKey = (s: string) => safeNormalize(s).toLowerCase();
+
+// Ažuriran getCpArray
 export function getCpArray(text: string): string[] {
-    return Array.from(text.normalize("NFC"));
+    return Array.from(safeNormalize(text));
 }
 
 export function firstCp(text: string): string | null {
-    const arr = Array.from(text);
+    const arr = Array.from(safeNormalize(text)); // [FIX] koristimo safeNormalize
     return arr.length ? (arr[0] ?? null) : null;
 }
 
 export function lastCp(text: string): string | null {
-    const arr = Array.from(text);
+    const arr = Array.from(safeNormalize(text)); // [FIX] koristimo safeNormalize
     return arr.length ? (arr[arr.length - 1] ?? null) : null;
 }
 
 export function dropFirstCp(text: string): string {
-    const arr = Array.from(text);
+    const arr = Array.from(safeNormalize(text)); // [FIX] koristimo safeNormalize
     return arr.slice(1).join("");
 }
 
@@ -53,10 +74,6 @@ export function isBoundaryChar(ch: string): boolean {
     return !ch || !isAlphaNum(ch);
 }
 
-/**
- * Token charovi za iPhone / .NET / Node.js / C++ itd.
- * (koristimo i za userProtected tokene bez razmaka)
- */
 export function isTokenChar(ch: string): boolean {
     if (!ch) return false;
     if (/\p{L}|\p{N}/u.test(ch)) return true;
@@ -67,19 +84,16 @@ export function isTokenChar(ch: string): boolean {
         ch === "_" ||
         ch === "/" ||
         ch === "-" ||
-        ch === "\u2011" || // non-breaking hyphen
-        ch === "\u2010" || // hyphen
-        ch === "\u2012" || // figure dash
-        ch === "\u2013" || // en dash
-        ch === "\u2014" || // em dash
+        ch === "\u2011" ||
+        ch === "\u2010" ||
+        ch === "\u2012" ||
+        ch === "\u2013" ||
+        ch === "\u2014" ||
         ch === "'" ||
-        ch === "\u2019" // right single quotation mark
+        ch === "\u2019"
     );
 }
 
-/**
- * Charovi koji su dozvoljeni u URL/email (konzervativno).
- */
 export function isLinkChar(ch: string): boolean {
     if (!ch) return false;
     if (/\s/u.test(ch)) return false;

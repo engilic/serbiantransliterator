@@ -6,9 +6,9 @@ import { invalidatePreviewCache } from "./preview/cache";
 import { t, tPlural } from "../../shared/i18n";
 import { getSettingsFromUi } from "./settings/getters";
 
-// [NEW] SVG Icons (Fluent UI style)
+// [MAX3] Fluent UI SVG Ikone
 const ICON_DOC = `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>`;
-const ICON_SEL = `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M2.5 4v3h2V5h15v2h2V4h-19zm19 16v-3h-2v2H4.5v-2h-2v3h19zM6 10h12v4H6v-4z"/></svg>`; // Selection / Text Box
+const ICON_SEL = `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M2.5 4v3h2V5h15v2h2V4h-19zm19 16v-3h-2v2H4.5v-2h-2v3h19zM6 10h12v4H6v-4z"/></svg>`;
 
 let cachedDocInfo: { count: number; sample: string; hasLat: boolean; hasCyr: boolean } | null = null;
 let lastDocCheck = 0;
@@ -16,7 +16,6 @@ const DOC_INFO_CACHE_MS = 5000;
 
 export function onSelectionChange() {
     invalidatePreviewCache();
-
     if (state.selectionTimeout) clearTimeout(state.selectionTimeout);
 
     state.selectionTimeout = setTimeout(() => {
@@ -118,7 +117,6 @@ function detectDirectionInfo(text: string): DetectionResult {
     let latSr = 0;
 
     const sample = safeText.slice(0, 500);
-
     for (const char of sample) {
         if (/[a-zA-Z]/.test(char)) lat++;
         if (/[čćžšđČĆŽŠĐ]/.test(char)) {
@@ -129,7 +127,6 @@ function detectDirectionInfo(text: string): DetectionResult {
     }
 
     const total = lat + cyr;
-
     const base: DetectionResult = { label: t("dir_auto"), icon: "", asciiLevel: "safe", isAuto: true };
 
     if (total === 0) return base;
@@ -152,27 +149,19 @@ export async function checkSelectionAndUpdateButtons() {
     try {
         const runBtn = document.getElementById("runBtn") as HTMLButtonElement | null;
         const prevBtn = document.getElementById("previewBtn") as HTMLButtonElement | null;
-
         const liveStatus = document.getElementById("liveStatus");
         const liveTextLeft = document.getElementById("liveTextLeft");
         const liveTextRight = document.getElementById("liveTextRight");
         const liveAscii = document.getElementById("liveAscii");
         const liveAutoIcon = document.getElementById("liveAutoIcon");
-
         const liveIconLeft = document.getElementById("liveIconLeft");
-        const liveIconRight = document.getElementById("liveIconRight");
 
         if (!runBtn || !prevBtn) return;
 
-        const rawText = normalizeWeirdBreaks(await getSelectedTextAsync());
-        const isSelectionMode = rawText.length > 0;
-
-        const selWords = isSelectionMode ? countWords(rawText) : 0;
-        const selChars = isSelectionMode ? countNonSpaceChars(rawText) : 0;
-        const selScripts = isSelectionMode ? hasScriptContent(rawText) : { hasLat: false, hasCyr: false };
+        const rawText = await getSelectedTextAsync();
+        const isSelectionMode = rawText.trim().length > 0;
 
         const settings = getSettingsFromUi();
-
         let detection: DetectionResult = getTargetScriptInfo();
 
         if (isSelectionMode) {
@@ -181,123 +170,63 @@ export async function checkSelectionAndUpdateButtons() {
             }
         } else {
             const docInfo = await getDocInfoAsync(cachedDocInfo === null);
-            const sample = docInfo?.sample || "";
+            const docSample = docInfo?.sample || "";
 
             if (settings.direction === "auto") {
-                detection = detectDirectionInfo(sample);
+                detection = detectDirectionInfo(docSample);
             }
         }
 
-        if (settings.direction === "to-ascii") {
-            detection.asciiLevel = "safe";
-        }
+        if (settings.direction === "to-ascii") detection.asciiLevel = "safe";
 
         let shouldEnable = false;
-        const contentInfo = isSelectionMode ? selScripts : cachedDocInfo || { hasLat: false, hasCyr: false };
+        const contentInfo = isSelectionMode
+            ? hasScriptContent(rawText)
+            : cachedDocInfo || { hasLat: false, hasCyr: false };
 
-        if (settings.direction === "lat-to-cyr") {
-            shouldEnable = !!contentInfo?.hasLat;
-        } else if (settings.direction === "cyr-to-lat") {
-            shouldEnable = !!contentInfo?.hasCyr;
-        } else if (settings.direction === "to-ascii") {
-            shouldEnable = !!(contentInfo?.hasLat || contentInfo?.hasCyr);
-        } else {
-            // Auto: enable if has ANY script content
-            shouldEnable = !!(contentInfo?.hasLat || contentInfo?.hasCyr);
-        }
+        if (settings.direction === "lat-to-cyr") shouldEnable = !!contentInfo.hasLat;
+        else if (settings.direction === "cyr-to-lat") shouldEnable = !!contentInfo.hasCyr;
+        else shouldEnable = !!(contentInfo.hasLat || contentInfo.hasCyr);
 
-        if (liveStatus && liveTextLeft && liveTextRight && liveIconLeft && liveIconRight && liveAutoIcon) {
+        if (liveStatus && liveTextLeft && liveTextRight && liveIconLeft && liveAutoIcon) {
             liveStatus.style.display = "flex";
 
-            let label = "";
             if (isSelectionMode) {
-                // [FIX] Selection Icon
                 liveIconLeft.innerHTML = ICON_SEL;
-
-                if (selWords >= 1) {
-                    const countStr = formatCompact(selWords);
-                    if (selWords >= 10000) label = t("word_count_many", countStr);
-                    else label = tPlural("word_count", selWords);
-                } else {
-                    label = tPlural("char_count", selChars);
-                }
+                const words = countWords(rawText);
+                const label =
+                    words >= 1
+                        ? tPlural("word_count", words)
+                        : tPlural("char_count", countNonSpaceChars(rawText));
                 liveTextLeft.textContent = t("live_sel_words", label);
             } else {
-                // [FIX] Document Icon
                 liveIconLeft.innerHTML = ICON_DOC;
-
-                const docInfo = cachedDocInfo || { count: 0, sample: "" };
-                const countStr = formatCompact(docInfo.count);
-                if (docInfo.count >= 10000) label = t("word_count_many", countStr);
-                else label = tPlural("word_count", docInfo.count);
-                liveTextLeft.textContent = t("live_doc_words", label);
+                const docInfo = cachedDocInfo || { count: 0 };
+                liveTextLeft.textContent = t("live_doc_words", tPlural("word_count", docInfo.count));
             }
 
             liveTextRight.textContent = detection.label;
-
-            if (detection.isAuto) {
-                liveAutoIcon.style.display = "inline-block";
-            } else {
-                liveAutoIcon.style.display = "none";
-            }
-
-            liveIconRight.textContent = detection.icon;
+            liveAutoIcon.style.display = detection.isAuto ? "inline-block" : "none";
 
             if (liveAscii) {
                 liveAscii.className = "live-ascii";
-                liveAscii.textContent = "ASCII";
                 if (detection.asciiLevel === "red") liveAscii.classList.add("warning-red");
                 else if (detection.asciiLevel === "yellow") liveAscii.classList.add("warning-yellow");
                 liveAscii.style.display = "block";
             }
 
             if (shouldEnable) {
-                liveStatus.style.color = "var(--colorNeutralForeground1)";
                 liveStatus.style.opacity = "1";
-                // [FIX] Apply Brand Color to Icon
                 liveIconLeft.style.color = "var(--colorBrandForeground1)";
-
-                liveIconRight.style.filter = "none";
-                liveAutoIcon.style.filter = "none";
-
                 runBtn.disabled = false;
                 prevBtn.disabled = false;
-
-                // [MAX3 UX] Add Pulse & Tooltips
                 runBtn.classList.add("pulse-action");
-
-                // Dinamički tooltip sa prečicom
-                const actionName = detection.label.replace("Auto ", ""); // npr. "(→ Ćir)"
-                runBtn.title = `${t("ui_btn_run")} ${actionName} ${t("tooltip_run_shortcut")}`;
-                prevBtn.title = `${t("ui_btn_preview")} ${t("tooltip_preview_shortcut")}`;
             } else {
-                liveStatus.style.color = "var(--colorNeutralForeground3)";
                 liveStatus.style.opacity = "0.7";
-
-                // [FIX] Grey Icon when disabled
                 liveIconLeft.style.color = "inherit";
-
-                liveIconLeft.style.filter = "grayscale(100%)";
-                liveIconRight.style.filter = "grayscale(100%)";
-                liveAutoIcon.style.filter = "grayscale(100%)";
-
-                if (liveAscii) {
-                    liveAscii.className = "live-ascii";
-                    liveAscii.style.opacity = "0.3";
-                }
                 runBtn.disabled = true;
                 prevBtn.disabled = true;
-
-                // [MAX3 UX] Remove Pulse & Reset Tooltips
                 runBtn.classList.remove("pulse-action");
-                runBtn.title = "";
-                prevBtn.title = "";
-
-                if (isSelectionMode) {
-                    liveTextLeft.textContent = t("stats_scope_selection");
-                } else {
-                    liveTextLeft.textContent = t("stats_scope_document");
-                }
             }
         }
     } catch (e) {
@@ -306,26 +235,49 @@ export async function checkSelectionAndUpdateButtons() {
 }
 
 export function normalizeWeirdBreaks(s: string): string {
-    return (s ?? "").replace(/\u000b/g, "\n").replace(/\u000c/g, "\n");
+    return String(s || "")
+        .replace(/\u000b/g, "\n")
+        .replace(/\u000c/g, "\n");
 }
 
 export function normalizeNewlines(s: string): string {
     return normalizeWeirdBreaks(s).replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 }
 
-export function normalizeForSelectionHash(s: string): string {
-    let t = normalizeNewlines(s ?? "").normalize("NFC");
-    t = t.replace(/\u0007/g, "");
-    t = t.replace(/\n+$/g, "");
-    return t;
+/**
+ * [HOTFIX] Normalize-safe hash funkcija
+ */
+export function normalizeForSelectionHash(s: unknown): string {
+    const text = String(s || "");
+    const cleaned = normalizeNewlines(text);
+
+    let normalized = cleaned; // Default na nenormalizovan
+
+    // [FIX] Provera postojanja funkcije pre poziva
+    if (typeof cleaned.normalize === "function") {
+        try {
+            normalized = cleaned.normalize("NFC");
+        } catch (e) {
+            console.warn("Normalize failed in hashing, falling back to unnormalized segment.", e);
+        }
+    }
+
+    return normalized.replace(/\u0007/g, "").replace(/\n+$/g, "");
+}
+
+interface CryptoSubtle {
+    subtle?: { digest: (algorithm: string, data: BufferSource) => Promise<ArrayBuffer> };
 }
 
 export async function sha256Hex(str: string): Promise<string> {
     try {
-        const cryptoAny = (globalThis as typeof globalThis & { crypto?: { subtle?: SubtleCrypto } }).crypto;
-        if (!cryptoAny?.subtle) return fnv1a32(str);
+        const cryptoSubtle = globalThis.crypto as CryptoSubtle | undefined;
+
+        if (!cryptoSubtle?.subtle) return fnv1a32(str);
+
         const enc = new TextEncoder();
-        const buf = await cryptoAny.subtle.digest("SHA-256", enc.encode(str));
+        const buf = await cryptoSubtle.subtle.digest("SHA-256", enc.encode(str));
+
         const bytes = new Uint8Array(buf);
         return Array.from(bytes)
             .map((b) => b.toString(16).padStart(2, "0"))

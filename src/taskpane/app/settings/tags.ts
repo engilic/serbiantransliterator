@@ -39,6 +39,8 @@ function getFilterTerm(): string {
 
 export function renderTags() {
     const container = document.getElementById("tagsList") as HTMLDivElement;
+    if (!container) return; // Guard
+
     container.innerHTML = "";
 
     const filter = getFilterTerm(); // Read filter
@@ -46,14 +48,20 @@ export function renderTags() {
     const customSorted = Array.from(state.customWordsSet).sort();
     const presetSorted = Array.from(state.presetWordsSet).sort();
 
-    // Render loop with filter check
+    // Render loop with filter check AND TYPE CHECK
     customSorted.forEach((word) => {
+        // [FIX] Provera tipa pre toLowerCase
+        if (!word || typeof word !== "string") return;
+
         if (!filter || word.toLowerCase().includes(filter)) {
             container.appendChild(createTagEl(word, "custom"));
         }
     });
 
     presetSorted.forEach((word) => {
+        // [FIX] Provera tipa pre toLowerCase
+        if (!word || typeof word !== "string") return;
+
         if (!filter || word.toLowerCase().includes(filter)) {
             container.appendChild(createTagEl(word, "preset"));
         }

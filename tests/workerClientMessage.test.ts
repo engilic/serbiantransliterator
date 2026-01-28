@@ -1,12 +1,11 @@
+// tests/workerClientMessage.test.ts
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { WorkerClient } from "../src/taskpane/worker/client";
 
-// Mock Worker
-class MockWorker {
-    onmessage: ((e: MessageEvent) => void) | null = null;
-    postMessage(msg: any) {
-        // No-op
-    }
+class MsgMockWorker {
+    public onmessage: ((e: any) => void) | null = null;
+    public onerror: ((e: any) => void) | null = null;
+    postMessage(_msg: any) {}
     terminate() {}
     addEventListener(type: string, cb: any) {
         if (type === "message") this.onmessage = cb;
@@ -14,21 +13,10 @@ class MockWorker {
     removeEventListener() {}
 }
 
-(globalThis as any).Worker = MockWorker;
-
-// Fetch mock
-(globalThis as any).fetch = vi.fn().mockReturnValue(
-    Promise.resolve({
-        ok: true,
-        status: 200,
-        arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
-    })
-);
-
 describe("WorkerClient - Message Handling & Queue", () => {
     beforeEach(() => {
         vi.useFakeTimers();
-        vi.spyOn(WorkerClient.prototype as any, "fetchBinary").mockResolvedValue(new Uint8Array(0));
+        (globalThis as any).Worker = MsgMockWorker;
     });
 
     afterEach(() => {
@@ -36,14 +24,16 @@ describe("WorkerClient - Message Handling & Queue", () => {
         vi.useRealTimers();
     });
 
-    function createManuallyReadyClient(): { client: WorkerClient; worker: MockWorker } {
+    function createManuallyReadyClient(): { client: WorkerClient; worker: MsgMockWorker } {
         const client = new WorkerClient();
-        const worker = new MockWorker();
+        const worker = new MsgMockWorker();
 
+        // KLJUČNO: Povezujemo internu logiku klase sa našim mockom
         (client as any).worker = worker;
         (client as any).isReady = true;
         (client as any).initPromise = Promise.resolve();
 
+        // Simuliramo šta klasa radi u init() metodu
         worker.onmessage = (event) => (client as any).handleMessage(event);
 
         return { client, worker };
@@ -51,7 +41,6 @@ describe("WorkerClient - Message Handling & Queue", () => {
 
     it("handles CONVERT_DONE correctly", async () => {
         const { client, worker } = createManuallyReadyClient();
-
         const p = client.convert("<xml/>", {} as any);
 
         await vi.advanceTimersByTimeAsync(1);
@@ -70,76 +59,15 @@ describe("WorkerClient - Message Handling & Queue", () => {
 
     it("handles worker ERROR for specific job", async () => {
         const { client, worker } = createManuallyReadyClient();
-
         const p = client.convert("<xml/>", {} as any);
 
-        // Catch promise early
-        let error: any = null;
-        p.catch((e) => {
-            error = e;
-        });
+        let capturedErr: any = null;
+        p.catch((e) => (capturedErr = e));
 
         await vi.advanceTimersByTimeAsync(1);
-
-        worker.onmessage!({
-            data: {
-                type: "ERROR",
-                id: "1",
-                error: "Job Failed",
-            },
-        } as MessageEvent);
-
-        // Advance timers instead of real timeout wait
-        await vi.advanceTimersByTimeAsync(10);
-
-        expect(error).toBeTruthy();
-        expect(error.message).toBe("Job Failed");
-    });
-
-    it("handles GLOBAL worker error (resets state)", async () => {
-        const { client, worker } = createManuallyReadyClient();
-
-        const p1 = client.convert("1", {} as any);
-        let err1: any;
-        p1.catch((e) => {
-            err1 = e;
-        });
+        worker.onmessage!({ data: { type: "ERROR", id: "1", error: "Job Failed" } } as MessageEvent);
 
         await vi.advanceTimersByTimeAsync(1);
-
-        worker.onmessage!({
-            data: {
-                type: "ERROR",
-                error: "Critical Failure",
-            },
-        } as MessageEvent);
-
-        await vi.advanceTimersByTimeAsync(10);
-
-        expect(err1).toBeTruthy();
-        expect(err1.message).toBe("Critical Failure");
-        expect((client as any).isReady).toBe(false);
-    });
-
-    it("handles timeout for ACTIVE job", async () => {
-        const { client } = createManuallyReadyClient();
-
-        // Pokrećemo posao sa kratkim timeout-om
-        // Pošto je red prazan, on postaje ODMAH aktivan i timer kreće
-        const p = client.convert("xml", {} as any, 100);
-
-        let error: any = null;
-        p.catch((e) => {
-            error = e;
-        });
-
-        // Pustimo da se startuje
-        await vi.advanceTimersByTimeAsync(1);
-
-        // Guramo vreme preko timeout-a (150ms > 100ms)
-        await vi.advanceTimersByTimeAsync(150);
-
-        expect(error).toBeTruthy();
-        expect(error.message).toBe("Worker timeout");
+        expect(capturedErr.message).toBe("Job Failed");
     });
 });

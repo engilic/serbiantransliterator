@@ -1,26 +1,28 @@
 // src/core/corrections.ts
 
-function preserveFirstLetterCase(input: string, replacement: string): string {
-    if (!input) return replacement;
+function preserveFirstLetterCase(input: unknown, replacement: unknown): string {
+    const inp = String(input || "");
+    const rep = String(replacement || "");
 
-    const firstChar = input[0];
-    if (!firstChar) return replacement;
+    if (!inp) return rep;
 
-    const firstReplChar = replacement[0];
-    if (!firstReplChar) return replacement;
+    const firstChar = inp[0];
+    if (!firstChar) return rep;
+
+    const firstReplChar = rep[0];
+    if (!firstReplChar) return rep;
 
     const isUpper = firstChar === firstChar.toUpperCase();
-    return isUpper ? firstReplChar.toUpperCase() + replacement.slice(1) : replacement;
+    return isUpper ? firstReplChar.toUpperCase() + rep.slice(1) : rep;
 }
 
 export function applyPreCorrectionsLatToCyr(segment: string): string {
-    let text = segment;
+    let text = String(segment || ""); // [FIX] Ensure string
 
     // Tanjug (nema 'nj' -> 'њ', već 'нј')
     text = text.replace(/\bTanjug\b/g, "Танјуг").replace(/\btanjug\b/g, "танјуг");
 
-    // Sava fraze: Ako je "Save" u kontekstu reke, prevedi ga u "Саве".
-    // (Ovo je potrebno jer je "Save" često zaštićen kao "Save button", pa ga ALWAYS_LATIN čuva).
+    // Sava fraze
     const savaMap: Record<string, string> = {
         "reke Save": "реке Саве",
         "duž Save": "дуж Саве",
@@ -36,9 +38,7 @@ export function applyPreCorrectionsLatToCyr(segment: string): string {
         text = text.replace(new RegExp(phrase, "gi"), (m) => preserveFirstLetterCase(m, repl));
     }
 
-    // “nj” nije uvek digraf (injekcija, konjunkcija…)
-    // “dž” nije uvek digraf (nadživeti, podžanr…)
-    // Ovi izuzeci sprečavaju da se "nj" pretvori u "њ", već forsiraju "нј".
+    // Izuzeci za nj/dž
     const exceptions = [
         { l: "injekc", c: "инјекц" },
         { l: "injekt", c: "инјект" },

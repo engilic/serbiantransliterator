@@ -1,12 +1,12 @@
 /* global Word */
 
-import { convertOoxml, type OoxmlOptions, type ConvertStats } from "../../../shared/ooxml/convertOoxml";
+import { type OoxmlOptions, type ConvertStats } from "../../../shared/ooxml/convertOoxml";
 import { setStatus, setProgress } from "../status";
 import { t } from "../../../shared/i18n";
+import { workerClient } from "../../worker/client";
 import { state } from "../state";
 import { perfMonitor } from "../telemetry/performanceMonitor";
 
-// Adaptive limits
 const BATCH_SIZE_START = 50;
 const MIN_BATCH = 10;
 const MAX_BATCH = 150;
@@ -19,9 +19,7 @@ export type ChunkingResult = {
 };
 
 function nowMs(): number {
-    return typeof performance !== "undefined" && typeof performance.now === "function"
-        ? performance.now()
-        : Date.now();
+    return typeof performance !== "undefined" ? performance.now() : Date.now();
 }
 
 function labelForDirection(dir: ConvertStats["direction"]): string {
@@ -51,57 +49,37 @@ function emptyStats(direction: ConvertStats["direction"]): ConvertStats {
             spaces: 0,
             ambiguousBrandSuffix: 0,
         },
-        proofing: {
-            enabled: false,
-            targetLang: null,
-            changedRuns: 0,
-            skippedRuns: 0,
-            skippedByReason: {},
-        },
+        proofing: { enabled: false, targetLang: null, changedRuns: 0, skippedRuns: 0, skippedByReason: {} },
         timingMs: 0,
     };
 }
 
 function mergeStats(into: ConvertStats, from: ConvertStats) {
-    into.textNodes += from.textNodes || 0;
-    into.charsBefore += from.charsBefore || 0;
-    into.charsAfter += from.charsAfter || 0;
+    into.textNodes += from.textNodes;
+    into.charsBefore += from.charsBefore;
+    into.charsAfter += from.charsAfter;
+    into.detected.urls += from.detected.urls;
+    into.detected.emails += from.detected.emails;
+    into.code.fenceMarkersSeen += from.code.fenceMarkersSeen;
+    into.code.inlineTicksSeen += from.code.inlineTicksSeen;
+    into.code.endedInFence = from.code.endedInFence;
+    into.code.endedInInline = from.code.endedInInline;
 
-    into.detected.urls += from.detected?.urls || 0;
-    into.detected.emails += from.detected?.emails || 0;
+    for (const key in into.bridges) {
+        const k = key as keyof typeof into.bridges;
+        into.bridges[k] += from.bridges[k];
+    }
 
-    into.code.fenceMarkersSeen += from.code?.fenceMarkersSeen || 0;
-    into.code.inlineTicksSeen += from.code?.inlineTicksSeen || 0;
-    into.code.endedInFence = into.code.endedInFence || !!from.code?.endedInFence;
-    into.code.endedInInline = into.code.endedInInline || !!from.code?.endedInInline;
-
-    into.bridges.links += from.bridges?.links || 0;
-    into.bridges.placeholders += from.bridges?.placeholders || 0;
-    into.bridges.brandPhrases += from.bridges?.brandPhrases || 0;
-    into.bridges.brandTokens += from.bridges?.brandTokens || 0;
-    into.bridges.ambiguousBrandSuffix += from.bridges?.ambiguousBrandSuffix || 0;
-    into.bridges.digraphs += from.bridges?.digraphs || 0;
-    into.bridges.userPhrases += from.bridges?.userPhrases || 0;
-    into.bridges.userTokens += from.bridges?.userTokens || 0;
-    into.bridges.allCapsHints += from.bridges?.allCapsHints || 0;
-    into.bridges.spaces += from.bridges?.spaces || 0;
-
-    if (from.proofing?.enabled) into.proofing.enabled = true;
-    if (!into.proofing.targetLang && from.proofing?.targetLang)
+    if (from.proofing.enabled) {
+        into.proofing.enabled = true;
         into.proofing.targetLang = from.proofing.targetLang;
-
-    into.proofing.changedRuns += from.proofing?.changedRuns || 0;
-    into.proofing.skippedRuns += from.proofing?.skippedRuns || 0;
-
-    if (from.proofing?.skippedByReason) {
-        for (const [k, v] of Object.entries(from.proofing.skippedByReason)) {
-            into.proofing.skippedByReason[k] = (into.proofing.skippedByReason[k] ?? 0) + (v ?? 0);
+        into.proofing.changedRuns += from.proofing.changedRuns;
+        into.proofing.skippedRuns += from.proofing.skippedRuns;
+        for (const r in from.proofing.skippedByReason) {
+            into.proofing.skippedByReason[r] =
+                (into.proofing.skippedByReason[r] || 0) + from.proofing.skippedByReason[r];
         }
     }
-}
-
-function isCancelled(): boolean {
-    return !!state.activeAbortController?.signal.aborted;
 }
 
 export async function processDocumentInChunks(
@@ -109,147 +87,70 @@ export async function processDocumentInChunks(
     opts: OoxmlOptions
 ): Promise<ChunkingResult> {
     const t0 = nowMs();
+    await workerClient.init();
 
     const paragraphs = context.document.body.paragraphs;
     paragraphs.load("items");
+
+    // eslint-disable-next-line office-addins/no-context-sync-in-loop
     await context.sync();
 
     const totalParagraphs = paragraphs.items.length;
-    setProgress(0);
-
     let agg: ConvertStats | null = null;
-    let aggType: string | null = null;
+    let i = 0;
+    let batchSize = BATCH_SIZE_START;
 
-    let didInsert = false;
+    while (i < totalParagraphs) {
+        if (state.activeAbortController?.signal.aborted) break;
 
-    try {
-        if (totalParagraphs === 0) {
-            const direction = (opts.direction ?? "auto") as ConvertStats["direction"];
-            const stats = emptyStats(direction);
-            stats.timingMs = Math.max(0, nowMs() - t0);
-            return { type: labelForDirection(direction), stats };
+        const batchStart = nowMs();
+        const batchItems = paragraphs.items.slice(i, i + batchSize);
+        if (batchItems.length === 0) break;
+
+        const batchRange = batchItems[0]
+            .getRange("Whole")
+            .expandTo(batchItems[batchItems.length - 1].getRange("Whole"));
+        const ooxmlRes = batchRange.getOoxml();
+
+        /**
+         * ARHITEKTONSKO OBRAZLOŽENJE: context.sync() unutar petlje je neophodan
+         * za "Adaptive Smart Chunking". On omogućava Word hostu da oslobodi UI nit
+         * i obradi OOXML u delovima, sprečavajući Out-of-Memory greške kod 1000+ strana.
+         */
+        // eslint-disable-next-line office-addins/no-context-sync-in-loop
+        await context.sync();
+
+        const result = await workerClient.convert(ooxmlRes.value, opts);
+
+        if (!agg) agg = emptyStats(result.stats.direction);
+        mergeStats(agg, result.stats);
+
+        if (result.xml !== ooxmlRes.value) {
+            batchRange.insertOoxml(result.xml, Word.InsertLocation.replace);
         }
 
-        setStatus(t("status_processing") + " (0/" + totalParagraphs + ")", "info");
+        i += batchSize;
+        const progress = Math.round((i / totalParagraphs) * 100);
+        setProgress(progress);
+        setStatus(t("status_processing") + ` ${progress}%`, "info");
 
-        let processedCount = 0;
-        let i = 0;
-        let batchSize = BATCH_SIZE_START;
+        await new Promise((r) => setTimeout(r, YIELD_DELAY_MS));
 
-        while (i < totalParagraphs) {
-            if (isCancelled()) break;
+        // Adaptive batching logic
+        const dur = nowMs() - batchStart;
+        perfMonitor.record("processChunk", batchItems.length, dur, { batchSize: batchItems.length });
 
-            const batchStart = nowMs();
-            const batchItems = paragraphs.items.slice(i, i + batchSize);
-            if (batchItems.length === 0) break;
-
-            const firstPara = batchItems[0];
-            const lastPara = batchItems[batchItems.length - 1];
-            if (!firstPara || !lastPara) break;
-
-            const batchRange = firstPara.getRange("Whole").expandTo(lastPara.getRange("Whole"));
-
-            const ooxmlRes = batchRange.getOoxml();
-            await context.sync();
-
-            if (isCancelled()) break;
-
-            const rawXml = ooxmlRes.value;
-            if (!rawXml) {
-                processedCount += batchItems.length;
-                i += batchItems.length;
-                const progress = Math.round((processedCount / totalParagraphs) * 100);
-                setProgress(progress);
-                setStatus(
-                    t("status_processing") +
-                        " " +
-                        progress +
-                        "% (" +
-                        processedCount +
-                        "/" +
-                        totalParagraphs +
-                        ")",
-                    "info"
-                );
-                await new Promise((resolve) => setTimeout(resolve, YIELD_DELAY_MS));
-                continue;
-            }
-
-            // [MODIFIED] Direct Main Thread Conversion (Sync)
-            const result = convertOoxml(rawXml, opts);
-
-            if (!agg) {
-                agg = emptyStats(result.stats.direction);
-                aggType = result.type;
-            } else if (!aggType && result.type) {
-                aggType = result.type;
-            }
-
-            if (agg) mergeStats(agg, result.stats);
-
-            if (isCancelled()) break;
-
-            let skippedWrite = false;
-            if (result.type !== "Nema teksta" && result.xml !== rawXml) {
-                batchRange.insertOoxml(result.xml, Word.InsertLocation.replace);
-                didInsert = true;
-            } else {
-                skippedWrite = true;
-            }
-
-            processedCount += batchItems.length;
-            i += batchItems.length;
-
-            const progress = Math.round((processedCount / totalParagraphs) * 100);
-            setProgress(progress);
-
-            const statusMsg =
-                t("status_processing") +
-                " " +
-                progress +
-                "% (" +
-                processedCount +
-                "/" +
-                totalParagraphs +
-                ")";
-            setStatus(statusMsg, "info");
-
-            await new Promise((resolve) => setTimeout(resolve, YIELD_DELAY_MS));
-
-            const dur = Math.max(0, nowMs() - batchStart);
-
-            if (typeof perfMonitor !== "undefined") {
-                perfMonitor.record("processChunk", batchItems.length, dur, {
-                    batchSize: batchItems.length,
-                    skippedWrite: skippedWrite,
-                    thread: "main",
-                });
-            }
-
-            if (dur > 0) {
-                const msPerPara = dur / batchItems.length;
-                const idealBatch = Math.floor(TARGET_TIME_MS / msPerPara);
-                let newBatch = Math.floor((batchSize + idealBatch) / 2);
-                newBatch = Math.max(MIN_BATCH, Math.min(newBatch, MAX_BATCH));
-                batchSize = newBatch;
-            }
-        }
-
-        if (didInsert) {
-            await context.sync();
-        }
-
-        const outStats = agg ?? emptyStats((opts.direction ?? "auto") as ConvertStats["direction"]);
-        outStats.timingMs = Math.max(0, nowMs() - t0);
-
-        const outType =
-            aggType ??
-            labelForDirection(
-                outStats.direction || ((opts.direction ?? "auto") as ConvertStats["direction"])
-            );
-
-        return { type: outType, stats: outStats };
-    } finally {
-        setProgress(null);
+        const msPerPara = dur / batchItems.length;
+        const idealBatch = Math.floor(TARGET_TIME_MS / msPerPara);
+        batchSize = Math.max(MIN_BATCH, Math.min(MAX_BATCH, Math.floor((batchSize + idealBatch) / 2)));
     }
+
+    // Finalni sync nakon izmena
+    // eslint-disable-next-line office-addins/no-context-sync-in-loop
+    await context.sync();
+
+    const finalStats = agg || emptyStats((opts.direction as ConvertStats["direction"]) || "auto");
+    finalStats.timingMs = nowMs() - t0;
+
+    return { type: labelForDirection(finalStats.direction), stats: finalStats };
 }

@@ -1,5 +1,4 @@
-// src/core/textCore.ts
-
+// === FILE: src/core/textCore.ts ===
 import { ALWAYS_LATIN_PHRASES, ALWAYS_LATIN_TOKENS_STRICT } from "./rules";
 import { applyPreCorrectionsLatToCyr } from "./corrections";
 import { fixSerbianQuotes } from "./quotes";
@@ -13,43 +12,73 @@ import {
     shouldProtectHeuristic,
 } from "./heuristics";
 
-// Importuj tip za WASM
-type WasmModule = typeof import("../wasm-core/pkg") & {
+import * as wasmPkg from "../wasm-core/pkg";
+import wasmBase64 from "../wasm-core/pkg/index_bg.wasm";
+import dictE2iData from "../static/assets/dict_e2i.bin";
+import dictI2eData from "../static/assets/dict_i2e.bin";
+
+interface WasmModule {
     load_dictionary_bin: (mode: string, bin_data: Uint8Array) => void;
     to_cyrillic: (text: string) => string;
     to_latin: (text: string) => string;
     convert_dialect: (text: string, mode: string) => string;
     init_replacer: (json: string) => void;
     apply_replacements: (text: string) => string;
-};
+}
 
+interface WasmPackage {
+    initSync: (module: WebAssembly.Module) => unknown;
+}
+
+// Ovde čuvamo referencu na modul koji koristimo (Wrapperi)
 let wasmModule: WasmModule | null = null;
-const isDictLoaded = { e2i: false, i2e: false };
 
-async function loadBinaryDict(filename: string, mode: "e2i" | "i2e") {
-    if (!wasmModule) return;
-    try {
-        const response = await fetch(filename);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const buffer = await response.arrayBuffer();
-        const bytes = new Uint8Array(buffer);
-        wasmModule.load_dictionary_bin(mode, bytes);
-        isDictLoaded[mode] = true;
-    } catch (e) {
-        console.warn(`Failed to load dictionary ${mode} from ${filename}`, e);
+export function detectScript(text: string): "latin" | "cyrillic" {
+    return detectMajorityScript(String(text || ""));
+}
+
+function dataUriToBytes(dataUri: string | null | undefined): Uint8Array {
+    const str = String(dataUri || "");
+    const parts = str.split(",");
+    const base64 = parts.length > 1 ? parts[1] : null;
+    if (!base64) return new Uint8Array(0);
+
+    const binaryStr = window.atob(base64);
+    const bytes = new Uint8Array(binaryStr.length);
+    for (let i = 0; i < binaryStr.length; i++) {
+        bytes[i] = binaryStr.charCodeAt(i);
     }
+    return bytes;
+}
+
+export function setWasmModule(module: unknown) {
+    wasmModule = module as WasmModule;
 }
 
 export async function initWasm() {
+    if (wasmModule) return;
     try {
-        const module = await import("../wasm-core/pkg");
-        wasmModule = module as unknown as WasmModule;
-        const p1 = loadBinaryDict("assets/dict_e2i.bin", "e2i");
-        const p2 = loadBinaryDict("assets/dict_i2e.bin", "i2e");
-        await Promise.all([p1, p2]);
+        console.log("[textCore] Inicijalizacija WASM jezgra (Inline/Fallback)...");
+        const wasmBytes = dataUriToBytes(wasmBase64 as unknown as string);
+        const module = new WebAssembly.Module(wasmBytes as BufferSource);
+
+        // 1. Inicijalizujemo stanje unutar pkg modula
+        (wasmPkg as unknown as WasmPackage).initSync(module);
+
+        // [CRITICAL FIX] 2. Dodeljujemo CEO PAKET (wrappere), a ne rezultat initSync-a!
+        // Stari kod: wasmModule = exports; -> GREŠKA "1,0"
+        wasmModule = wasmPkg as unknown as WasmModule;
+
+        const b1 = dataUriToBytes(dictE2iData as unknown as string);
+        const b2 = dataUriToBytes(dictI2eData as unknown as string);
+
+        wasmModule.load_dictionary_bin("e2i", b1);
+        wasmModule.load_dictionary_bin("i2e", b2);
+
         wasmModule.init_replacer("{}");
+        console.log("[textCore] WASM jezgro spremno (Fallback).");
     } catch (e) {
-        console.warn("WASM load failed", e);
+        console.error("[textCore] Neuspešna inicijalizacija WASM-a:", e);
     }
 }
 
@@ -64,69 +93,7 @@ export interface CoreOptions {
     curlyProtection?: CurlyProtection;
     customSubstitutions?: Record<string, string>;
     dialect?: Dialect;
-}
-
-export function detectScript(text: string): "latin" | "cyrillic" {
-    return detectMajorityScript(text);
-}
-
-function applyDialect(text: string, dialect?: Dialect): string {
-    if (!dialect || dialect === "none") return text;
-    if (!wasmModule) return text;
-
-    if (dialect === "ekavica_to_ijekavica" && !isDictLoaded.e2i) return text;
-    if (dialect === "ijekavica_to_ekavica" && !isDictLoaded.i2e) return text;
-
-    return wasmModule.convert_dialect(text, dialect);
-}
-
-function convertUnprotectedSegment(segment: string, toCyrillic: boolean, options?: CoreOptions): string {
-    const userProtected = options?.userProtected ?? [];
-    const protectBrands = options?.protectBrands !== false;
-    const userProtectedLower = new Set(userProtected.map((w) => normKey(w)));
-    const toks = tokenize(segment);
-    let out = "";
-    for (let i = 0; i < toks.length; i++) {
-        // FIX: Bez "!"
-        const t = toks[i];
-        if (!t) continue;
-
-        if (t.type !== "word") {
-            out += t.value;
-            continue;
-        }
-        const tok = t.value;
-        const tokLower = normKey(tok);
-
-        if (userProtectedLower.has(tokLower)) {
-            out += tok;
-            continue;
-        }
-        if (protectBrands && ALWAYS_LATIN_TOKENS_STRICT.has(tokLower)) {
-            out += tok;
-            continue;
-        }
-        // [GALAXY MODE] Aktiviraj heuristiku
-        if (protectBrands && shouldProtectHeuristic(tok)) {
-            out += tok;
-            continue;
-        }
-        if (protectBrands && shouldProtectAmbiguousBrandToken(toks, i)) {
-            out += tok;
-            continue;
-        }
-        if (toCyrillic && shouldProtectRomanToken(toks, i)) {
-            out += tok;
-            continue;
-        }
-
-        if (wasmModule) {
-            out += toCyrillic ? wasmModule.to_cyrillic(tok) : wasmModule.to_latin(tok);
-        } else {
-            out += toCyrillic ? latinToCyrillic(tok) : cyrillicToLatin(tok);
-        }
-    }
-    return out;
+    ignoredStyles?: string[];
 }
 
 export function convertPlainText(
@@ -134,7 +101,8 @@ export function convertPlainText(
     direction: Direction = "auto",
     options?: CoreOptions
 ): { text: string; type: string } {
-    if (!text.trim()) return { text, type: "Nema teksta" };
+    const safeText = String(text || "");
+    if (!safeText.trim()) return { text: safeText, type: "Nema teksta" };
 
     const protectBrands = options?.protectBrands !== false;
     const preserveCodeBlocks = options?.preserveCodeBlocks !== false;
@@ -142,33 +110,32 @@ export function convertPlainText(
     const curlyProtection: CurlyProtection = options?.curlyProtection ?? "placeholders";
 
     let toCyr: boolean;
-    let label: string;
     if (direction === "auto") {
-        const script = detectMajorityScript(text);
-        toCyr = script === "latin";
-        label = toCyr ? "Lat → Ćir" : "Ćir → Lat";
-    } else if (direction === "lat-to-cyr") {
-        toCyr = true;
-        label = "Lat → Ćir";
+        toCyr = detectMajorityScript(safeText) === "latin";
     } else {
-        toCyr = false;
-        label = "Ćir → Lat";
+        toCyr = direction === "lat-to-cyr";
     }
+    const label = toCyr ? "Lat → Ćir" : "Ćir → Lat";
+
     const userProtectedPhrases = userProtected.filter((x) => /\s/.test(x));
-    const protectedRanges = collectProtectedRanges(text, {
+    const protectedRanges = collectProtectedRanges(safeText, {
         protectBrands,
         brandPhrases: protectBrands ? ALWAYS_LATIN_PHRASES : [],
         userProtectedPhrases,
         preserveCodeBlocks,
         curlyProtection,
     });
-    const parts = splitByRanges(text, protectedRanges);
+
+    const parts = splitByRanges(safeText, protectedRanges);
     const outParts: string[] = [];
 
-    if (wasmModule && options?.customSubstitutions) {
-        wasmModule.init_replacer(JSON.stringify(options.customSubstitutions));
-    } else if (wasmModule) {
-        wasmModule.init_replacer("{}");
+    // [FIX] Provera da li postoji wasmModule pre poziva
+    if (wasmModule) {
+        try {
+            wasmModule.init_replacer(JSON.stringify(options?.customSubstitutions || {}));
+        } catch (e) {
+            console.warn("WASM init_replacer failed:", e);
+        }
     }
 
     for (const part of parts) {
@@ -176,24 +143,85 @@ export function convertPlainText(
             outParts.push(part.text);
             continue;
         }
-        let seg = part.text.normalize("NFC");
 
-        if (wasmModule) {
-            seg = wasmModule.apply_replacements(seg);
-        } else {
-            // JS Fallback (bez require!)
-            if (toCyr) seg = applyPreCorrectionsLatToCyr(seg);
+        let seg = String(part.text || "");
+
+        if (typeof seg.normalize === "function") {
+            try {
+                seg = seg.normalize("NFC");
+            } catch (e) {
+                // Ignore failure
+            }
         }
 
-        if (options?.dialect && options.dialect !== "none") {
-            seg = applyDialect(seg, options.dialect);
+        if (wasmModule) {
+            // [FIX] Wrapper poziv
+            seg = wasmModule.apply_replacements(seg);
+        } else if (toCyr) {
+            seg = applyPreCorrectionsLatToCyr(seg);
+        }
+
+        if (options?.dialect && options.dialect !== "none" && wasmModule) {
+            // [FIX] Wrapper poziv
+            seg = wasmModule.convert_dialect(seg, options.dialect);
         }
 
         seg = convertUnprotectedSegment(seg, toCyr, options);
+
         if (toCyr && options?.applySerbianQuotes !== false) {
             seg = fixSerbianQuotes(seg);
         }
+
         outParts.push(seg);
     }
+
     return { text: outParts.join(""), type: label };
+}
+
+function convertUnprotectedSegment(segment: string, toCyrillic: boolean, options?: CoreOptions): string {
+    const userProtected = options?.userProtected ?? [];
+    const protectBrands = options?.protectBrands !== false;
+    const userProtectedLower = new Set(userProtected.map((w) => normKey(w)));
+
+    const tokens = tokenize(segment);
+    let out = "";
+
+    for (let i = 0; i < tokens.length; i++) {
+        const t = tokens[i];
+        if (!t) continue;
+
+        if (t.type !== "word") {
+            out += t.value;
+            continue;
+        }
+
+        const tok = t.value;
+        const tokLower = normKey(tok);
+
+        if (userProtectedLower.has(tokLower)) {
+            out += tok;
+            continue;
+        }
+        if (
+            protectBrands &&
+            (shouldProtectHeuristic(tok) ||
+                ALWAYS_LATIN_TOKENS_STRICT.has(tokLower) ||
+                shouldProtectAmbiguousBrandToken(tokens, i))
+        ) {
+            out += tok;
+            continue;
+        }
+        if (toCyrillic && shouldProtectRomanToken(tokens, i)) {
+            out += tok;
+            continue;
+        }
+
+        if (wasmModule) {
+            // [FIX] Ovde se dešava magija. wasmModule MORA biti paket wrappera.
+            out += toCyrillic ? wasmModule.to_cyrillic(tok) : wasmModule.to_latin(tok);
+        } else {
+            out += toCyrillic ? latinToCyrillic(tok) : cyrillicToLatin(tok);
+        }
+    }
+    return out;
 }

@@ -1,29 +1,44 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { processDocumentInChunks } from "../src/taskpane/app/word/chunking";
+import { workerClient } from "../src/taskpane/worker/client";
 import { setStatus, setProgress } from "../src/taskpane/app/status";
-import { convertOoxml } from "../src/shared/ooxml/convertOoxml";
 
-// Mock status
+// Mock workerClient da ne bi pokretao pravog workera
+vi.mock("../src/taskpane/worker/client", () => ({
+    workerClient: {
+        init: vi.fn(async () => {}),
+        convert: vi.fn(async (_xml: string) => ({
+            xml: "<out/>",
+            type: "Lat → Ćir",
+            stats: {
+                direction: "lat-to-cyr",
+                textNodes: 1,
+                // Moramo dodati sve obavezne polja za stats da ne bi pukao mergeStats
+                charsBefore: 0,
+                charsAfter: 0,
+                detected: { urls: 0, emails: 0 },
+                code: { fenceMarkersSeen: 0, inlineTicksSeen: 0 },
+                bridges: {
+                    links: 0,
+                    placeholders: 0,
+                    brandPhrases: 0,
+                    brandTokens: 0,
+                    digraphs: 0,
+                    userPhrases: 0,
+                    userTokens: 0,
+                    allCapsHints: 0,
+                    spaces: 0,
+                    ambiguousBrandSuffix: 0,
+                },
+                proofing: { enabled: false },
+            },
+        })),
+    },
+}));
+
 vi.mock("../src/taskpane/app/status", () => ({
     setStatus: vi.fn(),
     setProgress: vi.fn(),
-}));
-
-// Mock convertOoxml (main thread)
-vi.mock("../src/shared/ooxml/convertOoxml", () => ({
-    convertOoxml: vi.fn(() => ({
-        xml: "<out/>",
-        type: "Lat → Ćir",
-        stats: { direction: "lat-to-cyr", textNodes: 1 },
-    })),
-}));
-
-// Mock workerClient (više se ne koristi, ali za svaki slučaj ako je ostao negde import)
-vi.mock("../src/taskpane/worker/client", () => ({
-    workerClient: {
-        init: vi.fn(),
-        convert: vi.fn(),
-    },
 }));
 
 function makeMockContext(paragraphsCount: number) {
@@ -49,7 +64,7 @@ function makeMockContext(paragraphsCount: number) {
     } as any;
 }
 
-describe("chunking.ts - Smart Chunking Logic (Main Thread)", () => {
+describe("chunking.ts - Smart Chunking Logic (Worker)", () => {
     beforeEach(() => {
         vi.clearAllMocks();
         (globalThis as any).Word = {
@@ -61,12 +76,14 @@ describe("chunking.ts - Smart Chunking Logic (Main Thread)", () => {
         delete (globalThis as any).Word;
     });
 
-    it("processes document in batches using convertOoxml directly", async () => {
-        const ctx = makeMockContext(150);
+    it("processes document in batches using workerClient", async () => {
+        const ctx = makeMockContext(150); // Dovoljno da okine chunking (BATCH_SIZE_START = 50)
+
         const result = await processDocumentInChunks(ctx, { direction: "lat-to-cyr" } as any);
 
-        // [FIX] Expect convertOoxml to be called, NOT workerClient
-        expect(convertOoxml).toHaveBeenCalled();
+        expect(workerClient.init).toHaveBeenCalled();
+        // Trebalo bi da se pozove više puta (150 / 50 = 3 puta)
+        expect(workerClient.convert).toHaveBeenCalled();
         expect(result.type).toBe("Lat → Ćir");
         expect(setProgress).toHaveBeenCalled();
     });
@@ -75,5 +92,6 @@ describe("chunking.ts - Smart Chunking Logic (Main Thread)", () => {
         const ctx = makeMockContext(0);
         const result = await processDocumentInChunks(ctx, { direction: "lat-to-cyr" } as any);
         expect(result.stats.textNodes).toBe(0);
+        expect(workerClient.convert).not.toHaveBeenCalled();
     });
 });
