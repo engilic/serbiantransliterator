@@ -1,6 +1,4 @@
 // src/taskpane/app/modal/previewModal.ts
-/* global document, requestAnimationFrame */
-
 import { state } from "../state";
 import { applyFromPreview } from "../word/apply";
 import { get, getOptional } from "../utils/dom";

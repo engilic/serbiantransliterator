@@ -1,3 +1,4 @@
+// src/shared/ooxml/bridge/lexical/digraphs.ts
 import { findNextNodeWithText, firstCp, lastCp, dropFirstCp, latinLetterSr } from "../../common";
 
 export function bridgeDigraphsAcrossTextNodes(textNodes: Element[]): number {

@@ -1,6 +1,4 @@
 // src/taskpane/app/init.ts
-/* global Office, window, document, navigator */
-
 import { state } from "./state";
 import { initUi } from "./settings/ui";
 import { onSelectionChange, checkSelectionAndUpdateButtons } from "./selection";

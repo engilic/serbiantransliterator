@@ -1,4 +1,5 @@
-﻿import { describe, it, expect } from "vitest";
+// tests/ooxmlProofingLanguage.test.ts
+import { describe, it, expect } from "vitest";
 import { convertOoxml } from "../src/shared/transliterator";
 
 const W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";

@@ -1,4 +1,5 @@
-﻿import { describe, it, expect } from "vitest";
+// tests/protectUrlEmailPlainPunctuation.test.ts
+import { describe, it, expect } from "vitest";
 import { convertPlainText } from "../src/core/textCore";
 
 describe("convertPlainText - URL/email punctuation end-to-end (plain text)", () => {

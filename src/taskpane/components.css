@@ -1,9 +1,9 @@
+/* src/taskpane/components.css */
 /* 
    === COMPONENTS.CSS === 
    Buttons, Inputs, Accordions, Tags, Footer, Progress
 */
 
-/* --- INPUTS & CONTROLS --- */
 input[type="text"],
 select,
 textarea {
@@ -36,7 +36,6 @@ textarea:focus {
     box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.2);
 }
 
-/* --- BUTTONS (Mini & Main) --- */
 .mini-btn {
     height: 32px;
     padding: 0 12px;
@@ -130,7 +129,6 @@ textarea:focus {
     border-color: var(--colorNeutralForeground2);
 }
 
-/* --- ACCORDIONS (Sections) --- */
 .accordion {
     --acc-radius: 8px;
     display: flex;
@@ -144,7 +142,6 @@ textarea:focus {
     box-shadow: var(--shadow2);
     flex-shrink: 0;
     overflow: hidden;
-    /* [MAX3] Scroll Fix & GPU Optimization */
     scroll-margin-top: 20px;
     will-change: transform, opacity;
 }
@@ -228,7 +225,6 @@ textarea:focus {
     }
 }
 
-/* --- TAGS & LISTS --- */
 .tags-container {
     background: var(--colorNeutralBackground2);
     border: 1px solid var(--colorNeutralStroke1);
@@ -283,7 +279,6 @@ textarea:focus {
     background: var(--colorStatusDangerBackground);
 }
 
-/* --- RADIO & CHECKBOX --- */
 label {
     display: flex;
     align-items: center;
@@ -342,7 +337,6 @@ input[type="radio"]:checked::before {
     transform: scale(1);
 }
 
-/* --- SEGMENTED CONTROL --- */
 .segmented-control {
     display: flex;
     width: 100%;
@@ -388,7 +382,6 @@ input[type="radio"]:checked::before {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
 }
 
-/* --- STICKY FOOTER & STATUS --- */
 .sticky-footer {
     position: sticky;
     bottom: 0;
@@ -489,7 +482,6 @@ input[type="radio"]:checked::before {
     text-decoration: underline;
 }
 
-/* Helpers */
 .icon-hint {
     margin-left: auto;
     opacity: 0.5;
@@ -527,7 +519,6 @@ input[type="radio"]:checked::before {
     min-width: 0;
 }
 
-/* Pulse Animation */
 @keyframes pulse-glow {
     0%,
     100% {

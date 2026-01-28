@@ -1,6 +1,4 @@
 // src/sw.ts
-/* eslint-disable no-undef */
-
 const CACHE_NAME = "serbian-trans-v1";
 const ASSETS_TO_CACHE = [
     "./",

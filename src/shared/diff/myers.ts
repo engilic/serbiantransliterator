@@ -1,4 +1,5 @@
-﻿/**
+// src/shared/diff/myers.ts
+/**
  * Myers Diff Algorithm
  *
  * Implementacija minimalnog Myers diff algoritma za poređenje stringova.

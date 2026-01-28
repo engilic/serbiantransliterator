@@ -1,3 +1,4 @@
+// tests/settingsUI.test.ts
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { initUi } from "../src/taskpane/app/settings/ui";
 
@@ -64,10 +65,8 @@ function setupFullDom() {
     <button id="toggleAdvancedBtn"></button>
     <div id="advancedSettings"></div>
     
-    <!-- Dodajemo i msg element jer ga initUi koristi za status -->
     <div id="msg"></div>
     
-    <!-- Dodajemo Live Status elemente -->
     <div id="liveStatus"></div>
     <div id="liveTextLeft"></div>
     <div id="liveTextRight"></div>

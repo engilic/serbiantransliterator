@@ -1,4 +1,5 @@
-﻿import { describe, it, expect } from "vitest";
+// tests/ooxmlPlaceholdersAcrossRuns.test.ts
+import { describe, it, expect } from "vitest";
 import { convertOoxml } from "../src/shared/transliterator";
 
 describe("convertOoxml - placeholders { ... } across runs", () => {

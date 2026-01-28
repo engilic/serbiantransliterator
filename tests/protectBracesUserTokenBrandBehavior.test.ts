@@ -1,4 +1,5 @@
-﻿import { describe, it, expect } from "vitest";
+// tests/protectBracesUserTokenBrandBehavior.test.ts
+import { describe, it, expect } from "vitest";
 import { convertPlainText } from "../src/core/textCore";
 
 describe("curly braces + protectBrands interaction: USER token stays latin", () => {

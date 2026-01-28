@@ -1,3 +1,4 @@
+// tests/settingsLogic.test.ts
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { initUi } from "../src/taskpane/app/settings/ui";
 import { state } from "../src/taskpane/app/state";
@@ -49,7 +50,6 @@ function setupFullDom() {
     <button id="clearPresetBtn"></button>
     <button id="clearAllBtn"></button>
     
-    <!-- Ostali elementi da initUi ne pukne -->
     <select id="optUiLanguage"></select>
     <select id="optTheme"></select>
     <textarea id="optCustomSubstitutions"></textarea>

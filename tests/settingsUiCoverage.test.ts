@@ -1,3 +1,4 @@
+// tests/settingsUiCoverage.test.ts
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { initUi } from "../src/taskpane/app/settings/ui";
 
@@ -59,7 +60,6 @@ function setupFullDom() {
     <button id="clearCustomBtn"></button>
     <button id="clearPresetBtn"></button>
     <button id="clearAllBtn"></button>
-    <!-- REMOVED toggleAdvancedBtn -->
     <div class="advanced-settings-content"></div>
     
     <div id="msg"></div>

@@ -1,6 +1,4 @@
 // src/taskpane/app/web/ui.ts
-/* global document, navigator, window, ClipboardItem, Blob */
-
 import { processDocxFile } from "./batch";
 import { t } from "../../../shared/i18n";
 import { showModalInfo } from "../modal/modal";

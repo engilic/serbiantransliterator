@@ -1,3 +1,4 @@
+// tests/uiCurlyProtectionEndToEnd.test.ts
 import { describe, it, expect, beforeEach } from "vitest";
 import { state } from "../src/taskpane/app/state";
 import { getOoxmlOptionsFromUi } from "../src/taskpane/app/settings/getters";
@@ -17,25 +18,21 @@ function setupDom() {
       <option value="journalism">journalism</option>
     </select>
 
-    <!-- direction radios -->
     <input type="radio" id="dirAuto" name="direction" value="auto" />
     <input type="radio" id="dirToAscii" name="direction" value="to-ascii" />
     <input type="radio" id="dirLatToCyr" name="direction" value="lat-to-cyr" checked />
     <input type="radio" id="dirCyrToLat" name="direction" value="cyr-to-lat" />
 
-    <!-- curlyProtection select -->
     <select id="optCurlyProtection">
       <option value="placeholders">placeholders</option>
       <option value="all">all</option>
       <option value="none">none</option>
     </select>
     
-    <!-- Theme & Dialect & Subs (needed for getters) -->
     <select id="optTheme"><option value="auto">auto</option></select>
     <select id="optDialect"><option value="none">none</option></select>
     <textarea id="optCustomSubstitutions"></textarea>
 
-    <!-- checkboxes used by getters -->
     <input type="checkbox" id="optConfirmWholeDoc" />
     <input type="checkbox" id="optIncludeHeadersFooters" />
     <input type="checkbox" id="optIncludeFootnotes" />
@@ -45,7 +42,6 @@ function setupDom() {
     <input type="checkbox" id="optPreserveCodeBlocks" checked />
     <input type="checkbox" id="optProtectRomans" checked />
     <input type="checkbox" id="optSetProofingLanguage" />
-    <!-- Removed optShowStats -->
   `;
 }
 

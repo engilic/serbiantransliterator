@@ -1,5 +1,4 @@
 // src/shared/ooxml/common.ts
-
 // --- NOVO: Safe wrapper ---
 export function safeNormalize(s: unknown): string {
     if (s === null || s === undefined) return "";

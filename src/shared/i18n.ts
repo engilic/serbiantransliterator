@@ -1,5 +1,4 @@
 // src/shared/i18n.ts
-
 import { SR_RS } from "./locales/sr";
 import { EN_US } from "./locales/en";
 

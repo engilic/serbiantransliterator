@@ -1,5 +1,4 @@
 // src/core/protect.ts
-
 import {
     EMAIL_RE_G,
     URL_RE_G,

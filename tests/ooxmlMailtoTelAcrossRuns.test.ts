@@ -1,4 +1,5 @@
-﻿import { describe, it, expect } from "vitest";
+// tests/ooxmlMailtoTelAcrossRuns.test.ts
+import { describe, it, expect } from "vitest";
 import { convertOoxml } from "../src/shared/transliterator";
 
 describe("convertOoxml - mailto/tel preko više <w:t>", () => {

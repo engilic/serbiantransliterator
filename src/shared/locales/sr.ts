@@ -1,3 +1,4 @@
+// src/shared/locales/sr.ts
 export const SR_RS = {
     app_title: "Serbian Transliterator",
     ui_version_prefix: "v",

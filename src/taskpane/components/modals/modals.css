@@ -1,5 +1,4 @@
 /* src/taskpane/components/modals/modals.css */
-
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -53,8 +52,6 @@
     gap: 12px;
 }
 
-/* --- PREVIEW PANE --- */
-
 .preview-text-pane {
     background: var(--colorNeutralBackground3);
     border: 1px solid var(--colorNeutralStroke2);
@@ -65,8 +62,6 @@
     color: var(--colorNeutralForeground1);
 }
 
-/* [MAX3 OPTIMIZATION] Smart Rendering for large diff chunks */
-/* Browser preskače rendering (layout/paint) za blokove van ekrana */
 .preview-block {
     content-visibility: auto;
     contain-intrinsic-size: 1px 50px; /* Približna visina da scrollbar ne skače */
@@ -100,8 +95,6 @@
     cursor: pointer;
     color: var(--colorNeutralForeground1);
 }
-
-/* --- TOUR MODAL --- */
 
 .tour-overlay {
     position: fixed;
@@ -164,7 +157,6 @@
     margin-top: 20px;
 }
 
-/* --- DIFF COLORS --- */
 .diff-added {
     background-color: var(--colorStatusSuccessBackground);
     color: var(--colorStatusSuccessForeground);
@@ -177,7 +169,6 @@
     text-decoration: line-through;
 }
 
-/* Interactive states */
 .clickable {
     cursor: pointer;
     border-bottom: 1px dotted currentColor;
@@ -191,7 +182,6 @@
     border-bottom: none;
 }
 
-/* Side-by-side grid */
 .preview-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -206,7 +196,6 @@
     white-space: pre-wrap;
 }
 
-/* Toast Notification */
 .preview-toast {
     position: absolute;
     bottom: 20px;

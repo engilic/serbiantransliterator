@@ -1,4 +1,8 @@
 /* eslint-disable no-undef */
+// webpack.common.js
+// webpack.common.js
+// webpack.common.js
+// webpack.common.js
 const path = require("path");
 const fs = require("fs");
 const CopyWebpackPlugin = require("copy-webpack-plugin");

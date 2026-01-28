@@ -1,3 +1,4 @@
+// tests/tags.test.ts
 import { describe, it, expect, beforeEach } from "vitest";
 import { setupTagEvents, renderTags } from "../src/taskpane/app/settings/tags";
 import { state } from "../src/taskpane/app/state";

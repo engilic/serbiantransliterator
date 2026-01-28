@@ -1,4 +1,4 @@
-// === FILE: src/taskpane/worker/client.ts ===
+// src/taskpane/worker/client.ts
 import type { OoxmlOptions, ConvertStats } from "../../shared/ooxml/convertOoxml";
 import { convertOoxml } from "../../shared/ooxml/convertOoxml";
 import * as textCore from "../../core/textCore";

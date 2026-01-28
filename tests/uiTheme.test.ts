@@ -1,3 +1,4 @@
+// tests/uiTheme.test.ts
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { initUi } from "../src/taskpane/app/settings/ui";
 
@@ -9,7 +10,6 @@ function setupThemeDom() {
             <option value="light">light</option>
             <option value="dark">dark</option>
         </select>
-        <!-- Ostali neophodni elementi za initUi da ne pukne -->
         <select id="profilePreset"></select>
         <select id="optUiLanguage"></select>
         <select id="optDialect"></select>

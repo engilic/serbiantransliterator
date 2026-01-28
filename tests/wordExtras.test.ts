@@ -1,3 +1,4 @@
+// tests/wordExtras.test.ts
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("../src/taskpane/app/status", () => ({

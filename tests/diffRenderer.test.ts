@@ -1,3 +1,4 @@
+// tests/diffRenderer.test.ts
 import { describe, it, expect } from "vitest";
 import { renderDiffHtml, renderSideBySideWithHighlights } from "../src/taskpane/app/preview/diffRenderer";
 

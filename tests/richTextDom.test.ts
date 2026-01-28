@@ -1,4 +1,4 @@
-// Prvo dodaj 'export' ispred funkcije u src/taskpane/app/web/ui.ts
+// tests/richTextDom.test.ts
 // export function transliterateDomNode(...)
 
 import { describe, it, expect, vi } from "vitest";

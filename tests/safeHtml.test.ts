@@ -1,4 +1,5 @@
-﻿import { describe, it, expect } from "vitest";
+// tests/safeHtml.test.ts
+import { describe, it, expect } from "vitest";
 import { html, unsafeHtml, unwrapHtml } from "../src/shared/safeHtml";
 
 describe("safeHtml", () => {

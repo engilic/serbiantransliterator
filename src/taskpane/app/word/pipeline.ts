@@ -1,6 +1,4 @@
 // src/taskpane/app/word/pipeline.ts
-/* global Word */
-
 import type { OoxmlOptions } from "../../../shared/ooxml/convertOoxml";
 import { convertOoxml } from "../../../shared/ooxml/convertOoxml";
 import type { UiSettings, ExtrasSummary } from "../types";
