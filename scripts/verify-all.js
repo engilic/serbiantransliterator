@@ -8,6 +8,9 @@ const os = require("os");
 
 const ROOT = process.cwd();
 const WASM_DIR = path.join(ROOT, "src", "wasm-core");
+const MAX_WASM_SIZE_MB = 2.0;
+const MIN_FREE_RAM_MB = 1024;
+
 const ARGS = process.argv.slice(2);
 const IS_FAST_MODE = ARGS.includes("--fast");
 const NO_PUSH = ARGS.includes("--no-push");
@@ -56,39 +59,21 @@ function run(step, cmd, args, cwd = ROOT) {
     console.log(`${C.green}✅ OK${C.reset}`);
 }
 
-// --- IZMENJENE KONTROLE ---
 async function askYesNo(q) {
     return new Promise((r) => {
         console.log(`\n${C.magenta}❓ ${q} ${C.gray}(Y/n)${C.reset}`);
-        console.log(
-            `   ${C.white}[${C.green}BACKSPACE / ⬅ / Enter${C.white}] = DA   |   [${C.red}DEL / ➔ / Esc${C.white}] = NE${C.reset}`
-        );
-
         process.stdin.setRawMode(true);
         process.stdin.resume();
         process.stdin.setEncoding("utf8");
-
         const l = (k) => {
-            if (k === "\u0003") process.exit(1); // Ctrl+C uvek gasi
-
-            // DA: y, Y, Enter, Backspace (\u007f, \u0008), Levo (\u001b[D)
-            if (
-                k === "y" ||
-                k === "Y" ||
-                k === "\r" ||
-                k === "\u007f" ||
-                k === "\u0008" ||
-                k === "\u001b[D"
-            ) {
+            if (k === "\u0003") process.exit(1);
+            if (k === "y" || k === "Y" || k === "\r") {
                 cleanup(true);
-            }
-            // NE: n, N, Esc, Delete (\u001b[3~), Desno (\u001b[C)
-            else if (k === "n" || k === "N" || k === "\u001b" || k === "\u001b[3~" || k === "\u001b[C") {
+            } else {
                 cleanup(false);
             }
         };
         const cleanup = (res) => {
-            process.stdout.write(res ? `${C.green}DA${C.reset}\n` : `${C.red}NE${C.reset}\n`);
             process.stdin.setRawMode(false);
             process.stdin.pause();
             process.stdin.removeListener("data", l);
@@ -105,11 +90,8 @@ function checkEnv() {
     }
 }
 
-// 4. Sniffer (Tajne i Garbage)
 async function runSniffer() {
     console.log(`\n${C.blue}${C.bold}>>> Sniffer & Secret Hunter${C.reset}`);
-
-    // Lista fajlova za proveru (ignorise foldere)
     const files = spawnSync("git", ["ls-files"], { encoding: "utf8" })
         .stdout.split("\n")
         .filter((f) => f && (f.endsWith(".ts") || f.endsWith(".js") || f.endsWith(".tsx")));
@@ -123,8 +105,8 @@ async function runSniffer() {
 
     files.forEach((f) => {
         if (f.startsWith("scripts/") || f.includes("test") || f.includes("spec")) return;
-
         const content = fs.readFileSync(f, "utf8");
+
         secrets.forEach((re) => {
             if (re.test(content)) {
                 console.error(`${C.red}💀 SECRET NAĐEN U FAJLU: ${f}${C.reset}`);
@@ -140,9 +122,7 @@ async function runSniffer() {
 
     if (issues > 0) {
         beep();
-        console.error(
-            `\n${C.bgRed}${C.white} 🛑 PRONAĐENO ${issues} KRITIČNIH PROBLEMA! POPRAVI PRE NASTAVKA. ${C.reset}`
-        );
+        console.error(`\n${C.bgRed}${C.white} 🛑 PRONAĐENO ${issues} KRITIČNIH PROBLEMA!${C.reset}`);
         process.exit(1);
     }
     console.log(`${C.green}✅ Kod je čist (Bezbednost OK).${C.reset}`);
@@ -187,8 +167,42 @@ async function main() {
     beep();
     console.log(`\n${C.green}${C.bold}🏆 SPREMNO!${C.reset}`);
 
-    if (!NO_PUSH && (await askYesNo("Push na GitHub?"))) {
-        spawnSync("git", ["push"], { stdio: "inherit" });
+    if (NO_PUSH) return;
+
+    // --- SMART PUSH SYSTEM (AUTO-BRANCHING) ---
+    const currentBranch = spawnSync("git", ["rev-parse", "--abbrev-ref", "HEAD"], {
+        encoding: "utf8",
+    }).stdout.trim();
+    const isProtected = currentBranch === "master" || currentBranch === "main";
+
+    const prompt = isProtected
+        ? `Na '${currentBranch}' si. Želiš li auto-granu i Push?`
+        : `Push na '${currentBranch}'?`;
+
+    if (await askYesNo(prompt)) {
+        if (isProtected) {
+            // AUTOMATIKA: Kreiraj granu da izbegneš "Protected branch" grešku
+            const timestamp = new Date().getTime();
+            const autoBranch = `chore/verified-update-${timestamp}`;
+
+            console.log(`\n${C.yellow}🛡️  Master je zaštićen. Kreiram granu: ${autoBranch}${C.reset}`);
+
+            spawnSync("git", ["checkout", "-b", autoBranch], { stdio: "inherit" });
+
+            console.log(`${C.blue}🚀 Pushing ${autoBranch}...${C.reset}`);
+            const pushRes = spawnSync("git", ["push", "-u", "origin", autoBranch], { stdio: "inherit" });
+
+            if (pushRes.status === 0) {
+                console.log(`\n${C.green}✅ Uspešno! Otvori Pull Request ovde:${C.reset}`);
+                console.log(
+                    `${C.cyan}https://github.com/engilic/serbiantransliterator/pull/new/${autoBranch}${C.reset}\n`
+                );
+            }
+        } else {
+            // STANDARD: Samo gurni ako si već na feature grani
+            console.log(`${C.blue}🚀 Pushing ${currentBranch}...${C.reset}`);
+            spawnSync("git", ["push", "-u", "origin", currentBranch], { stdio: "inherit" });
+        }
     }
 }
 
