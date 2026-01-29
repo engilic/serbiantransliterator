@@ -2,15 +2,10 @@
 const { spawnSync } = require("child_process");
 const path = require("path");
 const fs = require("fs");
-const dns = require("dns");
 const readline = require("readline");
-const os = require("os");
 
 const ROOT = process.cwd();
 const WASM_DIR = path.join(ROOT, "src", "wasm-core");
-const MAX_WASM_SIZE_MB = 2.0;
-const MIN_FREE_RAM_MB = 1024;
-
 const ARGS = process.argv.slice(2);
 const IS_FAST_MODE = ARGS.includes("--fast");
 const NO_PUSH = ARGS.includes("--no-push");
@@ -27,7 +22,10 @@ const C = {
     cyan: "\x1b[36m",
     bgRed: "\x1b[41m",
     white: "\x1b[97m",
+    hideCursor: "\x1b[?25l",
+    showCursor: "\x1b[?25h",
 };
+
 const TIMINGS = [];
 
 function beep() {
@@ -44,13 +42,17 @@ ${C.reset}`);
 function run(step, cmd, args, cwd = ROOT) {
     console.log(`\n${C.blue}${C.bold}>>> ${step}${C.reset}`);
     const start = Date.now();
-    const res = spawnSync(cmd, args, {
+    const fullCmd = `${cmd} ${args.join(" ")}`;
+
+    const res = spawnSync(fullCmd, {
         cwd,
         stdio: "inherit",
         shell: true,
         env: { ...process.env, FORCE_COLOR: "1" },
     });
+
     TIMINGS.push({ step, time: ((Date.now() - start) / 1000).toFixed(2) });
+
     if (res.status !== 0) {
         beep();
         console.error(`\n${C.bgRed} ❌ FATAL ERROR: ${step} ${C.reset}`);
@@ -59,27 +61,83 @@ function run(step, cmd, args, cwd = ROOT) {
     console.log(`${C.green}✅ OK${C.reset}`);
 }
 
-async function askYesNo(q) {
-    return new Promise((r) => {
-        console.log(`\n${C.magenta}❓ ${q} ${C.gray}(Y/n)${C.reset}`);
+// --- TVOJA CUSTOM LOGIKA ZA MIŠA ---
+async function askYesNo(question) {
+    return new Promise((resolve) => {
+        let isYes = true; // Početno stanje: DA
+
         process.stdin.setRawMode(true);
         process.stdin.resume();
         process.stdin.setEncoding("utf8");
-        const l = (k) => {
-            if (k === "\u0003") process.exit(1);
-            if (k === "y" || k === "Y" || k === "\r") {
-                cleanup(true);
-            } else {
-                cleanup(false);
+        process.stdout.write(C.hideCursor);
+
+        const render = () => {
+            readline.cursorTo(process.stdout, 0);
+            readline.clearLine(process.stdout, 0);
+
+            // Vizuelni prikaz
+            const yesBtn = isYes
+                ? `${C.bgRed}${C.white}${C.bold} [ DA ] ${C.reset}`
+                : `${C.gray}  da   ${C.reset}`;
+            const noBtn = !isYes
+                ? `${C.bgRed}${C.white}${C.bold} [ NE ] ${C.reset}`
+                : `${C.gray}  ne   ${C.reset}`;
+
+            process.stdout.write(`${C.magenta}❓ ${question}${C.reset}  ${yesBtn}  ${noBtn}`);
+        };
+
+        render();
+
+        const listener = (key) => {
+            // ENTER potvrdjuje odabrano
+            if (key === "\r") {
+                cleanup();
+                process.stdout.write(
+                    `\n${isYes ? C.green + "✅ Potvrđeno." : C.red + "❌ Otkazano."}${C.reset}\n`
+                );
+                resolve(isYes);
+                return;
+            }
+
+            // CTRL+C gasi sve
+            if (key === "\u0003") {
+                cleanup();
+                process.stdout.write("\n");
+                process.exit(1);
+            }
+
+            // --- LOGIKA ZA TVOJ MIŠ ---
+
+            // Backspace (\x08 ili \x7f) -> Selektuj DA (Levo)
+            if (key === "\x08" || key === "\x7f" || key === "\u001b[D") {
+                isYes = true;
+                render();
+            }
+
+            // Delete (\x1b[3~) -> Selektuj NE (Desno)
+            else if (key === "\x1b[3~" || key === "\u001b[C") {
+                isYes = false;
+                render();
+            }
+
+            // Podrška i za tastaturu (Y/N)
+            else if (key.toLowerCase() === "y") {
+                isYes = true;
+                render();
+            } else if (key.toLowerCase() === "n") {
+                isYes = false;
+                render();
             }
         };
-        const cleanup = (res) => {
+
+        const cleanup = () => {
+            process.stdout.write(C.showCursor);
             process.stdin.setRawMode(false);
             process.stdin.pause();
-            process.stdin.removeListener("data", l);
-            r(res);
+            process.stdin.removeListener("data", listener);
         };
-        process.stdin.on("data", l);
+
+        process.stdin.on("data", listener);
     });
 }
 
@@ -92,7 +150,7 @@ function checkEnv() {
 
 async function runSniffer() {
     console.log(`\n${C.blue}${C.bold}>>> Sniffer & Secret Hunter${C.reset}`);
-    const files = spawnSync("git", ["ls-files"], { encoding: "utf8" })
+    const files = spawnSync("git ls-files", { shell: true, encoding: "utf8" })
         .stdout.split("\n")
         .filter((f) => f && (f.endsWith(".ts") || f.endsWith(".js") || f.endsWith(".tsx")));
 
@@ -106,18 +164,10 @@ async function runSniffer() {
     files.forEach((f) => {
         if (f.startsWith("scripts/") || f.includes("test") || f.includes("spec")) return;
         const content = fs.readFileSync(f, "utf8");
-
         secrets.forEach((re) => {
-            if (re.test(content)) {
-                console.error(`${C.red}💀 SECRET NAĐEN U FAJLU: ${f}${C.reset}`);
-                issues++;
-            }
+            if (re.test(content)) issues++;
         });
-
-        if (content.includes("debugger")) {
-            console.error(`${C.red}❌ 'debugger' u fajlu: ${f}${C.reset}`);
-            issues++;
-        }
+        if (content.includes("debugger")) issues++;
     });
 
     if (issues > 0) {
@@ -136,10 +186,11 @@ async function main() {
     run("1. Install", "npm", ["ci"]);
     run("2. Format", "npm", ["run", "format:fix"]);
 
-    if (spawnSync("git", ["status", "--porcelain"], { encoding: "utf8" }).stdout.trim()) {
+    const status = spawnSync("git status --porcelain", { shell: true, encoding: "utf8" }).stdout.trim();
+    if (status) {
         console.log(`${C.yellow}⚠️  Auto-commit format...${C.reset}`);
-        spawnSync("git", ["add", "."], { stdio: "inherit" });
-        spawnSync("git", ["commit", "-m", "chore: auto-format"], { stdio: "inherit" });
+        spawnSync("git add .", { shell: true, stdio: "inherit" });
+        spawnSync('git commit -m "chore: auto-format"', { shell: true, stdio: "inherit" });
     }
 
     run("3. Lint/Type", "npm", ["run", "typecheck"]);
@@ -165,44 +216,34 @@ async function main() {
     console.log(`\n${C.cyan}📊 REPORT:${C.reset}`);
     TIMINGS.forEach((t) => console.log(`   • ${t.step.padEnd(20)}: ${t.time}s`));
     beep();
-    console.log(`\n${C.green}${C.bold}🏆 SPREMNO!${C.reset}`);
+    console.log(`\n${C.green}${C.bold}🏆 SPREMNO!${C.reset}\n`);
 
     if (NO_PUSH) return;
 
-    // --- SMART PUSH SYSTEM (AUTO-BRANCHING) ---
-    const currentBranch = spawnSync("git", ["rev-parse", "--abbrev-ref", "HEAD"], {
+    const currentBranch = spawnSync("git rev-parse --abbrev-ref HEAD", {
+        shell: true,
         encoding: "utf8",
     }).stdout.trim();
     const isProtected = currentBranch === "master" || currentBranch === "main";
+    const prompt = isProtected ? `Master je zaštićen. Auto-grana + Push?` : `Push na '${currentBranch}'?`;
 
-    const prompt = isProtected
-        ? `Na '${currentBranch}' si. Želiš li auto-granu i Push?`
-        : `Push na '${currentBranch}'?`;
+    // OVDE SE KORISTE TVOJI TASTERI
+    const shouldPush = await askYesNo(prompt);
 
-    if (await askYesNo(prompt)) {
+    if (shouldPush) {
         if (isProtected) {
-            // AUTOMATIKA: Kreiraj granu da izbegneš "Protected branch" grešku
             const timestamp = new Date().getTime();
             const autoBranch = `chore/verified-update-${timestamp}`;
-
-            console.log(`\n${C.yellow}🛡️  Master je zaštićen. Kreiram granu: ${autoBranch}${C.reset}`);
-
-            spawnSync("git", ["checkout", "-b", autoBranch], { stdio: "inherit" });
-
+            console.log(`\n${C.yellow}🛡️  Kreiram granu: ${autoBranch}${C.reset}`);
+            spawnSync(`git checkout -b ${autoBranch}`, { shell: true, stdio: "inherit" });
             console.log(`${C.blue}🚀 Pushing ${autoBranch}...${C.reset}`);
-            const pushRes = spawnSync("git", ["push", "-u", "origin", autoBranch], { stdio: "inherit" });
-
-            if (pushRes.status === 0) {
-                console.log(`\n${C.green}✅ Uspešno! Otvori Pull Request ovde:${C.reset}`);
-                console.log(
-                    `${C.cyan}https://github.com/engilic/serbiantransliterator/pull/new/${autoBranch}${C.reset}\n`
-                );
-            }
+            spawnSync(`git push -u origin ${autoBranch}`, { shell: true, stdio: "inherit" });
         } else {
-            // STANDARD: Samo gurni ako si već na feature grani
             console.log(`${C.blue}🚀 Pushing ${currentBranch}...${C.reset}`);
-            spawnSync("git", ["push", "-u", "origin", currentBranch], { stdio: "inherit" });
+            spawnSync(`git push -u origin ${currentBranch}`, { shell: true, stdio: "inherit" });
         }
+    } else {
+        console.log(`\n${C.gray}⛔ Operacija završena bez push-a.${C.reset}`);
     }
 }
 
