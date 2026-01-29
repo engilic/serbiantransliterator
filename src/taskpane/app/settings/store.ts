@@ -1,6 +1,4 @@
 // src/taskpane/app/settings/store.ts
-/* global */
-
 import type { UiSettings } from "../types";
 import { safeGetItem, safeSetItem } from "../../../shared/storage/safeLocalStorage";
 

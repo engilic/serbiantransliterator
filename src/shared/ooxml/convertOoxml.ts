@@ -1,5 +1,4 @@
 // src/shared/ooxml/convertOoxml.ts
-
 import { convertPlainText, type Direction, type CoreOptions, detectScript } from "../../core/textCore";
 import {
     XML_NS,

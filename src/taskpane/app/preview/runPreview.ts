@@ -1,6 +1,4 @@
 // src/taskpane/app/preview/runPreview.ts
-/* global Word, console, DOMParser */
-
 import type { OoxmlOptions } from "../../../shared/ooxml/convertOoxml";
 import { convertOoxml } from "../../../shared/ooxml/convertOoxml";
 import { state } from "../state";

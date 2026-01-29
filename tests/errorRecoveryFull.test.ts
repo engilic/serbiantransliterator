@@ -1,3 +1,4 @@
+// tests/errorRecoveryFull.test.ts
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ErrorRecoveryHandler } from "../src/taskpane/app/error/errorRecovery";
 import { setStatus } from "../src/taskpane/app/status";

@@ -1,6 +1,4 @@
 // src/taskpane/app/web/batch.ts
-/* global Blob, URL, document, FileReader */
-
 import JSZip from "jszip";
 import { getOoxmlOptionsFromUi } from "../settings/getters";
 import { setProgress, setStatus } from "../status";

@@ -1,3 +1,4 @@
+// tests/accordionCoverage.test.ts
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { initAccordions } from "../src/taskpane/app/ui/accordion";
 import { safeSetItem } from "../src/shared/storage/safeLocalStorage";

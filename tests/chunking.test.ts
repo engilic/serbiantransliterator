@@ -1,3 +1,4 @@
+// tests/chunking.test.ts
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { processDocumentInChunks } from "../src/taskpane/app/word/chunking";
 import { workerClient } from "../src/taskpane/worker/client";

@@ -1,3 +1,4 @@
+// src/shared/ooxml/bridge/structural/allCapsHints.ts
 import { findNextNodeWithText, firstCp, lastCp, isUpperCyrillicLetter } from "../../common";
 
 export const CYR_ALLCAPS_HINT = "А";

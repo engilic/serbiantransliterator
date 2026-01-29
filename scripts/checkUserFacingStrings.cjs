@@ -1,3 +1,4 @@
+// scripts/checkUserFacingStrings.cjs
 "use strict";
 
 const fs = require("node:fs");

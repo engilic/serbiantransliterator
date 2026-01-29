@@ -1,3 +1,4 @@
+// tests/settingsGetters.test.ts
 import { describe, it, expect, beforeEach } from "vitest";
 import { state } from "../src/taskpane/app/state";
 
@@ -15,31 +16,26 @@ function setupDomForGetters() {
       <option value="journalism">journalism</option>
     </select>
 
-    <!-- direction radios -->
     <input type="radio" id="dirAuto" name="direction" value="auto" />
     <input type="radio" id="dirToAscii" name="direction" value="to-ascii" />
     <input type="radio" id="dirLatToCyr" name="direction" value="lat-to-cyr" />
     <input type="radio" id="dirCyrToLat" name="direction" value="cyr-to-lat" />
 
-    <!-- curlyProtection select -->
     <select id="optCurlyProtection">
       <option value="placeholders">placeholders</option>
       <option value="all">all</option>
       <option value="none">none</option>
     </select>
     
-    <!-- NEW: Theme Select -->
     <select id="optTheme">
       <option value="auto">auto</option>
       <option value="light">light</option>
       <option value="dark">dark</option>
     </select>
     
-    <!-- NEW: Custom Subs Textarea -->
     <textarea id="optCustomSubstitutions"></textarea>
     <select id="optDialect"><option value="none">none</option></select>
 
-    <!-- checkboxes used by getters -->
     <input type="checkbox" id="optConfirmWholeDoc" />
     <input type="checkbox" id="optIncludeHeadersFooters" />
     <input type="checkbox" id="optIncludeFootnotes" />
@@ -49,7 +45,6 @@ function setupDomForGetters() {
     <input type="checkbox" id="optPreserveCodeBlocks" />
     <input type="checkbox" id="optProtectRomans" />
     <input type="checkbox" id="optSetProofingLanguage" />
-    <!-- Removed: optShowStats -->
     <input type="checkbox" id="optFixDoubleSpaces" />
     <input type="checkbox" id="optFormatDates" />
   `;

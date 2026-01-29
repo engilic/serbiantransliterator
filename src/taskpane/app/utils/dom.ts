@@ -1,6 +1,4 @@
 // src/taskpane/app/utils/dom.ts
-/* global document */
-
 /**
  * Type-safe wrapper around document.getElementById.
  * Throws clean error if element is missing (fail-fast), or returns typed element.

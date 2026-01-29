@@ -1,4 +1,5 @@
-﻿/**
+// src/shared/safeHtml.ts
+/**
  * SafeHtml runtime wrapper.
  *
  * Bitno: branded string ne pomaže u runtime-u (TS tipovi nestanu),

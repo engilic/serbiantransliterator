@@ -1,3 +1,4 @@
+// tests/settingsUiExtra.test.ts
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { initUi } from "../src/taskpane/app/settings/ui";
 
@@ -26,25 +27,21 @@ vi.mock("../src/shared/i18n", () => ({
 
 function setupMinimalDom() {
     document.body.innerHTML = `
-        <!-- Main Buttons -->
         <button id="runBtn"></button>
         <button id="previewBtn"></button>
         
-        <!-- Settings Buttons -->
         <button id="exportBtn"></button>
         <button id="importBtn"></button>
         <input id="fileInput" type="file" />
         <button id="resetBtn"></button>
         <button id="exportLogsBtn"></button>
         
-        <!-- Selects -->
         <select id="profilePreset"><option value="custom">c</option></select>
         <select id="optUiLanguage"><option value="sr">sr</option></select>
         <select id="optTheme"><option value="auto">auto</option></select>
         <select id="optDialect"><option value="none">none</option></select>
         <select id="optCurlyProtection"><option value="placeholders">p</option></select>
         
-        <!-- Checkboxes -->
         <input type="checkbox" id="optConfirmWholeDoc" />
         <input type="checkbox" id="optIncludeHeadersFooters" />
         <input type="checkbox" id="optIncludeFootnotes" />
@@ -55,23 +52,19 @@ function setupMinimalDom() {
         <input type="checkbox" id="optProtectRomans" />
         <input type="checkbox" id="optSetProofingLanguage" />
         
-        <!-- Radios -->
         <input type="radio" name="direction" id="dirAuto" value="auto" />
         <input type="radio" name="direction" id="dirLatToCyr" value="lat-to-cyr" />
         <input type="radio" name="direction" id="dirCyrToLat" value="cyr-to-lat" />
         <input type="radio" name="direction" id="dirToAscii" value="to-ascii" />
         
-        <!-- Textareas -->
         <textarea id="optCustomSubstitutions"></textarea>
         <textarea id="optIgnoredStyles"></textarea>
         
-        <!-- Subs UI -->
         <div id="subsContainer"></div>
         <input id="subSrc" />
         <input id="subDest" />
         <button id="addSubBtn"></button>
         
-        <!-- Tags UI -->
         <input id="tagInput" />
         <button id="addTagBtn"></button>
         <div id="tagsList"></div>
@@ -81,13 +74,11 @@ function setupMinimalDom() {
         <button id="clearPresetBtn"></button>
         <button id="clearAllBtn"></button>
         
-        <!-- Status & Live -->
         <div id="msg"></div>
         <div id="liveStatus"></div>
         <div id="liveTextLeft"></div>
         <div id="liveTextRight"></div>
         
-        <!-- Stats -->
         <div id="statsBox"></div>
         <button id="statsHeader"></button>
         <div id="statsContent"></div>

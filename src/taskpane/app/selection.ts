@@ -1,6 +1,4 @@
 // src/taskpane/app/selection.ts
-/* global Office, document, Word */
-
 import { state } from "./state";
 import { invalidatePreviewCache } from "./preview/cache";
 import { t, tPlural } from "../../shared/i18n";

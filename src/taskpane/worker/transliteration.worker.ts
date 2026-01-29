@@ -1,5 +1,4 @@
-// === FILE: src/taskpane/worker/transliteration.worker.ts ===
-
+// src/taskpane/worker/transliteration.worker.ts
 /// <reference lib="webworker" />
 
 // [FIX] 1. Učitaj polyfille (bitno za starije Office verzije i WebView)

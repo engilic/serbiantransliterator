@@ -1,4 +1,5 @@
-﻿import { describe, it, expect } from "vitest";
+// tests/protectUrlEmailPlain.test.ts
+import { describe, it, expect } from "vitest";
 import { convertPlainText } from "../src/core/textCore";
 
 describe("protect.ts - URL/email protection (plain text)", () => {

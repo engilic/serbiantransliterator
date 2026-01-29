@@ -1,4 +1,8 @@
 /* eslint-disable no-undef */
+// webpack.prod.js
+// webpack.prod.js
+// webpack.prod.js
+// webpack.prod.js
 const TerserPlugin = require("terser-webpack-plugin");
 const CompressionPlugin = require("compression-webpack-plugin");
 

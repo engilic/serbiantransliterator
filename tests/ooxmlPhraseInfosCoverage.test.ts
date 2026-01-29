@@ -1,3 +1,4 @@
+// tests/ooxmlPhraseInfosCoverage.test.ts
 import { describe, it, expect } from "vitest";
 import { buildPhraseInfos, bridgePhrasesAcrossTextNodes } from "../src/shared/ooxml/bridge";
 

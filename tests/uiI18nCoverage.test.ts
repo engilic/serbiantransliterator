@@ -1,3 +1,4 @@
+// tests/uiI18nCoverage.test.ts
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { applyI18nToDom, initUiI18n, setUiLanguagePreference } from "../src/taskpane/app/i18n/uiI18n";
 import { t } from "../src/shared/i18n";

@@ -1,3 +1,4 @@
+// tests/taskpaneEntrySmoke.test.ts
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // Full mock of textCore to avoid loading WASM or original module logic
@@ -45,7 +46,6 @@ function setupDomForTaskpane() {
     <input type="checkbox" id="optPreserveCodeBlocks" checked />
     <input type="checkbox" id="optProtectRomans" checked />
     <input type="checkbox" id="optSetProofingLanguage" checked />
-    <!-- Removed optShowStats -->
     <input type="checkbox" id="optFixDoubleSpaces" checked />
     <input type="checkbox" id="optFormatDates" />
     <button id="toggleAdvancedBtn"></button>
@@ -54,7 +54,6 @@ function setupDomForTaskpane() {
         <option value="placeholders">placeholders</option>
       </select>
       
-      <!-- Custom Subs UI Mock -->
       <input id="subSrc" />
       <input id="subDest" />
       <button id="addSubBtn"></button>
@@ -73,7 +72,6 @@ function setupDomForTaskpane() {
     <button id="clearAllBtn"></button>
     <button id="exportLogsBtn"></button>
     
-    <!-- Msg i Live Status -->
     <div id="msg"></div>
     <div id="liveStatus"></div>
     <div id="liveTextLeft"></div>
@@ -82,7 +80,6 @@ function setupDomForTaskpane() {
     <div id="liveIconRight"></div>
     <div id="liveAscii"></div>
     
-    <!-- Stats Accordion Elements -->
     <div id="statsBox"></div>
     <button id="statsHeader"></button>
     <div id="statsContent"></div>

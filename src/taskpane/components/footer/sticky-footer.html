@@ -1,8 +1,7 @@
+<!-- src/taskpane/components/footer/sticky-footer.html -->
 <div class="sticky-footer" id="stickyFooter">
-    <!-- 1. Status Message (Feedback) -->
     <div id="msg" role="status" aria-live="polite"></div>
 
-    <!-- 2. Live Status Bar (Context) -->
     <div id="liveStatus" class="live-status fade-in" style="display: none">
         <div class="live-left">
             <span id="liveIconLeft" class="live-icon">ℹ️</span>
@@ -12,7 +11,6 @@
         <div class="live-right">
             <span id="liveTextRight">...</span>
 
-            <!-- NEW: Auto Icon separated (always visible in Auto mode) -->
             <span
                 id="liveAutoIcon"
                 class="live-icon"
@@ -31,7 +29,6 @@
         </div>
     </div>
 
-    <!-- 3. Actions Wrapper (Controls) -->
     <div class="footer-content-wrapper">
         <div class="footer-actions">
             <button id="previewBtn" class="secondary-btn" type="button">
@@ -43,7 +40,6 @@
         </div>
     </div>
 
-    <!-- 4. Compact Footer Links (Meta) -->
     <div class="app-footer-compact">
         <a href="mailto:iddj27510@gmail.com" class="footer-icon-link" aria-label="Email" title="Kontakt">@</a>
         &bull; <a href="support.html" target="_blank" data-i18n="footer_help"></a> &bull;

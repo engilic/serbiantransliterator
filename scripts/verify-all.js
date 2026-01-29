@@ -2,9 +2,6 @@
 const { spawnSync } = require("child_process");
 const path = require("path");
 const fs = require("fs");
-const dns = require("dns");
-const readline = require("readline");
-const os = require("os");
 
 const ROOT = process.cwd();
 const WASM_DIR = path.join(ROOT, "src", "wasm-core");
@@ -12,6 +9,7 @@ const ARGS = process.argv.slice(2);
 const IS_FAST_MODE = ARGS.includes("--fast");
 const NO_PUSH = ARGS.includes("--no-push");
 
+// --- BOJE (Kopirano iz tvog primera) ---
 const C = {
     reset: "\x1b[0m",
     green: "\x1b[32m",
@@ -21,10 +19,11 @@ const C = {
     magenta: "\x1b[35m",
     bold: "\x1b[1m",
     gray: "\x1b[90m",
-    cyan: "\x1b[36m",
-    bgRed: "\x1b[41m",
     white: "\x1b[97m",
+    bgRed: "\x1b[41m",
+    cyan: "\x1b[36m",
 };
+
 const TIMINGS = [];
 
 function beep() {
@@ -38,16 +37,23 @@ function printBanner() {
 ${C.reset}`);
 }
 
+// Wrapper za pokretanje komandi bez DEP0190 warninga
 function run(step, cmd, args, cwd = ROOT) {
     console.log(`\n${C.blue}${C.bold}>>> ${step}${C.reset}`);
     const start = Date.now();
-    const res = spawnSync(cmd, args, {
+
+    // Spajamo komandu i argumente u jedan string
+    const fullCmd = `${cmd} ${args.join(" ")}`;
+
+    const res = spawnSync(fullCmd, {
         cwd,
         stdio: "inherit",
         shell: true,
         env: { ...process.env, FORCE_COLOR: "1" },
     });
+
     TIMINGS.push({ step, time: ((Date.now() - start) / 1000).toFixed(2) });
+
     if (res.status !== 0) {
         beep();
         console.error(`\n${C.bgRed} ❌ FATAL ERROR: ${step} ${C.reset}`);
@@ -56,10 +62,12 @@ function run(step, cmd, args, cwd = ROOT) {
     console.log(`${C.green}✅ OK${C.reset}`);
 }
 
-// --- IZMENJENE KONTROLE ---
+// --- LOGIKA ZA INPUT (Kopirano iz git-cleanup.js) ---
 async function askYesNo(q) {
-    return new Promise((r) => {
-        console.log(`\n${C.magenta}❓ ${q} ${C.gray}(Y/n)${C.reset}`);
+    return new Promise((resolve) => {
+        console.log(`\n${C.magenta}❓ ${q}${C.reset}`);
+
+        // Uputstvo za tastere/miša
         console.log(
             `   ${C.white}[${C.green}BACKSPACE / ⬅ / Enter${C.white}] = DA   |   [${C.red}DEL / ➔ / Esc${C.white}] = NE${C.reset}`
         );
@@ -68,10 +76,15 @@ async function askYesNo(q) {
         process.stdin.resume();
         process.stdin.setEncoding("utf8");
 
-        const l = (k) => {
-            if (k === "\u0003") process.exit(1); // Ctrl+C uvek gasi
+        const listener = (k) => {
+            // CTRL+C = Exit
+            if (k === "\u0003") {
+                process.stdin.setRawMode(false);
+                process.exit(1);
+            }
 
-            // DA: y, Y, Enter, Backspace (\u007f, \u0008), Levo (\u001b[D)
+            // DA: y, Y, Enter, Backspace (\u007f ili \u0008), Levo (\u001b[D)
+            // Tvoj levi klik na mišu (Backspace) je ovde pokriven (\u0008 ili \u007f)
             if (
                 k === "y" ||
                 k === "Y" ||
@@ -80,21 +93,24 @@ async function askYesNo(q) {
                 k === "\u0008" ||
                 k === "\u001b[D"
             ) {
+                process.stdout.write(`${C.green} ✔ DA${C.reset}\n`);
                 cleanup(true);
             }
             // NE: n, N, Esc, Delete (\u001b[3~), Desno (\u001b[C)
+            // Tvoj desni klik na mišu (Delete) je ovde pokriven (\u001b[3~)
             else if (k === "n" || k === "N" || k === "\u001b" || k === "\u001b[3~" || k === "\u001b[C") {
+                process.stdout.write(`${C.red} ✖ NE${C.reset}\n`);
                 cleanup(false);
             }
         };
-        const cleanup = (res) => {
-            process.stdout.write(res ? `${C.green}DA${C.reset}\n` : `${C.red}NE${C.reset}\n`);
+
+        function cleanup(result) {
             process.stdin.setRawMode(false);
             process.stdin.pause();
-            process.stdin.removeListener("data", l);
-            r(res);
-        };
-        process.stdin.on("data", l);
+            process.stdin.removeListener("data", listener);
+            resolve(result);
+        }
+        process.stdin.on("data", listener);
     });
 }
 
@@ -105,12 +121,9 @@ function checkEnv() {
     }
 }
 
-// 4. Sniffer (Tajne i Garbage)
 async function runSniffer() {
     console.log(`\n${C.blue}${C.bold}>>> Sniffer & Secret Hunter${C.reset}`);
-
-    // Lista fajlova za proveru (ignorise foldere)
-    const files = spawnSync("git", ["ls-files"], { encoding: "utf8" })
+    const files = spawnSync("git ls-files", { shell: true, encoding: "utf8" })
         .stdout.split("\n")
         .filter((f) => f && (f.endsWith(".ts") || f.endsWith(".js") || f.endsWith(".tsx")));
 
@@ -123,26 +136,16 @@ async function runSniffer() {
 
     files.forEach((f) => {
         if (f.startsWith("scripts/") || f.includes("test") || f.includes("spec")) return;
-
         const content = fs.readFileSync(f, "utf8");
         secrets.forEach((re) => {
-            if (re.test(content)) {
-                console.error(`${C.red}💀 SECRET NAĐEN U FAJLU: ${f}${C.reset}`);
-                issues++;
-            }
+            if (re.test(content)) issues++;
         });
-
-        if (content.includes("debugger")) {
-            console.error(`${C.red}❌ 'debugger' u fajlu: ${f}${C.reset}`);
-            issues++;
-        }
+        if (content.includes("debugger")) issues++;
     });
 
     if (issues > 0) {
         beep();
-        console.error(
-            `\n${C.bgRed}${C.white} 🛑 PRONAĐENO ${issues} KRITIČNIH PROBLEMA! POPRAVI PRE NASTAVKA. ${C.reset}`
-        );
+        console.error(`\n${C.bgRed}${C.white} 🛑 PRONAĐENO ${issues} KRITIČNIH PROBLEMA!${C.reset}`);
         process.exit(1);
     }
     console.log(`${C.green}✅ Kod je čist (Bezbednost OK).${C.reset}`);
@@ -156,10 +159,11 @@ async function main() {
     run("1. Install", "npm", ["ci"]);
     run("2. Format", "npm", ["run", "format:fix"]);
 
-    if (spawnSync("git", ["status", "--porcelain"], { encoding: "utf8" }).stdout.trim()) {
+    const status = spawnSync("git status --porcelain", { shell: true, encoding: "utf8" }).stdout.trim();
+    if (status) {
         console.log(`${C.yellow}⚠️  Auto-commit format...${C.reset}`);
-        spawnSync("git", ["add", "."], { stdio: "inherit" });
-        spawnSync("git", ["commit", "-m", "chore: auto-format"], { stdio: "inherit" });
+        spawnSync("git add .", { shell: true, stdio: "inherit" });
+        spawnSync('git commit -m "chore: auto-format"', { shell: true, stdio: "inherit" });
     }
 
     run("3. Lint/Type", "npm", ["run", "typecheck"]);
@@ -185,10 +189,40 @@ async function main() {
     console.log(`\n${C.cyan}📊 REPORT:${C.reset}`);
     TIMINGS.forEach((t) => console.log(`   • ${t.step.padEnd(20)}: ${t.time}s`));
     beep();
-    console.log(`\n${C.green}${C.bold}🏆 SPREMNO!${C.reset}`);
+    console.log(`\n${C.green}${C.bold}🏆 SPREMNO!${C.reset}\n`);
 
-    if (!NO_PUSH && (await askYesNo("Push na GitHub?"))) {
-        spawnSync("git", ["push"], { stdio: "inherit" });
+    if (NO_PUSH) return;
+
+    // --- SMART PUSH SYSTEM ---
+    const currentBranch = spawnSync("git rev-parse --abbrev-ref HEAD", {
+        shell: true,
+        encoding: "utf8",
+    }).stdout.trim();
+    const isProtected = currentBranch === "master" || currentBranch === "main";
+    const prompt = isProtected ? `Master je zaštićen. Auto-grana + Push?` : `Push na '${currentBranch}'?`;
+
+    // OVDE SE KORISTI TVOJA LOGIKA (BACKSPACE=DA, DELETE=NE)
+    const shouldPush = await askYesNo(prompt);
+
+    if (shouldPush) {
+        if (isProtected) {
+            const timestamp = new Date().getTime();
+            const autoBranch = `chore/verified-update-${timestamp}`;
+            console.log(`\n${C.yellow}🛡️  Kreiram granu: ${autoBranch}${C.reset}`);
+            spawnSync(`git checkout -b ${autoBranch}`, { shell: true, stdio: "inherit" });
+            console.log(`${C.blue}🚀 Pushing ${autoBranch}...${C.reset}`);
+            spawnSync(`git push -u origin ${autoBranch}`, { shell: true, stdio: "inherit" });
+
+            console.log(`\n${C.green}✅ Uspešno! Otvori Pull Request ovde:${C.reset}`);
+            console.log(
+                `${C.cyan}https://github.com/engilic/serbiantransliterator/pull/new/${autoBranch}${C.reset}\n`
+            );
+        } else {
+            console.log(`${C.blue}🚀 Pushing ${currentBranch}...${C.reset}`);
+            spawnSync(`git push -u origin ${currentBranch}`, { shell: true, stdio: "inherit" });
+        }
+    } else {
+        console.log(`\n${C.gray}⛔ Operacija završena bez push-a.${C.reset}`);
     }
 }
 

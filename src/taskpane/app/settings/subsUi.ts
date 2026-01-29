@@ -1,6 +1,4 @@
 // src/taskpane/app/settings/subsUi.ts
-/* global document */
-
 import { escapeHtml } from "../../../shared/safeHtml";
 import { t } from "../../../shared/i18n";
 import { get } from "../utils/dom";

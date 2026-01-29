@@ -1,3 +1,4 @@
+// scripts/checkI18nKeys.cjs
 "use strict";
 
 const fs = require("fs");

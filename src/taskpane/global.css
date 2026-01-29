@@ -1,34 +1,25 @@
 /* src/taskpane/global.css */
-
 :root {
-    /* --- Fluent 2 Design Tokens (Light - DEFAULT) --- */
-    /* Backgrounds */
     --colorNeutralBackground1: #ffffff;
     --colorNeutralBackground2: #f5f5f5;
     --colorNeutralBackground3: #eaeaea;
     --colorNeutralBackground4: #faf9f8;
-    /* Text */
     --colorNeutralForeground1: #242424;
     --colorNeutralForeground2: #424242;
     --colorNeutralForeground3: #616161;
-    /* Brand */
     --colorBrandBackground: #0078d4;
     --colorBrandBackgroundHover: #106ebe;
     --colorBrandBackgroundPressed: #005a9e;
     --colorBrandForeground1: #0078d4;
-    /* Borders */
     --colorNeutralStroke1: #e0e0e0;
     --colorNeutralStroke2: #d1d1d1;
-    /* Status */
     --colorStatusSuccessBackground: #dff6dd;
     --colorStatusSuccessForeground: #0f7b0f;
     --colorStatusDangerBackground: #fde7e9;
     --colorStatusDangerForeground: #c50f1f;
-    /* Shadows & Geometry */
     --shadow2: 0 2px 4px rgba(0, 0, 0, 0.04);
     --shadow4: 0 4px 8px rgba(0, 0, 0, 0.08);
     --shadow8: 0 8px 16px rgba(0, 0, 0, 0.12);
-    /* Typography */
     --radius4: 4px;
     --radius8: 8px;
     --radius12: 12px;
@@ -124,7 +115,6 @@ body {
     text-rendering: optimizeLegibility;
 }
 
-/* A11y Helper */
 .visually-hidden {
     position: absolute;
     width: 1px;
@@ -137,7 +127,6 @@ body {
     border: 0;
 }
 
-/* --- Layout --- */
 main {
     flex: 1;
     overflow-y: auto;
@@ -147,7 +136,6 @@ main {
     gap: 15px;
 }
 
-/* --- Animations --- */
 .fade-in {
     animation: fadeIn 0.3s cubic-bezier(0.33, 1, 0.68, 1) forwards;
     will-change: opacity, transform;
@@ -184,7 +172,6 @@ main {
     background-color: var(--colorStatusSuccessForeground) !important;
 }
 
-/* --- Custom Scrollbar --- */
 ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -203,7 +190,6 @@ main {
     background: var(--colorNeutralForeground3);
 }
 
-/* --- Drag & Drop Overlay --- */
 #dragOverlay {
     position: fixed;
     inset: 0;
@@ -267,7 +253,6 @@ main {
     }
 }
 
-/* [MAX3 OPTIMIZATION] Respect User Motion Preferences (A11y) */
 @media (prefers-reduced-motion: reduce) {
     *,
     ::before,

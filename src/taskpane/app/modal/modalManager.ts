@@ -1,5 +1,4 @@
 // src/taskpane/app/modal/modalManager.ts
-
 export type ModalType = "confirm" | "info" | "preview";
 
 export interface ModalState {

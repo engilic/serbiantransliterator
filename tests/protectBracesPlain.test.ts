@@ -1,4 +1,5 @@
-﻿import { describe, it, expect } from "vitest";
+// tests/protectBracesPlain.test.ts
+import { describe, it, expect } from "vitest";
 import { convertPlainText } from "../src/core/textCore";
 
 describe("protect.ts - curly braces protection (plain text)", () => {

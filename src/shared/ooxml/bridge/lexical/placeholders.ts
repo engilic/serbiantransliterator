@@ -1,5 +1,4 @@
 // src/shared/ooxml/bridge/lexical/placeholders.ts
-
 import { findNextNodeWithText, getCpArray } from "../../common";
 
 type CurlyMode = "placeholders" | "all";

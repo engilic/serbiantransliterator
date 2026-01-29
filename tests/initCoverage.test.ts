@@ -1,3 +1,4 @@
+// tests/initCoverage.test.ts
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { initTaskpane } from "../src/taskpane/app/init";
 import { setStatus } from "../src/taskpane/app/status";

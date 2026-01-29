@@ -1,5 +1,4 @@
 // src/taskpane/app/word/previewCacheDecision.ts
-
 export type PreviewCacheDecisionReason =
     | "ok"
     | "missing"

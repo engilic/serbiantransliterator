@@ -1,3 +1,4 @@
+// tests/ooxmlAllCapsHintsBranches.test.ts
 import { describe, it, expect } from "vitest";
 import { markCyrAllCapsDigraphHints, CYR_ALLCAPS_HINT } from "../src/shared/ooxml/bridge";
 

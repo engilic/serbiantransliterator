@@ -1,3 +1,4 @@
+// tests/extrasError.test.ts
 import { describe, it, expect, vi } from "vitest";
 import { applyExtrasIfEnabled } from "../src/taskpane/app/word/extras";
 import { processHeadersFooters } from "../src/taskpane/app/word/headersFooters";
