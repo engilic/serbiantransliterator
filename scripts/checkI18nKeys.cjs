@@ -4,16 +4,15 @@
  * 🔍 I18N BLOAT HUNTER • LEVEL: GOD MODE 🛡️
  * ========================================
  *
- * Skenira projekat na neiskorišćene ključeve prevoda.
- * Podržava interaktivno brisanje i Git zaštitu.
- *
- * [GOD MODE]: Usklađena terminologija sa 'LOKACIJE ZA HIRURŠKU SINHRONIZACIJU'.
+ * Hirurški skener koji pronalazi neiskorišćene ključeve prevoda.
+ * Integriše se sa Guardian sistemom radi automatskog čišćenja koda.
  */
 
 const fs = require("fs");
 const path = require("path");
 const { spawnSync } = require("child_process");
 
+// --- KONFIGURACIJA ---
 const ROOT = process.cwd();
 const SRC_DIR = path.join(ROOT, "src");
 const LOCALES_DIR = path.join(SRC_DIR, "shared", "locales");
@@ -51,7 +50,8 @@ const DYNAMIC_PATTERNS = [
 
 function isGitDirty() {
     const status = spawnSync("git", ["status", "--porcelain", LOCALES_DIR], { encoding: "utf8" });
-    return status.stdout.trim().length > 0;
+    const output = status.stdout.trim();
+    return output.length > 0;
 }
 
 /**
@@ -117,7 +117,13 @@ function getAllSourceFiles(dir, fileList = []) {
         const filePath = path.join(dir, file);
         const stat = fs.statSync(filePath);
         if (stat.isDirectory()) {
-            if (file !== "node_modules" && file !== "locales" && file !== "dist" && file !== ".git") {
+            if (
+                file !== "node_modules" &&
+                file !== "locales" &&
+                file !== "dist" &&
+                file !== ".git" &&
+                file !== "coverage"
+            ) {
                 getAllSourceFiles(filePath, fileList);
             }
         } else {
@@ -162,6 +168,10 @@ async function main() {
         console.log(`${C.gray}   • ${path.relative(ROOT, f).replace(/\\/g, "/")}${C.reset}`);
     }
 
+    console.log(
+        `\n${C.gray}   • Analiza: ${C.white}${sourceFiles.length}${C.gray} fajlova | ${C.white}${enKeys.length}${C.gray} prevoda.${C.reset}`
+    );
+
     const combinedSource = sourceFiles.map((f) => fs.readFileSync(f, "utf8")).join("\n");
     const unusedKeys = [];
     for (const key of enKeys) {
@@ -189,6 +199,7 @@ async function main() {
         console.log(`${C.yellow}   - ${k}${C.reset}`);
     }
 
+    // [GOD MODE RENAME]: Lepša terminologija
     console.log(`\n${C.magenta}${C.bold}🎯 LOKACIJE ZA HIRURŠKU SINHRONIZACIJU:${C.reset}`);
     for (const f of FILES_TO_FIX) {
         console.log(`${C.gray}   • ${path.relative(ROOT, f).replace(/\\/g, "/")}${C.reset}`);

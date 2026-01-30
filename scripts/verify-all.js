@@ -7,8 +7,8 @@
  * Centralni nadzorni sistem za Serbian Transliterator.
  * Upravlja kompletnim pipeline-om i garantuje stabilnost pre svakog push-a.
  *
- * [GOD MODE FIX]: Implementirana ULTRA-ŠIROKA virtuelna kolona (COLUMNS=1000)
- * koja fizički onemogućava Vitest-u da skraćuje imena fajlova sa tri tačkice.
+ * [GOD MODE FIX]: Korak Unit Tests sada koristi 'inherit' mod kako bi
+ * prikazao PUNA IMENA FAJLOVA u tabeli pokrivenosti (bez skraćivanja).
  *
  * Autor: Jugoslav Ilić
  * Verzija: 1.0.0 (Gold Master)
@@ -71,7 +71,7 @@ ${C.reset}`);
  * @param {string} cmd - Komanda (npm, cargo, powershell...).
  * @param {string[]} args - Argumenti komande.
  * @param {string} cwd - Radni direktorijum.
- * @param {boolean} useInherit - Ako je true, omogućava direktan input korisnika (y/n).
+ * @param {boolean} useInherit - Ako je true, omogućava direktan input korisnika i PUNI PRIKAZ (bez skraćivanja).
  * @returns {number} Statusni kod izvršenja.
  */
 function run(step, cmd, args, cwd = ROOT, useInherit = false) {
@@ -85,15 +85,14 @@ function run(step, cmd, args, cwd = ROOT, useInherit = false) {
         env: {
             ...process.env,
             FORCE_COLOR: "1",
-            // [GOD MODE FIX]: Postavljamo COLUMNS na 1000 da izbegnemo "..." u tabeli pokrivenosti
-            COLUMNS: "1000",
+            // Forsiramo veliku širinu za svaki slučaj
+            COLUMNS: "300",
         },
-        // useInherit omogućava interaktivne skripte (poput I18n Check)
+        // [GOD MODE FIX]: useInherit je ključan za puna imena u Vitest-u
         stdio: useInherit && process.stdin.isTTY ? "inherit" : "pipe",
     };
 
     const fullCommandString = `${cmd} ${args.join(" ")}`;
-
     const res = spawnSync(fullCommandString, options);
 
     // Ako smo koristili pipe (stdio: pipe), sada obrađujemo output radi boja
@@ -120,11 +119,10 @@ function run(step, cmd, args, cwd = ROOT, useInherit = false) {
         process.stdout.write(combined);
     }
 
-    // Beležimo vreme trajanja koraka
     const duration = ((Date.now() - start) / 1000).toFixed(2);
     TIMINGS.push({ step, time: duration });
 
-    // Provera statusa: dozvoljavamo 0 (uspeh) i 2 (naš restart signal)
+    // Provera statusa: dozvoljavamo 0 (uspeh) i 2 (restart signal)
     if (res.status !== 0 && res.status !== 2) {
         beep();
         console.error(`\n${C.bgRed}${C.white} ❌ FATAL ERROR: ${step} ${C.reset}`);
@@ -159,13 +157,11 @@ async function askYesNo(q) {
         process.stdin.setEncoding("utf8");
 
         const listener = (k) => {
-            // CTRL+C = Prisilni izlaz
             if (k === "\u0003") {
                 process.stdin.setRawMode(false);
                 process.exit(1);
             }
 
-            // Logika za DA (y, Y, Enter, Backspace, Levo)
             if (
                 k === "y" ||
                 k === "Y" ||
@@ -176,9 +172,7 @@ async function askYesNo(q) {
             ) {
                 process.stdout.write(`${C.green} ✔ DA${C.reset}\n`);
                 cleanup(true);
-            }
-            // Logika za NE (n, N, Esc, Delete, Desno)
-            else if (k === "n" || k === "N" || k === "\u001b" || k === "\u001b[3~" || k === "\u001b[C") {
+            } else if (k === "n" || k === "N" || k === "\u001b" || k === "\u001b[3~" || k === "\u001b[C") {
                 process.stdout.write(`${C.red} ✖ NE${C.reset}\n`);
                 cleanup(false);
             }
@@ -243,7 +237,7 @@ async function runSniffer() {
 }
 
 /**
- * GLAVNA FUNKCIJA - Glavni radni ciklus Guardian sistema.
+ * GLAVNA FUNKCIJA
  */
 async function main() {
     printBanner();
@@ -261,7 +255,7 @@ async function main() {
             true
         );
 
-    // [GOD MODE I18N RESTART LOGIKA]
+    // --- GOD MODE I18N RESTART LOGIKA ---
     const i18nStatus = run("0. I18n Check", "node", ["scripts/checkI18nKeys.cjs"], ROOT, true);
 
     if (i18nStatus === 2) {
@@ -269,6 +263,10 @@ async function main() {
         TIMINGS = [];
         return main();
     }
+
+    // Tihe i18n provere
+    run("0. User Strings Check", "node", ["scripts/checkUserFacingStrings.cjs"]);
+    run("0. HTML I18n Check", "node", ["scripts/checkTaskpaneHtmlI18n.cjs"]);
 
     run("1. Install", "npm", ["install", "--no-audit"]);
     run("2. Format", "npm", ["run", "format:fix"]);
@@ -280,12 +278,14 @@ async function main() {
         spawnSync('git commit -m "chore: hygiene & auto-format sync"', { shell: true, stdio: "inherit" });
     }
 
+    run("3. Conflicts Check", "node", ["scripts/checkConflicts.cjs"]);
     run("3. Lint/Type", "npm", ["run", "typecheck"]);
     run("4. Rust", "cargo", ["test"], WASM_DIR);
     run("5. Build", "npm", ["run", "build"]);
 
     if (!IS_FAST_MODE) {
-        run("6. Unit Tests", "npm", ["run", "test:coverage"]);
+        // [GOD MODE FIX]: Koristimo true (inherit) da bismo imali tabelu u PUNOJ ŠIRINI
+        run("6. Unit Tests", "npm", ["run", "test:coverage"], ROOT, true);
         run("7. E2E Tests", "npm", ["run", "test:e2e"]);
     }
 
