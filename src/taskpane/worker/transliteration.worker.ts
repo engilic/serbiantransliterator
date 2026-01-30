@@ -1,7 +1,5 @@
 // src/taskpane/worker/transliteration.worker.ts
-
 /// <reference lib="webworker" />
-
 import "core-js/stable";
 import "regenerator-runtime/runtime";
 

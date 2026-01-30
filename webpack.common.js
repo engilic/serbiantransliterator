@@ -1,35 +1,24 @@
 // webpack.common.js
-
 /* eslint-disable no-undef */
-
 const path = require("path");
 const fs = require("fs");
 const CopyWebpackPlugin = require("copy-webpack-plugin");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 
-// Helper za injectovanje HTML parcijala
 function readPart(partialPath) {
     const fullPath = path.resolve(__dirname, "src/taskpane", partialPath);
     return fs.readFileSync(fullPath, "utf8");
 }
 
 module.exports = {
-    // 1. Entry Points
-    entry: {
-        taskpane: ["./src/taskpane/taskpane.ts"],
-        commands: ["./src/commands/commands.ts"],
-    },
-
-    // 2. Output Configuration
+    entry: { taskpane: ["./src/taskpane/taskpane.ts"], commands: ["./src/commands/commands.ts"] },
     output: {
         path: path.resolve(__dirname, "dist"),
         filename: "[name].js",
         globalObject: "self",
         clean: true,
     },
-
-    // 3. Resolver
     resolve: {
         extensions: [".ts", ".tsx", ".html", ".js", ".json", ".wasm"],
         alias: {
@@ -37,57 +26,34 @@ module.exports = {
             "@src": path.resolve(__dirname, "src"),
         },
     },
-
-    // 4. Loaders
     module: {
         rules: [
-            {
-                test: /\.ts$/,
-                use: "babel-loader",
-                exclude: /node_modules/,
-            },
-            {
-                test: /\.css$/i,
-                use: [MiniCssExtractPlugin.loader, "css-loader"],
-            },
+            { test: /\.ts$/, use: "babel-loader", exclude: /node_modules/ },
+            { test: /\.css$/i, use: [MiniCssExtractPlugin.loader, "css-loader"] },
             {
                 test: /\.(png|jpg|jpeg|gif|ico)$/,
                 type: "asset/resource",
                 generator: { filename: "assets/[name][ext]" },
             },
-            {
-                test: /\.bin$/,
-                type: "asset/inline",
-            },
-            {
-                test: /\.wasm$/,
-                type: "asset/inline",
-            },
+            { test: /\.bin$/, type: "asset/inline" },
+            { test: /\.wasm$/, type: "asset/inline" },
         ],
     },
-
-    // 5. Plugins
     plugins: [
         new MiniCssExtractPlugin({ filename: "[name].css" }),
-
         new HtmlWebpackPlugin({
             filename: "taskpane.html",
             template: "./src/taskpane/taskpane.html",
             chunks: ["taskpane"],
             templateParameters: { readPart: readPart },
-            minify: {
-                removeComments: true,
-                collapseWhitespace: true,
-            },
+            minify: { removeComments: true, collapseWhitespace: true },
         }),
-
         new HtmlWebpackPlugin({
             filename: "commands.html",
             template: "./src/commands/commands.html",
             chunks: ["commands"],
             minify: true,
         }),
-
         new CopyWebpackPlugin({
             patterns: [
                 { from: "manifest*.xml", to: "[name][ext]" },
@@ -96,24 +62,16 @@ module.exports = {
             ],
         }),
     ],
-
-    performance: {
-        hints: false,
-    },
-
-    // [GOD MODE FIX]: Eliminacija Webpack žutila (orphan, built, generated)
+    performance: { hints: false },
     stats: {
         preset: "minimal",
-        modules: false, // Sakriva [built] [code generated]
-        orphanModules: false, // Sakriva orphan modules
-        assets: true, // Prikazuje listu fajlova u dist
+        modules: false,
+        orphanModules: false,
+        assets: true,
         colors: true,
         timings: true,
         version: false,
         hash: false,
     },
-
-    infrastructureLogging: {
-        level: "warn", // Prikazuj samo bitne logove u konzoli
-    },
+    infrastructureLogging: { level: "warn" },
 };

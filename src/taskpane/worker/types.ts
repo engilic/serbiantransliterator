@@ -1,5 +1,4 @@
 // src/taskpane/worker/types.ts
-
 import type { OoxmlOptions, ConvertStats } from "../../shared/ooxml/convertOoxml";
 
 export type WorkerMessage =

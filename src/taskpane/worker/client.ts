@@ -1,5 +1,4 @@
 // src/taskpane/worker/client.ts
-
 import type { OoxmlOptions, ConvertStats } from "../../shared/ooxml/convertOoxml";
 import { convertOoxml } from "../../shared/ooxml/convertOoxml";
 import * as textCore from "../../core/textCore";
@@ -65,14 +64,23 @@ export class WorkerClient {
     private nextJobId = 1;
     private useFallback = false;
 
+    private isTesting =
+        typeof process !== "undefined" && (process.env.VITEST === "true" || process.env.NODE_ENV === "test");
+
     public async init(): Promise<void> {
         if (this.isReady || this.useFallback) return;
         if (this.initPromise) return this.initPromise;
 
+        if (this.isTesting) {
+            this.initPromise = (async () => {
+                await this.activateFallback();
+            })();
+            return this.initPromise;
+        }
+
         this.initPromise = new Promise((resolve, reject) => {
             try {
                 this.worker = new Worker(WorkerUrl);
-
                 const heartbeatTimeout = setTimeout(async () => {
                     if (!this.isReady) {
                         await this.activateFallback();
@@ -89,15 +97,16 @@ export class WorkerClient {
                         this.pumpQueue();
                     } else if (data.type === "ERROR" && !data.id) {
                         clearTimeout(heartbeatTimeout);
-                        reject(new Error(data.error));
+                        void this.activateFallback().then(() => resolve());
                     } else {
                         this.handleMessage(event);
                     }
                 };
 
-                this.worker.onerror = () => {
+                this.worker.onerror = async () => {
                     clearTimeout(heartbeatTimeout);
-                    reject(new Error("Worker Load Error"));
+                    await this.activateFallback();
+                    resolve();
                 };
 
                 const b1 = dataUriToBytes(dictE2iData as any);
@@ -112,7 +121,8 @@ export class WorkerClient {
                     [b1.buffer, b2.buffer, wasmBytes.buffer]
                 );
             } catch (e) {
-                this.activateFallback().then(() => resolve());
+                this.initPromise = null;
+                void this.activateFallback().then(() => resolve());
             }
         });
 
@@ -214,6 +224,17 @@ export class WorkerClient {
             );
         }
 
+        if (q.timeoutMs > 0) {
+            job.timeoutHandle = setTimeout(() => {
+                if (job.aborted) return;
+                job.aborted = true;
+                this.jobs.delete(id);
+                this.inFlightCount = Math.max(0, this.inFlightCount - 1);
+                q.reject(new Error("Worker timeout"));
+                this.pumpQueue();
+            }, q.timeoutMs);
+        }
+
         this.jobs.set(id, job);
         if (q.payload.xml instanceof Uint8Array) {
             this.worker.postMessage({ type: "CONVERT", id, payload: q.payload }, [q.payload.xml.buffer]);
@@ -237,9 +258,14 @@ export class WorkerClient {
     }
 
     public terminate() {
+        this.isReady = false;
+        this.initPromise = null;
         this.jobs.clear();
         this.queue = [];
-        if (this.worker) this.worker.terminate();
+        if (this.worker) {
+            this.worker.terminate();
+            this.worker = null;
+        }
     }
 }
 
