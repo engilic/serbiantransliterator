@@ -1,3 +1,4 @@
+// src\taskpane\worker
 import type { OoxmlOptions, ConvertStats } from "../../shared/ooxml/convertOoxml";
 
 export type WorkerMessage =
