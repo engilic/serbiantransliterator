@@ -3,12 +3,25 @@
 import { defineConfig } from "vitest/config";
 import path from "path";
 
+/**
+ * Glavna konfiguracija za Vitest engine.
+ * Podešena za maksimalnu preciznost izveštaja i stabilnost okruženja.
+ */
 export default defineConfig({
     test: {
+        // Omogućava globalne funkcije poput describe, it, expect
         globals: true,
+
+        // Simulacija browser okruženja (DOM podrška)
         environment: "jsdom",
+
+        // Setup fajl koji se pokreće pre svakog testa
         setupFiles: ["./tests/setup.ts"],
+
+        // Gde se nalaze testovi
         include: ["tests/**/*.test.ts"],
+
+        // [GOD MODE ALIASES]: Mapiranje putanja za binarne module i WASM pakete
         alias: [
             {
                 find: /.*wasm-core\/pkg$/,
@@ -27,6 +40,8 @@ export default defineConfig({
                 replacement: path.resolve(__dirname, "src"),
             },
         ],
+
+        // [GOD MODE INTEROP]: Rešava CJS warning bez cross-env flagova
         deps: {
             interopDefault: true,
             optimizer: {
@@ -35,10 +50,18 @@ export default defineConfig({
                 },
             },
         },
+
         coverage: {
+            // Najmoderniji V8 engine za proveru koda
             provider: "v8",
+
+            // Tipovi izveštaja (Text za terminal + HTML za vizuelni pregled)
             reporter: ["text", "json", "html"],
+
+            // Gledamo samo izvorni kod
             include: ["src/**/*.ts"],
+
+            // [STRICT EXCLUDE]: Lista fajlova koji se ignorišu
             exclude: [
                 "src/taskpane/index.ts",
                 "src/taskpane/app/index.ts",
@@ -55,6 +78,8 @@ export default defineConfig({
                 "webpack.dev.js",
                 "webpack.prod.js",
             ],
+
+            // God Mode pragovi pokrivenosti
             thresholds: {
                 lines: 78,
                 functions: 70,
@@ -64,6 +89,7 @@ export default defineConfig({
         },
     },
     resolve: {
+        // Redosled ekstenzija za rezoluciju modula
         extensions: [".ts", ".tsx", ".js", ".json"],
     },
 });

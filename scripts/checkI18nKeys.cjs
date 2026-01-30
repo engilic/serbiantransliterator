@@ -6,6 +6,8 @@
  *
  * Hirurški skener koji pronalazi neiskorišćene ključeve prevoda.
  * Integriše se sa Guardian sistemom radi automatskog čišćenja koda.
+ *
+ * [GOD MODE]: Usklađena terminologija sa 'LOKACIJE ZA HIRURŠKU SINHRONIZACIJU'.
  */
 
 const fs = require("fs");
