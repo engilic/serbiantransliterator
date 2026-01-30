@@ -51,7 +51,6 @@ function isGitDirty() {
 
 /**
  * TVOJA MOĆNA LOGIKA ZA UNOS.
- * [FIX]: Dodata provera za process.stdin.isTTY radi Husky kompatibilnosti.
  */
 async function askYesNo(q) {
     if (!process.stdin.isTTY) {
@@ -112,7 +111,8 @@ function getAllSourceFiles(dir, fileList = []) {
     const files = fs.readdirSync(dir);
     for (const file of files) {
         const filePath = path.join(dir, file);
-        if (fs.statSync(filePath).isDirectory()) {
+        const stat = fs.statSync(filePath);
+        if (stat.isDirectory()) {
             if (file !== "node_modules" && file !== "locales" && file !== "dist" && file !== ".git") {
                 getAllSourceFiles(filePath, fileList);
             }
@@ -162,17 +162,17 @@ async function main() {
     const unusedKeys = [];
     for (const key of enKeys) {
         if (combinedSource.includes(key)) continue;
-        let isDynamic = false;
+        let isDynamicFound = false;
         for (const pattern of DYNAMIC_PATTERNS) {
             if (key.includes(pattern)) {
-                const base = key.split(pattern)[0];
-                if (combinedSource.includes(base)) {
-                    isDynamic = true;
+                const baseKey = key.split(pattern)[0];
+                if (combinedSource.includes(baseKey)) {
+                    isDynamicFound = true;
                     break;
                 }
             }
         }
-        if (!isDynamic) unusedKeys.push(key);
+        if (!isDynamicFound) unusedKeys.push(key);
     }
 
     if (unusedKeys.length === 0) {
@@ -180,15 +180,18 @@ async function main() {
         process.exit(0);
     }
 
-    console.log(`\n${C.yellow}${C.bold}⚠️  NEISKORIŠĆENI KLJUČEVI:${C.reset}`);
-    unusedKeys.forEach((k) => console.log(`${C.yellow}   - ${k}${C.reset}`));
+    console.log(`\n${C.yellow}${C.bold}⚠️  NEISKORIŠĆENI KLJUČEVI PRONAĐENI:${C.reset}`);
+    for (const k of unusedKeys) {
+        console.log(`${C.yellow}   - ${k}${C.reset}`);
+    }
 
-    console.log(`\n${C.magenta}${C.bold}📝 METE ZA ČIŠĆENJE:${C.reset}`);
+    // [GOD MODE RENAME]: Lepša terminologija
+    console.log(`\n${C.magenta}${C.bold}🎯 LOKACIJE ZA HIRURŠKU SINHRONIZACIJU:${C.reset}`);
     for (const f of FILES_TO_FIX) {
         console.log(`${C.gray}   • ${path.relative(ROOT, f).replace(/\\/g, "/")}${C.reset}`);
     }
 
-    const shouldPurge = await askYesNo("Izvršiti automatsko hirurško brisanje iz gornjih fajlova?");
+    const shouldPurge = await askYesNo("Izvršiti automatsko brisanje iz gornjih fajlova?");
 
     if (shouldPurge) {
         if (isGitDirty()) {

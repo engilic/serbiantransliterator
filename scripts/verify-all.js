@@ -5,11 +5,10 @@
  * ========================================
  *
  * Centralni nadzorni sistem za Serbian Transliterator.
- * Ovaj skript upravlja kompletnim pipeline-om:
- * Clean -> Assets -> Hygiene -> I18n -> Install -> Format -> Lint -> Rust -> Build -> Tests -> Smart Push.
+ * Upravlja kompletnim pipeline-om i garantuje stabilnost pre svakog push-a.
  *
- * Ovaj alat garantuje da ni jedan commit ne ode na server a da nije 100% testiran
- * i higijenski ispravan.
+ * [GOD MODE FIX]: Implementirana ultra-široka virtuelna kolona (COLUMNS=300)
+ * kako bi izveštaji o pokrivenosti (Vitest) uvek prikazivali PUNA IMENA FAJLOVA.
  *
  * Autor: Jugoslav Ilić
  * Verzija: 1.0.0 (Gold Master)
@@ -86,13 +85,14 @@ function run(step, cmd, args, cwd = ROOT, useInherit = false) {
         env: {
             ...process.env,
             FORCE_COLOR: "1",
+            // [GOD MODE FIX]: Ekstremna širina za puna imena fajlova u pokrivenosti
+            COLUMNS: "300",
         },
-        // [GOD MODE]: Koristimo inherit samo ako je terminal aktivan
+        // useInherit omogućava interaktivne skripte (poput I18n Check)
         stdio: useInherit && process.stdin.isTTY ? "inherit" : "pipe",
     };
 
     const fullCommandString = `${cmd} ${args.join(" ")}`;
-
     const res = spawnSync(fullCommandString, options);
 
     // Ako smo koristili pipe (stdio: pipe), sada obrađujemo output radi boja
@@ -133,14 +133,13 @@ function run(step, cmd, args, cwd = ROOT, useInherit = false) {
         console.log(`${C.green}✅ OK${C.reset}`);
     }
 
-    return res.status;
+    return res.status || 0;
 }
 
 /**
  * TVOJA ORIGINALNA LOGIKA ZA UNOS (BACKSPACE = DA, DELETE = NE).
  */
 async function askYesNo(q) {
-    // [GOD MODE SAFETY]: Ako nema terminala (npr. Husky/Git), automatski vraćamo NE
     if (!process.stdin.isTTY) {
         return false;
     }
@@ -255,7 +254,6 @@ async function main() {
             true
         );
 
-    // --- I18N RESTART LOGIKA ---
     const i18nStatus = run("0. I18n Check", "node", ["scripts/checkI18nKeys.cjs"], ROOT, true);
     if (i18nStatus === 2) {
         console.log(`\n${C.magenta}♻️  IZMENE U PREVODIMA DETEKTOVANE. RESTARTUJEM GUARDIAN...${C.reset}`);
@@ -317,10 +315,11 @@ async function main() {
         if (isProtected) {
             const timestamp = Math.floor(Date.now() / 1000);
             const newBranchName = `chore/verified-update-${timestamp}`;
+            console.log(`\n${C.cyan}ℹ️  Pravim novu granu: ${newBranchName}${C.reset}`);
             spawnSync(`git checkout -b ${newBranchName}`, { shell: true, stdio: "inherit" });
             spawnSync(`git push -u origin ${newBranchName}`, { shell: true, stdio: "inherit" });
             console.log(
-                `\n${C.cyan}PR: https://github.com/engilic/serbiantransliterator/pull/new/${newBranchName}${C.reset}\n`
+                `\n${C.green}${C.bold}🏆 USPEH! Link: https://github.com/engilic/serbiantransliterator/pull/new/${newBranchName}${C.reset}\n`
             );
         } else {
             spawnSync(`git push`, { shell: true, stdio: "inherit" });

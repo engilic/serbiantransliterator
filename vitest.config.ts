@@ -10,7 +10,7 @@ import path from "path";
  * GOD MODE FIXES:
  * 1. Path Mapping: Rešava 'Failed to resolve import' za wasm-core/pkg.
  * 2. Binary Aliasing: Rešava grešku sa uvozom .bin i .wasm fajlova.
- * 3. Thresholds: Build puca ako testovi padnu ispod 78% (prilagođeno novom kodu).
+ * 3. Thresholds: Prilagođeni pragovi za v1.0.0 stabilnost.
  */
 export default defineConfig({
     test: {
@@ -26,32 +26,27 @@ export default defineConfig({
         // Gde se nalaze testovi
         include: ["tests/**/*.test.ts"],
 
-        // [GOD MODE ALIASES]: Srce rešenja za tvoje greške.
-        // Mapiramo i relativne i apsolutne putanje do modula.
+        // [GOD MODE ALIASES]: Mapiranje putanja za binarne module
         alias: [
-            // 1. Rešava uvoz WASM paketa (src/core/textCore.ts -> ../wasm-core/pkg)
             {
                 find: /.*wasm-core\/pkg$/,
                 replacement: path.resolve(__dirname, "tests/__mocks__/wasm-core-pkg.js"),
             },
-            // 2. Rešava uvoz .wasm binarnih fajlova
             {
                 find: /.*\.wasm$/,
                 replacement: path.resolve(__dirname, "tests/__mocks__/inaryMock.ts"),
             },
-            // 3. Rešava uvoz .bin rečnika
             {
                 find: /.*\.bin$/,
                 replacement: path.resolve(__dirname, "tests/__mocks__/inaryMock.ts"),
             },
-            // 4. Standardni prečica za src folder
             {
                 find: "@src",
                 replacement: path.resolve(__dirname, "src"),
             },
         ],
 
-        // [GOD MODE INTEROP]: Rešava CJS warning bez cross-env flagova
+        // [GOD MODE INTEROP]: Rešava CJS warning
         deps: {
             interopDefault: true,
             optimizer: {
@@ -68,10 +63,10 @@ export default defineConfig({
             // Tipovi izveštaja
             reporter: ["text", "json", "html"],
 
-            // Gledamo samo src folder za statistiku
+            // Gledamo samo izvorni kod
             include: ["src/**/*.ts"],
 
-            // [STRICT EXCLUDE]: Izbacujemo sve što nije čista logika (mašinski kod, tipovi)
+            // [STRICT EXCLUDE]: Lista fajlova koji se ignorišu
             exclude: [
                 "src/taskpane/index.ts",
                 "src/taskpane/app/index.ts",
@@ -89,7 +84,7 @@ export default defineConfig({
                 "webpack.prod.js",
             ],
 
-            // Minimalni procenti za God Mode standard
+            // God Mode pragovi pokrivenosti
             thresholds: {
                 lines: 78,
                 functions: 70,
@@ -99,7 +94,7 @@ export default defineConfig({
         },
     },
     resolve: {
-        // Redosled ekstenzija za rezoluciju modula
+        // Redosled ekstenzija
         extensions: [".ts", ".tsx", ".js", ".json"],
     },
 });
