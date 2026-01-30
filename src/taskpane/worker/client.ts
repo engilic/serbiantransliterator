@@ -125,7 +125,9 @@ export class WorkerClient {
         if (this.worker) {
             try {
                 this.worker.terminate();
-            } catch (e) {}
+            } catch (e) {
+                /* ignore */
+            }
             this.worker = null;
         }
         await textCore.initWasm();
@@ -142,7 +144,6 @@ export class WorkerClient {
 
             if (!job.aborted && !job.signal?.aborted) {
                 const payload = data.payload;
-                // [GOD MODE FIX]: Robustna provera za Uint8Array (radi u JSDOM-u)
                 if (payload.xml && typeof payload.xml !== "string") {
                     payload.xml = decoder.decode(payload.xml as Uint8Array);
                 }

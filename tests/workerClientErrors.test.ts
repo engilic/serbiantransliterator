@@ -3,7 +3,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { WorkerClient } from "../src/taskpane/worker/client";
 
-describe("WorkerClient Error Handling", () => {
+describe("WorkerClient - Error Handling", () => {
     let client: WorkerClient;
 
     beforeEach(() => {
@@ -14,39 +14,51 @@ describe("WorkerClient Error Handling", () => {
     afterEach(() => {
         client.terminate();
         vi.useRealTimers();
+        vi.unstubAllGlobals();
     });
 
     it("handles worker load error (onerror event)", async () => {
-        (globalThis as any).Worker = class {
-            public onerror: any = null;
-            constructor() {
-                setTimeout(() => this.onerror?.(new Error("Load Error")), 10);
+        // Mock koji odmah okida onerror
+        vi.stubGlobal(
+            "Worker",
+            class {
+                public onerror: any = null;
+                constructor() {
+                    setTimeout(() => {
+                        if (this.onerror) this.onerror(new Error("Load Error"));
+                    }, 10);
+                }
+                postMessage() {}
+                terminate() {}
             }
-            postMessage() {}
-            terminate() {}
-        };
+        );
 
         const p = client.init();
+
+        // BITNO: Prvo pomeramo vreme, pa onda proveravamo odbijanje (reject)
         await vi.advanceTimersByTimeAsync(50);
         await expect(p).rejects.toThrow("Worker Load Error");
     });
 
     it("handles explicit ERROR message from worker", async () => {
-        (globalThis as any).Worker = class {
-            public onmessage: any = null;
-            postMessage(msg: any) {
-                if (msg.type === "INIT") {
-                    setTimeout(() => this.onmessage?.({ data: { type: "ERROR", error: "Wasm Panic" } }), 10);
+        vi.stubGlobal(
+            "Worker",
+            class {
+                public onmessage: any = null;
+                postMessage(msg: any) {
+                    if (msg.type === "INIT") {
+                        setTimeout(() => {
+                            if (this.onmessage)
+                                this.onmessage({ data: { type: "ERROR", error: "Wasm Panic" } });
+                        }, 10);
+                    }
                 }
+                terminate() {}
             }
-            terminate() {}
-            addEventListener(t: string, cb: any) {
-                if (t === "message") this.onmessage = cb;
-            }
-            removeEventListener() {}
-        };
+        );
 
         const p = client.init();
+
         await vi.advanceTimersByTimeAsync(50);
         await expect(p).rejects.toThrow("Wasm Panic");
     });
