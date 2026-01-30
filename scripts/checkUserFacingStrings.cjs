@@ -2,48 +2,47 @@
 
 "use strict";
 
+/**
+ * 🔍 HARDCODED STRINGS SCANNER • LEVEL: GOD MODE 🛡️
+ * ================================================
+ *
+ * Ovaj skript skenira izvorni kod i traži hardkodovane stringove u
+ * kritičnim funkcijama koji bi morali biti procesirani kroz i18n sistem.
+ */
+
 const fs = require("node:fs");
 const path = require("node:path");
 
-// --- CONFIG ---
 const ROOT = process.cwd();
 const SRC_DIR = path.join(ROOT, "src");
 
-// --- ANSI COLORS ---
 const C = {
     reset: "\x1b[0m",
     red: "\x1b[31m",
     green: "\x1b[32m",
     yellow: "\x1b[33m",
-    blue: "\x1b[34m",
+    blue: "\x1b[36m", // Cyan
     bold: "\x1b[1m",
     gray: "\x1b[90m",
 };
 
-// --- RULES DEFINITION ---
-// Ovde definišemo šta je zabranjeno.
 const RULES = [
     {
         id: "setStatus-hardcoded",
-        // Hvata: setStatus("..." ili setStatus('...' ili setStatus(`...`
         regex: /\bsetStatus\s*\(\s*([`'"])/g,
-        message: "setStatus() expects a variable or t('key'), not a hardcoded string.",
+        message: "setStatus() expects a variable or t('key').",
     },
     {
         id: "showModalInfo-hardcoded",
-        // Hvata: showModalInfo("..."
         regex: /\bshowModalInfo\s*\(\s*([`'"])/g,
-        message: "showModalInfo() title must be translated via t('key').",
+        message: "showModalInfo() title must be translated.",
     },
     {
         id: "t-error-prefix-hardcoded",
-        // Hvata: t("status_error_prefix", "..."
         regex: /\bt\s*\(\s*["']status_error_prefix["']\s*,\s*([`'"])/g,
-        message: "Do not pass hardcoded strings to status_error_prefix. Use t('key') or variables.",
+        message: "Do not pass hardcoded strings to status_error_prefix.",
     },
 ];
-
-// --- HELPERS ---
 
 function isDir(p) {
     try {
@@ -59,15 +58,11 @@ function walk(dir) {
     list.forEach((file) => {
         const full = path.join(dir, file);
         if (isDir(full)) {
-            // Ignorišemo sistemske foldere
             if (!["node_modules", "dist", "coverage", ".git", "wasm-core"].includes(file)) {
                 results.push(...walk(full));
             }
-        } else {
-            // Skeniramo samo TypeScript fajlove (ignorišemo definicije .d.ts)
-            if (file.endsWith(".ts") && !file.endsWith(".d.ts")) {
-                results.push(full);
-            }
+        } else if (file.endsWith(".ts") && !file.endsWith(".d.ts")) {
+            results.push(full);
         }
     });
     return results;
@@ -90,72 +85,52 @@ function checkFile(filePath) {
     const content = fs.readFileSync(filePath, "utf8");
     const relative = path.relative(ROOT, filePath);
     const violations = [];
-
     RULES.forEach((rule) => {
         let m;
-        // Reset regex state (bitno kada se koristi global flag u petlji)
         rule.regex.lastIndex = 0;
-
         while ((m = rule.regex.exec(content)) !== null) {
-            const idx = m.index;
-            const { line, col } = posFromIndex(content, idx);
-
+            const { line, col } = posFromIndex(content, m.index);
             violations.push({
                 file: relative,
                 line,
                 col,
                 ruleId: rule.id,
                 msg: rule.message,
-                snippet: snippetAt(content, idx),
+                snippet: snippetAt(content, m.index),
             });
         }
     });
-
     return violations;
 }
 
 function main() {
     console.log(`${C.blue}🔍 Scanning source code for hardcoded user-facing strings...${C.reset}`);
-
     if (!isDir(SRC_DIR)) {
-        console.error(`${C.red}ERROR: src directory not found at ${SRC_DIR}${C.reset}`);
+        console.error(`${C.red}ERROR: src folder not found.${C.reset}`);
         process.exit(2);
     }
-
     const files = walk(SRC_DIR);
     const allViolations = [];
-
     for (const f of files) {
         allViolations.push(...checkFile(f));
     }
-
     if (allViolations.length === 0) {
-        console.log(`${C.green}✅ No hardcoded user strings found in Logic/UI calls.${C.reset}`);
+        console.log(`${C.green}✅ No hardcoded user strings found.${C.reset}`);
         process.exit(0);
     }
-
-    console.error(`\n${C.red}${C.bold}🚨 HARDCODED USER STRINGS DETECTED!${C.reset}`);
-    console.error(
-        `${C.yellow}The following strings are not translatable and will appear hardcoded to users:${C.reset}\n`
-    );
-
-    // Group by file for cleaner output
+    console.error(`\n${C.red}${C.bold}🚨 HARDCODED STRINGS DETECTED!${C.reset}\n`);
     const grouped = {};
     allViolations.forEach((v) => {
         if (!grouped[v.file]) grouped[v.file] = [];
         grouped[v.file].push(v);
     });
-
     Object.keys(grouped).forEach((file) => {
         console.error(`${C.bold}📄 ${file}${C.reset}`);
         grouped[file].forEach((v) => {
             console.error(`   ${C.gray}Line ${v.line}:${v.col}${C.reset}  ${C.red}[${v.ruleId}]${C.reset}`);
-            console.error(`     Snippet: ${C.yellow}${v.snippet}${C.reset}`);
-            console.error(`     Fix:     ${v.msg}\n`);
+            console.error(`     Snippet: ${C.yellow}${v.snippet}${C.reset}\n`);
         });
     });
-
     process.exit(1);
 }
-
 main();

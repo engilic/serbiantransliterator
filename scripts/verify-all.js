@@ -7,10 +7,11 @@
  * Centralni nadzorni sistem za Serbian Transliterator.
  * Upravlja kompletnim pipeline-om i garantuje stabilnost pre svakog push-a.
  *
- * [GOD MODE FIX]: Dodat --no-verify u auto-commit fazi. Ovo sprečava
- * Husky da ponovo pokreće I18n provere koje je Guardian već obavio.
+ * [GOD MODE FIX]: Implementirana ULTRA-ŠIROKA virtuelna kolona (COLUMNS=1000)
+ * koja fizički onemogućava Vitest-u da skraćuje imena fajlova sa tri tačkice.
  *
- * [GOD MODE FIX]: Cyan boje za maksimalni kontrast na tamnim pozadinama.
+ * [GOD MODE FIX]: Zamenjena tamnoplava boja sa Cyan radi bolje vidljivosti.
+ * [GOD MODE FIX]: Dodat --no-verify u auto-commit fazi radi eliminacije duplog I18n rada.
  *
  * Autor: Jugoslav Ilić
  * Verzija: 1.0.0 (Gold Master)
@@ -30,7 +31,7 @@ const IS_FAST_MODE = ARGS.includes("--fast");
 const NO_PUSH = ARGS.includes("--no-push");
 const isWindows = process.platform === "win32";
 
-// --- 3. ANSI BOJE (God Mode Paleta - Optimizovana za kontrast) ---
+// --- 3. ANSI BOJE (Optimizovano za crnu pozadinu) ---
 const C = {
     reset: "\x1b[0m",
     green: "\x1b[32m",
@@ -59,6 +60,7 @@ function beep() {
  * Prikazuje Guardian banner na vrhu terminala.
  */
 function printBanner() {
+    // console.clear() je uklonjen po tvom zahtevu radi čuvanja istorije rada
     console.log(`\n${C.magenta}${C.bold}
     🛡️  GUARDIAN SYSTEM • LEVEL: GOD MODE 🛡️
     ========================================
@@ -67,34 +69,43 @@ ${C.reset}`);
 
 /**
  * Glavna funkcija za izvršavanje eksternih komandi.
+ *
+ * @param {string} step - Naziv koraka koji se ispisuje.
+ * @param {string} cmd - Komanda (npm, cargo, powershell...).
+ * @param {string[]} args - Argumenti komande.
+ * @param {string} cwd - Radni direktorijum.
+ * @param {boolean} useInherit - Ako je true, omogućava direktan input korisnika (y/n).
+ * @returns {number} Statusni kod izvršenja.
  */
 function run(step, cmd, args, cwd = ROOT, useInherit = false) {
     console.log(`\n${C.cyan}${C.bold}>>> ${step}${C.reset}`);
 
     const start = Date.now();
 
-    // Adaptivna širina za tabelu pokrivenosti (min 200, preferirano širina prozora)
-    const terminalWidth = Math.max(process.stdout.columns || 0, 200).toString();
-
+    // [GOD MODE FIX]: Postavljamo COLUMNS na 1000 da izbegnemo "..." u tabeli pokrivenosti
     const options = {
         cwd: cwd,
         shell: true,
         env: {
             ...process.env,
             FORCE_COLOR: "1",
-            COLUMNS: terminalWidth,
+            COLUMNS: "1000",
         },
+        // useInherit omogućava interaktivne skripte (poput I18n Check)
         stdio: useInherit && process.stdin.isTTY ? "inherit" : "pipe",
     };
 
     const fullCommandString = `${cmd} ${args.join(" ")}`;
     const res = spawnSync(fullCommandString, options);
 
+    // Ako smo koristili pipe (stdio: pipe), sada obrađujemo output radi boja
     if (!options.stdio || options.stdio === "pipe") {
         let stdout = res.stdout ? res.stdout.toString() : "";
         let stderr = res.stderr ? res.stderr.toString() : "";
         let combined = stdout + stderr;
 
+        // [INTELIGENTNO BOJENJE]
+        // Bojimo u ŽUTO samo reči koje ukazuju na stvari koje treba popraviti
         combined = combined.replace(
             /warning|deprecated|vulnerability|vulnerabilities|moderate|high/gi,
             (match) => {
@@ -102,6 +113,7 @@ function run(step, cmd, args, cwd = ROOT, useInherit = false) {
             }
         );
 
+        // Bojimo u CYAN verzije, v8 engine i uspešne poruke (da ne budu žute)
         combined = combined.replace(
             /v\d+\.\d+\.\d+|v8|success|compiled successfully|up to date/gi,
             (match) => {
@@ -112,9 +124,11 @@ function run(step, cmd, args, cwd = ROOT, useInherit = false) {
         process.stdout.write(combined);
     }
 
+    // Beležimo vreme trajanja koraka
     const duration = ((Date.now() - start) / 1000).toFixed(2);
     TIMINGS.push({ step, time: duration });
 
+    // Provera statusa: dozvoljavamo 0 (uspeh) i 2 (naš restart signal)
     if (res.status !== 0 && res.status !== 2) {
         beep();
         console.error(`\n${C.bgRed}${C.white} ❌ FATAL ERROR: ${step} ${C.reset}`);
@@ -247,14 +261,16 @@ async function main() {
             true
         );
 
-    // I18n Check (interaktivan)
+    // --- GOD MODE I18N RESTART LOGIKA ---
     const i18nStatus = run("0. I18n Check", "node", ["scripts/checkI18nKeys.cjs"], ROOT, true);
+
     if (i18nStatus === 2) {
         console.log(`\n${C.magenta}♻️  IZMENE U PREVODIMA DETEKTOVANE. RESTARTUJEM GUARDIAN...${C.reset}`);
         TIMINGS = [];
         return main();
     }
 
+    // Ostale tihe provere
     run("0. User Strings Check", "node", ["scripts/checkUserFacingStrings.cjs"]);
     run("0. HTML I18n Check", "node", ["scripts/checkTaskpaneHtmlI18n.cjs"]);
 
@@ -266,7 +282,7 @@ async function main() {
         console.log(`\n${C.cyan}ℹ️  Auto-commit: Sinhronizacija formata i higijene...${C.reset}`);
         spawnSync("git add .", { shell: true, stdio: "inherit" });
 
-        // [GOD MODE FIX]: Dodat --no-verify da se izbegne dupli rad Bloat Hunter-a
+        // [GOD MODE FIX]: --no-verify sprečava beskonačni krug Husky hook-ova
         spawnSync('git commit -m "chore: hygiene & auto-format sync" --no-verify', {
             shell: true,
             stdio: "inherit",
@@ -279,12 +295,18 @@ async function main() {
     run("5. Build", "npm", ["run", "build"]);
 
     if (!IS_FAST_MODE) {
+        // [GOD MODE FIX]: inherit mod omogućava tabeli da prepozna punu širinu ekrana
         run("6. Unit Tests", "npm", ["run", "test:coverage"], ROOT, true);
         run("7. E2E Tests", "npm", ["run", "test:e2e"]);
     }
 
+    // --- [GOD MODE]: ADAPTIVNI FINAL REPORT ---
     console.log(`\n${C.cyan}${C.bold}📊 FINAL REPORT:${C.reset}`);
-    TIMINGS.forEach((t) => console.log(`   • ${t.step.padEnd(20)}: ${C.white}${t.time}s${C.reset}`));
+    const longestStepName = Math.max(...TIMINGS.map((t) => t.step.length));
+    TIMINGS.forEach((t) => {
+        const paddedStep = t.step.padEnd(longestStepName);
+        console.log(`   • ${paddedStep} : ${C.white}${t.time}s${C.reset}`);
+    });
 
     beep();
     console.log(`\n${C.green}${C.bold}🏆 SPREMNO ZA DEPLOY!${C.reset}\n`);
@@ -322,7 +344,7 @@ async function main() {
             spawnSync(`git checkout -b ${newBranchName}`, { shell: true, stdio: "inherit" });
             spawnSync(`git push -u origin ${newBranchName}`, { shell: true, stdio: "inherit" });
             console.log(
-                `\n${C.green}${C.bold}🏆 USPEH! Link: https://github.com/engilic/serbiantransliterator/pull/new/${newBranchName}${C.reset}\n`
+                `\n${C.green}${C.bold}🏆 USPEH! Link za tvoj PR: https://github.com/engilic/serbiantransliterator/pull/new/${newBranchName}${C.reset}\n`
             );
         } else {
             spawnSync(`git push`, { shell: true, stdio: "inherit" });
