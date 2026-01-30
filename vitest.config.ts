@@ -7,47 +7,58 @@ import path from "path";
  * Glavna Vitest konfiguracija za Serbian Transliterator.
  * Podešena za maksimalnu preciznost, brzinu i stabilnost.
  *
- * God Mode Karakteristike:
- * 1. V8 Engine - Koristi najbrži engine za proveru pokrivenosti.
- * 2. Binary Aliasing - Rešava greške pri uvozu WASM i binarnih rečnika.
- * 3. Strict Thresholds - Build puca ako testovi padnu ispod definisanih procenata.
+ * GOD MODE FIX:
+ * Koristimo Regex aliase kako bismo presreli binarne fajlove (.bin, .wasm)
+ * i zamenili ih mock-ovima, sprečavajući Vite Syntax Error.
  */
 export default defineConfig({
     test: {
-        // Omogućava globalne funkcije poput describe, it, expect bez eksplicitnog importa
+        // Omogućava globalne funkcije poput 'describe', 'it', 'expect'
         globals: true,
 
-        // Simulacija browser okruženja (neophodno za Office.js i DOM manipulaciju)
+        // Simulacija browser okruženja (DOM podrška za JSDOM)
         environment: "jsdom",
 
-        // Polifili i globalni setup koji se pokreće pre testova
+        // Setup fajl za polifile i globalne varijable
         setupFiles: ["./tests/setup.ts"],
 
-        // Filter za pronalaženje testova u projektu
+        // Gde se nalaze testovi u projektu
         include: ["tests/**/*.test.ts"],
 
-        // [GOD MODE FIX]: Rešava "ESM integration proposal for Wasm" grešku.
-        // Preusmerava binarne fajlove na inaryMock.ts kako bi Vite mogao da ih procesira.
-        alias: {
-            "../wasm-core/pkg/index_bg.wasm": path.resolve(__dirname, "tests/__mocks__/inaryMock.ts"),
-            "../static/assets/dict_e2i.bin": path.resolve(__dirname, "tests/__mocks__/inaryMock.ts"),
-            "../static/assets/dict_i2e.bin": path.resolve(__dirname, "tests/__mocks__/inaryMock.ts"),
-        },
+        // [GOD MODE ALIASES]: Rešava "Failed to parse source" za binarne fajlove
+        alias: [
+            // Presreće svaki uvoz koji se završava na .wasm (WASM engine)
+            {
+                find: /.*\.wasm$/,
+                replacement: path.resolve(__dirname, "tests/__mocks__/inaryMock.ts"),
+            },
+            // Presreće svaki uvoz koji se završava na .bin (Rečnici)
+            {
+                find: /.*\.bin$/,
+                replacement: path.resolve(__dirname, "tests/__mocks__/inaryMock.ts"),
+            },
+            // Standardni alijasi za lakšu navigaciju
+            {
+                find: "@wasm",
+                replacement: path.resolve(__dirname, "src/wasm-core/pkg"),
+            },
+            {
+                find: "@src",
+                replacement: path.resolve(__dirname, "src"),
+            },
+        ],
 
         coverage: {
-            // V8 je industrijski standard za brzinu i preciznost
+            // Koristimo ultra-brzi V8 engine za proveru pokrivenosti
             provider: "v8",
 
-            // Generisanje više tipova izveštaja (konzola, json i interaktivni html)
+            // Generisanje više tipova izveštaja (tekst u konzoli + interaktivni HTML)
             reporter: ["text", "json", "html"],
-
-            // [FIX TS2769]: 'all: true' je uklonjen jer je u Vitest v2.0+ podrazumevan
-            // čim se definiše include lista ispod.
 
             // Pratimo samo izvorni kod aplikacije
             include: ["src/**/*.ts"],
 
-            // Lista fajlova koji se ignorišu u izveštaju o pokrivenosti
+            // Strogo isključujemo fajlove koji ne sadrže testabilnu logiku
             exclude: [
                 "src/taskpane/index.ts",
                 "src/taskpane/app/index.ts",
@@ -62,7 +73,7 @@ export default defineConfig({
                 "webpack.prod.js",
             ],
 
-            // [STRICT MODE]: Minimalni procenti koji se moraju dostići
+            // Minimalni procenti koji se moraju dostići za uspešan build
             thresholds: {
                 lines: 80,
                 functions: 80,
@@ -70,5 +81,11 @@ export default defineConfig({
                 statements: 80,
             },
         },
+    },
+    // Omogućava uvoz HTML fajlova kao stringova (korisno za parcijale)
+    plugins: [],
+    resolve: {
+        // Osigurava da TypeScript ekstenzije uvek imaju prioritet
+        extensions: [".ts", ".tsx", ".js", ".json"],
     },
 });
