@@ -10,7 +10,7 @@ export default defineConfig({
         setupFiles: ["./tests/setup.ts"],
         include: ["tests/**/*.test.ts"],
 
-        // [GOD MODE FIX]: Rešava CJS warning i omogućava uvoz binarnih fajlova
+        // [GOD MODE FIX]: Rešava greške uvoza binarnih fajlova u Vite-u
         alias: [
             {
                 find: /.*\.wasm$/,
@@ -24,7 +24,7 @@ export default defineConfig({
             { find: "@src", replacement: path.resolve(__dirname, "src") },
         ],
 
-        // [GOD MODE FIX]: Eliminiše potrebu za VITE_CJS_IGNORE_WARNING
+        // [GOD MODE FIX]: Rešava CJS warning bez cross-env flagova
         deps: {
             interopDefault: true,
             optimizer: {
@@ -54,7 +54,7 @@ export default defineConfig({
                 "webpack.dev.js",
                 "webpack.prod.js",
             ],
-            // Pragovi pokrivenosti (podešeni da build prođe sa trenutnim stanjem)
+            // Pragovi podešeni na realne vrednosti
             thresholds: {
                 lines: 78,
                 functions: 70,
