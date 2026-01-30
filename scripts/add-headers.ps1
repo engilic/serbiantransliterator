@@ -3,6 +3,7 @@
 $Root = Get-Location
 
 # --- 1. KONFIGURACIJA ---
+# .sh i .ps1 su ukljuceni jer podrzavaju # komentare
 $SupportedExtensions = @(".ts", ".js", ".cjs", ".mjs", ".tsx", ".css", ".html", ".xml", ".rs", ".sh", ".ps1")
 $JsonExtensions = @(".json")
 $IgnoreFolders = @("node_modules", "dist", "coverage", ".git", "target", "pkg", ".vs", ".vscode", "bin", "obj", "assets", "test-results", "playwright-report")
@@ -23,11 +24,11 @@ function Get-ExpectedHeader($Ext, $Path) {
 function Process-File($FilePath) {
     $RelPath = $FilePath.Substring($Root.Path.Length + 1).Replace("\", "/")
     
-    # Ignorisanje foldera
+    # Detaljna provera foldera
     $PathParts = $RelPath -split '/'
     foreach ($Part in $PathParts) { if ($IgnoreFolders -contains $Part) { return } }
     
-    # Ignorisanje sistemskih fajlova
+    # Detaljna provera imena fajla
     $FileName = [System.IO.Path]::GetFileName($FilePath).ToLower()
     foreach ($IF in $IgnoreFiles) { if ($FileName -eq $IF) { return } }
 
@@ -40,25 +41,21 @@ function Process-File($FilePath) {
     if ([string]::IsNullOrEmpty($RawContent)) { return }
     $Stats.Scanned++
 
-    # Normalizacija na LF i uklanjanje razmaka na krajevima redova
+    # Normalizacija linija i brisanje razmaka na krajevima
     $RawLines = $RawContent.Replace("`r`n", "`n") -split "`n"
     $Lines = New-Object System.Collections.Generic.List[string]
     foreach ($Line in $RawLines) { $Lines.Add($Line.TrimEnd()) }
     
-    # --- 4. ALARM ZA MISMATCH (Detekcija pogrešnog Copy-Paste-a) ---
+    # --- 4. ALARM ZA MISMATCH ---
     $LineIndex = 0
     foreach ($L in $Lines) {
         $LineIndex++
         if ($LineIndex -gt 5) { break }
         $T = $L.Trim()
-        
-        # Poboljšan regex koji hvata SVE putanje (uključujući one bez foldera i sa više tačaka)
         if ($T -match "^(//|#|<!--|/\*)\s*([a-zA-Z0-9_\-\.\/]+)") {
             $FoundPath = $Matches[2].Trim().ToLower().TrimEnd("-->").TrimEnd("*/").Trim()
             $ActualPath = $RelPath.ToLower()
-            
             if ($FoundPath -ne $ActualPath -and $FoundPath.Contains(".")) {
-                # Provera da li nađena putanja zapravo postoji kao DRUGI fajl
                 $CheckPath = Join-Path $Root $FoundPath
                 if (Test-Path $CheckPath) {
                     Write-Host "`n[FATAL ERROR] HEADER MISMATCH DETECTED!" -ForegroundColor White -BackgroundColor Red
@@ -79,27 +76,22 @@ function Process-File($FilePath) {
 
     foreach ($L in $Lines) {
         $T = $L.Trim()
-        
-        # A. Shebang ili XML
+        # A. Shebang ili XML (Ovo cuva funkcionalnost .sh fajlova!)
         if ($ProcessingHeader -and ($T.StartsWith("#!") -or $T.StartsWith("<?xml"))) {
             $SpecialTopLine = $L; continue
         }
-
-        # B. [KLJUČNI FIX]: Agresivno čišćenje zaglavlja
-        # Brišemo bilo koji komentar koji sadrži reč src/, tests/, scripts/ ILI ime trenutnog fajla
+        
+        # B. Detekcija zaglavlja
         $isGeneralHeader = $T -match "^(//|#|<!--|/\*)\s*(src|tests|scripts|docs|config|package|tsconfig|manifest|[\w\.-]+/).*"
         $isSpecificHeader = $T.Contains($FileName) -and ($T.StartsWith("//") -or $T.StartsWith("#"))
-        
-        if ($ProcessingHeader -and ($isGeneralHeader -or $isSpecificHeader -or $T -match "=== file:")) {
-            continue
-        }
+        if ($ProcessingHeader -and ($isGeneralHeader -or $isSpecificHeader -or $T -match "=== file:")) { continue }
 
         # C. Direktive
         if ($ProcessingHeader -and ($T.StartsWith("/* eslint") -or $T.StartsWith("/* global") -or $T.StartsWith("/* tslint") -or $T.StartsWith("/// <reference"))) {
             $Directives.Add($L); continue
         }
-
-        # D. Telo koda (Prva linija koja nije prazna i nije header/shebang/direktiva)
+        
+        # D. Kod
         if ($T -ne "") { $ProcessingHeader = $false }
         if (-not $ProcessingHeader) { $CodeBody.Add($L) }
     }
@@ -120,13 +112,16 @@ function Process-File($FilePath) {
     $NewText = ($Output -join "`n").TrimEnd() + "`n"
     $OldNormalized = ($Lines -join "`n").TrimEnd() + "`n"
     
-    # --- 7. UPISIVANJE ---
+    # --- 7. UPISIVANJE RAZLIKA ---
     if ($NewText -ne $OldNormalized) {
         try { 
             [System.IO.File]::WriteAllText($FilePath, $NewText, $Utf8NoBom)
-            if ($IsJson) { $Stats.CleanedJson++ } else { 
+            if ($IsJson) { 
+                $Stats.CleanedJson++ 
+                Write-Host "   -> CLEANED JSON: $RelPath" -ForegroundColor Green
+            } else { 
                 $Stats.Fixed++
-                Write-Host "   -> FIXED: $RelPath" -ForegroundColor Cyan
+                Write-Host "   -> FIXED HEADER: $RelPath" -ForegroundColor Green
             }
         } catch { }
     } else {
@@ -135,14 +130,17 @@ function Process-File($FilePath) {
 }
 
 # --- 8. IZVRŠENJE ---
-Write-Host "STRICT HYGIENE: Full Source Normalization..." -ForegroundColor Cyan
+Write-Host "STRICT HYGIENE: Source Normalization & Mismatch Protection..." -ForegroundColor Cyan
 $Files = Get-ChildItem -Path $Root -Recurse -File
 foreach ($F in $Files) { Process-File $F.FullName }
 
+# --- 9. FINAL REPORT ---
 $jsonColor = if ($Stats.CleanedJson -gt 0) { "Green" } else { "Gray" }
 $fixedColor = if ($Stats.Fixed -gt 0) { "Green" } else { "Gray" }
+$unchangedColor = if ($Stats.Unchanged -eq $Stats.Scanned -and $Stats.Scanned -gt 0) { "Green" } else { "Gray" }
+
 Write-Host "`nREPORT:" -ForegroundColor White
 Write-Host "   Scanned:     $($Stats.Scanned)"
 Write-Host "   Fixed Code:  $($Stats.Fixed)" -ForegroundColor $fixedColor
 Write-Host "   Purged JSON: $($Stats.CleanedJson)" -ForegroundColor $jsonColor
-Write-Host "   Unchanged:   $($Stats.Unchanged)" -ForegroundColor Gray
+Write-Host "   Unchanged:   $($Stats.Unchanged)" -ForegroundColor $unchangedColor
