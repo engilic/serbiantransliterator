@@ -6,8 +6,6 @@
  *
  * Hirurški skener koji pronalazi neiskorišćene ključeve prevoda.
  * Integriše se sa Guardian sistemom radi automatskog čišćenja koda.
- *
- * [GOD MODE]: Usklađena terminologija sa 'LOKACIJE ZA HIRURŠKU SINHRONIZACIJU'.
  */
 
 const fs = require("fs");
@@ -26,7 +24,7 @@ const C = {
     green: "\x1b[32m",
     yellow: "\x1b[33m",
     red: "\x1b[31m",
-    blue: "\x1b[34m",
+    blue: "\x1b[36m", // Cyan
     magenta: "\x1b[35m",
     cyan: "\x1b[36m",
     gray: "\x1b[90m",
@@ -165,7 +163,7 @@ async function main() {
     const enKeys = getTranslationKeys(FILES_TO_FIX[0]);
     const sourceFiles = getAllSourceFiles(SRC_DIR);
 
-    console.log(`${C.blue}${C.bold}📁 SKENIRANI IZVORI PODATAKA:${C.reset}`);
+    console.log(`${C.cyan}${C.bold}📁 SKENIRANI IZVORI PODATAKA:${C.reset}`);
     for (const f of sourceFiles) {
         console.log(`${C.gray}   • ${path.relative(ROOT, f).replace(/\\/g, "/")}${C.reset}`);
     }
@@ -201,7 +199,6 @@ async function main() {
         console.log(`${C.yellow}   - ${k}${C.reset}`);
     }
 
-    // [GOD MODE RENAME]: Lepša terminologija
     console.log(`\n${C.magenta}${C.bold}🎯 LOKACIJE ZA HIRURŠKU SINHRONIZACIJU:${C.reset}`);
     for (const f of FILES_TO_FIX) {
         console.log(`${C.gray}   • ${path.relative(ROOT, f).replace(/\\/g, "/")}${C.reset}`);
@@ -212,8 +209,11 @@ async function main() {
     if (shouldPurge) {
         if (isGitDirty()) {
             console.log(`\n${C.bgRed}${C.white} 🛑 GIT DIRTY ERROR ${C.reset}`);
+            console.log(`${C.red}Imaš nekomitovane promene u locales folderu. Prvo ih sačuvaj.${C.reset}\n`);
             process.exit(1);
         }
+
+        console.log(`\n${C.green}🚀 Počinjem čišćenje...${C.reset}`);
         for (const file of FILES_TO_FIX) {
             purgeKeysFromFile(file, unusedKeys);
         }
