@@ -1,4 +1,5 @@
 # scripts/add-headers.ps1
+
 $Root = Get-Location
 $SupportedExtensions = @(".ts", ".js", ".cjs", ".mjs", ".tsx", ".css", ".html", ".xml", ".rs", ".sh", ".ps1")
 $JsonExtensions = @(".json")

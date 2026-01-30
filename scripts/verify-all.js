@@ -1,77 +1,195 @@
-// webpack.common.js
-/* eslint-disable no-undef */
+// scripts/verify-all.js
+
+const { spawnSync } = require("child_process");
 const path = require("path");
 const fs = require("fs");
-const CopyWebpackPlugin = require("copy-webpack-plugin");
-const HtmlWebpackPlugin = require("html-webpack-plugin");
-const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 
-function readPart(partialPath) {
-    const fullPath = path.resolve(__dirname, "src/taskpane", partialPath);
-    return fs.readFileSync(fullPath, "utf8");
+const ROOT = process.cwd();
+const WASM_DIR = path.join(ROOT, "src", "wasm-core");
+const ARGS = process.argv.slice(2);
+const IS_FAST_MODE = ARGS.includes("--fast");
+const NO_PUSH = ARGS.includes("--no-push");
+const isWindows = process.platform === "win32";
+
+const C = {
+    reset: "\x1b[0m",
+    green: "\x1b[32m",
+    yellow: "\x1b[33m",
+    red: "\x1b[31m",
+    blue: "\x1b[34m",
+    magenta: "\x1b[35m",
+    bold: "\x1b[1m",
+    gray: "\x1b[90m",
+    white: "\x1b[97m",
+    bgRed: "\x1b[41m",
+    cyan: "\x1b[36m",
+};
+
+const TIMINGS = [];
+
+function beep() {
+    process.stdout.write("\x07");
 }
 
-module.exports = {
-    entry: { taskpane: ["./src/taskpane/taskpane.ts"], commands: ["./src/commands/commands.ts"] },
-    output: {
-        path: path.resolve(__dirname, "dist"),
-        filename: "[name].js",
-        globalObject: "self",
-        clean: true,
-    },
-    resolve: {
-        extensions: [".ts", ".tsx", ".html", ".js", ".json", ".wasm"],
-        alias: {
-            "@wasm": path.resolve(__dirname, "src/wasm-core/pkg"),
-            "@src": path.resolve(__dirname, "src"),
-        },
-    },
-    module: {
-        rules: [
-            { test: /\.ts$/, use: "babel-loader", exclude: /node_modules/ },
-            { test: /\.css$/i, use: [MiniCssExtractPlugin.loader, "css-loader"] },
-            {
-                test: /\.(png|jpg|jpeg|gif|ico)$/,
-                type: "asset/resource",
-                generator: { filename: "assets/[name][ext]" },
-            },
-            { test: /\.bin$/, type: "asset/inline" },
-            { test: /\.wasm$/, type: "asset/inline" },
-        ],
-    },
-    plugins: [
-        new MiniCssExtractPlugin({ filename: "[name].css" }),
-        new HtmlWebpackPlugin({
-            filename: "taskpane.html",
-            template: "./src/taskpane/taskpane.html",
-            chunks: ["taskpane"],
-            templateParameters: { readPart: readPart },
-            minify: { removeComments: true, collapseWhitespace: true },
-        }),
-        new HtmlWebpackPlugin({
-            filename: "commands.html",
-            template: "./src/commands/commands.html",
-            chunks: ["commands"],
-            minify: true,
-        }),
-        new CopyWebpackPlugin({
-            patterns: [
-                { from: "manifest*.xml", to: "[name][ext]" },
-                { from: "src/static/_headers", to: "_headers", toType: "file" },
-                { from: "src/static/manifest.webmanifest", to: "manifest.webmanifest" },
-            ],
-        }),
-    ],
-    performance: { hints: false },
-    stats: {
-        preset: "minimal",
-        modules: false,
-        orphanModules: false,
-        assets: true,
-        colors: true,
-        timings: true,
-        version: false,
-        hash: false,
-    },
-    infrastructureLogging: { level: "warn" },
-};
+function printBanner() {
+    console.log(`${C.magenta}${C.bold}
+    🛡️  GUARDIAN SYSTEM • LEVEL: GOD MODE 🛡️
+${C.reset}`);
+}
+
+function run(step, cmd, args, cwd = ROOT) {
+    console.log(`\n${C.blue}${C.bold}>>> ${step}${C.reset}`);
+    const start = Date.now();
+    const fullCmd = `${cmd} ${args.join(" ")}`;
+
+    const res = spawnSync(fullCmd, {
+        cwd,
+        stdio: "inherit",
+        shell: true,
+        env: { ...process.env, FORCE_COLOR: "1" },
+    });
+
+    TIMINGS.push({ step, time: ((Date.now() - start) / 1000).toFixed(2) });
+
+    if (res.status !== 0) {
+        beep();
+        console.error(`\n${C.bgRed} ❌ FATAL ERROR: ${step} ${C.reset}`);
+        process.exit(1);
+    }
+    console.log(`${C.green}✅ OK${C.reset}`);
+}
+
+async function askYesNo(q) {
+    return new Promise((resolve) => {
+        console.log(`\n${C.magenta}❓ ${q}${C.reset}`);
+        console.log(
+            `   ${C.white}[${C.green}BACKSPACE / ⬅ / Enter${C.white}] = DA   |   [${C.red}DEL / ➔ / Esc${C.white}] = NE${C.reset}`
+        );
+        process.stdin.setRawMode(true);
+        process.stdin.resume();
+        process.stdin.setEncoding("utf8");
+        const listener = (k) => {
+            if (k === "\u0003") process.exit(1);
+            if (
+                k === "y" ||
+                k === "Y" ||
+                k === "\r" ||
+                k === "\u007f" ||
+                k === "\u0008" ||
+                k === "\u001b[D"
+            ) {
+                process.stdout.write(`${C.green} ✔ DA${C.reset}\n`);
+                cleanup(true);
+            } else if (k === "n" || k === "N" || k === "\u001b" || k === "\u001b[3~" || k === "\u001b[C") {
+                process.stdout.write(`${C.red} ✖ NE${C.reset}\n`);
+                cleanup(false);
+            }
+        };
+        function cleanup(result) {
+            process.stdin.setRawMode(false);
+            process.stdin.pause();
+            process.stdin.removeListener("data", listener);
+            resolve(result);
+        }
+        process.stdin.on("data", listener);
+    });
+}
+
+async function runSniffer() {
+    console.log(`\n${C.blue}${C.bold}>>> Sniffer & Secret Hunter${C.reset}`);
+    const gitStatus = spawnSync("git ls-files", { shell: true, encoding: "utf8" });
+
+    if (!gitStatus.stdout) {
+        console.log(`${C.gray}Skipping sniffer (not a git repo or no files).${C.reset}`);
+        return;
+    }
+
+    const files = gitStatus.stdout.split("\n").filter((f) => f && (f.endsWith(".ts") || f.endsWith(".js")));
+    let issues = 0;
+    const secrets = [
+        /(A3T[A-Z0-9]|AKIA|AGPA|AIDA|AROA)[A-Z0-9]{16}/,
+        /-----BEGIN PRIVATE KEY-----/,
+        /sk_live_[0-9a-zA-Z]{24}/,
+    ];
+
+    files.forEach((f) => {
+        if (f.startsWith("scripts/") || f.includes("test")) return;
+        try {
+            const content = fs.readFileSync(f, "utf8");
+            secrets.forEach((re) => {
+                if (re.test(content)) issues++;
+            });
+            if (content.includes("debugger")) issues++;
+        } catch (e) {
+            /* ignore read errors */
+        }
+    });
+
+    if (issues > 0) {
+        beep();
+        console.error(`\n${C.bgRed} 🛑 PRONAĐENO ${issues} KRITIČNIH PROBLEMA!${C.reset}`);
+        process.exit(1);
+    }
+    console.log(`${C.green}✅ Bezbednost OK.${C.reset}`);
+}
+
+async function main() {
+    printBanner();
+
+    // Provera .env fajla
+    if (!fs.existsSync(path.join(ROOT, ".env")) && fs.existsSync(path.join(ROOT, ".env.example"))) {
+        console.log(`${C.yellow}⚠️  Upozorenje: .env fajl nedostaje (koristim default vrednosti).${C.reset}`);
+    }
+
+    await runSniffer();
+
+    if (!IS_FAST_MODE) {
+        run("0. Clean", "npm", ["run", "clean"]);
+    }
+
+    if (isWindows) {
+        run("0. Hygiene", "powershell", ["-ExecutionPolicy Bypass", "-File", "./scripts/add-headers.ps1"]);
+    }
+
+    run("1. Install", "npm", ["install"]);
+    run("2. Format", "npm", ["run", "format:fix"]);
+
+    const status = spawnSync("git status --porcelain", { shell: true, encoding: "utf8" }).stdout.trim();
+    if (status) {
+        console.log(`${C.cyan}ℹ️  Auto-commit hygiene & format...${C.reset}`);
+        spawnSync("git add .", { shell: true });
+        spawnSync('git commit -m "chore: hygiene & auto-format"', { shell: true });
+    }
+
+    run("3. Lint/Type", "npm", ["run", "typecheck"]);
+    run("4. Rust", "cargo", ["test"], WASM_DIR);
+    run("5. Build", "npm", ["run", "build"]);
+
+    if (!IS_FAST_MODE) {
+        run("6. Unit Tests", "npm", ["run", "test:coverage"]);
+        run("7. E2E Tests", "npm", ["run", "test:e2e"]);
+    }
+
+    console.log(`\n${C.cyan}📊 REPORT:${C.reset}`);
+    TIMINGS.forEach((t) => console.log(`   • ${t.step.padEnd(20)}: ${t.time}s`));
+    beep();
+    console.log(`\n${C.green}${C.bold}🏆 SPREMNO ZA DEPLOY!${C.reset}\n`);
+
+    if (NO_PUSH) return;
+
+    const currentBranch = spawnSync("git rev-parse --abbrev-ref HEAD", {
+        shell: true,
+        encoding: "utf8",
+    }).stdout.trim();
+    const shouldPush = await askYesNo(`Push na '${currentBranch}'?`);
+    if (shouldPush) {
+        spawnSync(`git push -u origin ${currentBranch}`, { shell: true, stdio: "inherit" });
+    }
+}
+
+// GOD MODE: Uhvati svaku grešku koja bi inače ugasila skriptu tiho
+main().catch((err) => {
+    console.error(`\n${C.bgRed} ❌ CRITICAL FATAL ERROR IN GUARDIAN: ${C.reset}`);
+    console.error(err);
+    process.exit(1);
+});
