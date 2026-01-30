@@ -131,35 +131,29 @@ async function main() {
     }
     await runSniffer();
 
-    // 0. Clean (Deep clean Rust and build artifacts) - Samo ako nije --fast
     if (!IS_FAST_MODE) {
         run("0. Clean", "npm", ["run", "clean"]);
     }
 
-    // 0. Hygiene (Popravlja heder-e i JSON pre npm install-a)
     if (isWindows) {
         run("0. Hygiene", "powershell", ["-ExecutionPolicy Bypass", "-File", "./scripts/add-headers.ps1"]);
     }
 
-    // 1. Install (Koristimo install umesto ci radi fleksibilnosti)
     run("1. Install", "npm", ["install"]);
-
-    // 2. Format
     run("2. Format", "npm", ["run", "format:fix"]);
 
     const status = spawnSync("git status --porcelain", { shell: true, encoding: "utf8" }).stdout.trim();
     if (status) {
-        console.log(`${C.yellow}⚠️  Auto-commit hygiene & format...${C.reset}`);
+        // [FIX] Promenjeno iz žute u Cyan (Info) jer je ovo standardan proces
+        console.log(`${C.cyan}ℹ️  Auto-commit hygiene & format...${C.reset}`);
         spawnSync("git add .", { shell: true });
         spawnSync('git commit -m "chore: hygiene & auto-format"', { shell: true });
     }
 
-    // 3. Types & Rust & Build
     run("3. Lint/Type", "npm", ["run", "typecheck"]);
     run("4. Rust", "cargo", ["test"], WASM_DIR);
     run("5. Build", "npm", ["run", "build"]);
 
-    // 6 & 7. Tests (Samo ako nije --fast)
     if (!IS_FAST_MODE) {
         run("6. Unit Tests", "npm", ["run", "test:coverage"]);
         run("7. E2E Tests", "npm", ["run", "test:e2e"]);
