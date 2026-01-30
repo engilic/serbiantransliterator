@@ -18,7 +18,6 @@ describe("WorkerClient - Error Handling", () => {
     });
 
     it("handles worker load error (onerror event)", async () => {
-        // Mock koji odmah okida onerror
         vi.stubGlobal(
             "Worker",
             class {
@@ -34,8 +33,6 @@ describe("WorkerClient - Error Handling", () => {
         );
 
         const p = client.init();
-
-        // BITNO: Prvo pomeramo vreme, pa onda proveravamo odbijanje (reject)
         await vi.advanceTimersByTimeAsync(50);
         await expect(p).rejects.toThrow("Worker Load Error");
     });
@@ -58,7 +55,6 @@ describe("WorkerClient - Error Handling", () => {
         );
 
         const p = client.init();
-
         await vi.advanceTimersByTimeAsync(50);
         await expect(p).rejects.toThrow("Wasm Panic");
     });

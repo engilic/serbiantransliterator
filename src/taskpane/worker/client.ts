@@ -144,7 +144,9 @@ export class WorkerClient {
 
             if (!job.aborted && !job.signal?.aborted) {
                 const payload = data.payload;
-                if (payload.xml && typeof payload.xml !== "string") {
+                // [GOD MODE FIX]: Robustnija provera tipa za JSDOM okruženje
+                const isBinary = payload.xml && typeof payload.xml !== "string";
+                if (isBinary) {
                     payload.xml = decoder.decode(payload.xml as Uint8Array);
                 }
                 job.resolve(payload as ConvertResult);
@@ -179,11 +181,10 @@ export class WorkerClient {
                     return;
                 }
                 try {
-                    const xmlStr =
-                        q.payload.xml instanceof Uint8Array ||
-                        q.payload.xml?.constructor?.name === "Uint8Array"
-                            ? decoder.decode(q.payload.xml as Uint8Array)
-                            : (q.payload.xml as string);
+                    const isBinary = q.payload.xml && typeof q.payload.xml !== "string";
+                    const xmlStr = isBinary
+                        ? decoder.decode(q.payload.xml as Uint8Array)
+                        : (q.payload.xml as string);
                     const res = convertOoxml(xmlStr, q.payload.options);
                     q.resolve({ xml: res.xml, type: res.type, stats: res.stats });
                 } catch (e) {
@@ -233,7 +234,8 @@ export class WorkerClient {
         }
 
         this.jobs.set(id, job);
-        if (q.payload.xml instanceof Uint8Array || q.payload.xml?.constructor?.name === "Uint8Array") {
+        const isBinary = q.payload.xml && typeof q.payload.xml !== "string";
+        if (isBinary) {
             this.worker.postMessage({ type: "CONVERT", id, payload: q.payload }, [
                 (q.payload.xml as Uint8Array).buffer,
             ]);
