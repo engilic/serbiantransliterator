@@ -35,7 +35,7 @@
         "format:check": "prettier --check .",
         "format:fix": "prettier --write .",
         "audit:high": "npm audit --audit-level=high",
-        "prepare": "husky install",
+        "prepare": "husky",
         "release": "standard-version"
     },
     "dependencies": {

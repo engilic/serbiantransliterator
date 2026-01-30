@@ -71,9 +71,7 @@ export class WorkerClient {
 
         this.initPromise = new Promise((resolve, reject) => {
             try {
-                // Ako smo u testu, MockWorker će biti u globalThis.Worker
                 this.worker = new Worker(WorkerUrl);
-
                 const heartbeatTimeout = setTimeout(async () => {
                     if (!this.isReady) {
                         await this.activateFallback();
@@ -90,7 +88,7 @@ export class WorkerClient {
                         this.pumpQueue();
                     } else if (data.type === "ERROR" && !data.id) {
                         clearTimeout(heartbeatTimeout);
-                        reject(new Error(data.error)); // Bitno za testove gresaka
+                        reject(new Error(data.error));
                     } else {
                         this.handleMessage(event);
                     }
@@ -98,7 +96,7 @@ export class WorkerClient {
 
                 this.worker.onerror = () => {
                     clearTimeout(heartbeatTimeout);
-                    reject(new Error("Worker Load Error")); // Resava workerClientErrors.test.ts
+                    reject(new Error("Worker Load Error"));
                 };
 
                 const b1 = dataUriToBytes(dictE2iData as any);
@@ -113,7 +111,6 @@ export class WorkerClient {
                     [b1.buffer, b2.buffer, wasmBytes.buffer]
                 );
             } catch (e) {
-                // JSDOM / Fallback
                 this.activateFallback().then(() => resolve());
             }
         });
@@ -144,10 +141,12 @@ export class WorkerClient {
             if (job.timeoutHandle) clearTimeout(job.timeoutHandle);
 
             if (!job.aborted && !job.signal?.aborted) {
-                if (data.payload.xml instanceof Uint8Array) {
-                    data.payload.xml = decoder.decode(data.payload.xml);
+                const payload = data.payload;
+                // [GOD MODE FIX]: Robustna provera za Uint8Array (radi u JSDOM-u)
+                if (payload.xml && typeof payload.xml !== "string") {
+                    payload.xml = decoder.decode(payload.xml as Uint8Array);
                 }
-                job.resolve(data.payload as ConvertResult);
+                job.resolve(payload as ConvertResult);
             }
             this.pumpQueue();
         }
@@ -180,7 +179,10 @@ export class WorkerClient {
                 }
                 try {
                     const xmlStr =
-                        q.payload.xml instanceof Uint8Array ? decoder.decode(q.payload.xml) : q.payload.xml;
+                        q.payload.xml instanceof Uint8Array ||
+                        q.payload.xml?.constructor?.name === "Uint8Array"
+                            ? decoder.decode(q.payload.xml as Uint8Array)
+                            : (q.payload.xml as string);
                     const res = convertOoxml(xmlStr, q.payload.options);
                     q.resolve({ xml: res.xml, type: res.type, stats: res.stats });
                 } catch (e) {
@@ -230,8 +232,10 @@ export class WorkerClient {
         }
 
         this.jobs.set(id, job);
-        if (q.payload.xml instanceof Uint8Array) {
-            this.worker.postMessage({ type: "CONVERT", id, payload: q.payload }, [q.payload.xml.buffer]);
+        if (q.payload.xml instanceof Uint8Array || q.payload.xml?.constructor?.name === "Uint8Array") {
+            this.worker.postMessage({ type: "CONVERT", id, payload: q.payload }, [
+                (q.payload.xml as Uint8Array).buffer,
+            ]);
         } else {
             this.worker.postMessage({ type: "CONVERT", id, payload: q.payload });
         }
@@ -257,8 +261,12 @@ export class WorkerClient {
         this.jobs.clear();
         this.queue = [];
         if (this.worker) {
-            this.worker.terminate();
-            this.worker = null; // BITNO ZA finalGreen.test.ts
+            try {
+                this.worker.terminate();
+            } catch (e) {
+                /* ignore */
+            }
+            this.worker = null;
         }
     }
 }

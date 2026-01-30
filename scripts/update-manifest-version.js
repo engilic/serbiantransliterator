@@ -11,8 +11,9 @@ const MANIFESTS = ["manifest.xml", "manifest.prod.xml"];
 const C = {
     reset: "\x1b[0m",
     green: "\x1b[32m",
-    yellow: "\x1b[33m",
+    yellow: "\x1b[33m", // Rezervisano isključivo za warninge
     blue: "\x1b[34m",
+    cyan: "\x1b[36m", // Korišćeno za informativne podatke
     bold: "\x1b[1m",
     gray: "\x1b[90m",
     red: "\x1b[31m",
@@ -34,9 +35,10 @@ const version = pkg.version;
 const officeVersion = version.split(".").length === 3 ? `${version}.0` : version;
 const displayName = `${EXTENSION_NAME} (v${version})`;
 
-console.log(`   Target Version: ${C.yellow}${version}${C.reset}`);
-console.log(`   Office Format:  ${C.yellow}${officeVersion}${C.reset}`);
-console.log(`   Display Name:   ${C.yellow}${displayName}${C.reset}\n`);
+// [GOD MODE FIX]: Promenjeno iz Yellow u Cyan
+console.log(`   Target Version: ${C.cyan}${version}${C.reset}`);
+console.log(`   Office Format:  ${C.cyan}${officeVersion}${C.reset}`);
+console.log(`   Display Name:   ${C.cyan}${displayName}${C.reset}\n`);
 
 // 2. Ažuriraj fajlove
 let updatedCount = 0;
@@ -74,7 +76,6 @@ MANIFESTS.forEach((fname) => {
     // C. Ažuriraj GetStarted.Title (Resource string)
     const gsRegex = /(<bt:String id="GetStarted.Title" DefaultValue=").*?("\/>)/;
     if (gsRegex.test(content)) {
-        // Provera da li je već ažurirano je teža sa regexom, pa samo menjamo
         const newContent = content.replace(gsRegex, `$1${displayName}$2`);
         if (newContent !== content) {
             content = newContent;

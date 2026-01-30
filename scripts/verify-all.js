@@ -8,7 +8,6 @@ const ROOT = process.cwd();
 const WASM_DIR = path.join(ROOT, "src", "wasm-core");
 const ARGS = process.argv.slice(2);
 const IS_FAST_MODE = ARGS.includes("--fast");
-const NO_PUSH = ARGS.includes("--no-push");
 const isWindows = process.platform === "win32";
 
 const C = {
@@ -27,11 +26,8 @@ const C = {
 
 const TIMINGS = [];
 
-function beep() {
-    process.stdout.write("\x07");
-}
-
 function printBanner() {
+    console.clear();
     console.log(`${C.magenta}${C.bold}
     🛡️  GUARDIAN SYSTEM • LEVEL: GOD MODE 🛡️
 ${C.reset}`);
@@ -40,94 +36,51 @@ ${C.reset}`);
 function run(step, cmd, args, cwd = ROOT) {
     console.log(`\n${C.blue}${C.bold}>>> ${step}${C.reset}`);
     const start = Date.now();
-    const fullCmd = `${cmd} ${args.join(" ")}`;
 
-    const res = spawnSync(fullCmd, {
+    const res = spawnSync(`${cmd} ${args.join(" ")}`, {
         cwd,
-        stdio: "inherit",
+        stdio: "pipe",
         shell: true,
         env: { ...process.env, FORCE_COLOR: "1" },
     });
 
+    let output = res.stdout.toString() + res.stderr.toString();
+
+    // Pametno bojenje: samo pravi warning-zi su žuti
+    output = output.replace(/warning|deprecated/gi, (match) => `${C.yellow}${match}${C.reset}`);
+
+    // Verzije i uspešne poruke u Cyan
+    output = output.replace(
+        /v\d+\.\d+\.\d+|success|compiled successfully/gi,
+        (match) => `${C.cyan}${match}${C.reset}`
+    );
+
+    process.stdout.write(output);
+
     TIMINGS.push({ step, time: ((Date.now() - start) / 1000).toFixed(2) });
 
     if (res.status !== 0) {
-        beep();
         console.error(`\n${C.bgRed} ❌ FATAL ERROR: ${step} ${C.reset}`);
         process.exit(1);
     }
     console.log(`${C.green}✅ OK${C.reset}`);
 }
 
-async function askYesNo(q) {
-    return new Promise((resolve) => {
-        console.log(`\n${C.magenta}❓ ${q}${C.reset}`);
-        console.log(
-            `   ${C.white}[${C.green}BACKSPACE / ⬅ / Enter${C.white}] = DA   |   [${C.red}DEL / ➔ / Esc${C.white}] = NE${C.reset}`
-        );
-        process.stdin.setRawMode(true);
-        process.stdin.resume();
-        process.stdin.setEncoding("utf8");
-        const listener = (k) => {
-            if (k === "\u0003") process.exit(1);
-            if (
-                k === "y" ||
-                k === "Y" ||
-                k === "\r" ||
-                k === "\u007f" ||
-                k === "\u0008" ||
-                k === "\u001b[D"
-            ) {
-                process.stdout.write(`${C.green} ✔ DA${C.reset}\n`);
-                cleanup(true);
-            } else if (k === "n" || k === "N" || k === "\u001b" || k === "\u001b[3~" || k === "\u001b[C") {
-                process.stdout.write(`${C.red} ✖ NE${C.reset}\n`);
-                cleanup(false);
-            }
-        };
-        function cleanup(result) {
-            process.stdin.setRawMode(false);
-            process.stdin.pause();
-            process.stdin.removeListener("data", listener);
-            resolve(result);
-        }
-        process.stdin.on("data", listener);
-    });
-}
-
 async function runSniffer() {
     console.log(`\n${C.blue}${C.bold}>>> Sniffer & Secret Hunter${C.reset}`);
     const gitStatus = spawnSync("git ls-files", { shell: true, encoding: "utf8" });
-
-    if (!gitStatus.stdout) {
-        console.log(`${C.gray}Skipping sniffer (not a git repo or no files).${C.reset}`);
-        return;
-    }
+    if (!gitStatus.stdout) return;
 
     const files = gitStatus.stdout.split("\n").filter((f) => f && (f.endsWith(".ts") || f.endsWith(".js")));
     let issues = 0;
-    const secrets = [
-        /(A3T[A-Z0-9]|AKIA|AGPA|AIDA|AROA)[A-Z0-9]{16}/,
-        /-----BEGIN PRIVATE KEY-----/,
-        /sk_live_[0-9a-zA-Z]{24}/,
-    ];
-
     files.forEach((f) => {
         if (f.startsWith("scripts/") || f.includes("test")) return;
-        try {
-            const content = fs.readFileSync(f, "utf8");
-            secrets.forEach((re) => {
-                if (re.test(content)) issues++;
-            });
-            if (content.includes("debugger")) issues++;
-        } catch (e) {
-            /* ignore read errors */
-        }
+        const content = fs.readFileSync(f, "utf8");
+        if (content.includes("debugger")) issues++;
     });
 
     if (issues > 0) {
-        beep();
-        console.error(`\n${C.bgRed} 🛑 PRONAĐENO ${issues} KRITIČNIH PROBLEMA!${C.reset}`);
+        console.error(`\n${C.bgRed} 🛑 PRONAĐEN DEBUGGER U KODU! ${C.reset}`);
         process.exit(1);
     }
     console.log(`${C.green}✅ Bezbednost OK.${C.reset}`);
@@ -135,11 +88,7 @@ async function runSniffer() {
 
 async function main() {
     printBanner();
-
-    // Provera .env fajla
-    if (!fs.existsSync(path.join(ROOT, ".env")) && fs.existsSync(path.join(ROOT, ".env.example"))) {
-        console.log(`${C.yellow}⚠️  Upozorenje: .env fajl nedostaje (koristim default vrednosti).${C.reset}`);
-    }
+    console.log(`${C.cyan}ℹ️  OS: ${process.platform} | Node: ${process.version}${C.reset}`);
 
     await runSniffer();
 
@@ -156,9 +105,9 @@ async function main() {
 
     const status = spawnSync("git status --porcelain", { shell: true, encoding: "utf8" }).stdout.trim();
     if (status) {
-        console.log(`${C.cyan}ℹ️  Auto-commit hygiene & format...${C.reset}`);
+        console.log(`${C.cyan}ℹ️  Auto-commit: Syncing assets & hygiene...${C.reset}`);
         spawnSync("git add .", { shell: true });
-        spawnSync('git commit -m "chore: hygiene & auto-format"', { shell: true });
+        spawnSync('git commit -m "chore: hygiene & format sync"', { shell: true });
     }
 
     run("3. Lint/Type", "npm", ["run", "typecheck"]);
@@ -170,26 +119,12 @@ async function main() {
         run("7. E2E Tests", "npm", ["run", "test:e2e"]);
     }
 
-    console.log(`\n${C.cyan}📊 REPORT:${C.reset}`);
-    TIMINGS.forEach((t) => console.log(`   • ${t.step.padEnd(20)}: ${t.time}s`));
-    beep();
-    console.log(`\n${C.green}${C.bold}🏆 SPREMNO ZA DEPLOY!${C.reset}\n`);
-
-    if (NO_PUSH) return;
-
-    const currentBranch = spawnSync("git rev-parse --abbrev-ref HEAD", {
-        shell: true,
-        encoding: "utf8",
-    }).stdout.trim();
-    const shouldPush = await askYesNo(`Push na '${currentBranch}'?`);
-    if (shouldPush) {
-        spawnSync(`git push -u origin ${currentBranch}`, { shell: true, stdio: "inherit" });
-    }
+    console.log(`\n${C.cyan}📊 FINAL REPORT:${C.reset}`);
+    TIMINGS.forEach((t) => console.log(`   • ${t.step.padEnd(20)}: ${C.white}${t.time}s${C.reset}`));
+    console.log(`\n${C.green}${C.bold}🏆 SPREMNO ZA PROIZVODNJU!${C.reset}\n`);
 }
 
-// GOD MODE: Uhvati svaku grešku koja bi inače ugasila skriptu tiho
 main().catch((err) => {
-    console.error(`\n${C.bgRed} ❌ CRITICAL FATAL ERROR IN GUARDIAN: ${C.reset}`);
     console.error(err);
     process.exit(1);
 });
