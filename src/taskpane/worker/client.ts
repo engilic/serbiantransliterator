@@ -1,19 +1,19 @@
-// src/taskpane/worker/client.ts
 import type { OoxmlOptions, ConvertStats } from "../../shared/ooxml/convertOoxml";
 import { convertOoxml } from "../../shared/ooxml/convertOoxml";
 import * as textCore from "../../core/textCore";
 import type { WorkerMessage, WorkerResponse } from "./types";
 import { state } from "../app/state";
 
-// Webpack 5 Asset Modules (Resource Query)
 import dictE2iData from "../../static/assets/dict_e2i.bin";
 import dictI2eData from "../../static/assets/dict_i2e.bin";
 import wasmData from "../../wasm-core/pkg/index_bg.wasm";
 
-// Definišemo URL Workera. Webpack 5 će ovo prepoznati i spakovati u odvojen fajl.
 const WorkerUrl = new URL("./transliteration.worker.ts", import.meta.url);
 
-type ConvertPayload = { xml: string; options: OoxmlOptions };
+const encoder = new TextEncoder();
+const decoder = new TextDecoder();
+
+type ConvertPayload = { xml: string | Uint8Array; options: OoxmlOptions };
 type ConvertResult = { xml: string; type: string; stats: ConvertStats };
 
 interface InFlightJob {
@@ -60,11 +60,10 @@ export class WorkerClient {
     private isReady = false;
     private initPromise: Promise<void> | null = null;
     private inFlightCount = 0;
-    private readonly MAX_IN_FLIGHT = 2; // Limit paralelnih poslova
+    private readonly MAX_IN_FLIGHT = 2;
     private nextJobId = 1;
     private useFallback = false;
 
-    // Detekcija test okruženja (JSDOM / Vitest)
     private isTesting =
         typeof process !== "undefined" && (process.env.VITEST === "true" || process.env.NODE_ENV === "test");
 
@@ -74,17 +73,13 @@ export class WorkerClient {
 
         this.initPromise = new Promise((resolve, reject) => {
             try {
-                console.log("[WorkerClient] Initializing...");
-
                 this.worker = new Worker(WorkerUrl);
 
-                // Timeout za "mrtvog" workera (npr. blokiran od strane IT polisa)
                 const heartbeatTimeout = setTimeout(async () => {
                     if (!this.isReady) {
-                        console.warn("[WorkerClient] Heartbeat timeout. Switching to Fallback.");
                         if (this.isTesting) {
                             this.resetWorkerState();
-                            reject(new Error("Worker Startup Timeout (Testing)"));
+                            reject(new Error("Worker Startup Timeout"));
                         } else {
                             await this.activateFallback();
                             resolve();
@@ -94,18 +89,14 @@ export class WorkerClient {
 
                 this.worker.onmessage = (event) => {
                     const data = event.data as WorkerResponse;
-
                     if (data.type === "INIT_DONE") {
-                        console.log("[WorkerClient] Worker Ready!");
                         clearTimeout(heartbeatTimeout);
                         this.isReady = true;
                         resolve();
                         this.pumpQueue();
                     } else if (data.type === "ERROR" && !data.id) {
                         clearTimeout(heartbeatTimeout);
-                        console.error("[WorkerClient] Worker Init Error:", data.error);
                         if (this.isTesting) {
-                            this.initPromise = null;
                             this.resetWorkerState();
                             reject(new Error(data.error));
                         } else {
@@ -116,36 +107,32 @@ export class WorkerClient {
                     }
                 };
 
-                this.worker.onerror = async (e) => {
+                this.worker.onerror = async () => {
                     clearTimeout(heartbeatTimeout);
                     if (this.isTesting) {
-                        this.initPromise = null;
                         this.resetWorkerState();
                         reject(new Error("Worker Load Error"));
                     } else {
-                        console.error("[WorkerClient] Native Worker Error (onerror):", e);
                         await this.activateFallback();
                         resolve();
                     }
                 };
 
-                const b1 = dataUriToBytes(dictE2iData as unknown as string);
-                const b2 = dataUriToBytes(dictI2eData as unknown as string);
-                const wasmBytes = dataUriToBytes(wasmData as unknown as string);
+                const b1 = dataUriToBytes(dictE2iData as any);
+                const b2 = dataUriToBytes(dictI2eData as any);
+                const wasmBytes = dataUriToBytes(wasmData as any);
 
-                const msg: WorkerMessage = {
-                    type: "INIT",
-                    payload: { dictE2i: b1, dictI2e: b2, wasmModule: wasmBytes },
-                };
-
-                this.worker.postMessage(msg, [b1.buffer, b2.buffer, wasmBytes.buffer]);
+                this.worker.postMessage(
+                    {
+                        type: "INIT",
+                        payload: { dictE2i: b1, dictI2e: b2, wasmModule: wasmBytes },
+                    },
+                    [b1.buffer, b2.buffer, wasmBytes.buffer]
+                );
             } catch (e) {
-                console.error("[WorkerClient] Constructor failed:", e);
                 this.initPromise = null;
                 if (this.isTesting) reject(e);
-                else {
-                    void this.activateFallback().then(() => resolve());
-                }
+                else void this.activateFallback().then(() => resolve());
             }
         });
 
@@ -154,24 +141,18 @@ export class WorkerClient {
 
     private async activateFallback() {
         if (this.useFallback) return;
-        console.warn("[WorkerClient] ACTIVATING FALLBACK MODE (Main Thread)");
-
         this.useFallback = true;
         this.isReady = true;
-
         if (this.worker) {
             this.worker.terminate();
             this.worker = null;
         }
-
         await textCore.initWasm();
     }
 
     private resetWorkerState() {
-        if (this.worker) {
-            this.worker.terminate();
-            this.worker = null;
-        }
+        if (this.worker) this.worker.terminate();
+        this.worker = null;
         this.isReady = false;
         this.initPromise = null;
         this.inFlightCount = 0;
@@ -187,11 +168,14 @@ export class WorkerClient {
 
             this.jobs.delete(data.id);
             this.inFlightCount = Math.max(0, this.inFlightCount - 1);
-
             if (job.timeoutHandle) clearTimeout(job.timeoutHandle);
 
             if (!job.aborted && !job.signal?.aborted) {
-                job.resolve(data.payload);
+                // GOD MODE: Decode binarnog XML-a nazad u string
+                if (data.payload.xml instanceof Uint8Array) {
+                    data.payload.xml = decoder.decode(data.payload.xml);
+                }
+                job.resolve(data.payload as ConvertResult);
             }
             this.pumpQueue();
         }
@@ -220,7 +204,9 @@ export class WorkerClient {
         if (this.useFallback) {
             setTimeout(() => {
                 try {
-                    const res = convertOoxml(q.payload.xml, q.payload.options);
+                    const xmlStr =
+                        q.payload.xml instanceof Uint8Array ? decoder.decode(q.payload.xml) : q.payload.xml;
+                    const res = convertOoxml(xmlStr, q.payload.options);
                     q.resolve({ xml: res.xml, type: res.type, stats: res.stats });
                 } catch (e) {
                     q.reject(e as Error);
@@ -230,7 +216,6 @@ export class WorkerClient {
         }
 
         if (!this.worker) return;
-
         const id = q.id;
         this.inFlightCount++;
 
@@ -245,7 +230,7 @@ export class WorkerClient {
 
         if (q.signal) {
             if (q.signal.aborted) {
-                job.aborted = true;
+                this.inFlightCount = Math.max(0, this.inFlightCount - 1);
                 job.reject(makeAbortError());
                 return;
             }
@@ -261,27 +246,35 @@ export class WorkerClient {
 
         if (q.timeoutMs > 0) {
             job.timeoutHandle = setTimeout(() => {
+                if (job.aborted) return;
                 job.aborted = true;
                 this.jobs.delete(id);
                 this.inFlightCount = Math.max(0, this.inFlightCount - 1);
-                q.reject(new Error("Worker timeout processing chunk"));
+                q.reject(new Error("Worker timeout"));
                 this.pumpQueue();
             }, q.timeoutMs);
         }
 
         this.jobs.set(id, job);
-        this.worker.postMessage({ type: "CONVERT", id, payload: q.payload } as WorkerMessage);
+
+        // GOD MODE: Slanje kao Transferable (Zero Copy)
+        if (q.payload.xml instanceof Uint8Array) {
+            this.worker.postMessage({ type: "CONVERT", id, payload: q.payload }, [q.payload.xml.buffer]);
+        } else {
+            this.worker.postMessage({ type: "CONVERT", id, payload: q.payload });
+        }
     }
 
     public async convert(xml: string, options: OoxmlOptions, timeoutMs = 60_000): Promise<ConvertResult> {
         const signal = state.activeAbortController?.signal ?? null;
         if (signal?.aborted) throw makeAbortError();
-
         if (!this.isReady && !this.useFallback) await this.init();
 
         const id = String(this.nextJobId++);
+        const xmlBytes = encoder.encode(xml);
+
         return new Promise((resolve, reject) => {
-            this.queue.push({ id, payload: { xml, options }, resolve, reject, signal, timeoutMs });
+            this.queue.push({ id, payload: { xml: xmlBytes, options }, resolve, reject, signal, timeoutMs });
             this.pumpQueue();
         });
     }
