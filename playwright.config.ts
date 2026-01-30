@@ -1,5 +1,7 @@
 // playwright.config.ts
 
+// playwright.config.ts
+
 import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
