@@ -4,29 +4,30 @@ import { defineConfig } from "vitest/config";
 import path from "path";
 
 /**
- * Vitest konfiguracija za Serbian Transliterator.
- * Podešena za maksimalnu preciznost, brzinu i stabilnost.
+ * Glavna konfiguracija za Vitest engine.
+ * Podešena za maksimalnu preciznost izveštaja i stabilnost okruženja.
  *
- * GOD MODE FIX:
- * Koristimo Regex aliase kako bismo presreli binarne fajlove (.bin, .wasm)
- * i zamenili ih mock-ovima, sprečavajući Vite Syntax Error koji trenutno vidiš.
+ * GOD MODE FIXES:
+ * 1. Binary Aliasing: Rešava grešku sa uvozom .bin i .wasm fajlova.
+ * 2. Thresholds: Build puca ako testovi padnu ispod 80%.
+ * 3. JSDOM: Simulira browser za potrebe Office Add-in-a.
  */
 export default defineConfig({
     test: {
-        // Omogućava globalne funkcije poput 'describe', 'it', 'expect'
+        // Omogućava globalne funkcije poput describe, it, expect
         globals: true,
 
-        // Simulacija browser okruženja (neophodno za Office.js i DOM)
+        // Simulacija browser okruženja (DOM podrška)
         environment: "jsdom",
 
-        // Setup fajl za polifile i globalne varijable
+        // Setup fajl koji se pokreće pre svakog testa
         setupFiles: ["./tests/setup.ts"],
 
-        // Gde se nalaze testovi u projektu
+        // Gde se nalaze testovi
         include: ["tests/**/*.test.ts"],
 
-        // [GOD MODE ALIASES]: Rešava "Failed to parse source" za binarne fajlove.
-        // Bilo koji uvoz koji se završava na .bin ili .wasm biće zamenjen inaryMock-om.
+        // [GOD MODE ALIASES]: Rešava "ESM integration proposal for Wasm" grešku.
+        // Presreće svaki uvoz binarnih podataka i menja ga mock-om.
         alias: [
             {
                 find: /.*\.wasm$/,
@@ -47,16 +48,16 @@ export default defineConfig({
         ],
 
         coverage: {
-            // Koristimo ultra-brzi V8 engine (standard u God Mode verziji)
+            // Najbrži engine za proveru koda
             provider: "v8",
 
-            // Generisanje izveštaja (tekst, json i interaktivni html)
+            // Tipovi izveštaja koje generiše
             reporter: ["text", "json", "html"],
 
-            // Pratimo samo izvorni kod aplikacije
+            // Gledamo samo src folder za statistiku
             include: ["src/**/*.ts"],
 
-            // Isključujemo fajlove koji ne sadrže testabilnu logiku
+            // [STRICT EXCLUDE]: Izbacujemo sve što ne sadrži testabilni kod
             exclude: [
                 "src/taskpane/index.ts",
                 "src/taskpane/app/index.ts",
@@ -71,7 +72,7 @@ export default defineConfig({
                 "webpack.prod.js",
             ],
 
-            // Pragovi pokrivenosti: build će biti žut/crven ako padne ispod ovoga
+            // Minimalni procenti koji se moraju dostići
             thresholds: {
                 lines: 80,
                 functions: 80,
@@ -81,7 +82,7 @@ export default defineConfig({
         },
     },
     resolve: {
-        // Osigurava da TypeScript ekstenzije imaju prioritet
+        // Standardne ekstenzije koje Vitest procesira
         extensions: [".ts", ".tsx", ".js", ".json"],
     },
 });
