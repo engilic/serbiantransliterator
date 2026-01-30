@@ -7,8 +7,8 @@
  * Centralni nadzorni sistem za Serbian Transliterator.
  * Upravlja kompletnim pipeline-om i garantuje stabilnost pre svakog push-a.
  *
- * [GOD MODE FIX]: Implementirana ultra-široka virtuelna kolona (COLUMNS=300)
- * kako bi izveštaji o pokrivenosti (Vitest) uvek prikazivali PUNA IMENA FAJLOVA.
+ * [GOD MODE FIX]: Implementirana ULTRA-ŠIROKA virtuelna kolona (COLUMNS=1000)
+ * koja fizički onemogućava Vitest-u da skraćuje imena fajlova sa tri tačkice.
  *
  * Autor: Jugoslav Ilić
  * Verzija: 1.0.0 (Gold Master)
@@ -57,7 +57,7 @@ function beep() {
  * Prikazuje Guardian banner na vrhu terminala.
  */
 function printBanner() {
-    // console.clear() je uklonjen po tvom zahtevu radi čuvanja istorije
+    // console.clear() je uklonjen po tvom zahtevu radi čuvanja istorije rada
     console.log(`\n${C.magenta}${C.bold}
     🛡️  GUARDIAN SYSTEM • LEVEL: GOD MODE 🛡️
     ========================================
@@ -85,14 +85,15 @@ function run(step, cmd, args, cwd = ROOT, useInherit = false) {
         env: {
             ...process.env,
             FORCE_COLOR: "1",
-            // [GOD MODE FIX]: Ekstremna širina za puna imena fajlova u pokrivenosti
-            COLUMNS: "300",
+            // [GOD MODE FIX]: Postavljamo COLUMNS na 1000 da izbegnemo "..." u tabeli pokrivenosti
+            COLUMNS: "1000",
         },
         // useInherit omogućava interaktivne skripte (poput I18n Check)
         stdio: useInherit && process.stdin.isTTY ? "inherit" : "pipe",
     };
 
     const fullCommandString = `${cmd} ${args.join(" ")}`;
+
     const res = spawnSync(fullCommandString, options);
 
     // Ako smo koristili pipe (stdio: pipe), sada obrađujemo output radi boja
@@ -119,9 +120,11 @@ function run(step, cmd, args, cwd = ROOT, useInherit = false) {
         process.stdout.write(combined);
     }
 
+    // Beležimo vreme trajanja koraka
     const duration = ((Date.now() - start) / 1000).toFixed(2);
     TIMINGS.push({ step, time: duration });
 
+    // Provera statusa: dozvoljavamo 0 (uspeh) i 2 (naš restart signal)
     if (res.status !== 0 && res.status !== 2) {
         beep();
         console.error(`\n${C.bgRed}${C.white} ❌ FATAL ERROR: ${step} ${C.reset}`);
@@ -156,11 +159,13 @@ async function askYesNo(q) {
         process.stdin.setEncoding("utf8");
 
         const listener = (k) => {
+            // CTRL+C = Prisilni izlaz
             if (k === "\u0003") {
                 process.stdin.setRawMode(false);
                 process.exit(1);
             }
 
+            // Logika za DA (y, Y, Enter, Backspace, Levo)
             if (
                 k === "y" ||
                 k === "Y" ||
@@ -171,7 +176,9 @@ async function askYesNo(q) {
             ) {
                 process.stdout.write(`${C.green} ✔ DA${C.reset}\n`);
                 cleanup(true);
-            } else if (k === "n" || k === "N" || k === "\u001b" || k === "\u001b[3~" || k === "\u001b[C") {
+            }
+            // Logika za NE (n, N, Esc, Delete, Desno)
+            else if (k === "n" || k === "N" || k === "\u001b" || k === "\u001b[3~" || k === "\u001b[C") {
                 process.stdout.write(`${C.red} ✖ NE${C.reset}\n`);
                 cleanup(false);
             }
@@ -236,7 +243,7 @@ async function runSniffer() {
 }
 
 /**
- * GLAVNA FUNKCIJA
+ * GLAVNA FUNKCIJA - Glavni radni ciklus Guardian sistema.
  */
 async function main() {
     printBanner();
@@ -254,7 +261,9 @@ async function main() {
             true
         );
 
+    // [GOD MODE I18N RESTART LOGIKA]
     const i18nStatus = run("0. I18n Check", "node", ["scripts/checkI18nKeys.cjs"], ROOT, true);
+
     if (i18nStatus === 2) {
         console.log(`\n${C.magenta}♻️  IZMENE U PREVODIMA DETEKTOVANE. RESTARTUJEM GUARDIAN...${C.reset}`);
         TIMINGS = [];

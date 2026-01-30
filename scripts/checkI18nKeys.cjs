@@ -3,6 +3,11 @@
 /**
  * 🔍 I18N BLOAT HUNTER • LEVEL: GOD MODE 🛡️
  * ========================================
+ *
+ * Skenira projekat na neiskorišćene ključeve prevoda.
+ * Podržava interaktivno brisanje i Git zaštitu.
+ *
+ * [GOD MODE]: Usklađena terminologija sa 'LOKACIJE ZA HIRURŠKU SINHRONIZACIJU'.
  */
 
 const fs = require("fs");
@@ -50,11 +55,10 @@ function isGitDirty() {
 }
 
 /**
- * TVOJA MOĆNA LOGIKA ZA UNOS.
+ * TVOJA ORIGINALNA LOGIKA ZA UNOS.
  */
 async function askYesNo(q) {
     if (!process.stdin.isTTY) {
-        console.log(`${C.gray}ℹ️  Non-interactive environment detected. Skipping prompt.${C.reset}`);
         return false;
     }
 
@@ -185,7 +189,6 @@ async function main() {
         console.log(`${C.yellow}   - ${k}${C.reset}`);
     }
 
-    // [GOD MODE RENAME]: Lepša terminologija
     console.log(`\n${C.magenta}${C.bold}🎯 LOKACIJE ZA HIRURŠKU SINHRONIZACIJU:${C.reset}`);
     for (const f of FILES_TO_FIX) {
         console.log(`${C.gray}   • ${path.relative(ROOT, f).replace(/\\/g, "/")}${C.reset}`);
@@ -201,9 +204,9 @@ async function main() {
         for (const file of FILES_TO_FIX) {
             purgeKeysFromFile(file, unusedKeys);
         }
-        process.exit(2);
+        process.exit(2); // RESTART
     } else {
-        process.exit(0);
+        process.exit(0); // CONTINUE
     }
 }
 

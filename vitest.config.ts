@@ -6,11 +6,6 @@ import path from "path";
 /**
  * Glavna konfiguracija za Vitest engine.
  * Podešena za maksimalnu preciznost izveštaja i stabilnost okruženja.
- *
- * GOD MODE FIXES:
- * 1. Path Mapping: Rešava 'Failed to resolve import' za wasm-core/pkg.
- * 2. Binary Aliasing: Rešava grešku sa uvozom .bin i .wasm fajlova.
- * 3. Thresholds: Prilagođeni pragovi za v1.0.0 stabilnost.
  */
 export default defineConfig({
     test: {
@@ -26,7 +21,7 @@ export default defineConfig({
         // Gde se nalaze testovi
         include: ["tests/**/*.test.ts"],
 
-        // [GOD MODE ALIASES]: Mapiranje putanja za binarne module
+        // [GOD MODE ALIASES]: Mapiranje putanja za binarne module i WASM pakete
         alias: [
             {
                 find: /.*wasm-core\/pkg$/,
@@ -46,7 +41,7 @@ export default defineConfig({
             },
         ],
 
-        // [GOD MODE INTEROP]: Rešava CJS warning
+        // [GOD MODE INTEROP]: Rešava CJS warning bez cross-env flagova
         deps: {
             interopDefault: true,
             optimizer: {
@@ -60,7 +55,7 @@ export default defineConfig({
             // Najmoderniji V8 engine za proveru koda
             provider: "v8",
 
-            // Tipovi izveštaja
+            // Tipovi izveštaja (Text za terminal + HTML za vizuelni pregled)
             reporter: ["text", "json", "html"],
 
             // Gledamo samo izvorni kod
@@ -94,7 +89,7 @@ export default defineConfig({
         },
     },
     resolve: {
-        // Redosled ekstenzija
+        // Redosled ekstenzija za rezoluciju modula
         extensions: [".ts", ".tsx", ".js", ".json"],
     },
 });
