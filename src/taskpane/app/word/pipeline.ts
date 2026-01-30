@@ -1,4 +1,4 @@
-// src/taskpane/app/word/pipeline.ts
+﻿// src/taskpane/app/word/pipeline.ts
 import type { OoxmlOptions } from "../../../shared/ooxml/convertOoxml";
 import { convertOoxml } from "../../../shared/ooxml/convertOoxml";
 import type { UiSettings, ExtrasSummary } from "../types";
@@ -10,19 +10,19 @@ import { setStatus } from "../status";
 import { analyzeSelectionText } from "./selectionText";
 import { t } from "../../../shared/i18n";
 import { processDocumentInChunks } from "./chunking";
-import { workerClient } from "../../worker/client"; // Dodato za Worker podršku
+import { workerClient } from "../../worker/client"; // Dodato za Worker podrÅ¡ku
 
 /**
- * Maksimalna veličina OOXML-a za selekciju koju dozvoljavamo.
- * 5MB OOXML-a može sadržati ogroman broj stranica teksta.
+ * Maksimalna veliÄina OOXML-a za selekciju koju dozvoljavamo.
+ * 5MB OOXML-a moÅ¾e sadrÅ¾ati ogroman broj stranica teksta.
  */
 const MAX_SELECTION_OOXML_SIZE = 5 * 1024 * 1024;
 
 export type OoxmlConvertResult = ReturnType<typeof convertOoxml>;
 
 /**
- * Obrađuje određeni opseg (range) teksta koristeći OOXML konverziju.
- * U v1.0.0 God Mode verziji, ovo se izvršava u Workeru kako bi UI ostao fluidan.
+ * ObraÄ‘uje odreÄ‘eni opseg (range) teksta koristeÄ‡i OOXML konverziju.
+ * U v1.0.0 God Mode verziji, ovo se izvrÅ¡ava u Workeru kako bi UI ostao fluidan.
  */
 async function applyRangeWithOoxmlConversion(
     context: Word.RequestContext,
@@ -42,16 +42,16 @@ async function applyRangeWithOoxmlConversion(
         return null;
     }
 
-    // GOD MODE: Umesto blokiranja glavne niti sa convertOoxml, šaljemo u Worker.
+    // GOD MODE: Umesto blokiranja glavne niti sa convertOoxml, Å¡aljemo u Worker.
     // workerClient.convert automatski koristi Zero-Copy Transfer (Uint8Array).
     const result = await workerClient.convert(rawXml, opts);
 
     if (result.type === "Nema teksta") return null;
 
-    // Upisujemo nazad obrađeni OOXML
+    // Upisujemo nazad obraÄ‘eni OOXML
     range.insertOoxml(result.xml, Word.InsertLocation.replace);
 
-    // Čuvamo selekciju korisnika radi boljeg UX-a
+    // ÄŒuvamo selekciju korisnika radi boljeg UX-a
     range.select();
 
     await context.sync();
@@ -60,7 +60,7 @@ async function applyRangeWithOoxmlConversion(
 }
 
 /**
- * Glavni pipeline koji odlučuje da li se obrađuje selekcija ili ceo dokument.
+ * Glavni pipeline koji odluÄuje da li se obraÄ‘uje selekcija ili ceo dokument.
  */
 export async function applyPipeline(
     context: Word.RequestContext,
@@ -68,7 +68,7 @@ export async function applyPipeline(
     ui: UiSettings,
     opts: OoxmlOptions
 ): Promise<{ result: OoxmlConvertResult | null; extras: ExtrasSummary }> {
-    // Inicijalizujemo worker pre nego što nam zatreba
+    // Inicijalizujemo worker pre nego Å¡to nam zatreba
     await workerClient.init();
 
     if (scope === "selection") {
@@ -88,30 +88,28 @@ export async function applyPipeline(
             return { result: null, extras: emptyExtrasSummary() };
         }
 
-        // Pokrećemo konverziju selekcije (Worker-based)
+        // PokreÄ‡emo konverziju selekcije (Worker-based)
         const result = await applyRangeWithOoxmlConversion(context, range, opts);
         return { result, extras: emptyExtrasSummary() };
     }
 
     /**
      * DOCUMENT SCOPE
-     * Obrađuje ceo dokument koristeći Adaptive Chunking logiku.
+     * ObraÄ‘uje ceo dokument koristeÄ‡i Adaptive Chunking logiku.
      */
 
-    // 1. Obrađujemo "Extras" (Headers, Footers, Notes) ako su uključeni
+    // 1. ObraÄ‘ujemo "Extras" (Headers, Footers, Notes) ako su ukljuÄeni
     const extras = await applyExtrasIfEnabled(context, ui, opts);
 
-    // 2. Pokrećemo procesiranje tela dokumenta u delovima (chunks)
+    // 2. PokreÄ‡emo procesiranje tela dokumenta u delovima (chunks)
     // processDocumentInChunks interno komunicira sa workerClient-om
     const chunk = await processDocumentInChunks(context, opts);
 
     const result: OoxmlConvertResult = {
-        xml: "", // XML ovde nije bitan jer je dokument već izmenjen chunk po chunk
+        xml: "", // XML ovde nije bitan jer je dokument veÄ‡ izmenjen chunk po chunk
         type: chunk.type,
         stats: chunk.stats,
     };
 
     return { result, extras };
 }
-
-/* global Word */

@@ -1,3 +1,4 @@
+﻿// src/taskpane/worker/types.ts
 // src\taskpane\worker
 import type { OoxmlOptions, ConvertStats } from "../../shared/ooxml/convertOoxml";
 

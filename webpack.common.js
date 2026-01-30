@@ -1,4 +1,5 @@
-/* eslint-disable no-undef */
+﻿/* eslint-disable no-undef */
+// webpack.common.js
 // webpack.common.js
 // webpack.common.js
 // webpack.common.js
@@ -56,7 +57,7 @@ module.exports = {
                 type: "asset/resource",
                 generator: { filename: "assets/[name][ext]" },
             },
-            // [CRITICAL] Inline binarni fajlovi (rečnici)
+            // [CRITICAL] Inline binarni fajlovi (reÄnici)
             {
                 test: /\.bin$/,
                 type: "asset/inline",

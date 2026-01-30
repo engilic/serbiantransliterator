@@ -1,3 +1,4 @@
+﻿// commitlint.config.js
 // commitlint.config.js
 // commitlint.config.js
 // commitlint.config.js

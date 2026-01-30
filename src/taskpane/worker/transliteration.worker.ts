@@ -1,3 +1,4 @@
+﻿// src/taskpane/worker/transliteration.worker.ts
 // src\taskpane\worker
 /// <reference lib="webworker" />
 import "core-js/stable";
@@ -32,7 +33,7 @@ function initWasm(payload: { dictE2i: Uint8Array; dictI2e: Uint8Array; wasmModul
         // 2. Prosledi wrappere u core modul
         textCore.setWasmModule(wasmPkg);
 
-        // 3. Učitaj rečnike
+        // 3. UÄitaj reÄnike
         const wrapper = wasmPkg as any;
         wrapper.load_dictionary_bin("e2i", payload.dictE2i);
         wrapper.load_dictionary_bin("i2e", payload.dictI2e);

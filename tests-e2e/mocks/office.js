@@ -1,4 +1,5 @@
-/* global window */
+﻿/* global window */
+// tests-e2e/mocks/office.js
 // tests-e2e/mocks/office.js
 // tests-e2e/mocks/office.js
 // tests-e2e/mocks/office.js
@@ -23,7 +24,7 @@ window.Office = {
         displayLanguage: "sr-Latn-RS",
     },
     onReady: function (callback) {
-        // Simuliramo kašnjenje mreže da bi bilo realnije
+        // Simuliramo kaÅ¡njenje mreÅ¾e da bi bilo realnije
         setTimeout(function () {
             callback({ host: "Word" });
         }, 50);
