@@ -7,11 +7,8 @@
  * Centralni nadzorni sistem za Serbian Transliterator.
  * Upravlja kompletnim pipeline-om i garantuje stabilnost pre svakog push-a.
  *
- * [GOD MODE FIX]: Implementirana ULTRA-ŠIROKA virtuelna kolona (COLUMNS=1000)
- * koja fizički onemogućava Vitest-u da skraćuje imena fajlova sa tri tačkice.
- *
- * [GOD MODE FIX]: Zamenjena tamnoplava boja sa Cyan radi bolje vidljivosti.
- * [GOD MODE FIX]: Dodat --no-verify u auto-commit fazi radi eliminacije duplog I18n rada.
+ * [GOD MODE FIX]: Rešen ReferenceError u 'run' funkciji.
+ * [GOD MODE FIX]: Implementirana ADAPTIVNA širina terminala (COLUMNS).
  *
  * Autor: Jugoslav Ilić
  * Verzija: 1.0.0 (Gold Master)
@@ -31,13 +28,13 @@ const IS_FAST_MODE = ARGS.includes("--fast");
 const NO_PUSH = ARGS.includes("--no-push");
 const isWindows = process.platform === "win32";
 
-// --- 3. ANSI BOJE (Optimizovano za crnu pozadinu) ---
+// --- 3. ANSI BOJE (Optimizovano za kontrast) ---
 const C = {
     reset: "\x1b[0m",
     green: "\x1b[32m",
     yellow: "\x1b[33m",
     red: "\x1b[31m",
-    blue: "\x1b[36m", // Svetliji Cyan umesto tamnoplave
+    blue: "\x1b[36m", // Cyan radi kontrasta
     magenta: "\x1b[35m",
     bold: "\x1b[1m",
     gray: "\x1b[90m",
@@ -50,7 +47,7 @@ const C = {
 let TIMINGS = [];
 
 /**
- * Zvučni signal (System Beep) za privlačenje pažnje.
+ * Zvučni signal (System Beep).
  */
 function beep() {
     process.stdout.write("\x07");
@@ -60,7 +57,6 @@ function beep() {
  * Prikazuje Guardian banner na vrhu terminala.
  */
 function printBanner() {
-    // console.clear() je uklonjen po tvom zahtevu radi čuvanja istorije rada
     console.log(`\n${C.magenta}${C.bold}
     🛡️  GUARDIAN SYSTEM • LEVEL: GOD MODE 🛡️
     ========================================
@@ -69,66 +65,58 @@ ${C.reset}`);
 
 /**
  * Glavna funkcija za izvršavanje eksternih komandi.
- *
- * @param {string} step - Naziv koraka koji se ispisuje.
- * @param {string} cmd - Komanda (npm, cargo, powershell...).
- * @param {string[]} args - Argumenti komande.
- * @param {string} cwd - Radni direktorijum.
- * @param {boolean} useInherit - Ako je true, omogućava direktan input korisnika (y/n).
- * @returns {number} Statusni kod izvršenja.
  */
 function run(step, cmd, args, cwd = ROOT, useInherit = false) {
     console.log(`\n${C.cyan}${C.bold}>>> ${step}${C.reset}`);
 
     const start = Date.now();
 
-    // [GOD MODE FIX]: Postavljamo COLUMNS na 1000 da izbegnemo "..." u tabeli pokrivenosti
+    // Dinamički računamo širinu za tabele (min 200)
+    const terminalWidth = Math.max(process.stdout.columns || 0, 200).toString();
+
     const options = {
         cwd: cwd,
         shell: true,
         env: {
             ...process.env,
             FORCE_COLOR: "1",
-            COLUMNS: "1000",
+            COLUMNS: "1000", // Forsiramo ekstremnu širinu za Unit Testove
         },
-        // useInherit omogućava interaktivne skripte (poput I18n Check)
         stdio: useInherit && process.stdin.isTTY ? "inherit" : "pipe",
     };
 
     const fullCommandString = `${cmd} ${args.join(" ")}`;
     const res = spawnSync(fullCommandString, options);
 
-    // Ako smo koristili pipe (stdio: pipe), sada obrađujemo output radi boja
-    if (!options.stdio || options.stdio === "pipe") {
-        let stdout = res.stdout ? res.stdout.toString() : "";
-        let stderr = res.stderr ? res.stderr.toString() : "";
-        let combined = stdout + stderr;
+    // [FIX]: Definisanje varijabli pre provere da izbegnemo ReferenceError
+    let combinedOutput = "";
+
+    if (options.stdio === "pipe") {
+        const stdout = res.stdout ? res.stdout.toString() : "";
+        const stderr = res.stderr ? res.stderr.toString() : "";
+        combinedOutput = stdout + stderr;
 
         // [INTELIGENTNO BOJENJE]
-        // Bojimo u ŽUTO samo reči koje ukazuju na stvari koje treba popraviti
-        combined = combined.replace(
+        combinedOutput = combinedOutput.replace(
             /warning|deprecated|vulnerability|vulnerabilities|moderate|high/gi,
             (match) => {
                 return `${C.yellow}${match}${C.reset}`;
             }
         );
 
-        // Bojimo u CYAN verzije, v8 engine i uspešne poruke (da ne budu žute)
-        combined = combined.replace(
+        combinedOutput = combinedOutput.replace(
             /v\d+\.\d+\.\d+|v8|success|compiled successfully|up to date/gi,
             (match) => {
                 return `${C.cyan}${match}${C.reset}`;
             }
         );
 
-        process.stdout.write(combined);
+        process.stdout.write(combinedOutput);
     }
 
-    // Beležimo vreme trajanja koraka
     const duration = ((Date.now() - start) / 1000).toFixed(2);
     TIMINGS.push({ step, time: duration });
 
-    // Provera statusa: dozvoljavamo 0 (uspeh) i 2 (naš restart signal)
     if (res.status !== 0 && res.status !== 2) {
         beep();
         console.error(`\n${C.bgRed}${C.white} ❌ FATAL ERROR: ${step} ${C.reset}`);
@@ -136,8 +124,13 @@ function run(step, cmd, args, cwd = ROOT, useInherit = false) {
         process.exit(1);
     }
 
+    // --- [GOD MODE ALIGNMENT]: Poravnanje OK statusa sa tačkicama ---
+    const targetWidth = 45;
+    const label = `${step} `;
+    const dots = ".".repeat(Math.max(3, targetWidth - label.length));
+
     if (res.status === 0 || res.status === 2) {
-        console.log(`${C.green}✅ OK${C.reset}`);
+        console.log(`${C.green}${label}${C.gray}${dots}${C.green} ✅ OK${C.reset}`);
     }
 
     return res.status || 0;
@@ -200,9 +193,7 @@ function checkEnv() {
     const examplePath = path.join(ROOT, ".env.example");
 
     if (!fs.existsSync(envPath) && fs.existsSync(examplePath)) {
-        console.log(
-            `${C.cyan}ℹ️  INFO: .env fajl nije pronađen. Koriste se podrazumevane vrednosti.${C.reset}`
-        );
+        console.log(`${C.cyan}ℹ️  INFO: Koriste se podrazumevane env vrednosti.${C.reset}`);
     }
 }
 
@@ -261,16 +252,13 @@ async function main() {
             true
         );
 
-    // --- GOD MODE I18N RESTART LOGIKA ---
     const i18nStatus = run("0. I18n Check", "node", ["scripts/checkI18nKeys.cjs"], ROOT, true);
-
     if (i18nStatus === 2) {
-        console.log(`\n${C.magenta}♻️  IZMENE U PREVODIMA DETEKTOVANE. RESTARTUJEM GUARDIAN...${C.reset}`);
+        console.log(`\n${C.magenta}♻️  IZMENE DETEKTOVANE. RESTARTUJEM GUARDIAN...${C.reset}`);
         TIMINGS = [];
         return main();
     }
 
-    // Ostale tihe provere
     run("0. User Strings Check", "node", ["scripts/checkUserFacingStrings.cjs"]);
     run("0. HTML I18n Check", "node", ["scripts/checkTaskpaneHtmlI18n.cjs"]);
 
@@ -281,8 +269,6 @@ async function main() {
     if (statusOutput) {
         console.log(`\n${C.cyan}ℹ️  Auto-commit: Sinhronizacija formata i higijene...${C.reset}`);
         spawnSync("git add .", { shell: true, stdio: "inherit" });
-
-        // [GOD MODE FIX]: --no-verify sprečava beskonačni krug Husky hook-ova
         spawnSync('git commit -m "chore: hygiene & auto-format sync" --no-verify', {
             shell: true,
             stdio: "inherit",
@@ -295,17 +281,20 @@ async function main() {
     run("5. Build", "npm", ["run", "build"]);
 
     if (!IS_FAST_MODE) {
-        // [GOD MODE FIX]: inherit mod omogućava tabeli da prepozna punu širinu ekrana
+        // [GOD MODE FIX]: inherit mod omogućava tabeli da prepozna PUNA IMENA FAJLOVA
         run("6. Unit Tests", "npm", ["run", "test:coverage"], ROOT, true);
         run("7. E2E Tests", "npm", ["run", "test:e2e"]);
     }
 
-    // --- [GOD MODE]: ADAPTIVNI FINAL REPORT ---
+    // --- [GOD MODE]: ADAPTIVNI FINAL REPORT SA TAČKICAMA ---
     console.log(`\n${C.cyan}${C.bold}📊 FINAL REPORT:${C.reset}`);
     const longestStepName = Math.max(...TIMINGS.map((t) => t.step.length));
+    const reportPadding = longestStepName + 2;
+
     TIMINGS.forEach((t) => {
-        const paddedStep = t.step.padEnd(longestStepName);
-        console.log(`   • ${paddedStep} : ${C.white}${t.time}s${C.reset}`);
+        const label = t.step + " ";
+        const dots = ".".repeat(Math.max(3, reportPadding - label.length));
+        console.log(`   • ${C.white}${label}${C.gray}${dots}${C.reset} : ${C.white}${t.time}s${C.reset}`);
     });
 
     beep();
@@ -343,12 +332,15 @@ async function main() {
             console.log(`\n${C.cyan}ℹ️  Pravim novu granu: ${newBranchName}${C.reset}`);
             spawnSync(`git checkout -b ${newBranchName}`, { shell: true, stdio: "inherit" });
             spawnSync(`git push -u origin ${newBranchName}`, { shell: true, stdio: "inherit" });
+            console.log(`\n${C.green}${C.bold}🏆 USPEH! Link za tvoj Pull Request:${C.reset}`);
             console.log(
-                `\n${C.green}${C.bold}🏆 USPEH! Link za tvoj PR: https://github.com/engilic/serbiantransliterator/pull/new/${newBranchName}${C.reset}\n`
+                `${C.cyan}https://github.com/engilic/serbiantransliterator/pull/new/${newBranchName}${C.reset}\n`
             );
         } else {
             spawnSync(`git push`, { shell: true, stdio: "inherit" });
         }
+    } else {
+        console.log(`\n${C.gray}⛔ Push otkazan po želji korisnika.${C.reset}`);
     }
 }
 

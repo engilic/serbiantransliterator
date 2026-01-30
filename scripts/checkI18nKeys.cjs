@@ -19,7 +19,6 @@ const LOCALES_DIR = path.join(SRC_DIR, "shared", "locales");
 
 const FILES_TO_FIX = [path.join(LOCALES_DIR, "en.ts"), path.join(LOCALES_DIR, "sr.ts")];
 
-// --- ANSI BOJE ---
 const C = {
     reset: "\x1b[0m",
     green: "\x1b[32m",
@@ -168,6 +167,10 @@ async function main() {
         console.log(`${C.gray}   • ${path.relative(ROOT, f).replace(/\\/g, "/")}${C.reset}`);
     }
 
+    console.log(
+        `\n${C.gray}   • Analiza: ${C.white}${sourceFiles.length}${C.gray} fajlova | ${C.white}${enKeys.length}${C.gray} prevoda.${C.reset}`
+    );
+
     const combinedSource = sourceFiles.map((f) => fs.readFileSync(f, "utf8")).join("\n");
     const unusedKeys = [];
     for (const key of enKeys) {
@@ -195,6 +198,7 @@ async function main() {
         console.log(`${C.yellow}   - ${k}${C.reset}`);
     }
 
+    // [GOD MODE RENAME]: Terminologija po tvom zahtevu
     console.log(`\n${C.magenta}${C.bold}🎯 LOKACIJE ZA HIRURŠKU SINHRONIZACIJU:${C.reset}`);
     for (const f of FILES_TO_FIX) {
         console.log(`${C.gray}   • ${path.relative(ROOT, f).replace(/\\/g, "/")}${C.reset}`);
@@ -205,14 +209,17 @@ async function main() {
     if (shouldPurge) {
         if (isGitDirty()) {
             console.log(`\n${C.bgRed}${C.white} 🛑 GIT DIRTY ERROR ${C.reset}`);
+            console.log(`${C.red}Imaš nekomitovane promene u locales folderu. Prvo ih sačuvaj.${C.reset}\n`);
             process.exit(1);
         }
+
+        console.log(`\n${C.green}🚀 Počinjem čišćenje...${C.reset}`);
         for (const file of FILES_TO_FIX) {
             purgeKeysFromFile(file, unusedKeys);
         }
-        process.exit(2);
+        process.exit(2); // RESTART
     } else {
-        process.exit(0);
+        process.exit(0); // CONTINUE
     }
 }
 

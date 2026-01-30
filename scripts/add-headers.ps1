@@ -1,17 +1,13 @@
 # scripts/add-headers.ps1
 
 $Root = Get-Location
-
-# --- 1. KONFIGURACIJA ---
 $SupportedExtensions = @(".ts", ".js", ".cjs", ".mjs", ".tsx", ".css", ".html", ".xml", ".rs", ".sh", ".ps1")
 $JsonExtensions = @(".json")
 $IgnoreFolders = @("node_modules", "dist", "coverage", ".git", "target", "pkg", ".vs", ".vscode", "bin", "obj", "assets", "test-results", "playwright-report", "_")
 $IgnoreFiles = @("package-lock.json", "cargo.lock", "slnx.sqlite")
-
 $Stats = @{ Scanned=0; Fixed=0; CleanedJson=0; Unchanged=0 }
 $Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 
-# --- 2. POMOĆNE FUNKCIJE ---
 function Get-ExpectedHeader($Ext, $Path) {
     if ($Ext -eq ".html" -or $Ext -eq ".xml") { return "<!-- $Path -->" }
     if ($Ext -eq ".css")  { return "/* $Path */" }
@@ -19,24 +15,20 @@ function Get-ExpectedHeader($Ext, $Path) {
     return "// $Path"
 }
 
-# --- 3. GLAVNA LOGIKA PROCESIRANJA ---
 function Process-File($FilePath) {
     $RelPath = $FilePath.Substring($Root.Path.Length + 1).Replace("\", "/")
     $FileName = [System.IO.Path]::GetFileName($FilePath).ToLower()
     foreach ($Part in ($RelPath -split '/')) { if ($IgnoreFolders -contains $Part) { return } }
     if ($IgnoreFiles -contains $FileName) { return }
-
     $Ext = [System.IO.Path]::GetExtension($FilePath).ToLower()
     if ($SupportedExtensions -notcontains $Ext -and $JsonExtensions -notcontains $Ext) { return }
 
     try { $RawContent = [System.IO.File]::ReadAllText($FilePath) } catch { return }
     if ([string]::IsNullOrEmpty($RawContent)) { return }
     $Stats.Scanned++
-
     $Lines = New-Object System.Collections.Generic.List[string]
-    foreach ($Line in ($RawContent.Replace("`r`n", "`n") -split "`n")) { $Lines.Add($Line.TrimEnd()) }
-    
-    # ALARM ZA MISMATCH
+    foreach ($L in ($RawContent.Replace("`r`n", "`n") -split "`n")) { $Lines.Add($L.TrimEnd()) }
+
     $LineIndex = 0
     foreach ($L in $Lines) {
         $LineIndex++; if ($LineIndex -gt 5) { break }
@@ -74,11 +66,8 @@ function Process-File($FilePath) {
 
     $NewText = ($Output -join "`n").TrimEnd() + "`n"
     if ($NewText -ne ($Lines -join "`n").TrimEnd() + "`n") {
-        try { 
-            [System.IO.File]::WriteAllText($FilePath, $NewText, $Utf8NoBom)
-            if ($Ext -eq ".json") { $Stats.CleanedJson++; Write-Host "   -> CLEANED JSON: $RelPath" -ForegroundColor Green } 
-            else { $Stats.Fixed++; Write-Host "   -> FIXED HEADER: $RelPath" -ForegroundColor Green }
-        } catch { }
+        try { [System.IO.File]::WriteAllText($FilePath, $NewText, $Utf8NoBom)
+        if ($Ext -eq ".json") { $Stats.CleanedJson++ } else { $Stats.Fixed++; Write-Host "   -> FIXED: $RelPath" -ForegroundColor Green } } catch { }
     } else { $Stats.Unchanged++ }
 }
 
@@ -87,8 +76,4 @@ Get-ChildItem -Path $Root -Recurse -File | ForEach-Object { Process-File $_.Full
 $jsonColor = if ($Stats.CleanedJson -gt 0) { "Green" } else { "Gray" }
 $fixedColor = if ($Stats.Fixed -gt 0) { "Green" } else { "Gray" }
 $unchangedColor = if ($Stats.Unchanged -eq $Stats.Scanned -and $Stats.Scanned -gt 0) { "Green" } else { "Gray" }
-Write-Host "`nREPORT:" -ForegroundColor White
-Write-Host "   Scanned:     $($Stats.Scanned)"
-Write-Host "   Fixed Code:  $($Stats.Fixed)" -ForegroundColor $fixedColor
-Write-Host "   Purged JSON: $($Stats.CleanedJson)" -ForegroundColor $jsonColor
-Write-Host "   Unchanged:   $($Stats.Unchanged)" -ForegroundColor $unchangedColor
+Write-Host "`nREPORT: Fixed: $($Stats.Fixed), Purged JSON: $($Stats.CleanedJson), Unchanged: $($Stats.Unchanged)"
