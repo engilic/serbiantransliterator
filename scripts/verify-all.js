@@ -7,9 +7,8 @@
  * Centralni nadzorni sistem za Serbian Transliterator.
  * Upravlja kompletnim pipeline-om i garantuje stabilnost pre svakog push-a.
  *
- * [GOD MODE FIX]: Puna imena fajlova bez tri tačkice koristeći 'inherit' mod za testove.
- * [GOD MODE FIX]: Pametno numerisanje (x za solo, x.y za grupisane korake).
- * [GOD MODE FIX]: Univerzalni aligner za Rust i Vitest rezultate.
+ * [GOD MODE FIX]: Dodata prazna linija pre OK statusa radi preglednosti.
+ * [GOD MODE FIX]: PERFEKTNO poravnanje u Finalnom izveštaju.
  *
  * Autor: Jugoslav Ilić
  */
@@ -28,13 +27,13 @@ const IS_FAST_MODE = ARGS.includes("--fast");
 const NO_PUSH = ARGS.includes("--no-push");
 const isWindows = process.platform === "win32";
 
-// --- 3. ANSI BOJE (Optimizovano za kontrast) ---
+// --- 3. ANSI BOJE (God Mode Paleta - Optimizovano za kontrast) ---
 const C = {
     reset: "\x1b[0m",
     green: "\x1b[32m",
     yellow: "\x1b[33m",
     red: "\x1b[31m",
-    blue: "\x1b[36m", // Svetliji Cyan radi bolje vidljivosti
+    blue: "\x1b[36m", // Svetliji Cyan
     magenta: "\x1b[35m",
     bold: "\x1b[1m",
     gray: "\x1b[90m",
@@ -87,17 +86,13 @@ function run(step, cmd, args, cwd = ROOT, useInherit = false) {
         env: {
             ...process.env,
             FORCE_COLOR: "1",
-            // Forsiramo veliku širinu za svaki slučaj kod filtriranja
-            COLUMNS: "300",
+            COLUMNS: "1000",
         },
-        // [GOD MODE FIX]: inherit mod omogućava alatima (Vitest) da vide punu širinu ekrana
         stdio: useInherit && process.stdin.isTTY ? "inherit" : "pipe",
     };
 
-    const fullCommandString = `${cmd} ${args.join(" ")}`;
-    const res = spawnSync(fullCommandString, options);
+    const res = spawnSync(`${cmd} ${args.join(" ")}`, options);
 
-    // Ako smo koristili pipe, obrađujemo output radi poravnanja (npr. Rust testovi)
     if (options.stdio === "pipe") {
         let stdout = res.stdout ? res.stdout.toString() : "";
         let stderr = res.stderr ? res.stderr.toString() : "";
@@ -106,15 +101,10 @@ function run(step, cmd, args, cwd = ROOT, useInherit = false) {
         const formattedOutput = lines
             .map((line) => {
                 let processed = line;
-
-                // Poravnanje za Rust testove: "test ime ... ok"
                 if (processed.includes("test ") && processed.includes(" ... ok")) {
                     const parts = processed.split(" ... ok");
-                    const testName = parts[0].trim();
-                    processed = `${alignWithDots(testName, 75)}${C.green} ok${C.reset}`;
+                    processed = `${alignWithDots(parts[0].trim(), 75)}${C.green} ok${C.reset}`;
                 }
-
-                // Opšte bojenje upozorenja
                 processed = processed.replace(
                     /warning|deprecated|vulnerability|vulnerabilities|moderate|high/gi,
                     (m) => `${C.yellow}${m}${C.reset}`
@@ -123,7 +113,6 @@ function run(step, cmd, args, cwd = ROOT, useInherit = false) {
                     /v\d+\.\d+\.\d+|v8|success|compiled successfully|up to date/gi,
                     (m) => `${C.cyan}${m}${C.reset}`
                 );
-
                 return processed;
             })
             .join("\n");
@@ -140,10 +129,11 @@ function run(step, cmd, args, cwd = ROOT, useInherit = false) {
         process.exit(1);
     }
 
-    // [GOD MODE]: Finalno poravnanje OK statusa sa tačkicama
+    // [GOD MODE PERFECT ALIGNMENT]
+    // Dodata prazna linija pre statusa radi preglednosti
     const statusLine = alignWithDots(step, 50);
     if (res.status === 0 || res.status === 2) {
-        console.log(`${C.green}${statusLine}${C.green} ✅ OK${C.reset}`);
+        console.log(`\n${C.green}${statusLine}${C.green} ✅ OK${C.reset}`);
     }
 
     return res.status || 0;
@@ -153,27 +143,20 @@ function run(step, cmd, args, cwd = ROOT, useInherit = false) {
  * TVOJA ORIGINALNA LOGIKA ZA UNOS (BACKSPACE = DA, DELETE = NE).
  */
 async function askYesNo(q) {
-    if (!process.stdin.isTTY) {
-        return false;
-    }
-
+    if (!process.stdin.isTTY) return false;
     return new Promise((resolve) => {
         console.log(`\n${C.magenta}❓ ${q}${C.reset}`);
-
         console.log(
             `   ${C.white}[${C.green}BACKSPACE / ⬅ / Enter${C.white}] = DA   |   [${C.red}DEL / ➔ / Esc${C.white}] = NE${C.reset}`
         );
-
         process.stdin.setRawMode(true);
         process.stdin.resume();
         process.stdin.setEncoding("utf8");
-
         const listener = (k) => {
             if (k === "\u0003") {
                 process.stdin.setRawMode(false);
                 process.exit(1);
             }
-
             if (
                 k === "y" ||
                 k === "Y" ||
@@ -189,36 +172,27 @@ async function askYesNo(q) {
                 cleanup(false);
             }
         };
-
         function cleanup(result) {
             process.stdin.setRawMode(false);
             process.stdin.pause();
             process.stdin.removeListener("data", listener);
             resolve(result);
         }
-
         process.stdin.on("data", listener);
     });
 }
 
 function checkEnv() {
     const envPath = path.join(ROOT, ".env");
-    const examplePath = path.join(ROOT, ".env.example");
-
-    if (!fs.existsSync(envPath) && fs.existsSync(examplePath)) {
-        console.log(
-            `${C.cyan}ℹ️  INFO: .env fajl nije pronađen. Koriste se podrazumevane vrednosti.${C.reset}`
-        );
+    if (!fs.existsSync(envPath) && fs.existsSync(path.join(ROOT, ".env.example"))) {
+        console.log(`${C.cyan}ℹ️  INFO: Koriste se podrazumevane env vrednosti.${C.reset}`);
     }
 }
 
 async function runSniffer() {
     console.log(`\n${C.cyan}${C.bold}>>> Sniffer & Secret Hunter${C.reset}`);
     const gitFilesOutput = spawnSync("git ls-files", { shell: true, encoding: "utf8" });
-    if (!gitFilesOutput.stdout) {
-        console.log(`${C.gray}Git repozitorijum nije detektovan.${C.reset}`);
-        return;
-    }
+    if (!gitFilesOutput.stdout) return;
     const files = gitFilesOutput.stdout
         .split("\n")
         .filter((f) => f && (f.endsWith(".ts") || f.endsWith(".js") || f.endsWith(".tsx")));
@@ -229,7 +203,7 @@ async function runSniffer() {
         /sk_live_[0-9a-zA-Z]{24}/,
     ];
     files.forEach((f) => {
-        if (f.startsWith("scripts/") || f.includes("test") || f.includes("spec")) return;
+        if (f.startsWith("scripts/") || f.includes("test")) return;
         try {
             const content = fs.readFileSync(f, "utf8");
             secrets.forEach((re) => {
@@ -240,12 +214,10 @@ async function runSniffer() {
     });
     if (issues > 0) {
         beep();
-        console.error(
-            `\n${C.bgRed}${C.white} 🛑 STOP! Sniffer je pronašao ${issues} kritičnih problema! ${C.reset}`
-        );
+        console.error(`\n${C.bgRed}${C.white} 🛑 DEBUGGER ILI SECRETS DETEKTOVANI! ${C.reset}`);
         process.exit(1);
     }
-    console.log(`${C.green}✅ Kod je bezbedan.${C.reset}`);
+    console.log(`${C.green}✅ Bezbednost OK.${C.reset}`);
 }
 
 /**
@@ -256,7 +228,7 @@ async function main() {
     checkEnv();
     await runSniffer();
 
-    // --- KORAK 0: PRIPREMA (Pametno numerisanje x.y) ---
+    // 0. PRIPREMA
     run("0.1 Assets", "node", ["scripts/ensure-icons.js"]);
     if (!IS_FAST_MODE) run("0.2 Clean", "npm", ["run", "clean"]);
     if (isWindows)
@@ -270,7 +242,7 @@ async function main() {
 
     const i18nStatus = run("0.4 I18n Check", "node", ["scripts/checkI18nKeys.cjs"], ROOT, true);
     if (i18nStatus === 2) {
-        console.log(`\n${C.magenta}♻️  RESTARTUJEM GUARDIAN...${C.reset}`);
+        console.log(`\n${C.magenta}♻️  IZMENE DETEKTOVANE. RESTART...${C.reset}`);
         TIMINGS = [];
         return main();
     }
@@ -278,13 +250,13 @@ async function main() {
     run("0.5 User Strings Check", "node", ["scripts/checkUserFacingStrings.cjs"]);
     run("0.6 HTML I18n Check", "node", ["scripts/checkTaskpaneHtmlI18n.cjs"]);
 
-    // --- KORAK 1 & 2: INSTALACIJA I FORMAT ---
+    // 1 & 2. SETUP I FORMAT
     run("1. Install", "npm", ["install", "--no-audit"]);
     run("2. Format", "npm", ["run", "format:fix"]);
 
     const statusOutput = spawnSync("git status --porcelain", { shell: true, encoding: "utf8" }).stdout.trim();
     if (statusOutput) {
-        console.log(`\n${C.cyan}ℹ️  Auto-commit: Sinhronizacija formata i higijene...${C.reset}`);
+        console.log(`\n${C.cyan}ℹ️  Auto-commit: Sinhronizacija...${C.reset}`);
         spawnSync("git add .", { shell: true, stdio: "inherit" });
         spawnSync('git commit -m "chore: hygiene & auto-format sync" --no-verify', {
             shell: true,
@@ -292,28 +264,29 @@ async function main() {
         });
     }
 
-    // --- KORAK 3: KVALITET ---
+    // 3. QA
     run("3.1 Conflicts Check", "node", ["scripts/checkConflicts.cjs"]);
     run("3.2 Lint/Type", "npm", ["run", "typecheck"]);
 
-    // --- KORAK 4, 5, 6, 7: IZGRADNJA I TESTOVI ---
+    // 4, 5, 6, 7. BUILD I TEST
     run("4. Rust", "cargo", ["test"], WASM_DIR);
     run("5. Build", "npm", ["run", "build"]);
 
     if (!IS_FAST_MODE) {
-        // [GOD MODE FIX]: Koristimo inherit (true) da Vitest prikaže PUNA IMENA bez skraćivanja
         run("6. Unit Tests", "npm", ["run", "test:coverage"], ROOT, true);
         run("7. E2E Tests", "npm", ["run", "test:e2e"]);
     }
 
-    // --- [GOD MODE]: FINAL REPORT SA TAČKICAMA ---
+    // --- [GOD MODE]: PERFEKTNI FINAL REPORT ---
     console.log(`\n${C.cyan}${C.bold}📊 FINAL REPORT:${C.reset}`);
     const longestStepName = Math.max(...TIMINGS.map((t) => t.step.length));
     const reportPadding = longestStepName + 2;
 
     TIMINGS.forEach((t) => {
-        const labelWithDots = alignWithDots(t.step, reportPadding);
-        console.log(`   • ${C.white}${labelWithDots}${C.reset} : ${C.white}${t.time}s${C.reset}`);
+        // Svaki label dobija tačkice do iste vertikalne linije
+        const label = t.step + " ";
+        const dots = ".".repeat(Math.max(3, reportPadding - label.length));
+        console.log(`   • ${C.white}${label}${C.gray}${dots}${C.reset} : ${C.white}${t.time}s${C.reset}`);
     });
 
     beep();
@@ -350,7 +323,7 @@ async function main() {
             spawnSync(`git checkout -b ${newBranchName}`, { shell: true, stdio: "inherit" });
             spawnSync(`git push -u origin ${newBranchName}`, { shell: true, stdio: "inherit" });
             console.log(
-                `\n${C.green}${C.bold}🏆 USPEH! Link za tvoj PR: https://github.com/engilic/serbiantransliterator/pull/new/${newBranchName}${C.reset}\n`
+                `\n${C.green}${C.bold}🏆 USPEH! Link: https://github.com/engilic/serbiantransliterator/pull/new/${newBranchName}${C.reset}\n`
             );
         } else {
             spawnSync(`git push`, { shell: true, stdio: "inherit" });
