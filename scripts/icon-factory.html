@@ -1,0 +1,113 @@
+<!-- scripts/icon-factory.html -->
+
+<!doctype html>
+<html>
+    <head>
+        <title>Serbian Transliterator - Icon Factory</title>
+        <style>
+            body {
+                font-family: sans-serif;
+                padding: 40px;
+                background: #f5f5f5;
+                text-align: center;
+            }
+
+            .container {
+                background: white;
+                padding: 20px;
+                border-radius: 12px;
+                display: inline-block;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            }
+
+            button {
+                background: #185abd;
+                color: white;
+                border: none;
+                padding: 12px 24px;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 16px;
+                margin-top: 20px;
+            }
+
+            button:hover {
+                background: #124a8c;
+            }
+
+            canvas {
+                display: none;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>🚀 Icon Factory</h1>
+            <p>Klikni na dugme da generišeš sve PNG ikonice iz tvog SVG-a.</p>
+
+            <!-- Ovde je tvoj SVG -->
+            <div id="svgContainer" style="display: none">
+                <svg
+                    id="sourceSvg"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 512 512"
+                    width="512"
+                    height="512"
+                >
+                    <g fill="#185ABD" stroke="#185ABD">
+                        <g font-family="Segoe UI, Arial, sans-serif" font-weight="900" stroke="none">
+                            <text x="135" y="295" font-size="220" text-anchor="middle">Ž</text>
+                            <text x="345" y="295" font-size="220" text-anchor="middle">Ж</text>
+                        </g>
+                        <g stroke-width="26" stroke-linecap="round" stroke-linejoin="round" fill="none">
+                            <path d="M140 368 H372" />
+                            <path d="M140 368 L170 338" />
+                            <path d="M140 368 L170 398" />
+                            <path d="M372 368 L342 338" />
+                            <path d="M372 368 L342 398" />
+                        </g>
+                    </g>
+                </svg>
+            </div>
+
+            <button onclick="generateAll()">Preuzmi sve ikonice (ZIP-like)</button>
+            <div id="status"></div>
+        </div>
+
+        <script>
+            const sizes = [16, 32, 64, 80, 128, 192, 512];
+
+            function generateAll() {
+                const svg = document.getElementById("sourceSvg");
+                const svgData = new XMLSerializer().serializeToString(svg);
+                const canvas = document.createElement("canvas");
+                const ctx = canvas.getContext("2d");
+                const img = new Image();
+
+                const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+                const url = URL.createObjectURL(svgBlob);
+
+                img.onload = function () {
+                    sizes.forEach((size) => {
+                        canvas.width = size;
+                        canvas.height = size;
+                        ctx.clearRect(0, 0, size, size);
+                        ctx.drawImage(img, 0, 0, size, size);
+
+                        const pngUrl = canvas.toDataURL("image/png");
+                        const downloadLink = document.createElement("a");
+                        downloadLink.href = pngUrl;
+                        downloadLink.download = `icon-${size}.png`;
+                        document.body.appendChild(downloadLink);
+                        downloadLink.click();
+                        document.body.removeChild(downloadLink);
+                    });
+                    document.getElementById("status").innerText =
+                        "✅ Sve ikonice su preuzete! Prebaci ih u assets folder.";
+                    URL.revokeObjectURL(url);
+                };
+                img.src = url;
+            }
+        </script>
+    </body>
+</html>

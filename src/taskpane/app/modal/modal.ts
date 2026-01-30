@@ -4,8 +4,6 @@ import { unwrapHtml, type SafeHtml } from "../../../shared/safeHtml";
 import { t } from "../../../shared/i18n";
 import { modalManager } from "./modalManager";
 
-// [REMOVED] clearModalResolver (Dead code)
-
 export function confirmInPanel(safeHtmlMsg: SafeHtml): Promise<boolean> {
     const overlay = document.getElementById("modalOverlay") as HTMLDivElement;
     const title = document.getElementById("modalTitle") as HTMLHeadingElement;
@@ -21,29 +19,22 @@ export function confirmInPanel(safeHtmlMsg: SafeHtml): Promise<boolean> {
     text.innerHTML = unwrapHtml(safeHtmlMsg);
     input.style.display = "none";
 
-    // preview apply dugme (ako postoji) sakrij
     const applyBtn = document.getElementById("modalApply") as HTMLButtonElement | null;
     if (applyBtn) applyBtn.style.display = "none";
 
     okBtn.style.display = "inline-flex";
     okBtn.innerText = t("btn_ok");
     okBtn.disabled = false;
-    okBtn.style.opacity = "";
-    okBtn.style.cursor = "";
-    okBtn.title = "";
-    okBtn.style.backgroundColor = "var(--primary-color)";
-    okBtn.style.color = "white";
-    okBtn.style.border = "none";
     okBtn.onclick = handleModalOk;
 
     cancelBtn.innerText = t("btn_cancel");
-    cancelBtn.style.backgroundColor = "";
-    cancelBtn.style.color = "";
-    cancelBtn.style.border = "";
     cancelBtn.onclick = closeModal;
 
     (document.getElementById("modal") as HTMLDivElement).classList.remove("wide");
+
+    // [GOD MODE A11Y FIX]
     overlay.style.display = "flex";
+    overlay.setAttribute("aria-hidden", "false");
 
     return new Promise((resolve) => {
         modalManager.open("confirm", resolve);
@@ -77,19 +68,26 @@ export function showModalInfo(titleStr: string, safeHtmlMsg: SafeHtml) {
     cancelBtn.onclick = closeModal;
 
     (document.getElementById("modal") as HTMLDivElement).classList.remove("wide");
+
+    // [GOD MODE A11Y FIX]
     overlay.style.display = "flex";
+    overlay.setAttribute("aria-hidden", "false");
 
     modalManager.open("info");
 }
 
 export function handleModalOk() {
-    (document.getElementById("modalOverlay") as HTMLDivElement).style.display = "none";
+    const overlay = document.getElementById("modalOverlay") as HTMLDivElement;
+    overlay.style.display = "none";
+    overlay.setAttribute("aria-hidden", "true");
     resetModalButtons();
     modalManager.resolve(true);
 }
 
 export function closeModal() {
-    (document.getElementById("modalOverlay") as HTMLDivElement).style.display = "none";
+    const overlay = document.getElementById("modalOverlay") as HTMLDivElement;
+    overlay.style.display = "none";
+    overlay.setAttribute("aria-hidden", "true");
     resetModalButtons();
     modalManager.resolve(false);
 }
@@ -100,23 +98,13 @@ export function resetModalButtons() {
     const title = document.getElementById("modalTitle") as HTMLHeadingElement;
 
     title.style.display = "";
-
     cancelBtn.style.display = "inline-flex";
     cancelBtn.innerText = t("btn_cancel");
-    cancelBtn.style.backgroundColor = "";
-    cancelBtn.style.color = "";
-    cancelBtn.style.border = "";
     cancelBtn.onclick = closeModal;
 
     okBtn.style.display = "inline-flex";
     okBtn.innerText = t("btn_ok");
     okBtn.disabled = false;
-    okBtn.style.opacity = "";
-    okBtn.style.cursor = "";
-    okBtn.title = "";
-    okBtn.style.backgroundColor = "var(--primary-color)";
-    okBtn.style.color = "white";
-    okBtn.style.border = "none";
     okBtn.onclick = handleModalOk;
 
     const applyBtn = document.getElementById("modalApply") as HTMLButtonElement | null;
