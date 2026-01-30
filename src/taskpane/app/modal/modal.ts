@@ -44,13 +44,14 @@ export function confirmInPanel(safeHtmlMsg: SafeHtml): Promise<boolean> {
     const modalDiv = document.getElementById("modal") as HTMLDivElement;
     if (modalDiv) modalDiv.classList.remove("wide");
 
-    // [GOD MODE FIX]: Prvo pokazujemo prozor
+    // [A11Y]: Prvo prikaži DOM
     overlay.style.display = "flex";
     overlay.setAttribute("aria-hidden", "false");
 
     return new Promise((resolve) => {
-        // Otvaramo menadžer i dajemo mu callback za stvarno zatvaranje DOM-a
+        // Pozivamo menadžer koji će odraditi logiku i notifikacije
         modalManager.open("confirm", (res) => {
+            // DOM sklanjamo tek u callback-u nakon što menadžer završi
             overlay.style.display = "none";
             overlay.setAttribute("aria-hidden", "true");
             resolve(res);
@@ -89,7 +90,7 @@ export function showModalInfo(titleStr: string, safeHtmlMsg: SafeHtml) {
     const modalDiv = document.getElementById("modal") as HTMLDivElement;
     if (modalDiv) modalDiv.classList.remove("wide");
 
-    // Pokazujemo prozor
+    // [A11Y]: Prikaži DOM
     overlay.style.display = "flex";
     overlay.setAttribute("aria-hidden", "false");
 
