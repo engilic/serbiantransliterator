@@ -143,7 +143,6 @@ foreach ($F in $Files) { Process-File $F.FullName }
 
 # --- 9. REPORT ---
 $jsonColor = if ($Stats.CleanedJson -gt 0) { "Green" } else { "Gray" }
-$fixedColor = if ($Stats.Fixed -0) { "Green" } else { "Gray" } # [FIX] Popravljeno poredjenje
 $fixedColor = if ($Stats.Fixed -gt 0) { "Green" } else { "Gray" }
 $unchangedColor = if ($Stats.Unchanged -eq $Stats.Scanned -and $Stats.Scanned -gt 0) { "Green" } else { "Gray" }
 
@@ -151,4 +150,4 @@ Write-Host "`nREPORT:" -ForegroundColor White
 Write-Host "   Scanned:     $($Stats.Scanned)"
 Write-Host "   Fixed Code:  $($Stats.Fixed)" -ForegroundColor $fixedColor
 Write-Host "   Purged JSON: $($Stats.CleanedJson)" -ForegroundColor $jsonColor
-Write-Host "   Unchanged:   $($Stats.Unchanged)" -ForegroundColor $unchangedColor
+Write-Host "   Unchanged:   $($Stats.Unchanged)" -ForegroundColor $unchangedColorS
