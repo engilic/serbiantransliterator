@@ -11,7 +11,7 @@ const IS_FAST_MODE = ARGS.includes("--fast");
 const NO_PUSH = ARGS.includes("--no-push");
 const isWindows = process.platform === "win32";
 
-// --- ANSI BOJE (Tvoja originalna God Mode paleta) ---
+// --- BOJE ---
 const C = {
     reset: "\x1b[0m",
     green: "\x1b[32m",
@@ -28,16 +28,10 @@ const C = {
 
 const TIMINGS = [];
 
-/**
- * Zvučni signal za obaveštenja.
- */
 function beep() {
     process.stdout.write("\x07");
 }
 
-/**
- * Prikazuje Guardian banner.
- */
 function printBanner() {
     console.clear();
     console.log(`${C.magenta}${C.bold}
@@ -45,9 +39,6 @@ function printBanner() {
 ${C.reset}`);
 }
 
-/**
- * Pametna funkcija za pokretanje procesa sa analizom boja.
- */
 function run(step, cmd, args, cwd = ROOT) {
     console.log(`\n${C.blue}${C.bold}>>> ${step}${C.reset}`);
     const start = Date.now();
@@ -61,13 +52,11 @@ function run(step, cmd, args, cwd = ROOT) {
 
     let output = res.stdout.toString() + res.stderr.toString();
 
-    // [GOD MODE YELLOW ALERT]: Sve što može da se popravi ili je zastarelo
+    // [GOD MODE COLORS]: Žuta samo za warn/deprecated/vulnerability
     output = output.replace(
         /warning|deprecated|vulnerability|vulnerabilities/gi,
         (match) => `${C.yellow}${match}${C.reset}`
     );
-
-    // [GOD MODE INFO]: Verzije i uspesi u Cyan
     output = output.replace(
         /v\d+\.\d+\.\d+|v8|success|compiled successfully|up to date/gi,
         (match) => `${C.cyan}${match}${C.reset}`
@@ -85,25 +74,17 @@ function run(step, cmd, args, cwd = ROOT) {
     console.log(`${C.green}✅ OK${C.reset}`);
 }
 
-/**
- * Tvoja originalna logika za tastere (BACKSPACE = DA, DELETE = NE).
- */
 async function askYesNo(q) {
     return new Promise((resolve) => {
         console.log(`\n${C.magenta}❓ ${q}${C.reset}`);
         console.log(
             `   ${C.white}[${C.green}BACKSPACE / ⬅ / Enter${C.white}] = DA   |   [${C.red}DEL / ➔ / Esc${C.white}] = NE${C.reset}`
         );
-
         process.stdin.setRawMode(true);
         process.stdin.resume();
         process.stdin.setEncoding("utf8");
-
         const listener = (k) => {
-            if (k === "\u0003") {
-                process.stdin.setRawMode(false);
-                process.exit(1);
-            }
+            if (k === "\u0003") process.exit(1);
             if (
                 k === "y" ||
                 k === "Y" ||
@@ -119,7 +100,6 @@ async function askYesNo(q) {
                 cleanup(false);
             }
         };
-
         function cleanup(result) {
             process.stdin.setRawMode(false);
             process.stdin.pause();
@@ -130,30 +110,34 @@ async function askYesNo(q) {
     });
 }
 
-function checkEnv() {
-    if (!fs.existsSync(path.join(ROOT, ".env")) && fs.existsSync(path.join(ROOT, ".env.example"))) {
-        console.log(`${C.cyan}ℹ️  INFO: Koriste se podrazumevane env vrednosti.${C.reset}`);
-    }
-}
-
 async function runSniffer() {
     console.log(`\n${C.blue}${C.bold}>>> Sniffer & Secret Hunter${C.reset}`);
     const filesOutput = spawnSync("git ls-files", { shell: true, encoding: "utf8" });
     if (!filesOutput.stdout) return;
     const files = filesOutput.stdout
         .split("\n")
-        .filter((f) => f && (f.endsWith(".ts") || f.endsWith(".js") || f.endsWith(".tsx")));
+        .filter(
+            (f) => f && (f.endsWith(".ts") || f.endsWith(".js") || f.endsWith(".tsx") || f.endsWith(".sh"))
+        );
     let issues = 0;
+    const secrets = [
+        /(A3T[A-Z0-9]|AKIA|AGPA|AIDA|AROA)[A-Z0-9]{16}/,
+        /-----BEGIN PRIVATE KEY-----/,
+        /sk_live_[0-9a-zA-Z]{24}/,
+    ];
     files.forEach((f) => {
         if (f.startsWith("scripts/") || f.includes("test")) return;
         try {
             const content = fs.readFileSync(f, "utf8");
+            secrets.forEach((re) => {
+                if (re.test(content)) issues++;
+            });
             if (content.includes("debugger")) issues++;
         } catch (e) {}
     });
     if (issues > 0) {
         beep();
-        console.error(`\n${C.bgRed} 🛑 DEBUGGER DETECTED! ${C.reset}`);
+        console.error(`\n${C.bgRed} 🛑 CRITICAL ISSUES! ${C.reset}`);
         process.exit(1);
     }
     console.log(`${C.green}✅ Bezbednost OK.${C.reset}`);
@@ -161,7 +145,6 @@ async function runSniffer() {
 
 async function main() {
     printBanner();
-    checkEnv();
     await runSniffer();
 
     run("0. Assets", "node", ["scripts/ensure-icons.js"]);
@@ -174,9 +157,9 @@ async function main() {
 
     const status = spawnSync("git status --porcelain", { shell: true, encoding: "utf8" }).stdout.trim();
     if (status) {
-        console.log(`${C.cyan}ℹ️  Auto-commit: Sinkronizacija...${C.reset}`);
+        console.log(`${C.cyan}ℹ️  Auto-commit: Syncing hygiene & format...${C.reset}`);
         spawnSync("git add .", { shell: true });
-        spawnSync('git commit -m "chore: hygiene & auto-format"', { shell: true });
+        spawnSync('git commit -m "chore: hygiene & format sync"', { shell: true });
     }
 
     run("3. Lint/Type", "npm", ["run", "typecheck"]);
@@ -195,7 +178,6 @@ async function main() {
 
     if (NO_PUSH) return;
 
-    // --- SMART PUSH SYSTEM (God Mode V4) ---
     const currentBranch = spawnSync("git rev-parse --abbrev-ref HEAD", {
         shell: true,
         encoding: "utf8",
@@ -203,41 +185,34 @@ async function main() {
     const isProtected = currentBranch === "master" || currentBranch === "main";
     const isAutoBranch = currentBranch.startsWith("chore/verified-update-");
 
-    // 1. Ako smo na PR grani
     if (isAutoBranch) {
         const shouldPushAuto = await askYesNo(`Ažurirati PR granu '${currentBranch}'?`);
         if (shouldPushAuto) {
             spawnSync(`git push -u origin ${currentBranch}`, { shell: true, stdio: "inherit" });
-            console.log(`\n${C.green}✅ Uspešno ažurirano na GitHub-u.${C.reset}`);
+            console.log(`\n${C.green}✅ Uspešno ažurirano.${C.reset}`);
         } else {
             console.log(`\n${C.gray}⛔ Push otkazan.${C.reset}`);
         }
-        return; // [GOD MODE FIX]: Prekidamo ovde, ne postavljamo drugo pitanje!
+        return;
     }
 
-    // 2. Ako smo na zaštićenoj grani (master/main)
     const prompt = isProtected
-        ? `Grana '${currentBranch}' je ZAŠTIĆENA. Kreirati novu PR granu?`
+        ? `Master je zaštićen. Kreirati novu granu i PR?`
         : `Push na '${currentBranch}'?`;
-
     const shouldPush = await askYesNo(prompt);
 
     if (shouldPush) {
         if (isProtected) {
             const timestamp = Math.floor(Date.now() / 1000);
             const newBranch = `chore/verified-update-${timestamp}`;
-            console.log(`\n${C.cyan}ℹ️  Kreiram PR granu: ${newBranch}...${C.reset}`);
             spawnSync(`git checkout -b ${newBranch}`, { shell: true });
             spawnSync(`git push -u origin ${newBranch}`, { shell: true, stdio: "inherit" });
-            console.log(`\n${C.green}${C.bold}🏆 USPEH! Link za Pull Request:${C.reset}`);
             console.log(
-                `${C.cyan}https://github.com/engilic/serbiantransliterator/pull/new/${newBranch}${C.reset}\n`
+                `\n${C.cyan}PR Link: https://github.com/engilic/serbiantransliterator/pull/new/${newBranch}${C.reset}`
             );
         } else {
             spawnSync(`git push`, { shell: true, stdio: "inherit" });
         }
-    } else {
-        console.log(`\n${C.gray}⛔ Push otkazan.${C.reset}`);
     }
 }
 
