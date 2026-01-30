@@ -33,8 +33,11 @@ describe("WorkerClient - Error Handling", () => {
         );
 
         const p = client.init();
+
+        // Prvo setupujemo expectation, pa okidamo tajmere
+        const errorAssertion = expect(p).rejects.toThrow("Worker Load Error");
         await vi.advanceTimersByTimeAsync(50);
-        await expect(p).rejects.toThrow("Worker Load Error");
+        await errorAssertion;
     });
 
     it("handles explicit ERROR message from worker", async () => {
@@ -55,7 +58,9 @@ describe("WorkerClient - Error Handling", () => {
         );
 
         const p = client.init();
+
+        const errorAssertion = expect(p).rejects.toThrow("Wasm Panic");
         await vi.advanceTimersByTimeAsync(50);
-        await expect(p).rejects.toThrow("Wasm Panic");
+        await errorAssertion;
     });
 });

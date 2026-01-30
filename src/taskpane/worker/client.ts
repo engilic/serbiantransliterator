@@ -70,33 +70,42 @@ export class WorkerClient {
         if (this.initPromise) return this.initPromise;
 
         this.initPromise = new Promise((resolve, reject) => {
+            let finished = false;
+            let heartbeatTimeout: ReturnType<typeof setTimeout> | null = null;
+
+            const done = (err?: Error) => {
+                if (finished) return;
+                finished = true;
+                if (heartbeatTimeout) clearTimeout(heartbeatTimeout);
+                if (err) reject(err);
+                else resolve();
+            };
+
             try {
                 this.worker = new Worker(WorkerUrl);
-                const heartbeatTimeout = setTimeout(async () => {
+
+                heartbeatTimeout = setTimeout(() => {
                     if (!this.isReady) {
-                        await this.activateFallback();
-                        resolve();
+                        this.activateFallback();
+                        done();
                     }
                 }, 8000);
 
                 this.worker.onmessage = (event) => {
                     const data = event.data as WorkerResponse;
                     if (data.type === "INIT_DONE") {
-                        clearTimeout(heartbeatTimeout);
                         this.isReady = true;
-                        resolve();
+                        done();
                         this.pumpQueue();
                     } else if (data.type === "ERROR" && !data.id) {
-                        clearTimeout(heartbeatTimeout);
-                        reject(new Error(data.error));
+                        done(new Error(data.error));
                     } else {
                         this.handleMessage(event);
                     }
                 };
 
                 this.worker.onerror = () => {
-                    clearTimeout(heartbeatTimeout);
-                    reject(new Error("Worker Load Error"));
+                    done(new Error("Worker Load Error"));
                 };
 
                 const b1 = dataUriToBytes(dictE2iData as any);
@@ -111,7 +120,7 @@ export class WorkerClient {
                     [b1.buffer, b2.buffer, wasmBytes.buffer]
                 );
             } catch (e) {
-                this.activateFallback().then(() => resolve());
+                this.activateFallback().then(() => done());
             }
         });
 
@@ -125,9 +134,7 @@ export class WorkerClient {
         if (this.worker) {
             try {
                 this.worker.terminate();
-            } catch (e) {
-                /* ignore */
-            }
+            } catch (e) {}
             this.worker = null;
         }
         await textCore.initWasm();
@@ -144,7 +151,6 @@ export class WorkerClient {
 
             if (!job.aborted && !job.signal?.aborted) {
                 const payload = data.payload;
-                // [GOD MODE FIX]: Robustnija provera tipa za JSDOM okruženje
                 const isBinary = payload.xml && typeof payload.xml !== "string";
                 if (isBinary) {
                     payload.xml = decoder.decode(payload.xml as Uint8Array);
