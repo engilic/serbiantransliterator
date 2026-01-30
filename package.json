@@ -3,6 +3,7 @@
     "version": "1.0.0",
     "description": "Offline-first Word add-in for Serbian transliteration (Lat <-> Cyr) powered by Rust/WASM.",
     "license": "MIT",
+    "sideEffects": false,
     "engines": {
         "node": ">=18.0.0",
         "npm": ">=8.0.0"

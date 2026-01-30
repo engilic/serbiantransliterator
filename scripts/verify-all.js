@@ -144,7 +144,6 @@ async function main() {
 
     const status = spawnSync("git status --porcelain", { shell: true, encoding: "utf8" }).stdout.trim();
     if (status) {
-        // [FIX] Promenjeno iz žute u Cyan (Info) jer je ovo standardan proces
         console.log(`${C.cyan}ℹ️  Auto-commit hygiene & format...${C.reset}`);
         spawnSync("git add .", { shell: true });
         spawnSync('git commit -m "chore: hygiene & auto-format"', { shell: true });

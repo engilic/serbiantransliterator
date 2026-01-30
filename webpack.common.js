@@ -25,8 +25,8 @@ module.exports = {
     output: {
         path: path.resolve(__dirname, "dist"),
         filename: "[name].js",
-        globalObject: "self", // OBAVEZNO za Workere u Office-u
-        clean: true, // Brise dist pre builda
+        globalObject: "self",
+        clean: true,
     },
 
     // 3. Resolver
@@ -55,12 +55,10 @@ module.exports = {
                 type: "asset/resource",
                 generator: { filename: "assets/[name][ext]" },
             },
-            // [CRITICAL] Inline binarni fajlovi (reÄnici)
             {
                 test: /\.bin$/,
                 type: "asset/inline",
             },
-            // [CRITICAL] Inline WASM (najsigurnije za Office)
             {
                 test: /\.wasm$/,
                 type: "asset/inline",
@@ -101,5 +99,21 @@ module.exports = {
 
     performance: {
         hints: false,
+    },
+
+    // [GOD MODE FIX]: Eliminacija Webpack žutila (orphan, built, generated)
+    stats: {
+        preset: "minimal",
+        modules: false, // Sakriva [built] [code generated]
+        orphanModules: false, // Sakriva orphan modules
+        assets: true, // Prikazuje listu fajlova u dist
+        colors: true,
+        timings: true,
+        version: false,
+        hash: false,
+    },
+
+    infrastructureLogging: {
+        level: "warn", // Prikazuj samo bitne logove u konzoli
     },
 };
