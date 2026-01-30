@@ -5,14 +5,10 @@ $Root = Get-Location
 # --- KONFIGURACIJA ---
 $SupportedExtensions = @(".ts", ".js", ".cjs", ".mjs", ".tsx", ".css", ".html", ".xml", ".rs", ".sh", ".ps1")
 $JsonExtensions = @(".json")
-
-# FOLDERI KOJE POTPUNO IGNORIŠEMO
-$IgnoreFolders = @("node_modules", "dist", "coverage", ".git", "target", "pkg", ".vs", ".vscode", "bin", "obj", "assets", "test-results", "playwright-report")
+$IgnoreFolders = @("node_modules", "dist", "coverage", ".git", "target", "pkg", ".vs", ".vscode", "bin", "obj", "assets")
 $IgnoreFiles = @("package-lock.json", "cargo.lock", "slnx.sqlite")
 
 $Stats = @{ Scanned=0; Fixed=0; CleanedJson=0; Unchanged=0 }
-
-# Kreiramo UTF-8 motor BEZ BOM-a (ovo rešava Prettier Syntax Error)
 $Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 
 function Get-ExpectedHeader($Ext, $Path) {
@@ -22,45 +18,66 @@ function Get-ExpectedHeader($Ext, $Path) {
     return "// $Path"
 }
 
-function Is-Header-Line($Line, $RelPath) {
-    $T = $Line.Trim().ToLower()
-    if ($T.Length -eq 0) { return $false }
-    $LowPath = $RelPath.ToLower()
-    return ($T.StartsWith("//") -and $T.Contains($LowPath)) -or 
-           ($T.StartsWith("#") -and $T.Contains($LowPath)) -or 
-           ($T.StartsWith("<!--") -and $T.Contains($LowPath)) -or 
-           ($T.StartsWith("/*") -and $T.Contains($LowPath)) -or 
-           ($T.Contains("=== file:"))
-}
-
 function Process-File($FilePath) {
     $RelPath = $FilePath.Substring($Root.Path.Length + 1).Replace("\", "/")
     
+    # 1. Ignorisanje foldera
     $PathParts = $RelPath -split '/'
     foreach ($Part in $PathParts) { if ($IgnoreFolders -contains $Part) { return } }
-    
-    $FileName = [System.IO.Path]::GetFileName($FilePath).ToLower()
-    if ($IgnoreFiles -contains $FileName) { return }
+    if ($IgnoreFiles -contains [System.IO.Path]::GetFileName($FilePath).ToLower()) { return }
 
     $Ext = [System.IO.Path]::GetExtension($FilePath).ToLower()
-    $IsJson = $JsonExtensions -contains $Ext
-    $IsSupported = $SupportedExtensions -contains $Ext
-    if (-not $IsJson -and -not $IsSupported) { return }
+    if ($SupportedExtensions -notcontains $Ext -and $JsonExtensions -notcontains $Ext) { return }
 
     try { $RawContent = [System.IO.File]::ReadAllText($FilePath) } catch { return }
     if ([string]::IsNullOrEmpty($RawContent)) { return }
     $Stats.Scanned++
 
     $Lines = $RawContent.Replace("`r`n", "`n") -split "`n"
+    
+    # --- ALARM: DETEKCIJA POGREŠNOG COPY-PASTE-A ---
+    $LineIndex = 0
+    foreach ($L in $Lines) {
+        $LineIndex++
+        if ($LineIndex -gt 5) { break } # Gledamo samo prvih par linija
+        $T = $L.Trim()
+        
+        # [FIXED REGEX]: Hvata celu putanju uključujući foldere i fajl sa ekstenzijom
+        # Primer hvatanja: // src/shared/ooxml/dom.ts ili # scripts/add-headers.ps1
+        if ($T -match "^(//|#|<!--|/\*)\s*([a-zA-Z0-9_\-\.\/]+\.[a-zA-Z0-9]+)") {
+            $FoundPath = $Matches[2].Trim().ToLower()
+            $TargetRelPath = $RelPath.ToLower()
+            
+            # ALARM se pali samo ako nađe drugu validnu putanju koja nije trenutni fajl
+            if ($FoundPath -ne $TargetRelPath) {
+                # Provera da li FoundPath zapravo postoji kao drugi fajl u projektu 
+                # (da bismo izbegli lažne uzbune na obične komentare koji liče na putanje)
+                $CheckOtherFile = Join-Path $Root $FoundPath
+                if (Test-Path $CheckOtherFile) {
+                    Write-Host "`n[FATAL ERROR] HEADER MISMATCH!" -ForegroundColor White -BackgroundColor Red
+                    Write-Host "File on disk:  $RelPath" -ForegroundColor Yellow
+                    Write-Host "Header in file: $FoundPath" -ForegroundColor Red
+                    Write-Host "Action: Paste confirmed from another file. Aborting.`n"
+                    exit 1
+                }
+            }
+        }
+    }
+
+    # --- LOGIKA ZA ČIŠĆENJE I SASTAVLJANJE ---
     $Directives = New-Object System.Collections.Generic.List[string]
     $CodeBody = New-Object System.Collections.Generic.List[string]
     $Shebang = $null
-    
     $ProcessingHeader = $true
+
     foreach ($L in $Lines) {
         $T = $L.Trim()
         if ($ProcessingHeader -and $T.StartsWith("#!")) { $Shebang = $L; continue }
-        if ($ProcessingHeader -and (Is-Header-Line $L $RelPath)) { continue }
+        
+        # Brišemo bilo koji heder koji sadrži reč src, tests, scripts ili trenutnu putanju
+        $isHeader = $T -match "^(//|#|<!--|/\*)\s*(src|tests|scripts|docs|config|[\w\.-]+\.(js|ts|sh|ps1|xml|md|css))"
+        if ($ProcessingHeader -and $isHeader) { continue }
+
         if ($ProcessingHeader -and ($T.StartsWith("/* eslint") -or $T.StartsWith("/* global") -or $T.StartsWith("/* tslint") -or $T.StartsWith("/// <reference"))) {
             $Directives.Add($L); continue
         }
@@ -69,6 +86,8 @@ function Process-File($FilePath) {
     }
 
     $Output = New-Object System.Collections.Generic.List[string]
+    $IsJson = $JsonExtensions -contains $Ext
+
     if (-not $IsJson) {
         if ($Shebang) { $Output.Add($Shebang) }
         $Output.Add((Get-ExpectedHeader $Ext $RelPath))
@@ -84,20 +103,19 @@ function Process-File($FilePath) {
     $OldNormalized = $RawContent.Replace("`r`n", "`n").TrimEnd() + "`n"
     
     if ($NewText -ne $OldNormalized) {
-        try {
+        try { 
             [System.IO.File]::WriteAllText($FilePath, $NewText, $Utf8NoBom)
             if ($IsJson) { $Stats.CleanedJson++ } else { $Stats.Fixed++ }
         } catch { }
     } else { $Stats.Unchanged++ }
 }
 
-Write-Host "HYGIENE SYSTEM: Source Normalization..." -ForegroundColor Cyan
+Write-Host "STRICT HYGIENE: Source Normalization & Mismatch Protection..." -ForegroundColor Cyan
 $Files = Get-ChildItem -Path $Root -Recurse -File
 foreach ($F in $Files) { Process-File $F.FullName }
 
 $jsonColor = if ($Stats.CleanedJson -gt 0) { "Green" } else { "Gray" }
 $fixedColor = if ($Stats.Fixed -gt 0) { "Green" } else { "Gray" }
-
 Write-Host "`nREPORT:" -ForegroundColor White
 Write-Host "   Fixed Code:  $($Stats.Fixed)" -ForegroundColor $fixedColor
 Write-Host "   Purged JSON: $($Stats.CleanedJson)" -ForegroundColor $jsonColor
