@@ -21,6 +21,7 @@ export function confirmInPanel(safeHtmlMsg: SafeHtml): Promise<boolean> {
     text.innerHTML = unwrapHtml(safeHtmlMsg);
     input.style.display = "none";
 
+    // preview apply dugme (ako postoji) sakrij
     const applyBtn = document.getElementById("modalApply") as HTMLButtonElement | null;
     if (applyBtn) applyBtn.style.display = "none";
 
@@ -44,14 +45,13 @@ export function confirmInPanel(safeHtmlMsg: SafeHtml): Promise<boolean> {
     const modalDiv = document.getElementById("modal") as HTMLDivElement;
     if (modalDiv) modalDiv.classList.remove("wide");
 
-    // [A11Y]: Prvo prikaži DOM
+    // [A11Y FIX]: Omogućava čitačima ekrana da vide modal
     overlay.style.display = "flex";
     overlay.setAttribute("aria-hidden", "false");
 
     return new Promise((resolve) => {
-        // Pozivamo menadžer koji će odraditi logiku i notifikacije
+        // [TEST FIX]: DOM sakrivamo tek u callback-u nakon što ModalManager završi
         modalManager.open("confirm", (res) => {
-            // DOM sklanjamo tek u callback-u nakon što menadžer završi
             overlay.style.display = "none";
             overlay.setAttribute("aria-hidden", "true");
             resolve(res);
@@ -90,11 +90,12 @@ export function showModalInfo(titleStr: string, safeHtmlMsg: SafeHtml) {
     const modalDiv = document.getElementById("modal") as HTMLDivElement;
     if (modalDiv) modalDiv.classList.remove("wide");
 
-    // [A11Y]: Prikaži DOM
+    // [A11Y FIX]: Prikaži modal
     overlay.style.display = "flex";
     overlay.setAttribute("aria-hidden", "false");
 
     modalManager.open("info", () => {
+        // [TEST FIX]: Zatvori modal u callback-u
         overlay.style.display = "none";
         overlay.setAttribute("aria-hidden", "true");
     });
@@ -115,7 +116,7 @@ export function resetModalButtons() {
     const okBtn = document.getElementById("modalOk") as HTMLButtonElement;
     const title = document.getElementById("modalTitle") as HTMLHeadingElement;
 
-    if (!cancelBtn || !okBtn) return;
+    if (!cancelBtn || !okBtn || !title) return;
 
     title.style.display = "";
 
