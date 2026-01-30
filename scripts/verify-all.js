@@ -11,7 +11,7 @@ const IS_FAST_MODE = ARGS.includes("--fast");
 const NO_PUSH = ARGS.includes("--no-push");
 const isWindows = process.platform === "win32";
 
-// --- BOJE ---
+// --- ANSI BOJE (Tvoja puna God Mode paleta) ---
 const C = {
     reset: "\x1b[0m",
     green: "\x1b[32m",
@@ -40,7 +40,8 @@ ${C.reset}`);
 }
 
 /**
- * Inteligentna run funkcija koja boji output u žuto za ranjivosti i warninge.
+ * Puna verzija 'run' funkcije koja inteligentno boji output.
+ * Žuta je rezervisana za stvari koje treba popraviti (vulnerabilities, deprecated).
  */
 function run(step, cmd, args, cwd = ROOT, useInherit = false) {
     console.log(`\n${C.blue}${C.bold}>>> ${step}${C.reset}`);
@@ -58,13 +59,13 @@ function run(step, cmd, args, cwd = ROOT, useInherit = false) {
     if (!useInherit) {
         let output = res.stdout.toString() + res.stderr.toString();
 
-        // [GOD MODE ACTIONABLE YELLOW]: Bojimo stvari koje korisnik treba da popravi
+        // [ACTIONABLE YELLOW]: Stvari koje možeš popraviti (ranjivosti i warningzi)
         output = output.replace(
-            /warning|deprecated|vulnerability|vulnerabilities|high|moderate/gi,
+            /warning|deprecated|vulnerability|vulnerabilities|moderate|high/gi,
             (match) => `${C.yellow}${match}${C.reset}`
         );
 
-        // [GOD MODE INFO]: Verzije i uspesi u Cyan da ne bodu oči
+        // [CLEAN INFO]: Verzije i tehnologije (v8, success) idu u Cyan/Belo
         output = output.replace(
             /v\d+\.\d+\.\d+|v8|success|compiled successfully|up to date/gi,
             (match) => `${C.cyan}${match}${C.reset}`
@@ -77,12 +78,15 @@ function run(step, cmd, args, cwd = ROOT, useInherit = false) {
 
     if (res.status !== 0) {
         beep();
-        console.error(`\n${C.bgRed} ❌ FATAL ERROR: ${step} ${C.reset}`);
+        console.error(`\n${C.bgRed}${C.white} ❌ FATAL ERROR: ${step} ${C.reset}`);
         process.exit(1);
     }
     console.log(`${C.green}✅ OK${C.reset}`);
 }
 
+/**
+ * Tvoja puna, moćna logika za tastere (BACKSPACE/ENTER = DA, DELETE/ESC = NE).
+ */
 async function askYesNo(q) {
     return new Promise((resolve) => {
         console.log(`\n${C.magenta}❓ ${q}${C.reset}`);
@@ -93,7 +97,10 @@ async function askYesNo(q) {
         process.stdin.resume();
         process.stdin.setEncoding("utf8");
         const listener = (k) => {
-            if (k === "\u0003") process.exit(1);
+            if (k === "\u0003") {
+                process.stdin.setRawMode(false);
+                process.exit(1);
+            }
             if (
                 k === "y" ||
                 k === "Y" ||
@@ -119,22 +126,38 @@ async function askYesNo(q) {
     });
 }
 
+function checkEnv() {
+    if (!fs.existsSync(path.join(ROOT, ".env")) && fs.existsSync(path.join(ROOT, ".env.example"))) {
+        console.log(`${C.cyan}ℹ️  INFO: Koriste se podrazumevane env vrednosti.${C.reset}`);
+    }
+}
+
 async function runSniffer() {
     console.log(`\n${C.blue}${C.bold}>>> Sniffer & Secret Hunter${C.reset}`);
-    const status = spawnSync("git ls-files", { shell: true, encoding: "utf8" });
-    if (!status.stdout) return;
-    const files = status.stdout.split("\n").filter((f) => f && (f.endsWith(".ts") || f.endsWith(".js")));
+    const filesOutput = spawnSync("git ls-files", { shell: true, encoding: "utf8" });
+    if (!filesOutput.stdout) return;
+    const files = filesOutput.stdout
+        .split("\n")
+        .filter((f) => f && (f.endsWith(".ts") || f.endsWith(".js") || f.endsWith(".tsx")));
     let issues = 0;
+    const secrets = [
+        /(A3T[A-Z0-9]|AKIA|AGPA|AIDA|AROA)[A-Z0-9]{16}/,
+        /-----BEGIN PRIVATE KEY-----/,
+        /sk_live_[0-9a-zA-Z]{24}/,
+    ];
     files.forEach((f) => {
         if (f.startsWith("scripts/") || f.includes("test")) return;
         try {
             const content = fs.readFileSync(f, "utf8");
+            secrets.forEach((re) => {
+                if (re.test(content)) issues++;
+            });
             if (content.includes("debugger")) issues++;
         } catch (e) {}
     });
     if (issues > 0) {
         beep();
-        console.error(`\n${C.bgRed} 🛑 DEBUGGER DETECTED! ${C.reset}`);
+        console.error(`\n${C.bgRed}${C.white} 🛑 PRONAĐENO ${issues} KRITIČNIH PROBLEMA! ${C.reset}`);
         process.exit(1);
     }
     console.log(`${C.green}✅ Bezbednost OK.${C.reset}`);
@@ -142,6 +165,7 @@ async function runSniffer() {
 
 async function main() {
     printBanner();
+    checkEnv();
     await runSniffer();
 
     run("0. Assets", "node", ["scripts/ensure-icons.js"]);
@@ -160,7 +184,7 @@ async function main() {
 
     const status = spawnSync("git status --porcelain", { shell: true, encoding: "utf8" }).stdout.trim();
     if (status) {
-        console.log(`${C.cyan}ℹ️  Auto-commit: Syncing hygiene & format...${C.reset}`);
+        console.log(`${C.cyan}ℹ️  Auto-commit: Sinhronizacija...${C.reset}`);
         spawnSync("git add .", { shell: true });
         spawnSync('git commit -m "chore: hygiene & auto-format"', { shell: true });
     }
@@ -174,7 +198,7 @@ async function main() {
         run("7. E2E Tests", "npm", ["run", "test:e2e"]);
     }
 
-    console.log(`\n${C.cyan}📊 FINAL REPORT:${C.reset}`);
+    console.log(`\n${C.cyan}📊 REPORT:${C.reset}`);
     TIMINGS.forEach((t) => console.log(`   • ${t.step.padEnd(20)}: ${C.white}${t.time}s${C.reset}`));
     beep();
     console.log(`\n${C.green}${C.bold}🏆 SPREMNO ZA DEPLOY!${C.reset}\n`);
@@ -192,7 +216,7 @@ async function main() {
         const shouldPushAuto = await askYesNo(`Ažurirati PR granu '${currentBranch}'?`);
         if (shouldPushAuto) {
             spawnSync(`git push -u origin ${currentBranch}`, { shell: true, stdio: "inherit" });
-            console.log(`\n${C.green}✅ Uspešno ažurirano.${C.reset}`);
+            console.log(`\n${C.green}✅ Uspešno ažurirano na GitHub-u.${C.reset}`);
         } else {
             console.log(`\n${C.gray}⛔ Push otkazan.${C.reset}`);
         }
@@ -200,7 +224,7 @@ async function main() {
     }
 
     const prompt = isProtected
-        ? `Master je zaštićen. Kreirati novu granu i PR?`
+        ? `Master je zaštićen. Kreirati novu PR granu?`
         : `Push na '${currentBranch}'?`;
     const shouldPush = await askYesNo(prompt);
 
