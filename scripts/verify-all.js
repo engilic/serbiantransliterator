@@ -7,8 +7,8 @@
  * Centralni nadzorni sistem za Serbian Transliterator.
  * Upravlja kompletnim pipeline-om i garantuje stabilnost pre svakog push-a.
  *
- * [GOD MODE FIX]: Rešen ReferenceError u 'run' funkciji.
- * [GOD MODE FIX]: Implementirana ADAPTIVNA širina terminala (COLUMNS).
+ * [GOD MODE FIX]: Implementiran UNIVERSAL ALIGNER koji detektuje unutrašnje
+ * rezultate testova (Rust/Vitest) i poravnava ih pomoću tačkica.
  *
  * Autor: Jugoslav Ilić
  * Verzija: 1.0.0 (Gold Master)
@@ -28,13 +28,13 @@ const IS_FAST_MODE = ARGS.includes("--fast");
 const NO_PUSH = ARGS.includes("--no-push");
 const isWindows = process.platform === "win32";
 
-// --- 3. ANSI BOJE (Optimizovano za kontrast) ---
+// --- 3. ANSI BOJE (God Mode Paleta - Optimizovano za kontrast) ---
 const C = {
     reset: "\x1b[0m",
     green: "\x1b[32m",
     yellow: "\x1b[33m",
     red: "\x1b[31m",
-    blue: "\x1b[36m", // Cyan radi kontrasta
+    blue: "\x1b[36m", // Svetliji Cyan radi bolje vidljivosti
     magenta: "\x1b[35m",
     bold: "\x1b[1m",
     gray: "\x1b[90m",
@@ -64,6 +64,19 @@ ${C.reset}`);
 }
 
 /**
+ * Pomoćna funkcija za poravnanje teksta sa tačkicama.
+ * @param {string} text - Tekst koji treba poravnati.
+ * @param {number} targetWidth - Ukupna željena širina.
+ * @returns {string} String sa dodatim tačkicama.
+ */
+function alignWithDots(text, targetWidth = 60) {
+    const minDots = 3;
+    const cleanText = text.trim();
+    const dotsCount = Math.max(minDots, targetWidth - cleanText.length);
+    return `${cleanText} ${C.gray}${".".repeat(dotsCount)}${C.reset}`;
+}
+
+/**
  * Glavna funkcija za izvršavanje eksternih komandi.
  */
 function run(step, cmd, args, cwd = ROOT, useInherit = false) {
@@ -71,47 +84,59 @@ function run(step, cmd, args, cwd = ROOT, useInherit = false) {
 
     const start = Date.now();
 
-    // Dinamički računamo širinu za tabele (min 200)
-    const terminalWidth = Math.max(process.stdout.columns || 0, 200).toString();
-
     const options = {
         cwd: cwd,
         shell: true,
         env: {
             ...process.env,
             FORCE_COLOR: "1",
-            COLUMNS: "1000", // Forsiramo ekstremnu širinu za Unit Testove
+            COLUMNS: "1000", // Za Vitest tabelu bez tri tačkice
         },
+        // Koristimo inherit samo za interaktivne korake (Hygiene, I18n)
         stdio: useInherit && process.stdin.isTTY ? "inherit" : "pipe",
     };
 
     const fullCommandString = `${cmd} ${args.join(" ")}`;
     const res = spawnSync(fullCommandString, options);
 
-    // [FIX]: Definisanje varijabli pre provere da izbegnemo ReferenceError
-    let combinedOutput = "";
+    // Ako smo koristili pipe, obrađujemo output red po red radi poravnanja testova
+    if (!options.stdio || options.stdio === "pipe") {
+        let stdout = res.stdout ? res.stdout.toString() : "";
+        let stderr = res.stderr ? res.stderr.toString() : "";
+        let lines = (stdout + stderr).split("\n");
 
-    if (options.stdio === "pipe") {
-        const stdout = res.stdout ? res.stdout.toString() : "";
-        const stderr = res.stderr ? res.stderr.toString() : "";
-        combinedOutput = stdout + stderr;
+        const formattedOutput = lines
+            .map((line) => {
+                let processed = line;
 
-        // [INTELIGENTNO BOJENJE]
-        combinedOutput = combinedOutput.replace(
-            /warning|deprecated|vulnerability|vulnerabilities|moderate|high/gi,
-            (match) => {
-                return `${C.yellow}${match}${C.reset}`;
-            }
-        );
+                // 1. Detekcija Rust testova: "test ime_testa ... ok"
+                if (processed.includes("test ") && processed.includes(" ... ok")) {
+                    const parts = processed.split(" ... ok");
+                    const testName = parts[0].trim();
+                    processed = `${alignWithDots(testName, 70)}${C.green} ok${C.reset}`;
+                }
 
-        combinedOutput = combinedOutput.replace(
-            /v\d+\.\d+\.\d+|v8|success|compiled successfully|up to date/gi,
-            (match) => {
-                return `${C.cyan}${match}${C.reset}`;
-            }
-        );
+                // 2. Detekcija Vitest rezultata: "✓ putanja/fajl.ts (4 tests) 50ms"
+                else if (processed.includes(" ✓ ")) {
+                    // Ostavljamo Vitest stil ali ga čistimo od viška razmaka
+                    processed = processed.replace(/\s+/g, " ");
+                }
 
-        process.stdout.write(combinedOutput);
+                // 3. Opšte bojenje upozorenja
+                processed = processed.replace(
+                    /warning|deprecated|vulnerability|vulnerabilities|moderate|high/gi,
+                    (m) => `${C.yellow}${m}${C.reset}`
+                );
+                processed = processed.replace(
+                    /v\d+\.\d+\.\d+|v8|success|compiled successfully|up to date/gi,
+                    (m) => `${C.cyan}${m}${C.reset}`
+                );
+
+                return processed;
+            })
+            .join("\n");
+
+        process.stdout.write(formattedOutput);
     }
 
     const duration = ((Date.now() - start) / 1000).toFixed(2);
@@ -124,20 +149,17 @@ function run(step, cmd, args, cwd = ROOT, useInherit = false) {
         process.exit(1);
     }
 
-    // --- [GOD MODE ALIGNMENT]: Poravnanje OK statusa sa tačkicama ---
-    const targetWidth = 45;
-    const label = `${step} `;
-    const dots = ".".repeat(Math.max(3, targetWidth - label.length));
-
+    // Poravnanje OK statusa na kraju koraka
+    const stepLabel = alignWithDots(step, 45);
     if (res.status === 0 || res.status === 2) {
-        console.log(`${C.green}${label}${C.gray}${dots}${C.green} ✅ OK${C.reset}`);
+        console.log(`\n${C.green}${stepLabel}${C.green} ✅ OK${C.reset}`);
     }
 
     return res.status || 0;
 }
 
 /**
- * TVOJA ORIGINALNA LOGIKA ZA UNOS (BACKSPACE = DA, DELETE = NE).
+ * Logika za interaktivni unos (y/n) sa tastature.
  */
 async function askYesNo(q) {
     if (!process.stdin.isTTY) {
@@ -156,11 +178,13 @@ async function askYesNo(q) {
         process.stdin.setEncoding("utf8");
 
         const listener = (k) => {
+            // CTRL+C = Prisilni izlaz
             if (k === "\u0003") {
                 process.stdin.setRawMode(false);
                 process.exit(1);
             }
 
+            // Logika za DA (y, Y, Enter, Backspace, Levo)
             if (
                 k === "y" ||
                 k === "Y" ||
@@ -171,7 +195,9 @@ async function askYesNo(q) {
             ) {
                 process.stdout.write(`${C.green} ✔ DA${C.reset}\n`);
                 cleanup(true);
-            } else if (k === "n" || k === "N" || k === "\u001b" || k === "\u001b[3~" || k === "\u001b[C") {
+            }
+            // Logika za NE (n, N, Esc, Delete, Desno)
+            else if (k === "n" || k === "N" || k === "\u001b" || k === "\u001b[3~" || k === "\u001b[C") {
                 process.stdout.write(`${C.red} ✖ NE${C.reset}\n`);
                 cleanup(false);
             }
@@ -188,33 +214,47 @@ async function askYesNo(q) {
     });
 }
 
+/**
+ * Provera .env fajlova.
+ */
 function checkEnv() {
     const envPath = path.join(ROOT, ".env");
     const examplePath = path.join(ROOT, ".env.example");
 
     if (!fs.existsSync(envPath) && fs.existsSync(examplePath)) {
-        console.log(`${C.cyan}ℹ️  INFO: Koriste se podrazumevane env vrednosti.${C.reset}`);
+        console.log(
+            `${C.cyan}ℹ️  INFO: .env fajl nije pronađen. Koriste se podrazumevane vrednosti.${C.reset}`
+        );
     }
 }
 
+/**
+ * Sniffer: Skenira izvorni kod na 'debugger' i tajne ključeve.
+ */
 async function runSniffer() {
     console.log(`\n${C.cyan}${C.bold}>>> Sniffer & Secret Hunter${C.reset}`);
+
     const gitFilesOutput = spawnSync("git ls-files", { shell: true, encoding: "utf8" });
+
     if (!gitFilesOutput.stdout) {
         console.log(`${C.gray}Git repozitorijum nije detektovan.${C.reset}`);
         return;
     }
+
     const files = gitFilesOutput.stdout
         .split("\n")
         .filter((f) => f && (f.endsWith(".ts") || f.endsWith(".js") || f.endsWith(".tsx")));
+
     let issues = 0;
     const secrets = [
         /(A3T[A-Z0-9]|AKIA|AGPA|AIDA|AROA)[A-Z0-9]{16}/,
         /-----BEGIN PRIVATE KEY-----/,
         /sk_live_[0-9a-zA-Z]{24}/,
     ];
+
     files.forEach((f) => {
         if (f.startsWith("scripts/") || f.includes("test") || f.includes("spec")) return;
+
         try {
             const content = fs.readFileSync(f, "utf8");
             secrets.forEach((re) => {
@@ -223,6 +263,7 @@ async function runSniffer() {
             if (content.includes("debugger")) issues++;
         } catch (e) {}
     });
+
     if (issues > 0) {
         beep();
         console.error(
@@ -230,6 +271,7 @@ async function runSniffer() {
         );
         process.exit(1);
     }
+
     console.log(`${C.green}✅ Kod je bezbedan.${C.reset}`);
 }
 
@@ -242,8 +284,12 @@ async function main() {
     await runSniffer();
 
     run("0. Assets", "node", ["scripts/ensure-icons.js"]);
-    if (!IS_FAST_MODE) run("0. Clean", "npm", ["run", "clean"]);
-    if (isWindows)
+
+    if (!IS_FAST_MODE) {
+        run("0. Clean", "npm", ["run", "clean"]);
+    }
+
+    if (isWindows) {
         run(
             "0. Hygiene",
             "powershell",
@@ -251,10 +297,13 @@ async function main() {
             ROOT,
             true
         );
+    }
 
+    // I18n Check (Restart logika)
     const i18nStatus = run("0. I18n Check", "node", ["scripts/checkI18nKeys.cjs"], ROOT, true);
+
     if (i18nStatus === 2) {
-        console.log(`\n${C.magenta}♻️  IZMENE DETEKTOVANE. RESTARTUJEM GUARDIAN...${C.reset}`);
+        console.log(`\n${C.magenta}♻️  IZMENE U PREVODIMA DETEKTOVANE. RESTARTUJEM GUARDIAN...${C.reset}`);
         TIMINGS = [];
         return main();
     }
@@ -281,20 +330,19 @@ async function main() {
     run("5. Build", "npm", ["run", "build"]);
 
     if (!IS_FAST_MODE) {
-        // [GOD MODE FIX]: inherit mod omogućava tabeli da prepozna PUNA IMENA FAJLOVA
-        run("6. Unit Tests", "npm", ["run", "test:coverage"], ROOT, true);
+        // [GOD MODE FIX]: Koristimo pipe ali sa formatiranjem rezultata unutar 'run'
+        run("6. Unit Tests", "npm", ["run", "test:coverage"]);
         run("7. E2E Tests", "npm", ["run", "test:e2e"]);
     }
 
-    // --- [GOD MODE]: ADAPTIVNI FINAL REPORT SA TAČKICAMA ---
+    // --- [GOD MODE]: ADAPTIVNI FINAL REPORT ---
     console.log(`\n${C.cyan}${C.bold}📊 FINAL REPORT:${C.reset}`);
     const longestStepName = Math.max(...TIMINGS.map((t) => t.step.length));
     const reportPadding = longestStepName + 2;
 
     TIMINGS.forEach((t) => {
-        const label = t.step + " ";
-        const dots = ".".repeat(Math.max(3, reportPadding - label.length));
-        console.log(`   • ${C.white}${label}${C.gray}${dots}${C.reset} : ${C.white}${t.time}s${C.reset}`);
+        const labelWithDots = alignWithDots(t.step, reportPadding);
+        console.log(`   • ${C.white}${labelWithDots}${C.reset} : ${C.white}${t.time}s${C.reset}`);
     });
 
     beep();
@@ -329,18 +377,16 @@ async function main() {
         if (isProtected) {
             const timestamp = Math.floor(Date.now() / 1000);
             const newBranchName = `chore/verified-update-${timestamp}`;
+
             console.log(`\n${C.cyan}ℹ️  Pravim novu granu: ${newBranchName}${C.reset}`);
             spawnSync(`git checkout -b ${newBranchName}`, { shell: true, stdio: "inherit" });
             spawnSync(`git push -u origin ${newBranchName}`, { shell: true, stdio: "inherit" });
-            console.log(`\n${C.green}${C.bold}🏆 USPEH! Link za tvoj Pull Request:${C.reset}`);
             console.log(
-                `${C.cyan}https://github.com/engilic/serbiantransliterator/pull/new/${newBranchName}${C.reset}\n`
+                `\n${C.green}${C.bold}🏆 USPEH! Link za tvoj PR: https://github.com/engilic/serbiantransliterator/pull/new/${newBranchName}${C.reset}\n`
             );
         } else {
             spawnSync(`git push`, { shell: true, stdio: "inherit" });
         }
-    } else {
-        console.log(`\n${C.gray}⛔ Push otkazan po želji korisnika.${C.reset}`);
     }
 }
 
