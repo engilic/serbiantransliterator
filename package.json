@@ -11,7 +11,7 @@
         "git:reset": "node scripts/git-cleanup.js",
         "verify:all": "node scripts/verify-all.js",
         "update:version": "node scripts/update-manifest-version.js",
-        "clean": "rimraf dist coverage playwright-report test-results pkg src/wasm-core/pkg",
+        "clean": "rimraf dist coverage playwright-report test-results pkg src/wasm-core/pkg && cd src/wasm-core && cargo clean && cd ../..",
         "build:wasm": "cd src/wasm-core && wasm-pack build --target web --out-name index",
         "compile:dicts": "cd src/wasm-core && cargo run --bin compiler && cd ../..",
         "prebuild": "npm run clean && npm run update:version",

@@ -9,7 +9,7 @@ $SupportedExtensions = @(".ts", ".js", ".cjs", ".mjs", ".tsx", ".css", ".html", 
 $JsonExtensions = @(".json")
 
 # FOLDERI KOJE POTPUNO IGNORIŠEMO (Sprečava kvarenje ikonica i baze VS-a)
-$IgnoreFolders = @("node_modules", "dist", "coverage", ".git", "target", "pkg", ".vs", ".vscode", "bin", "obj", "assets", "test-results", "playwright-report")
+$IgnoreFolders = @("node_modules", "dist", "coverage", ".git", "target", "pkg", ".vs", ".vscode", "bin", "obj", "assets")
 $IgnoreFiles = @("package-lock.json", "cargo.lock", "slnx.sqlite")
 
 $Stats = @{ Scanned=0; Fixed=0; CleanedJson=0; Unchanged=0 }
