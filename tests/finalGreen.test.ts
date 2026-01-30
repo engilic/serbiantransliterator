@@ -1,4 +1,5 @@
 // tests/finalGreen.test.ts
+
 import { describe, it, expect, vi } from "vitest";
 import { safeGetItem, safeSetItem, safeRemoveItem } from "../src/shared/storage/safeLocalStorage";
 import { initGlobalErrorBoundary } from "../src/taskpane/app/error/uiErrorBoundary";

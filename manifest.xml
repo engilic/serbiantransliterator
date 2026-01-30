@@ -1,3 +1,5 @@
+<!-- manifest.xml -->
+
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0" xsi:type="TaskPaneApp">
 	<Id>594bceac-369d-4a06-acee-5d5bc5dff445</Id>

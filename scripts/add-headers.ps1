@@ -1,88 +1,122 @@
 # scripts/add-headers.ps1
 
 $Root = Get-Location
-$Extensions = @(".ts", ".js", ".cjs", ".mjs", ".tsx", ".css", ".html")
-$Ignore = @("node_modules", "dist", "coverage", ".git", "wasm-core/pkg", "wasm-core/target")
-$Stats = @{ Scanned=0; Cleaned=0; Skipped=0 }
+
+# --- KONFIGURACIJA ---
+# Ekstenzije koje SMEJU da imaju zaglavlje
+$SupportedExtensions = @(".ts", ".js", ".cjs", ".mjs", ".tsx", ".css", ".html", ".xml", ".rs", ".sh", ".ps1")
+# Ekstenzije koje NE SMEJU da imaju ništa (JSON čistimo)
+$JsonExtensions = @(".json")
+
+# FOLDERI KOJE POTPUNO IGNORIŠEMO (Sprečava kvarenje ikonica i baze VS-a)
+$IgnoreFolders = @("node_modules", "dist", "coverage", ".git", "target", "pkg", ".vs", ".vscode", "bin", "obj", "assets", "test-results", "playwright-report")
+$IgnoreFiles = @("package-lock.json", "cargo.lock", "slnx.sqlite")
+
+$Stats = @{ Scanned=0; Fixed=0; CleanedJson=0; Unchanged=0 }
+
+# Kreiramo UTF-8 motor BEZ BOM-a (ovo rešava Prettier Syntax Error)
+$Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 
 function Get-ExpectedHeader($Ext, $Path) {
-    if ($Ext -eq ".html") { return "<!-- $Path -->" }
+    if ($Ext -eq ".html" -or $Ext -eq ".xml") { return "<!-- $Path -->" }
     if ($Ext -eq ".css")  { return "/* $Path */" }
+    if ($Ext -eq ".ps1" -or $Ext -eq ".sh") { return "# $Path" }
     return "// $Path"
 }
 
-function Is-Header-Line($Line) {
-    if ($Line -match "^// .*src/.*") { return $true }
-    if ($Line -match "^// .*scripts/.*") { return $true }
-    if ($Line -match "^// .*tests/.*") { return $true }
-    if ($Line -match "^<!-- .* -->") { return $true }
-    if ($Line -match "^\/\* .* \*\/") { return $true }
-    if ($Line -match "=== FILE:") { return $true }
-    return $false
+function Is-Header-Line($Line, $RelPath) {
+    $T = $Line.Trim().ToLower()
+    if ($T.Length -eq 0) { return $false }
+    $LowPath = $RelPath.ToLower()
+    # Detektuje zaglavlje bez obzira na tip komentara
+    return ($T.StartsWith("//") -and $T.Contains($LowPath)) -or 
+           ($T.StartsWith("#") -and $T.Contains($LowPath)) -or 
+           ($T.StartsWith("<!--") -and $T.Contains($LowPath)) -or 
+           ($T.StartsWith("/*") -and $T.Contains($LowPath)) -or 
+           ($T.Contains("=== file:"))
 }
 
 function Process-File($FilePath) {
     $RelPath = $FilePath.Substring($Root.Path.Length + 1).Replace("\", "/")
-    foreach ($I in $Ignore) { if ($RelPath.StartsWith($I)) { return } }
+    
+    # 1. Ignorisanje sistemskih foldera i assets-a
+    $PathParts = $RelPath -split '/'
+    foreach ($Part in $PathParts) {
+        if ($IgnoreFolders -contains $Part) { return }
+    }
+    
+    $FileName = [System.IO.Path]::GetFileName($FilePath).ToLower()
+    if ($IgnoreFiles -contains $FileName) { return }
 
-    $Ext = [System.IO.Path]::GetExtension($FilePath)
-    if ($Extensions -notcontains $Ext) { return }
+    $Ext = [System.IO.Path]::GetExtension($FilePath).ToLower()
+    $IsJson = $JsonExtensions -contains $Ext
+    $IsSupported = $SupportedExtensions -contains $Ext
+    if (-not $IsJson -and -not $IsSupported) { return }
 
+    # 2. Bezbedno čitanje (UTF-8)
+    try {
+        $RawContent = [System.IO.File]::ReadAllText($FilePath, $Utf8NoBom)
+    } catch { return }
+
+    if ([string]::IsNullOrEmpty($RawContent)) { return }
     $Stats.Scanned++
-    $Expected = Get-ExpectedHeader $Ext $RelPath
-    
-    $Content = Get-Content $FilePath -Raw
-    if (-not $Content) { return }
-    $Lines = $Content -split "`r`n|`n"
-    if ($Lines.Count -eq 0) { return }
 
+    # 3. Normalizacija na LF i uklanjanje starih zaglavlja
+    $Lines = $RawContent.Replace("`r`n", "`n") -split "`n"
     $Directives = New-Object System.Collections.Generic.List[string]
-    $CodeLines = New-Object System.Collections.Generic.List[string]
+    $CodeBody = New-Object System.Collections.Generic.List[string]
+    $Shebang = $null
     
-    $InDirectives = $true
+    $ProcessingHeader = $true
     foreach ($L in $Lines) {
-        $Trimmed = $L.Trim()
-        
-        if ($InDirectives -and ($Trimmed.StartsWith("#!") -or $Trimmed.StartsWith("///") -or $Trimmed.StartsWith("/* eslint") -or $Trimmed.StartsWith("/* global"))) {
+        $T = $L.Trim()
+        if ($ProcessingHeader -and $T.StartsWith("#!")) { $Shebang = $L; continue }
+        if ($ProcessingHeader -and (Is-Header-Line $L $RelPath)) { continue }
+        if ($ProcessingHeader -and ($T.StartsWith("/* eslint") -or $T.StartsWith("/* global") -or $T.StartsWith("/* tslint") -or $T.StartsWith("/// <reference"))) {
             $Directives.Add($L)
             continue
         }
-        
-        $InDirectives = $false 
-
-        if (Is-Header-Line $Trimmed) {
-            continue 
-        }
-        
-        if ($CodeLines.Count -eq 0 -and $Trimmed -eq "") {
-            continue
-        }
-
-        $CodeLines.Add($L)
+        if ($T -ne "") { $ProcessingHeader = $false }
+        if (-not $ProcessingHeader) { $CodeBody.Add($L) }
     }
 
-    $FinalLines = New-Object System.Collections.Generic.List[string]
-    $FinalLines.AddRange($Directives)
-    $FinalLines.Add($Expected)
-    $FinalLines.AddRange($CodeLines)
-    
-    $NewContent = $FinalLines -join "`n"
-    
-    if ($NewContent.Trim() -ne $Content.Trim()) {
-        Write-Host "CLEANED: $RelPath" -ForegroundColor Green
-        $Stats.Cleaned++
-        $NewContent | Set-Content $FilePath -NoNewline -Encoding UTF8
+    # 4. Sastavljanje po God Mode standardu
+    $Output = New-Object System.Collections.Generic.List[string]
+    if (-not $IsJson) {
+        if ($Shebang) { $Output.Add($Shebang) }
+        $Output.Add((Get-ExpectedHeader $Ext $RelPath))
+        $Output.Add("")
+        foreach ($D in $Directives) { $Output.Add($D) }
+        if ($Directives.Count -gt 0) { $Output.Add("") }
+        foreach ($C in $CodeBody) { $Output.Add($C) }
     } else {
-        $Stats.Skipped++
+        # JSON mora biti čist
+        foreach ($C in $CodeBody) { $Output.Add($C) }
+    }
+
+    $NewText = ($Output -join "`n").TrimEnd() + "`n"
+    $OldNormalized = $RawContent.Replace("`r`n", "`n").TrimEnd() + "`n"
+    
+    # 5. Upisivanje razlika
+    if ($NewText -ne $OldNormalized) {
+        try {
+            [System.IO.File]::WriteAllText($FilePath, $NewText, $Utf8NoBom)
+            if ($IsJson) { $Stats.CleanedJson++ } else { $Stats.Fixed++ }
+        } catch { }
+    } else {
+        $Stats.Unchanged++
     }
 }
 
-# UKLONJENI EMODŽIJI I AMPERSAND KOJI SU PRAVILI PROBLEM
-Write-Host "PURGING AND RE-HEADERIZING..." -ForegroundColor Cyan
+# --- IZVRŠENJE ---
+Write-Host "HYGIENE SYSTEM: Headerizing Source & Cleaning JSON..." -ForegroundColor Cyan
 
-Get-ChildItem -Path $Root -Recurse -File | ForEach-Object { Process-File $_.FullName }
+$Files = Get-ChildItem -Path $Root -Recurse -File
+foreach ($F in $Files) { Process-File $F.FullName }
 
+# --- LEPI REPORT ---
 Write-Host "`nREPORT:" -ForegroundColor White
-Write-Host "   Scanned: $($Stats.Scanned)"
-Write-Host "   Cleaned: $($Stats.Cleaned)" -ForegroundColor Green
-Write-Host "   Skipped: $($Stats.Skipped)" -ForegroundColor Gray
+Write-Host "   Scanned:     $($Stats.Scanned)"
+Write-Host "   Fixed Code:  $($Stats.Fixed)" -ForegroundColor Green
+Write-Host "   Purged JSON: $($Stats.CleanedJson)" -ForegroundColor Yellow
+Write-Host "   Unchanged:   $($Stats.Unchanged)" -ForegroundColor Gray

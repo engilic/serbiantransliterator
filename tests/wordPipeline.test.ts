@@ -1,4 +1,5 @@
 // tests/wordPipeline.test.ts
+
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 vi.mock("../src/taskpane/app/status", () => ({

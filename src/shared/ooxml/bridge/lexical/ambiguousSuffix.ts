@@ -1,4 +1,5 @@
 // src/shared/ooxml/bridge/lexical/ambiguousSuffix.ts
+
 import { findNextNodeWithText, trailingTokenFragment, isTokenChar, normKey, getCpArray } from "../../common";
 
 import { ALWAYS_LATIN_TOKENS_STRICT, ALWAYS_LATIN_TOKENS_AMBIGUOUS } from "../../../../core/rules";

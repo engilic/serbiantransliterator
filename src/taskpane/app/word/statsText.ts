@@ -1,4 +1,5 @@
 // src/taskpane/app/word/statsText.ts
+
 import type { ConvertStats } from "../../../shared/ooxml/convertOoxml";
 import type { ExtrasSummary } from "../types";
 import { t, tPlural } from "../../../shared/i18n";

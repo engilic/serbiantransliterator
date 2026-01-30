@@ -1,4 +1,5 @@
 // tests/wordApplyRouting.test.ts
+
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // Mocks for UI/Status modules

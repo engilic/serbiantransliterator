@@ -1,4 +1,5 @@
 // src/shared/ooxml/proofing.ts
+
 import { XML_NS, WORD_NS, needsXmlSpacePreserve } from "./dom";
 import { type Direction } from "../../core/textCore";
 import { extractLetterWordSpans, findAncestor, getDirectChild, ensureLangOnRPr } from "./converterUtils";

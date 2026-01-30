@@ -1,4 +1,5 @@
 // tests/uiTheme.test.ts
+
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { initUi } from "../src/taskpane/app/settings/ui";
 

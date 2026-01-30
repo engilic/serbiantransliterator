@@ -1,4 +1,5 @@
 // src/taskpane/worker/client.ts
+
 import type { OoxmlOptions, ConvertStats } from "../../shared/ooxml/convertOoxml";
 import { convertOoxml } from "../../shared/ooxml/convertOoxml";
 import * as textCore from "../../core/textCore";
@@ -88,7 +89,7 @@ export class WorkerClient {
                         this.pumpQueue();
                     } else if (data.type === "ERROR" && !data.id) {
                         clearTimeout(heartbeatTimeout);
-                        reject(new Error(data.error)); // Bitno za testove grešaka!
+                        reject(new Error(data.error));
                     } else {
                         this.handleMessage(event);
                     }
@@ -111,7 +112,6 @@ export class WorkerClient {
                     [b1.buffer, b2.buffer, wasmBytes.buffer]
                 );
             } catch (e) {
-                // Ako Worker konstruktor ne postoji (JSDOM), idemo u fallback
                 this.activateFallback().then(() => resolve());
             }
         });
@@ -170,7 +170,6 @@ export class WorkerClient {
     private startJob(q: QueuedJob) {
         if (this.useFallback) {
             setTimeout(() => {
-                // [FIX] Provera abort signala u fallback modu
                 if (q.signal?.aborted) {
                     q.reject(makeAbortError());
                     return;

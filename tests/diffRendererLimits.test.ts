@@ -1,4 +1,5 @@
 // tests/diffRendererLimits.test.ts
+
 import { describe, it, expect } from "vitest";
 import { renderInteractiveDiffHtml } from "../src/taskpane/app/preview/diffRenderer";
 import { InteractiveDiff } from "../src/shared/diff/interactive";

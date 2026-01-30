@@ -1,4 +1,5 @@
 // src/core/rules.ts
+
 export const ALWAYS_LATIN = [
     // --- BRENDOVI I TEHNOLOGIJE ---
     "iPhone",

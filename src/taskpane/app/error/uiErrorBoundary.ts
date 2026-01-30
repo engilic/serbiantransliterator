@@ -1,4 +1,5 @@
 // src/taskpane/app/error/uiErrorBoundary.ts
+
 import { logger } from "../telemetry/logger";
 
 export function initGlobalErrorBoundary() {

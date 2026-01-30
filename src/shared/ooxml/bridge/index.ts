@@ -1,4 +1,5 @@
 // src/shared/ooxml/bridge/index.ts
+
 export { bridgeLinksAcrossTextNodes } from "./lexical/links";
 export { bridgeAlwaysLatinTokensAcrossTextNodes, bridgeExactTokensAcrossTextNodes } from "./lexical/tokens";
 export { buildPhraseInfos, bridgePhrasesAcrossTextNodes, type PhraseInfo } from "./lexical/phrases";

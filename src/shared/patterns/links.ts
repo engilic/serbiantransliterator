@@ -1,4 +1,5 @@
 // src/shared/patterns/links.ts
+
 import { BALANCED_CLOSERS, CLOSER_TO_OPENER, PUNCTUATION_END_REGEX } from "./common";
 
 // =========================

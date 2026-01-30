@@ -1,5 +1,7 @@
-/* global Word */
 // src/taskpane/app/word/chunking.ts
+
+/* global Word */
+
 import { type OoxmlOptions, type ConvertStats } from "../../../shared/ooxml/convertOoxml";
 import { setStatus, setProgress } from "../status";
 import { t } from "../../../shared/i18n";

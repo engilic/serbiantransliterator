@@ -1,4 +1,5 @@
 // src/taskpane/app/settings/defaults.ts
+
 import type { UiSettings } from "../types";
 
 export const SETTINGS_KEY = "serbiantransliterator.settings.v2";

@@ -1,8 +1,5 @@
-﻿// tests-e2e/taskpane.spec.ts
 // tests-e2e/taskpane.spec.ts
-// tests-e2e/taskpane.spec.ts
-// tests-e2e/taskpane.spec.ts
-// tests-e2e/taskpane.spec.ts
+
 import { test, expect } from "@playwright/test";
 
 const LANG_KEY = "serbiantransliterator.ui.lang";

@@ -1,3 +1,5 @@
+// src/wasm-core/src/dictionary.rs
+
 use std::collections::HashMap;
 use std::sync::Mutex;
 use once_cell::sync::Lazy;
