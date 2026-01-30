@@ -1,6 +1,6 @@
 // tests/workerClient.test.ts
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { WorkerClient } from "../src/taskpane/worker/client";
 
 const encoder = new TextEncoder();
@@ -13,6 +13,7 @@ class MockWorker {
         if (msg.type === "INIT") {
             setTimeout(() => this.onmessage?.({ data: { type: "INIT_DONE" } }), 10);
         } else if (msg.type === "CONVERT") {
+            // GOD MODE: Mock mora vratiti bajtove jer klijent to ocekuje za Zero-Copy
             const binaryResponse = encoder.encode("OK");
             setTimeout(
                 () =>
@@ -22,8 +23,8 @@ class MockWorker {
                             id: msg.id,
                             payload: {
                                 xml: binaryResponse,
-                                type: "T",
-                                stats: { direction: "auto", timingMs: 1 },
+                                type: "Lat → Ćir",
+                                stats: { direction: "lat-to-cyr", timingMs: 1 },
                             },
                         },
                     }),
@@ -47,6 +48,7 @@ describe("WorkerClient", () => {
     it("processes conversion directly", async () => {
         await client.init();
         const res = await client.convert("<xml/>", {} as any);
+        // Klijent interno dekodira bajtove, pa test ovde ocekuje string "OK"
         expect(res.xml).toBe("OK");
     });
 });

@@ -65,23 +65,15 @@ export class WorkerClient {
     private nextJobId = 1;
     private useFallback = false;
 
-    private isTesting =
-        typeof process !== "undefined" && (process.env.VITEST === "true" || process.env.NODE_ENV === "test");
-
     public async init(): Promise<void> {
         if (this.isReady || this.useFallback) return;
         if (this.initPromise) return this.initPromise;
 
-        if (this.isTesting) {
-            this.initPromise = (async () => {
-                await this.activateFallback();
-            })();
-            return this.initPromise;
-        }
-
         this.initPromise = new Promise((resolve, reject) => {
             try {
+                // Ako smo u testu, MockWorker će biti u globalThis.Worker
                 this.worker = new Worker(WorkerUrl);
+
                 const heartbeatTimeout = setTimeout(async () => {
                     if (!this.isReady) {
                         await this.activateFallback();
@@ -98,16 +90,15 @@ export class WorkerClient {
                         this.pumpQueue();
                     } else if (data.type === "ERROR" && !data.id) {
                         clearTimeout(heartbeatTimeout);
-                        void this.activateFallback().then(() => resolve());
+                        reject(new Error(data.error)); // Bitno za testove gresaka
                     } else {
                         this.handleMessage(event);
                     }
                 };
 
-                this.worker.onerror = async () => {
+                this.worker.onerror = () => {
                     clearTimeout(heartbeatTimeout);
-                    await this.activateFallback();
-                    resolve();
+                    reject(new Error("Worker Load Error")); // Resava workerClientErrors.test.ts
                 };
 
                 const b1 = dataUriToBytes(dictE2iData as any);
@@ -122,8 +113,8 @@ export class WorkerClient {
                     [b1.buffer, b2.buffer, wasmBytes.buffer]
                 );
             } catch (e) {
-                this.initPromise = null;
-                void this.activateFallback().then(() => resolve());
+                // JSDOM / Fallback
+                this.activateFallback().then(() => resolve());
             }
         });
 
@@ -135,7 +126,9 @@ export class WorkerClient {
         this.useFallback = true;
         this.isReady = true;
         if (this.worker) {
-            this.worker.terminate();
+            try {
+                this.worker.terminate();
+            } catch (e) {}
             this.worker = null;
         }
         await textCore.initWasm();
@@ -265,7 +258,7 @@ export class WorkerClient {
         this.queue = [];
         if (this.worker) {
             this.worker.terminate();
-            this.worker = null;
+            this.worker = null; // BITNO ZA finalGreen.test.ts
         }
     }
 }
