@@ -3,6 +3,7 @@ import "core-js/stable";
 import "regenerator-runtime/runtime";
 
 if (typeof TextEncoder === "undefined") {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { TextEncoder, TextDecoder } = require("util");
     globalThis.TextEncoder = TextEncoder;
     globalThis.TextDecoder = TextDecoder;
@@ -19,13 +20,23 @@ const decoder = new TextDecoder();
 
 function initWasm(payload: { dictE2i: Uint8Array; dictI2e: Uint8Array; wasmModule: Uint8Array }) {
     try {
-        const wasmModule = new WebAssembly.Module(payload.wasmModule);
-        (wasmPkg as any).initSync(wasmModule);
+        // [FIX]: Dodat "as any" cast da se izbegne TS2345 (SharedArrayBuffer vs ArrayBuffer)
+        const wasmModule = new WebAssembly.Module(payload.wasmModule as any);
+
+        const pkg = wasmPkg as any;
+
+        // 1. Inicijalizuj WASM unutar paketa
+        pkg.initSync(wasmModule);
+
+        // 2. Prosledi wrappere u core modul
         textCore.setWasmModule(wasmPkg);
 
+        // 3. Učitaj rečnike
         const wrapper = wasmPkg as any;
         wrapper.load_dictionary_bin("e2i", payload.dictE2i);
         wrapper.load_dictionary_bin("i2e", payload.dictI2e);
+
+        // Inicijalizuj replacer
         wrapper.init_replacer("{}");
 
         postReply({ type: "INIT_DONE" });
@@ -36,12 +47,12 @@ function initWasm(payload: { dictE2i: Uint8Array; dictI2e: Uint8Array; wasmModul
 
 function handleConvert(id: string, xmlData: string | Uint8Array, options: OoxmlOptions) {
     try {
-        // GOD MODE: Dekodiranje primljenih bajtova
+        // GOD MODE: Dekodiranje primljenih bajtova u string
         const xmlString = typeof xmlData !== "string" ? decoder.decode(xmlData) : xmlData;
 
         const res = convertOoxml(xmlString, options);
 
-        // Enkodiranje rezultata u bajtove za brz povratak
+        // GOD MODE: Enkodiranje rezultata u bajtove za Zero-Copy transfer nazad
         const resultXmlBytes = encoder.encode(res.xml);
 
         postReply(
@@ -55,7 +66,7 @@ function handleConvert(id: string, xmlData: string | Uint8Array, options: OoxmlO
                 },
             },
             [resultXmlBytes.buffer]
-        ); // Transfer nazad
+        ); // Transfer nazad u Main Thread
     } catch (e) {
         postReply({ type: "ERROR", id, error: e instanceof Error ? e.message : String(e) });
     }
