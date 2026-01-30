@@ -1,4 +1,5 @@
 // src/taskpane/app/settings/getters.ts
+
 import type { UiSettings, DirectionUi, ProfilePreset, DialectUi, AppTheme } from "../types";
 import type { OoxmlOptions } from "../../../shared/ooxml/convertOoxml";
 import { state } from "../state";

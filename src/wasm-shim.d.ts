@@ -1,4 +1,5 @@
 // src/wasm-shim.d.ts
+
 declare module "*/wasm-core/pkg" {
     export function to_cyrillic(text: string): string;
     export function to_latin(text: string): string;

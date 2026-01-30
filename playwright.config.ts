@@ -1,7 +1,5 @@
 // playwright.config.ts
-// playwright.config.ts
-// playwright.config.ts
-// playwright.config.ts
+
 import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
@@ -14,7 +12,7 @@ export default defineConfig({
         baseURL: "http://127.0.0.1:4173",
     },
     webServer: {
-        // Playwright će startovati server pre testova. <!--citation:1-->
+        // Playwright Ä‡e startovati server pre testova. <!--citation:1-->
         command: "npm run serve:dist",
         port: 4173,
         reuseExistingServer: !process.env.CI,

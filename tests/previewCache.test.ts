@@ -1,4 +1,5 @@
 // tests/previewCache.test.ts
+
 import { describe, it, expect } from "vitest";
 import { state } from "../src/taskpane/app/state";
 import { invalidatePreviewCache } from "../src/taskpane/app/preview/cache";

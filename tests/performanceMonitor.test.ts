@@ -1,4 +1,5 @@
 // tests/performanceMonitor.test.ts
+
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { PerformanceMonitor } from "../src/taskpane/app/telemetry/performanceMonitor";
 

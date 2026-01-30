@@ -1,4 +1,5 @@
 // src/shared/patterns/common.ts
+
 /**
  * Znakovi interpunkcije koji se često lepe za kraj URL-a ili reči,
  * a ne želimo da budu deo linka.

@@ -1,4 +1,5 @@
 // tests/settingsStoreSafe.test.ts
+
 import { describe, it, expect } from "vitest";
 import { loadSettingsFromStorage, saveSettingsToStorage } from "../src/taskpane/app/settings/store";
 import { DEFAULT_SETTINGS } from "../src/taskpane/app/settings/defaults";

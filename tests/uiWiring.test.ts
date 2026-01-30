@@ -1,4 +1,5 @@
 // tests/uiWiring.test.ts
+
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { initUi } from "../src/taskpane/app/settings/ui";
 import { runSmart } from "../src/taskpane/app/word/apply";

@@ -1,8 +1,7 @@
+// webpack.prod.js
+
 /* eslint-disable no-undef */
-// webpack.prod.js
-// webpack.prod.js
-// webpack.prod.js
-// webpack.prod.js
+
 const TerserPlugin = require("terser-webpack-plugin");
 const CompressionPlugin = require("compression-webpack-plugin");
 
@@ -17,7 +16,7 @@ module.exports = {
             new TerserPlugin({
                 parallel: true,
                 extractComments: false,
-                // [FIX] Isključi minifikaciju za velike binarne fajlove
+                // [FIX] IskljuÄi minifikaciju za velike binarne fajlove
                 exclude: /\/node_modules\/|.*\.bin\.js/,
                 terserOptions: {
                     compress: {
@@ -37,7 +36,7 @@ module.exports = {
         splitChunks: {
             chunks: "all",
             minSize: 20000,
-            maxSize: 500000, // Veći chunkovi za rečnike
+            maxSize: 500000, // VeÄ‡i chunkovi za reÄnike
             cacheGroups: {
                 vendors: {
                     test: /[\\/]node_modules[\\/]/,

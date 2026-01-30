@@ -1,4 +1,5 @@
 // src/taskpane/app/index.ts
+
 export { initTaskpane } from "./init";
 
 // Optional convenience exports

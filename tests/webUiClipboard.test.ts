@@ -1,4 +1,5 @@
 // tests/webUiClipboard.test.ts
+
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { initWebModeUi } from "../src/taskpane/app/web/ui";
 import { convertPlainText } from "../src/core/textCore";

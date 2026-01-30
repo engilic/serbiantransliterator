@@ -1,4 +1,5 @@
 // src/shared/ooxml/bridge/lexical/tokens.ts
+
 import { ALWAYS_LATIN_TOKENS_BRIDGE } from "../../../../core/rules";
 import { findNextNodeWithText, trailingTokenFragment, isTokenChar, normKey } from "../../common";
 

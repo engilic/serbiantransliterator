@@ -1,4 +1,5 @@
 <!-- src/taskpane/components/modals/confirm-modal.html -->
+
 <div
     id="modalOverlay"
     class="modal-overlay"
@@ -6,16 +7,21 @@
     aria-modal="true"
     aria-labelledby="modalTitle"
     aria-describedby="modalText"
+    aria-hidden="true"
+    style="display: none"
 >
     <div id="modal" class="modal">
-        <h2 id="modalTitle"></h2>
+        <h2 id="modalTitle">Obaveštenje</h2>
         <div class="modal-content">
-            <div id="modalText"></div>
-            <textarea id="modalInput" rows="5"></textarea>
+            <div id="modalText">Molimo potvrdite akciju.</div>
+            <!-- FIX: Dodata labela za Screen Readere -->
+            <label for="modalInput" class="visually-hidden">Unos teksta</label>
+            <textarea id="modalInput" rows="5" placeholder="Unesite tekst ovde..."></textarea>
         </div>
         <div class="modal-actions">
-            <button id="modalCancel" class="secondary-btn" type="button"></button>
-            <button id="modalOk" class="primary-btn" type="button"></button>
+            <!-- FIX: Dugmad više nisu prazna na startu -->
+            <button id="modalCancel" class="secondary-btn" type="button">Otkaži</button>
+            <button id="modalOk" class="primary-btn" type="button">U redu</button>
         </div>
     </div>
 </div>

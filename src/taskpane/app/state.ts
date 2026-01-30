@@ -1,4 +1,5 @@
 // src/taskpane/app/state.ts
+
 import type { UiSettings, PreviewState, ProfilePreset } from "./types";
 import { DEFAULT_SETTINGS } from "./settings/defaults";
 import type { InteractiveDiff } from "../../shared/diff/interactive";

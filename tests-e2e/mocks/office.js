@@ -1,8 +1,7 @@
+// tests-e2e/mocks/office.js
+
 /* global window */
-// tests-e2e/mocks/office.js
-// tests-e2e/mocks/office.js
-// tests-e2e/mocks/office.js
-// tests-e2e/mocks/office.js
+
 window.Office = {
     HostType: { Word: "Word" },
     EventType: { DocumentSelectionChanged: "DocumentSelectionChanged" },
@@ -23,7 +22,7 @@ window.Office = {
         displayLanguage: "sr-Latn-RS",
     },
     onReady: function (callback) {
-        // Simuliramo kašnjenje mreže da bi bilo realnije
+        // Simuliramo kaÅ¡njenje mreÅ¾e da bi bilo realnije
         setTimeout(function () {
             callback({ host: "Word" });
         }, 50);
