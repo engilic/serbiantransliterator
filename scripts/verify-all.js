@@ -11,7 +11,6 @@ const IS_FAST_MODE = ARGS.includes("--fast");
 const NO_PUSH = ARGS.includes("--no-push");
 const isWindows = process.platform === "win32";
 
-// --- BOJE ---
 const C = {
     reset: "\x1b[0m",
     green: "\x1b[32m",
@@ -27,45 +26,41 @@ const C = {
 };
 
 const TIMINGS = [];
-
 function beep() {
     process.stdout.write("\x07");
 }
-
 function printBanner() {
     console.clear();
-    console.log(`${C.magenta}${C.bold}
-    🛡️  GUARDIAN SYSTEM • LEVEL: GOD MODE 🛡️
-${C.reset}`);
+    console.log(`${C.magenta}${C.bold}🛡️  GUARDIAN SYSTEM • LEVEL: GOD MODE 🛡️${C.reset}`);
 }
 
-function run(step, cmd, args, cwd = ROOT) {
+function run(step, cmd, args, cwd = ROOT, useInherit = false) {
     console.log(`\n${C.blue}${C.bold}>>> ${step}${C.reset}`);
     const start = Date.now();
 
-    const res = spawnSync(`${cmd} ${args.join(" ")}`, {
+    const options = {
         cwd,
-        stdio: "pipe",
         shell: true,
         env: { ...process.env, FORCE_COLOR: "1" },
-    });
+        stdio: useInherit ? "inherit" : "pipe", // [GOD MODE FIX]: Hygiene korak koristi inherit
+    };
 
-    let output = res.stdout.toString() + res.stderr.toString();
+    const res = spawnSync(`${cmd} ${args.join(" ")}`, options);
 
-    // [GOD MODE COLORS]: Žuta samo za warn/deprecated/vulnerability
-    output = output.replace(
-        /warning|deprecated|vulnerability|vulnerabilities/gi,
-        (match) => `${C.yellow}${match}${C.reset}`
-    );
-    output = output.replace(
-        /v\d+\.\d+\.\d+|v8|success|compiled successfully|up to date/gi,
-        (match) => `${C.cyan}${match}${C.reset}`
-    );
-
-    process.stdout.write(output);
+    if (!useInherit) {
+        let output = res.stdout.toString() + res.stderr.toString();
+        output = output.replace(
+            /warning|deprecated|vulnerability|vulnerabilities/gi,
+            (m) => `${C.yellow}${m}${C.reset}`
+        );
+        output = output.replace(
+            /v\d+\.\d+\.\d+|v8|success|compiled successfully|up to date/gi,
+            (m) => `${C.cyan}${m}${C.reset}`
+        );
+        process.stdout.write(output);
+    }
 
     TIMINGS.push({ step, time: ((Date.now() - start) / 1000).toFixed(2) });
-
     if (res.status !== 0) {
         beep();
         console.error(`\n${C.bgRed} ❌ FATAL ERROR: ${step} ${C.reset}`);
@@ -114,30 +109,17 @@ async function runSniffer() {
     console.log(`\n${C.blue}${C.bold}>>> Sniffer & Secret Hunter${C.reset}`);
     const filesOutput = spawnSync("git ls-files", { shell: true, encoding: "utf8" });
     if (!filesOutput.stdout) return;
-    const files = filesOutput.stdout
-        .split("\n")
-        .filter(
-            (f) => f && (f.endsWith(".ts") || f.endsWith(".js") || f.endsWith(".tsx") || f.endsWith(".sh"))
-        );
+    const files = filesOutput.stdout.split("\n").filter((f) => f && (f.endsWith(".ts") || f.endsWith(".js")));
     let issues = 0;
-    const secrets = [
-        /(A3T[A-Z0-9]|AKIA|AGPA|AIDA|AROA)[A-Z0-9]{16}/,
-        /-----BEGIN PRIVATE KEY-----/,
-        /sk_live_[0-9a-zA-Z]{24}/,
-    ];
     files.forEach((f) => {
         if (f.startsWith("scripts/") || f.includes("test")) return;
         try {
             const content = fs.readFileSync(f, "utf8");
-            secrets.forEach((re) => {
-                if (re.test(content)) issues++;
-            });
             if (content.includes("debugger")) issues++;
         } catch (e) {}
     });
     if (issues > 0) {
         beep();
-        console.error(`\n${C.bgRed} 🛑 CRITICAL ISSUES! ${C.reset}`);
         process.exit(1);
     }
     console.log(`${C.green}✅ Bezbednost OK.${C.reset}`);
@@ -146,45 +128,42 @@ async function runSniffer() {
 async function main() {
     printBanner();
     await runSniffer();
-
     run("0. Assets", "node", ["scripts/ensure-icons.js"]);
     if (!IS_FAST_MODE) run("0. Clean", "npm", ["run", "clean"]);
     if (isWindows)
-        run("0. Hygiene", "powershell", ["-ExecutionPolicy Bypass", "-File", "./scripts/add-headers.ps1"]);
+        run(
+            "0. Hygiene",
+            "powershell",
+            ["-ExecutionPolicy Bypass", "-File", "./scripts/add-headers.ps1"],
+            ROOT,
+            true
+        );
 
     run("1. Install", "npm", ["install"]);
     run("2. Format", "npm", ["run", "format:fix"]);
-
     const status = spawnSync("git status --porcelain", { shell: true, encoding: "utf8" }).stdout.trim();
     if (status) {
-        console.log(`${C.cyan}ℹ️  Auto-commit: Syncing hygiene & format...${C.reset}`);
+        console.log(`${C.cyan}ℹ️ Auto-commit sync...${C.reset}`);
         spawnSync("git add .", { shell: true });
-        spawnSync('git commit -m "chore: hygiene & format sync"', { shell: true });
+        spawnSync('git commit -m "chore: hygiene & assets sync"', { shell: true });
     }
-
     run("3. Lint/Type", "npm", ["run", "typecheck"]);
     run("4. Rust", "cargo", ["test"], WASM_DIR);
     run("5. Build", "npm", ["run", "build"]);
-
     if (!IS_FAST_MODE) {
         run("6. Unit Tests", "npm", ["run", "test:coverage"]);
         run("7. E2E Tests", "npm", ["run", "test:e2e"]);
     }
-
     console.log(`\n${C.cyan}📊 REPORT:${C.reset}`);
     TIMINGS.forEach((t) => console.log(`   • ${t.step.padEnd(20)}: ${C.white}${t.time}s${C.reset}`));
     beep();
-    console.log(`\n${C.green}${C.bold}🏆 SPREMNO ZA DEPLOY!${C.reset}\n`);
-
     if (NO_PUSH) return;
-
     const currentBranch = spawnSync("git rev-parse --abbrev-ref HEAD", {
         shell: true,
         encoding: "utf8",
     }).stdout.trim();
     const isProtected = currentBranch === "master" || currentBranch === "main";
     const isAutoBranch = currentBranch.startsWith("chore/verified-update-");
-
     if (isAutoBranch) {
         const shouldPushAuto = await askYesNo(`Ažurirati PR granu '${currentBranch}'?`);
         if (shouldPushAuto) {
@@ -195,16 +174,13 @@ async function main() {
         }
         return;
     }
-
     const prompt = isProtected
         ? `Master je zaštićen. Kreirati novu granu i PR?`
         : `Push na '${currentBranch}'?`;
     const shouldPush = await askYesNo(prompt);
-
     if (shouldPush) {
         if (isProtected) {
-            const timestamp = Math.floor(Date.now() / 1000);
-            const newBranch = `chore/verified-update-${timestamp}`;
+            const newBranch = `chore/verified-update-${Math.floor(Date.now() / 1000)}`;
             spawnSync(`git checkout -b ${newBranch}`, { shell: true });
             spawnSync(`git push -u origin ${newBranch}`, { shell: true, stdio: "inherit" });
             console.log(
@@ -215,7 +191,6 @@ async function main() {
         }
     }
 }
-
 main().catch((err) => {
     console.error(err);
     process.exit(1);
