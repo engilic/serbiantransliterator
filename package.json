@@ -54,7 +54,7 @@
         "cross-env": "10.1.0",
         "css-loader": "7.1.2",
         "eslint": "8.57.1",
-        "eslint-plugin-office-addins": "3.0.3",
+        "eslint-plugin-office-addins": "latest",
         "fast-check": "4.5.3",
         "html-loader": "5.1.0",
         "html-webpack-plugin": "5.6.0",
@@ -69,6 +69,8 @@
         "office-addin-manifest": "latest",
         "prettier": "3.2.5",
         "rimraf": "6.1.2",
+        "standard-version": "9.5.0",
+        "terser-webpack-plugin": "5.3.11",
         "typescript": "5.4.5",
         "vitest": "3.2.4",
         "wait-on": "7.2.0",
@@ -79,6 +81,11 @@
         "ts-loader": "9.5.1",
         "@typescript-eslint/eslint-plugin": "7.18.0",
         "@typescript-eslint/parser": "7.18.0"
+    },
+    "lint-staged": {
+        "**/*.{ts,js,cjs,mjs,json,css,md,html}": [
+            "prettier --write"
+        ]
     },
     "overrides": {
         "eslint": "8.57.1",
