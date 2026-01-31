@@ -30,7 +30,7 @@ function trySh(cmd, { stdio = "pipe" } = {}) {
 
 function escArg(s) {
     if (/^[a-zA-Z0-9._/-]+$/.test(s)) return s;
-    return `"${String(s).replace(/"/g, '\\"')}"`;
+    return `"${String(s).replace(/[\\"]/g, "\\$&")}"`;
 }
 
 const ANSI = {
