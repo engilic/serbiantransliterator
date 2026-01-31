@@ -1,4 +1,5 @@
 // tests/settingsUI.test.ts
+
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { initUi } from "../src/taskpane/app/settings/ui";
 

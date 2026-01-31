@@ -1,4 +1,5 @@
 // tests/applyManualAndCache.test.ts
+
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { applyFromPreview } from "../src/taskpane/app/word/apply";
 import { state } from "../src/taskpane/app/state";

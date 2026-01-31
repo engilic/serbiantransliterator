@@ -1,4 +1,5 @@
 // tests/ooxmlTokenBranchesCoverage.test.ts
+
 import { describe, it, expect } from "vitest";
 import { bridgeExactTokensAcrossTextNodes } from "../src/shared/ooxml/bridge";
 

@@ -1,4 +1,5 @@
 // tests/__mocks__/wasm-core-pkg.js
+
 export const to_cyrillic = (t) => t;
 export const to_latin = (t) => t;
 export const convert_dialect = (t, _m) => t;

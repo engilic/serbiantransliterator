@@ -1,4 +1,5 @@
 // src/taskpane/app/telemetry/logger.ts
+
 import { addLog, getAllLogs } from "./db";
 
 export type LogLevel = "info" | "warn" | "error";

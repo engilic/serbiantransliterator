@@ -1,4 +1,5 @@
 // src/taskpane/app/telemetry/performanceMonitor.ts
+
 import { logger } from "./logger";
 
 export interface PerformanceEntry {

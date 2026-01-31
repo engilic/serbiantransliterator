@@ -1,4 +1,5 @@
 // src/shared/ooxml/bridge/lexical/links.ts
+
 import { findNextNodeWithText, trailingLinkFragment, isLinkChar, normKey, getCpArray } from "../../common";
 
 import { LINK_PATTERNS_ANCHORED, trimLinkEnd, looksLikeLinkStart } from "../../../patterns/links";

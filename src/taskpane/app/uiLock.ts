@@ -1,4 +1,5 @@
 // src/taskpane/app/uiLock.ts
+
 import { checkSelectionAndUpdateButtons } from "./selection";
 import { state } from "./state";
 import { setProgress } from "./status";

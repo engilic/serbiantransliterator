@@ -1,4 +1,5 @@
 // tests/uiCurlyProtectionEndToEnd.test.ts
+
 import { describe, it, expect, beforeEach } from "vitest";
 import { state } from "../src/taskpane/app/state";
 import { getOoxmlOptionsFromUi } from "../src/taskpane/app/settings/getters";

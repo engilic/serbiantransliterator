@@ -1,4 +1,5 @@
 // src/shared/storage/safeLocalStorage.ts
+
 /**
  * Defensive wrapper oko localStorage.
  *

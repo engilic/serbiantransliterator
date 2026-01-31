@@ -1,4 +1,5 @@
 // tests/previewModalSmoke.test.ts
+
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { state } from "../src/taskpane/app/state";
 import { showPreviewToast, renderPreviewMode } from "../src/taskpane/app/modal/previewModal";

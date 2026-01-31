@@ -1,4 +1,5 @@
 // tests/protectBracesPlain.test.ts
+
 import { describe, it, expect } from "vitest";
 import { convertPlainText } from "../src/core/textCore";
 

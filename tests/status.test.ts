@@ -1,4 +1,5 @@
 // tests/status.test.ts
+
 import { describe, it, expect, beforeEach } from "vitest";
 import { setStatus, setProgress, refreshStats } from "../src/taskpane/app/status";
 import { state } from "../src/taskpane/app/state";

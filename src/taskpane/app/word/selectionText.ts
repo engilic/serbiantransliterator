@@ -1,4 +1,5 @@
 // src/taskpane/app/word/selectionText.ts
+
 export type SelectionTextAnalysis = {
     raw: string;
     trimmed: string;

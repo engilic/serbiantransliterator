@@ -1,4 +1,8 @@
+#!/usr/bin/env node
 // scripts/release.js
+
+"use strict";
+
 const { spawnSync, execSync } = require("child_process");
 const fs = require("fs");
 const path = require("path");
@@ -8,8 +12,8 @@ const EXTENSION_NAME = "Serbian Transliterator";
 const FILES_TO_UPDATE = [
     "package.json",
     "src/wasm-core/Cargo.toml", // Rust
-    "manifest.xml", // Dev manifest
-    "manifest.prod.xml", // Prod manifest
+    "manifest.xml", // Dev
+    "manifest.prod.xml", // Prod
 ];
 
 // --- ANSI COLORS ---
@@ -20,6 +24,7 @@ const C = {
     red: "\x1b[31m",
     blue: "\x1b[34m",
     cyan: "\x1b[36m",
+    magenta: "\x1b[35m",
     bold: "\x1b[1m",
     gray: "\x1b[90m",
     white: "\x1b[97m",
@@ -30,7 +35,6 @@ function beep() {
 }
 
 function printBanner() {
-    console.clear();
     console.log(`${C.cyan}${C.bold}
                                          
    🚀 RELEASE COMMANDER • INTELLIGENT SYNC
@@ -40,6 +44,7 @@ ${C.reset}`);
 async function askSelection(opts) {
     return new Promise((resolve) => {
         let idx = 0;
+
         const render = () => {
             console.clear();
             printBanner();
@@ -60,9 +65,8 @@ async function askSelection(opts) {
         render();
 
         process.stdin.on("data", (key) => {
-            if (key === "\u0003") {
-                process.exit(0);
-            }
+            if (key === "\u0003") process.exit(0);
+
             if (key === "\u001b[A") {
                 idx = idx > 0 ? idx - 1 : opts.length - 1;
                 render();
@@ -80,9 +84,9 @@ async function askSelection(opts) {
 
 async function askYesNo(q) {
     return new Promise((r) => {
-        console.log(`\n${C.magenta}❓ ${q} ${C.gray}(Y/n)${C.reset}`);
+        console.log(`\n${C.magenta}❓ ${q}${C.reset}`);
         console.log(
-            `   ${C.white}[${C.green}BACKSPACE / ⬅ / Enter${C.white}] = DA   |   [${C.red}DEL / ➔ / Esc${C.white}] = NE${C.reset}`
+            `   ${C.green}[BACKSPACE / ⬅ / Enter / Y] = ✔ YES${C.reset}    |   ${C.red}[DEL / ➔ / Esc / N] = ✖ NO${C.reset}`
         );
 
         process.stdin.setRawMode(true);
@@ -92,30 +96,30 @@ async function askYesNo(q) {
         const l = (k) => {
             if (k === "\u0003") process.exit(1);
 
-            // DA: y, Y, Enter, Backspace, Levo
             if (
                 k === "y" ||
                 k === "Y" ||
                 k === "\r" ||
+                k === "\n" ||
                 k === "\u007f" ||
                 k === "\u0008" ||
                 k === "\u001b[D"
             ) {
-                process.stdout.write(`${C.green} ✔ DA${C.reset}\n`);
+                process.stdout.write(`${C.green}✔ YES${C.reset}\n`);
                 cleanup(true);
-            }
-            // NE: n, N, Esc, Delete, Desno
-            else if (k === "n" || k === "N" || k === "\u001b" || k === "\u001b[3~" || k === "\u001b[C") {
-                process.stdout.write(`${C.red} ✖ NE${C.reset}\n`);
+            } else if (k === "n" || k === "N" || k === "\u001b" || k === "\u001b[3~" || k === "\u001b[C") {
+                process.stdout.write(`${C.red}✖ NO${C.reset}\n`);
                 cleanup(false);
             }
         };
+
         const cleanup = (res) => {
             process.stdin.setRawMode(false);
             process.stdin.pause();
             process.stdin.removeListener("data", l);
             r(res);
         };
+
         process.stdin.on("data", l);
     });
 }
@@ -172,13 +176,14 @@ function updateChangelog(newVer) {
     let lastTag = "";
     try {
         lastTag = execSync("git describe --tags --abbrev=0 2>/dev/null").toString().trim();
-    } catch (e) {}
+    } catch {}
+
     const range = lastTag ? `${lastTag}..HEAD` : "HEAD";
 
     let logs = "";
     try {
         logs = execSync(`git log ${range} --pretty=format:"- %s (%h)"`).toString();
-    } catch (e) {
+    } catch {
         logs = "- Initial release";
     }
 

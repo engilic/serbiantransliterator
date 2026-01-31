@@ -1,4 +1,5 @@
 // tests/fuzz/core.fuzz.test.ts
+
 import { describe, it, expect } from "vitest";
 import fc from "fast-check";
 import { convertPlainText } from "../../src/core/textCore";

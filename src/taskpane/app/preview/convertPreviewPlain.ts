@@ -1,4 +1,5 @@
 // src/taskpane/app/preview/convertPreviewPlain.ts
+
 import { convertPlainText, type Direction } from "../../../core/textCore";
 import { createInitialCodeState, transformTextRespectingCode } from "../../../shared/ooxml/code";
 // UKLONJENI importi: formatSerbianDates, removeMultipleSpaces, toAscii

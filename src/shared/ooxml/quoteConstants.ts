@@ -1,4 +1,5 @@
 // src/shared/ooxml/quoteConstants.ts
+
 export const QUOTE_VARIANTS_RE =
     /[\u201C\u201D\u2018\u2019\u00AB\u00BB\u201E\u201F\u201A\u201B\u2039\u203A]/g;
 
