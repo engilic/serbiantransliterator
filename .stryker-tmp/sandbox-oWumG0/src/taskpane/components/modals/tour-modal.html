@@ -1,0 +1,28 @@
+<!-- src/taskpane/components/modals/tour-modal.html -->
+
+<div
+    id="tourOverlay"
+    class="tour-overlay"
+    style="display: none"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="tourTitle"
+    aria-describedby="tourText"
+    aria-hidden="true"
+>
+    <div class="tour-card">
+        <button id="tourCloseBtn" class="tour-close" data-i18n-attr="title:btn_close,aria-label:btn_close">
+            &times;
+        </button>
+        <div class="tour-image" aria-hidden="true">
+            <div id="tourIcon" class="tour-icon">&#x1F44B;</div>
+        </div>
+        <!-- FIX: Elementi nisu prazni na startu -->
+        <h2 id="tourTitle">Dobrodošli</h2>
+        <p id="tourText">Upoznajte se sa Serbian Transliteratorom.</p>
+        <div class="tour-footer">
+            <div class="tour-dots" id="tourDots" aria-hidden="true"></div>
+            <button id="tourActionBtn" class="primary-btn">Dalje</button>
+        </div>
+    </div>
+</div>

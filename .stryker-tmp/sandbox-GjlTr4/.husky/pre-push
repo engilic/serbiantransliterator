@@ -1,0 +1,31 @@
+#!/bin/sh
+
+echo "🛡️  Running Pre-Push Checks..."
+
+# 1. Proveri TypeScript
+echo "🔍 Checking Types..."
+npm run typecheck
+if [ $? -ne 0 ]; then
+ echo "❌ Typecheck failed. Push aborted."
+ exit 1
+fi
+
+# 2. Proveri Unit Testove
+echo "🧪 Running Unit Tests..."
+npm test
+if [ $? -ne 0 ]; then
+ echo "❌ Tests failed. Push aborted."
+ exit 1
+fi
+
+# 3. Proveri Rust Testove
+echo "🦀 Running Rust Tests..."
+# Koristimo subshell () da ne menjamo direktorijum trajno
+(cd src/wasm-core && cargo test)
+if [ $? -ne 0 ]; then
+ echo "❌ Rust Tests failed. Push aborted."
+ exit 1
+fi
+
+echo "✅ All checks passed. Pushing..."
+exit 0

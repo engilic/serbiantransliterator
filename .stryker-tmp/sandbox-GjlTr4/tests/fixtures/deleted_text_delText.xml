@@ -1,0 +1,14 @@
+<!-- tests/fixtures/deleted_text_delText.xml -->
+
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:p>
+      <w:del w:author="x" w:date="2026-01-01T00:00:00Z">
+        <w:r>
+          <w:delText>Zdravo</w:delText>
+        </w:r>
+      </w:del>
+      <w:r><w:t> Zdravo</w:t></w:r>
+    </w:p>
+  </w:body>
+</w:document>

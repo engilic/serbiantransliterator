@@ -7,9 +7,6 @@
  * Centralni nadzorni sistem za Serbian Transliterator.
  * Upravlja kompletnim pipeline-om i garantuje stabilnost pre svakog push-a.
  *
- * [GOD MODE FIX]: Dodata prazna linija pre OK statusa radi preglednosti.
- * [GOD MODE FIX]: PERFEKTNO poravnanje u Finalnom izveštaju.
- *
  * Autor: Jugoslav Ilić
  */
 
@@ -25,6 +22,7 @@ const WASM_DIR = path.join(ROOT, "src", "wasm-core");
 const ARGS = process.argv.slice(2);
 const IS_FAST_MODE = ARGS.includes("--fast");
 const NO_PUSH = ARGS.includes("--no-push");
+const DO_MUTATION = ARGS.includes("--mutation") || ARGS.includes("--full");
 const isWindows = process.platform === "win32";
 
 // --- 3. ANSI BOJE (God Mode Paleta - Optimizovano za kontrast) ---
@@ -275,6 +273,13 @@ async function main() {
     if (!IS_FAST_MODE) {
         run("6. Unit Tests", "npm", ["run", "test:coverage"], ROOT, true);
         run("7. E2E Tests", "npm", ["run", "test:e2e"]);
+    }
+
+    // 8. MUTATION TESTING (GOD MODE CHECK)
+    if (DO_MUTATION) {
+        run("8. Mutation Test", "npm", ["run", "test:mutation"]);
+    } else if (!IS_FAST_MODE) {
+        console.log(`\n${C.gray}   ℹ️  Mutation Testing skipped (use --mutation to enable)${C.reset}`);
     }
 
     // --- [GOD MODE]: PERFEKTNI FINAL REPORT ---

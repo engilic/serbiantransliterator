@@ -1,0 +1,65 @@
+<!-- src/taskpane/components/settings/options.html -->
+
+<div id="optionsBox" class="accordion fade-in">
+    <button
+        id="optionsHeader"
+        class="accordion-header"
+        type="button"
+        aria-expanded="true"
+        aria-controls="optionsContent"
+    >
+        <div class="accordion-header-left">
+            <svg class="accordion-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                <path
+                    d="M17 7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h10c2.76 0 5-2.24 5-5s-2.24-5-5-5zm0 8c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3z"
+                />
+            </svg>
+            <span class="accordion-title" data-i18n="section_options"></span>
+        </div>
+        <svg class="accordion-chevron" viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z" />
+        </svg>
+    </button>
+
+    <div id="optionsContent" class="accordion-content open" style="padding: 15px">
+        <label>
+            <input type="checkbox" id="optConfirmWholeDoc" checked />
+            <span data-i18n="opt_confirm_whole_doc"></span>
+            <span class="icon-hint">⚠️</span>
+        </label>
+        <label>
+            <input type="checkbox" id="optIncludeHeadersFooters" />
+            <span data-i18n="opt_include_headers_footers"></span>
+            <span class="icon-hint">📄</span>
+        </label>
+        <label>
+            <input type="checkbox" id="optIncludeFootnotes" />
+            <span data-i18n="opt_include_footnotes"></span>
+            <span class="icon-hint">📝</span>
+        </label>
+        <label>
+            <input type="checkbox" id="optIncludeEndnotes" />
+            <span data-i18n="opt_include_endnotes"></span>
+            <span class="icon-hint">📑</span>
+        </label>
+        <label>
+            <input type="checkbox" id="optProtectBrands" checked />
+            <span data-i18n="opt_protect_brands"></span>
+            <span class="icon-hint">🛡️</span>
+        </label>
+        <label>
+            <input type="checkbox" id="optSerbianQuotes" checked />
+            <span data-i18n="opt_smart_quotes"></span>
+            <span class="icon-hint">„”</span>
+        </label>
+        <label>
+            <input type="checkbox" id="optPreserveCodeBlocks" checked />
+            <span data-i18n="opt_preserve_code_before"></span>
+            <code data-i18n="ui_inline_code_word"></code>
+            <span data-i18n="opt_preserve_code_between"></span>
+            <code data-i18n="ui_block_code_word"></code>
+            <span data-i18n="opt_preserve_code_after"></span>
+            <span class="icon-hint">💻</span>
+        </label>
+    </div>
+</div>

@@ -1,0 +1,15 @@
+<!-- tests/fixtures/sdt_content_split.xml -->
+
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:sdt>
+      <w:sdtContent>
+        <w:p>
+          <w:r><w:t>Kupio sam i</w:t></w:r>
+          <w:r><w:t>Phone</w:t></w:r>
+          <w:r><w:t> danas</w:t></w:r>
+        </w:p>
+      </w:sdtContent>
+    </w:sdt>
+  </w:body>
+</w:document>

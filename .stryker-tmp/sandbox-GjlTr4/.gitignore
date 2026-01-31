@@ -1,0 +1,46 @@
+# ===== Node / Build =====
+node_modules/
+dist/
+coverage/
+.vitest/
+*.tsbuildinfo
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+
+# ===== IDE / Editors =====
+.vs/
+.idea/
+
+# Visual Studio files
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.vsidx
+
+# ===== Office Add-in certs (ako ih ikad praviš lokalno) =====
+*.pfx
+
+# ===== Playwright =====
+playwright-report/
+test-results/
+
+# ===== AI generator output (local only) =====
+poruka_part*.txt
+fajlovi_za_ai_lista.txt
+
+# ===== Local security audit artifacts (local only) =====
+audit.json
+audit*.json
+
+# ===== Rust / WASM =====
+src/wasm-core/target/
+src/wasm-core/pkg/

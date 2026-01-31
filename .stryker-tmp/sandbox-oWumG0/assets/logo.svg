@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Nema vise <rect> pozadine, sada je transparentno -->
+  
+  <!-- Grupa za boju - Word Plava (#185ABD) -->
+  <g fill="#185ABD" stroke="#185ABD">
+    
+    <!-- Slova (pomerena ulevo: Ž=135, Ж=345) -->
+    <!-- Uklonio sam senku da bi se bolje videlo na malim dimenzijama (16px) -->
+    <g font-family="Segoe UI, Arial, sans-serif" font-weight="900" stroke="none">
+      <text x="135" y="295" font-size="220" text-anchor="middle">Ž</text>
+      <text x="345" y="295" font-size="220" text-anchor="middle">&#1046;</text>
+    </g>
+
+    <!-- Strelica (Fiksirana na sredini: 140 do 372) -->
+    <g stroke-width="26" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <!-- glavna linija -->
+      <path d="M140 368 H372"/>
+      <!-- leva glava -->
+      <path d="M140 368 L170 338"/>
+      <path d="M140 368 L170 398"/>
+      <!-- desna glava -->
+      <path d="M372 368 L342 338"/>
+      <path d="M372 368 L342 398"/>
+    </g>
+    
+  </g>
+</svg>

@@ -1,0 +1,75 @@
+name: CI
+
+on:
+    push:
+        branches: ["master"]
+    pull_request:
+        branches: ["master"]
+    workflow_dispatch:
+
+concurrency:
+    group: ci-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    test-build-validate:
+        name: test-build-validate
+        runs-on: ubuntu-latest
+
+        env:
+            HUSKY: "0"
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "20"
+                  cache: "npm"
+
+            - name: Check merge conflict markers
+              run: npm run check:conflicts
+
+            - name: Check user-facing hardcoded strings (i18n guard)
+              run: npm run check:i18n
+
+            - name: Install deps (npm ci)
+              run: npm ci
+
+            # --- POPRAVKA: Stabilnija instalacija wasm-pack-a ---
+            - name: Install wasm-pack
+              uses: jetli/wasm-pack-action@v0.4.0
+              with:
+                  version: "latest"
+
+            - name: Security audit
+              run: npm run audit:high || true
+
+            - name: Format check (Prettier)
+              run: npm run format:check
+
+            - name: Typecheck (tsc --noEmit)
+              run: npm run typecheck
+
+            - name: Lint (eslint)
+              run: npm run lint
+
+            - name: Unit tests (with coverage)
+              run: npm run test:coverage
+
+            - name: Build (production)
+              run: npm run build
+
+            - name: Validate Office manifest (dev)
+              run: npm run validate
+
+            - name: Validate Office manifest (prod)
+              run: npm run validate:prod
+
+            - name: Install Playwright (Chromium)
+              run: npx playwright install chromium --with-deps
+
+            - name: E2E smoke (Playwright)
+              run: npm run test:e2e

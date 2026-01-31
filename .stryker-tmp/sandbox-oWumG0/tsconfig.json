@@ -1,0 +1,17 @@
+{
+    "compilerOptions": {
+        "target": "es2018",
+        "lib": ["es2018", "dom", "webworker"],
+        "allowJs": true,
+        "baseUrl": ".",
+        "esModuleInterop": true,
+        "noEmitOnError": true,
+        "outDir": "dist",
+        "sourceMap": true,
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "resolveJsonModule": true,
+        "skipLibCheck": true
+    },
+    "exclude": ["node_modules", "dist", "scripts"]
+}

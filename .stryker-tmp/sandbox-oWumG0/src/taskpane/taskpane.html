@@ -1,0 +1,75 @@
+<!-- src/taskpane/taskpane.html -->
+
+<!doctype html>
+<html lang="sr">
+    <head>
+        <meta charset="UTF-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title data-i18n="app_title">Serbian Transliterator</title>
+        <link rel="manifest" href="manifest.webmanifest" />
+
+        <link rel="preconnect" href="https://appsforoffice.microsoft.com" />
+        <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+    </head>
+    <body>
+        <div
+            id="webModePreloader"
+            style="
+                display: none;
+                position: absolute;
+                inset: 0;
+                background: var(--colorNeutralBackground2);
+                z-index: 10000;
+                align-items: center;
+                justify-content: center;
+                flex-direction: column;
+            "
+        >
+            <div style="font-size: 48px; margin-bottom: 20px">📂</div>
+            <div
+                style="font-size: 18px; font-weight: 600; color: var(--colorBrandForeground1)"
+                data-i18n="app_title"
+            ></div>
+            <div style="margin-top: 10px; opacity: 0.7" data-i18n="web_clipboard_ready"></div>
+        </div>
+
+        <div id="skeleton" aria-hidden="true">
+            <div class="sk-line" style="width: 40%"></div>
+            <div class="sk-rect"></div>
+            <div class="sk-rect" style="height: 150px"></div>
+            <div class="sk-line" style="width: 70%"></div>
+        </div>
+
+        <main id="appMain" role="main" style="display: none">
+            <h1 class="visually-hidden" data-i18n="app_title">Serbian Transliterator</h1>
+            <%= readPart('components/settings/profile.html') %> <%=
+            readPart('components/settings/direction.html') %> <%=
+            readPart('components/settings/protected.html') %> <%= readPart('components/settings/options.html')
+            %> <%= readPart('components/advanced/advanced.html') %>
+
+            <div id="progressContainer" class="progress-container" style="display: none" role="progressbar">
+                <div id="progressBar" class="progress-bar"></div>
+            </div>
+
+            <div id="statsBox" class="accordion fade-in">
+                <button
+                    id="statsHeader"
+                    class="accordion-header"
+                    type="button"
+                    aria-expanded="false"
+                    aria-controls="statsContent"
+                >
+                    <span class="accordion-title" data-i18n="ui_stats_accordion_header"></span>
+                </button>
+                <div id="statsContent" class="accordion-content" aria-hidden="true">
+                    <pre id="statsText"></pre>
+                </div>
+            </div>
+        </main>
+
+        <footer role="contentinfo"><%= readPart('components/footer/sticky-footer.html') %></footer>
+        <%= readPart('components/modals/confirm-modal.html') %> <%=
+        readPart('components/modals/tour-modal.html') %>
+    </body>
+</html>

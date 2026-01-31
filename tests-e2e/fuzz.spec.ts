@@ -36,31 +36,31 @@ test.describe("E2E Fuzzing / Stability", () => {
         await page.goto("/taskpane.html");
         await expect(page.locator("#appMain")).toBeVisible();
 
-        // OgraniÄavamo na 10 iteracija da test ne traje veÄno u CI
+        // Ograničavamo na 10 iteracija da test ne traje večno u CI
         await fc.assert(
             fc.asyncProperty(fc.string({ minLength: 1, maxLength: 100 }), async (randomText) => {
                 // 1. Postavi selekciju
                 await page.evaluate((txt) => (window as any).__setSelection(txt), randomText);
 
-                // 2. OsveÅ¾i UI (jer naÅ¡ mock ne okida evente automatski)
-                // NajbrÅ¾i naÄin je da simuliramo promenu fokusa ili tajmer u selection.ts
-                // Ali poÅ¡to je selection.ts veÄ‡ uÄitan, moÅ¾emo samo da pozovemo checkSelection... ako je exposed? Nije.
-                // Zato reloadujemo page ili koristimo 'force' click koji moÅ¾da neÄ‡e raditi ako je disabled.
+                // 2. Osveži UI (jer naš mock ne okida evente automatski)
+                // Najbrži način je da simuliramo promenu fokusa ili tajmer u selection.ts
+                // Ali pošto je selection.ts već učitan, možemo samo da pozovemo checkSelection... ako je exposed? Nije.
+                // Zato reloadujemo page ili koristimo 'force' click koji možda neće raditi ako je disabled.
 
-                // Hack: ruÄno enable dugme i klikni
+                // Hack: ručno enable dugme i klikni
                 await page.evaluate(() => {
                     const btn = document.getElementById("runBtn") as HTMLButtonElement;
                     btn.disabled = false;
                     btn.click();
                 });
 
-                // 3. Proveri da nema greÅ¡ke (msg element ne sme biti crven i sa tekstom "Global Error")
+                // 3. Proveri da nema greške (msg element ne sme biti crven i sa tekstom "Global Error")
                 const msg = page.locator("#msg");
-                // SaÄekaj da se neÅ¡to desi (bilo Å¡ta)
+                // Sačekaj da se nešto desi (bilo šta)
                 await expect(msg).toBeVisible();
 
                 // Proveri boju (ne sme biti error color ako je tekst validan)
-                // Ali random tekst moÅ¾e izazvati validnu greÅ¡ku.
+                // Ali random tekst može izazvati validnu grešku.
                 // Bitno je da aplikacija i dalje radi.
 
                 return true;

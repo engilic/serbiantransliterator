@@ -1,0 +1,94 @@
+<!-- src/static/privacy.html -->
+
+<!doctype html>
+<html lang="sr">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Politika Privatnosti - Serbian Transliterator</title>
+        <style>
+            :root {
+                --primary: #0f6cbd;
+                --bg: #f3f2f1;
+                --card-bg: #ffffff;
+                --text: #323130;
+            }
+
+            @media (prefers-color-scheme: dark) {
+                :root {
+                    --primary: #4ba0ff;
+                    --bg: #201f1e;
+                    --card-bg: #292827;
+                    --text: #ffffff;
+                }
+            }
+
+            body {
+                font-family: "Segoe UI", sans-serif;
+                margin: 0;
+                padding: 40px;
+                background-color: var(--bg);
+                color: var(--text);
+                display: flex;
+                justify-content: center;
+            }
+
+            .container {
+                background: var(--card-bg);
+                max-width: 700px;
+                padding: 40px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            }
+
+            h1 {
+                color: var(--primary);
+            }
+
+            .highlight {
+                background-color: rgba(15, 108, 189, 0.1);
+                color: var(--primary);
+                padding: 2px 6px;
+                border-radius: 4px;
+                font-weight: bold;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Politika Privatnosti</h1>
+
+            <p>Poslednja izmena: <b>21. Januar 2026.</b></p>
+
+            <h3>1. Nema slanja podataka (Offline-First)</h3>
+            <p>
+                Serbian Transliterator je dizajniran kao
+                <span class="highlight">Offline-First</span> aplikacija.
+            </p>
+            <ul>
+                <li>
+                    Tekst vašeg dokumenta se obrađuje <b>isključivo lokalno</b> (u memoriji vašeg uređaja).
+                </li>
+                <li>Rečnici za konverziju su ugrađeni u aplikaciju i ne zahtevaju internet konekciju.</li>
+                <li>Nijedan deo vašeg teksta se ne šalje na naše servere niti trećim stranama.</li>
+            </ul>
+
+            <h3>2. Lokalno skladištenje (Local Storage)</h3>
+            <p>Aplikacija koristi lokalnu memoriju pregledača (Local Storage) samo za:</p>
+            <ul>
+                <li>Vaša podešavanja (npr. izabrana tema, uključene opcije).</li>
+                <li>Vašu listu zaštićenih reči ("Moje reči").</li>
+            </ul>
+            <p>Ovi podaci ostaju u vašem pregledaču i mi im nemamo pristup.</p>
+
+            <h3>3. Analitika</h3>
+            <p>
+                Koristimo anonimnu web analitiku (Cloudflare Web Analytics) samo da bismo brojali posete ovoj
+                stranici za podršku. Ne pratimo korišćenje unutar Word-a.
+            </p>
+
+            <h3>4. Kontakt</h3>
+            <p>Za sva pitanja o privatnosti: <a href="mailto:iddj27510@gmail.com">iddj27510@gmail.com</a></p>
+        </div>
+    </body>
+</html>

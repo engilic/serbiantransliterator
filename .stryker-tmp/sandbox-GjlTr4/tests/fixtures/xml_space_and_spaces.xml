@@ -1,0 +1,11 @@
+<!-- tests/fixtures/xml_space_and_spaces.xml -->
+
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:p>
+      <w:r><w:t> Zdravo </w:t></w:r>
+      <w:r><w:t> svet</w:t></w:r>
+      <w:r><w:t> kraj</w:t></w:r>
+    </w:p>
+  </w:body>
+</w:document>

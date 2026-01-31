@@ -1,0 +1,173 @@
+<!-- src/static/index.html -->
+
+<!doctype html>
+<html lang="sr">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Serbian Transliterator - Besplatan Word Dodatak</title>
+        <link rel="manifest" href="manifest.webmanifest" />
+        <meta
+            name="description"
+            content="Najbrži način za preslovljavanje ćirilice i latinice u Word-u. Offline, siguran i pametan."
+        />
+        <style>
+            :root {
+                --primary: #0f6cbd;
+                --bg: #f3f2f1;
+                --text: #201f1e;
+                --card-bg: #ffffff;
+            }
+
+            @media (prefers-color-scheme: dark) {
+                :root {
+                    --primary: #4ba0ff;
+                    --bg: #201f1e;
+                    --text: #ffffff;
+                    --card-bg: #292827;
+                }
+            }
+
+            body {
+                font-family: "Segoe UI", sans-serif;
+                margin: 0;
+                padding: 0;
+                background-color: var(--bg);
+                color: var(--text);
+                display: flex;
+                flex-direction: column;
+                min-height: 100vh;
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+            }
+
+            .container {
+                max-width: 800px;
+                padding: 40px 20px;
+            }
+
+            h1 {
+                font-size: 2.5rem;
+                margin-bottom: 10px;
+                color: var(--primary);
+            }
+
+            p.subtitle {
+                font-size: 1.2rem;
+                opacity: 0.8;
+                margin-bottom: 40px;
+                max-width: 600px;
+                margin-left: auto;
+                margin-right: auto;
+            }
+
+            .cards {
+                display: flex;
+                gap: 20px;
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+
+            .card {
+                background: var(--card-bg);
+                padding: 30px;
+                border-radius: 12px;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+                width: 300px;
+                transition: transform 0.2s;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .card:hover {
+                transform: translateY(-5px);
+            }
+
+            .card-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+            }
+
+            .card h3 {
+                margin: 0 0 10px 0;
+            }
+
+            .card p {
+                font-size: 0.95rem;
+                opacity: 0.7;
+                margin-bottom: 20px;
+                flex: 1;
+            }
+
+            .btn {
+                display: inline-block;
+                padding: 12px 24px;
+                background-color: var(--primary);
+                color: white;
+                text-decoration: none;
+                border-radius: 6px;
+                font-weight: 600;
+                transition: opacity 0.2s;
+            }
+
+            .btn:hover {
+                opacity: 0.9;
+            }
+
+            .btn.secondary {
+                background-color: transparent;
+                border: 2px solid var(--primary);
+                color: var(--primary);
+            }
+
+            .btn.secondary:hover {
+                background-color: rgba(15, 108, 189, 0.1);
+            }
+
+            footer {
+                margin-top: 60px;
+                font-size: 0.9rem;
+                opacity: 0.6;
+            }
+
+            footer a {
+                color: inherit;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Serbian Transliterator</h1>
+            <p class="subtitle">
+                Pametno preslovljavanje (Lat ↔ Ćir) za Microsoft Word. <br />Offline, brzo i besplatno.
+            </p>
+
+            <div class="cards">
+                <div class="card">
+                    <div class="card-icon">🌍</div>
+                    <h3>Web Aplikacija</h3>
+                    <p>Preslovite dokumente (.docx) direktno u pregledaču. Nije potrebna instalacija.</p>
+                    <a href="taskpane.html?mode=web" class="btn">Pokreni Online</a>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">📝</div>
+                    <h3>Word Dodatak</h3>
+                    <p>Integrisano rešenje za Word. Preslovljavanje jednim klikom unutar dokumenta.</p>
+                    <a href="https://appsource.microsoft.com/en-us/product/office/WA..." class="btn secondary"
+                        >Preuzmi za Word</a
+                    >
+                </div>
+            </div>
+
+            <footer>
+                <p>
+                    <a href="privacy.html">Privatnost</a> • <a href="support.html">Podrška</a> • © 2026
+                    Jugoslav Ilić
+                </p>
+            </footer>
+        </div>
+    </body>
+</html>
