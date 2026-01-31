@@ -1,5 +1,4 @@
 // src/taskpane/app/web/ui.ts
-
 import { processDocxFile } from "./batch";
 import { t } from "../../../shared/i18n";
 import { showModalInfo } from "../modal/modal";

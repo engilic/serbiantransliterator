@@ -1,5 +1,4 @@
 // tests/errorRecoveryCoverage.test.ts
-
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { errorRecovery } from "../src/taskpane/app/error/errorRecovery";
 import { setStatus } from "../src/taskpane/app/status";

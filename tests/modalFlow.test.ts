@@ -1,5 +1,4 @@
 // tests/modalFlow.test.ts
-
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { confirmInPanel, showModalInfo, resetModalButtons } from "../src/taskpane/app/modal/modal";
 

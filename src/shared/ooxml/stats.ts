@@ -1,5 +1,4 @@
 // src/shared/ooxml/stats.ts
-
 import type { Direction } from "../../core/textCore";
 import type { ProofingApplyResult } from "./proofing";
 

@@ -1,5 +1,4 @@
 // tests/settingsGetters.test.ts
-
 import { describe, it, expect, beforeEach } from "vitest";
 import { state } from "../src/taskpane/app/state";
 

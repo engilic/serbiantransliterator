@@ -1,5 +1,4 @@
 // tests/interactiveDiff.test.ts
-
 import { describe, it, expect } from "vitest";
 import { InteractiveDiff } from "../src/shared/diff/interactive";
 import type { DiffOp } from "../src/shared/diff";

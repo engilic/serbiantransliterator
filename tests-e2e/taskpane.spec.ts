@@ -1,5 +1,7 @@
 // tests-e2e/taskpane.spec.ts
-
+// tests-e2e/taskpane.spec.ts
+// tests-e2e/taskpane.spec.ts
+// tests-e2e/taskpane.spec.ts
 import { test, expect } from "@playwright/test";
 
 const LANG_KEY = "serbiantransliterator.ui.lang";
@@ -45,7 +47,7 @@ test.describe("Taskpane E2E smoke (Office stub) + UI language picker", () => {
 
         const picker = page.locator("#optUiLanguage");
 
-        // NOVO: Scroll i Äekanje interaktivnosti
+        // NOVO: Scroll i čekanje interaktivnosti
         await picker.scrollIntoViewIfNeeded();
         await expect(picker).toBeVisible();
         await expect(picker).toBeEnabled();
@@ -60,11 +62,11 @@ test.describe("Taskpane E2E smoke (Office stub) + UI language picker", () => {
 
         const picker = page.locator("#optUiLanguage");
 
-        // NOVO: Eksplicitno Äekanje da bude spreman za klik
+        // NOVO: Eksplicitno čekanje da bude spreman za klik
         await picker.scrollIntoViewIfNeeded();
         await expect(picker).toBeVisible();
 
-        // Forsiraj promenu ako standardni select koÄi
+        // Forsiraj promenu ako standardni select koči
         await picker.selectOption("en", { force: true });
 
         await expect(page.locator("#runBtn")).toHaveText(/APPLY/);

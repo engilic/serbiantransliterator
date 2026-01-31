@@ -1,5 +1,4 @@
 // src/shared/ooxml/roman.ts
-
 export const ROMAN_REGEX_STRICT =
     /\b(?!I\b)(?=[MDCLXVI]+\b)M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})\b/g;
 

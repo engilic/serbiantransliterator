@@ -3,7 +3,6 @@
     "version": "1.0.0",
     "description": "Offline-first Word add-in for Serbian transliteration (Lat <-> Cyr) powered by Rust/WASM.",
     "license": "MIT",
-    "sideEffects": false,
     "engines": {
         "node": ">=18.0.0",
         "npm": ">=8.0.0"
@@ -12,7 +11,7 @@
         "git:reset": "node scripts/git-cleanup.js",
         "verify:all": "node scripts/verify-all.js",
         "update:version": "node scripts/update-manifest-version.js",
-        "clean": "rimraf dist coverage playwright-report test-results pkg src/wasm-core/pkg && cd src/wasm-core && cargo clean && cd ../..",
+        "clean": "rimraf dist coverage playwright-report test-results pkg src/wasm-core/pkg",
         "build:wasm": "cd src/wasm-core && wasm-pack build --target web --out-name index",
         "compile:dicts": "cd src/wasm-core && cargo run --bin compiler && cd ../..",
         "prebuild": "npm run clean && npm run update:version",
@@ -23,8 +22,8 @@
         "dev": "concurrently --kill-others \"npm run start\" \"wait-on https://localhost:3000/taskpane.html && npm run sideload:word\"",
         "validate": "office-addin-manifest validate manifest.xml",
         "validate:prod": "office-addin-manifest validate manifest.prod.xml",
-        "test": "vitest run",
-        "test:coverage": "vitest run --coverage",
+        "test": "cross-env VITE_CJS_IGNORE_WARNING=1 vitest run",
+        "test:coverage": "cross-env VITE_CJS_IGNORE_WARNING=1 vitest run --coverage",
         "test:e2e": "playwright test",
         "lint": "eslint src/**/*.ts --max-warnings 0",
         "lint:fix": "eslint src/**/*.ts --fix",
@@ -35,7 +34,7 @@
         "format:check": "prettier --check .",
         "format:fix": "prettier --write .",
         "audit:high": "npm audit --audit-level=high",
-        "prepare": "husky",
+        "prepare": "husky install",
         "release": "standard-version"
     },
     "dependencies": {
@@ -64,7 +63,7 @@
         "copy-webpack-plugin": "^11.0.0",
         "cross-env": "^10.1.0",
         "css-loader": "^7.1.2",
-        "eslint": "^8.57.1",
+        "eslint": "^8.57.0",
         "eslint-plugin-office-addins": "^3.0.3",
         "fast-check": "^4.5.3",
         "html-loader": "^5.1.0",

@@ -1,5 +1,4 @@
 // tests/statsText.test.ts
-
 import { describe, it, expect, beforeEach } from "vitest";
 import { buildApplyStatsText, buildPreviewAppliedStats } from "../src/taskpane/app/word/statsText";
 import type { ConvertStats } from "../src/shared/ooxml/convertOoxml";

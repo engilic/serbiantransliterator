@@ -1,5 +1,4 @@
 // src/taskpane/app/telemetry/db.ts
-
 import { openDB, type DBSchema } from "idb";
 
 interface TelemetryDB extends DBSchema {

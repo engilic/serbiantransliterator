@@ -1,5 +1,4 @@
 // src/taskpane/app/status.ts
-
 import { state } from "./state";
 import { t } from "../../shared/i18n";
 

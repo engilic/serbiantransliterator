@@ -1,5 +1,4 @@
 // src/taskpane/app/web/batch.ts
-
 import JSZip from "jszip";
 import { getOoxmlOptionsFromUi } from "../settings/getters";
 import { setProgress, setStatus } from "../status";

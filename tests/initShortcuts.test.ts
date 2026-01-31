@@ -1,5 +1,4 @@
 // tests/initShortcuts.test.ts
-
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 // Importuj setupKeyboardShortcuts
 import { setupKeyboardShortcuts } from "../src/taskpane/app/init";

@@ -1,5 +1,4 @@
 // tests/fuzz/ooxml.fuzz.test.ts
-
 import { describe, it, expect } from "vitest";
 import fc from "fast-check";
 import { convertOoxml } from "../../src/shared/ooxml/convertOoxml";
