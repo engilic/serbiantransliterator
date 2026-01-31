@@ -5,22 +5,26 @@
 const fs = require("node:fs");
 const path = require("node:path");
 
+// --- CONFIG ---
 const ROOT = process.cwd();
 const SRC_DIR = path.join(ROOT, "src");
 
+// --- ANSI COLORS (TTY/NO_COLOR aware) ---
+// Napomena: blue je "bright blue" (94) da bude čitljiv u pwsh na crnoj pozadini.
 const C = {
     reset: "\x1b[0m",
     red: "\x1b[31m",
     green: "\x1b[32m",
     yellow: "\x1b[33m",
-    blue: "\x1b[34m",
-    cyan: "\x1b[36m",
+    blue: "\x1b[94m", // bright blue
+    cyan: "\x1b[96m", // bright cyan (rezerva)
     magenta: "\x1b[35m",
     bold: "\x1b[1m",
     gray: "\x1b[90m",
 };
 
 const COLOR_ENABLED = !!process.stdout.isTTY && !process.env.NO_COLOR;
+
 function c(code, text) {
     return COLOR_ENABLED ? `${code}${text}${C.reset}` : text;
 }
@@ -33,23 +37,30 @@ function fail(text = "FAIL") {
     return c(C.red, `✖ ${text}`);
 }
 
+// --- RULES DEFINITION ---
+// Ovde definišemo šta je zabranjeno.
 const RULES = [
     {
         id: "setStatus-hardcoded",
+        // Hvata: setStatus("..." ili setStatus('...' ili setStatus(`...`
         regex: /\bsetStatus\s*\(\s*([`'"])/g,
         message: "setStatus() expects a variable or t('key'), not a hardcoded string.",
     },
     {
         id: "showModalInfo-hardcoded",
+        // Hvata: showModalInfo("..."
         regex: /\bshowModalInfo\s*\(\s*([`'"])/g,
         message: "showModalInfo() title must be translated via t('key').",
     },
     {
         id: "t-error-prefix-hardcoded",
+        // Hvata: t("status_error_prefix", "..."
         regex: /\bt\s*\(\s*["']status_error_prefix["']\s*,\s*([`'"])/g,
         message: "Do not pass hardcoded strings to status_error_prefix. Use t('key') or variables.",
     },
 ];
+
+// --- HELPERS ---
 
 function isDir(p) {
     try {
@@ -62,18 +73,23 @@ function isDir(p) {
 function walk(dir) {
     const results = [];
     const list = fs.readdirSync(dir);
+
     list.forEach((file) => {
         const full = path.join(dir, file);
+
         if (isDir(full)) {
+            // Ignorišemo sistemske foldere
             if (!["node_modules", "dist", "coverage", ".git", "wasm-core"].includes(file)) {
                 results.push(...walk(full));
             }
         } else {
+            // Skeniramo samo TypeScript fajlove (ignorišemo definicije .d.ts)
             if (file.endsWith(".ts") && !file.endsWith(".d.ts")) {
                 results.push(full);
             }
         }
     });
+
     return results;
 }
 
@@ -97,6 +113,7 @@ function checkFile(filePath) {
 
     for (const rule of RULES) {
         let m;
+        // Reset regex state (bitno kada se koristi global flag u petlji)
         rule.regex.lastIndex = 0;
 
         while ((m = rule.regex.exec(content)) !== null) {
@@ -127,7 +144,10 @@ function main() {
 
     const files = walk(SRC_DIR);
     const allViolations = [];
-    for (const f of files) allViolations.push(...checkFile(f));
+
+    for (const f of files) {
+        allViolations.push(...checkFile(f));
+    }
 
     if (allViolations.length === 0) {
         console.log(`${ok("OK")} No hardcoded user strings found in Logic/UI calls.`);
@@ -139,6 +159,7 @@ function main() {
         c(C.yellow, "The following strings are not translatable and will appear hardcoded to users:") + "\n"
     );
 
+    // Group by file for cleaner output
     const grouped = {};
     allViolations.forEach((v) => {
         if (!grouped[v.file]) grouped[v.file] = [];

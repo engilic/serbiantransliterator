@@ -24,8 +24,6 @@ $Stats = @{
     Skipped = 0
 }
 
-$FixedFiles = New-Object System.Collections.Generic.List[string]
-
 function Is-IgnoredRel([string]$Rel) {
     foreach ($p in $IgnorePrefixes) {
         if ($Rel.StartsWith($p)) { return $true }
@@ -56,35 +54,30 @@ function Extract-HeaderPathStrict([string]$Line) {
     if (-not $Line) { return $null }
     $t = $Line.Trim()
 
-    # === FILE: path
     if ($t -match "===\s*FILE:\s*(.+)$") {
         $p = ($Matches[1] -as [string]).Trim().Replace("\", "/")
         if (IsLikelyHeaderPathToken $p) { return $p }
         return $null
     }
 
-    # // path
     if ($t -match "^//\s+([^\s]+)\s*$") {
         $p = ($Matches[1] -as [string]).Trim().Replace("\", "/")
         if (IsLikelyHeaderPathToken $p) { return $p }
         return $null
     }
 
-    # # path
     if ($t -match "^#\s+([^\s]+)\s*$") {
         $p = ($Matches[1] -as [string]).Trim().Replace("\", "/")
         if (IsLikelyHeaderPathToken $p) { return $p }
         return $null
     }
 
-    # /* path */
     if ($t -match "^/\*\s+([^\s]+)\s*\*/\s*$") {
         $p = ($Matches[1] -as [string]).Trim().Replace("\", "/")
         if (IsLikelyHeaderPathToken $p) { return $p }
         return $null
     }
 
-    # <!-- path -->
     if ($t -match "^<!--\s+([^\s]+)\s*-->\s*$") {
         $p = ($Matches[1] -as [string]).Trim().Replace("\", "/")
         if (IsLikelyHeaderPathToken $p) { return $p }
@@ -107,7 +100,6 @@ function Is-DirectiveLine([string]$TrimmedLine) {
 }
 
 function Write-Utf8NoBom([string]$FilePath, [string]$Content) {
-    # pwsh: utf8 = no BOM, ali eksplicitno je lepše
     try {
         $Content | Set-Content -Path $FilePath -NoNewline -Encoding utf8NoBOM
     } catch {
@@ -125,19 +117,14 @@ function Get-TrackedFiles() {
         ForEach-Object { $_.Replace("\", "/") }
 }
 
-function Get-HeaderZoneIndices([string[]]$Lines) {
-    # vraća indeks gde počinje "code" nakon direktiva + (blank/header/oldheader) zone
-    $i = 0
-
-    # 0) strip BOM sa prve linije u memoriji (ako postoji)
+function Get-HeaderZoneEndIndex([string[]]$Lines) {
     if ($Lines.Count -gt 0) {
         $Lines[0] = $Lines[0] -replace "^\uFEFF", ""
     }
 
-    # 1) directives
+    $i = 0
     while ($i -lt $Lines.Count -and (Is-DirectiveLine $Lines[$i].Trim())) { $i++ }
 
-    # 2) header zone: blank lines + header lines + old === FILE:
     while ($i -lt $Lines.Count) {
         $t = $Lines[$i].Trim()
         if ($t -eq "") { $i++; continue }
@@ -165,8 +152,7 @@ function Scan-WrongPathHeaderZone([string]$AbsPath, [string]$RelPath) {
     if ($lines.Count -eq 0) { return @() }
     $lines[0] = $lines[0] -replace "^\uFEFF", ""
 
-    # od početka do kraja "header zone"
-    $zoneEnd = Get-HeaderZoneIndices $lines
+    $zoneEnd = Get-HeaderZoneEndIndex $lines
 
     $issues = New-Object System.Collections.Generic.List[object]
     for ($ln = 0; $ln -lt $zoneEnd; $ln++) {
@@ -191,7 +177,6 @@ function Scan-WrongPathHeaderZone([string]$AbsPath, [string]$RelPath) {
 function Fix-OneFile([string]$AbsPath, [string]$RelPath) {
     $ext = [System.IO.Path]::GetExtension($RelPath).ToLower()
     if ($Extensions -notcontains $ext) { return }
-
     if (Is-IgnoredRel $RelPath) { return }
 
     $Stats.Scanned++
@@ -212,18 +197,14 @@ function Fix-OneFile([string]$AbsPath, [string]$RelPath) {
         $i++
     }
 
-    # 2) preskoči sve blank/header linije u header zoni (sve što možemo da "auto-fixujemo")
+    # 2) preskoči blank + header linije posle direktiva
     while ($i -lt $lines.Count) {
         $t = $lines[$i].Trim()
         if ($t -eq "") { $i++; continue }
 
         $hp = Extract-HeaderPathStrict $t
         if ($hp) {
-            # ovde su već eliminisane WRONG-path situacije u pre-scan fazi,
-            # ali ostavljamo safety:
-            if ($hp -ne $RelPath) {
-                throw "WRONG PATH HEADER encountered during fix (should have been caught earlier) in $RelPath"
-            }
+            # wrong-path je već abortovan u pre-scan fazi
             $i++
             continue
         }
@@ -233,16 +214,16 @@ function Fix-OneFile([string]$AbsPath, [string]$RelPath) {
         break
     }
 
-    # 3) ostatak je code
+    # 3) code
     $code = New-Object System.Collections.Generic.List[string]
     for (; $i -lt $lines.Count; $i++) { $code.Add($lines[$i]) }
 
-    # 4) ukloni leading prazne linije u "code" delu (da ne bude 2+ prazne linije posle headera)
+    # 4) ukloni leading prazne linije u code delu
     while ($code.Count -gt 0 -and $code[0].Trim() -eq "") {
         $code.RemoveAt(0)
     }
 
-    # 5) sklopi: directives + header (odmah) + BLANK LINE + code
+    # 5) directives + header (odmah) + 1 blank + code
     $final = New-Object System.Collections.Generic.List[string]
     $final.AddRange($directives)
     $final.Add($expectedHeader)
@@ -254,7 +235,6 @@ function Fix-OneFile([string]$AbsPath, [string]$RelPath) {
     if ($newContent.Trim() -ne $content.Trim()) {
         Write-Host ("✔ FIXED: {0}" -f $RelPath) -ForegroundColor Green
         $Stats.Fixed++
-        $FixedFiles.Add($RelPath) | Out-Null
         Write-Utf8NoBom $AbsPath $newContent
     } else {
         $Stats.Skipped++
@@ -273,13 +253,13 @@ if ($tracked.Count -eq 0) {
     exit 0
 }
 
-# procesuiraj ovaj skript LAST (sigurnije dok radi)
+# procesuiraj ovaj skript LAST
 $selfRel = "scripts/add-headers.ps1"
 if ($tracked -contains $selfRel) {
     $tracked = @($tracked | Where-Object { $_ -ne $selfRel }) + @($selfRel)
 }
 
-# PASS 1: nađi copy/paste greške (wrong-path header u header zoni)
+# PASS 1: abort on wrong-path in header zone
 $wrong = New-Object System.Collections.Generic.List[object]
 
 foreach ($rel in $tracked) {
@@ -295,7 +275,7 @@ foreach ($rel in $tracked) {
 }
 
 if ($wrong.Count -gt 0) {
-    Write-Host "" 
+    Write-Host ""
     Write-Host "✖ COPY/PASTE PATH HEADER ERROR — aborting (not auto-fixing these)." -ForegroundColor Red
     Write-Host "  Fix these manually (wrong file path in header zone), then rerun." -ForegroundColor Yellow
     Write-Host ""
@@ -313,7 +293,7 @@ if ($wrong.Count -gt 0) {
     exit 1
 }
 
-# PASS 2: auto-fix everything else
+# PASS 2: auto-fix
 Write-Host "🧹 HEADER AUTO-FIX: applying fixes..." -ForegroundColor Cyan
 
 foreach ($rel in $tracked) {
@@ -331,12 +311,3 @@ Write-Host "`n📊 HEADER AUTO-FIX REPORT:" -ForegroundColor White
 Write-Host ("   Scanned: {0}" -f $Stats.Scanned)
 Write-Host ("   Fixed:   {0}" -f $Stats.Fixed) -ForegroundColor Green
 Write-Host ("   Skipped: {0}" -f $Stats.Skipped) -ForegroundColor Gray
-
-if ($FixedFiles.Count -gt 0) {
-    Write-Host "`n✅ Fixed files:" -ForegroundColor Green
-    foreach ($f in $FixedFiles) {
-        Write-Host ("   - {0}" -f $f) -ForegroundColor Green
-    }
-} else {
-    Write-Host "`n✨ No changes needed (all headers already OK)." -ForegroundColor Green
-}
