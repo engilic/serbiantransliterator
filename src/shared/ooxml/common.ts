@@ -28,12 +28,12 @@ export function getCpArray(text: string): string[] {
 
 export function firstCp(text: string): string | null {
     const arr = Array.from(safeNormalize(text)); // [FIX] koristimo safeNormalize
-    return arr.length ? (arr[0] ?? null) : null;
+    return arr.length ? arr[0] ?? null : null;
 }
 
 export function lastCp(text: string): string | null {
     const arr = Array.from(safeNormalize(text)); // [FIX] koristimo safeNormalize
-    return arr.length ? (arr[arr.length - 1] ?? null) : null;
+    return arr.length ? arr[arr.length - 1] ?? null : null;
 }
 
 export function dropFirstCp(text: string): string {

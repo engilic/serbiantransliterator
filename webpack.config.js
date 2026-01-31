@@ -1,11 +1,8 @@
+// webpack.config.js
 /* eslint-disable no-undef */
-// webpack.config.js
-// webpack.config.js
-// webpack.config.js
-// webpack.config.js
+
 const { merge } = require("webpack-merge");
 const devCerts = require("office-addin-dev-certs");
-
 const commonConfig = require("./webpack.common.js");
 const devConfig = require("./webpack.dev.js");
 const prodConfig = require("./webpack.prod.js");
@@ -20,11 +17,7 @@ module.exports = async (env, options) => {
             ...envConfig.devServer,
             server: {
                 type: "https",
-                options: {
-                    ca: httpsOptions.ca,
-                    key: httpsOptions.key,
-                    cert: httpsOptions.cert,
-                },
+                options: httpsOptions,
             },
         };
     }

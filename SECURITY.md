@@ -10,27 +10,27 @@ If you believe you have found a security vulnerability, please **do not** open a
 
 Instead, report it privately:
 
-- Email: **iddj27510@gmail.com**
-- Subject: `Serbian Transliterator - Security report`
+-   Email: **iddj27510@gmail.com**
+-   Subject: `Serbian Transliterator - Security report`
 
 Please include:
 
-- A clear description of the issue and impact
-- Steps to reproduce (PoC if possible)
-- Affected versions/commit (if known)
-- Any relevant logs/screenshots
+-   A clear description of the issue and impact
+-   Steps to reproduce (PoC if possible)
+-   Affected versions/commit (if known)
+-   Any relevant logs/screenshots
 
 ## Response Expectations
 
 We aim to:
 
-- Acknowledge receipt within a reasonable time
-- Investigate and validate the report
-- Provide a remediation plan or fix
-- Coordinate responsible disclosure if needed
+-   Acknowledge receipt within a reasonable time
+-   Investigate and validate the report
+-   Provide a remediation plan or fix
+-   Coordinate responsible disclosure if needed
 
 ## Scope Notes
 
-- This add-in processes document text locally (in the Word host/browser).
-- Hosting is static (Cloudflare Pages).
-- CI uses automated security checks (Dependabot + CodeQL + npm audit gate in CI, if enabled).
+-   This add-in processes document text locally (in the Word host/browser).
+-   Hosting is static (Cloudflare Pages).
+-   CI uses automated security checks (Dependabot + CodeQL + npm audit gate in CI, if enabled).

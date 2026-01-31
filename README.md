@@ -14,14 +14,14 @@ Ovaj dodatak (Add-in) omogućava preslovljavanje selekcije ili celog dokumenta j
 
 ## 🔥 Ključne Mogućnosti (v1.0.0)
 
-- **100% Offline & Privatno:** Vaš tekst **nikada** ne napušta vaš računar. Sve se procesira lokalno u browseru/Wordu.
-- **Ekstremne Performanse:** Pokreće ga **Rust + WebAssembly** engine.
-- **Pametna Zaštita:**
-    - Automatski prepoznaje i čuva URL-ove, E-mail adrese i strane brendove (`iPhone`, `YouTube`).
-    - Ne dira tekst unutar programskog koda (`code blocks`).
-- **Dijalekti (Beta):** Podrška za konverziju Ekavica ↔ Ijekavica.
-- **Web Batch Mode:** Prevucite `.docx` fajl direktno u browser za brzu konverziju bez otvaranja Word-a.
-- **PWA Support:** Instalirajte aplikaciju na Desktop ili Mobilni telefon.
+-   **100% Offline & Privatno:** Vaš tekst **nikada** ne napušta vaš računar. Sve se procesira lokalno u browseru/Wordu.
+-   **Ekstremne Performanse:** Pokreće ga **Rust + WebAssembly** engine.
+-   **Pametna Zaštita:**
+    -   Automatski prepoznaje i čuva URL-ove, E-mail adrese i strane brendove (`iPhone`, `YouTube`).
+    -   Ne dira tekst unutar programskog koda (`code blocks`).
+-   **Dijalekti (Beta):** Podrška za konverziju Ekavica ↔ Ijekavica.
+-   **Web Batch Mode:** Prevucite `.docx` fajl direktno u browser za brzu konverziju bez otvaranja Word-a.
+-   **PWA Support:** Instalirajte aplikaciju na Desktop ili Mobilni telefon.
 
 ---
 
@@ -47,10 +47,10 @@ Projekat je Open Source (MIT).
 
 ### Tehnologije
 
-- **Frontend:** TypeScript, Fluent UI (CSS Variables)
-- **Core:** Rust, FST (Finite State Transducers), Aho-Corasick, WASM
-- **Build:** Webpack 5, Cargo
-- **Test:** Vitest, Playwright (E2E)
+-   **Frontend:** TypeScript, Fluent UI (CSS Variables)
+-   **Core:** Rust, FST (Finite State Transducers), Aho-Corasick, WASM
+-   **Build:** Webpack 5, Cargo
+-   **Test:** Vitest, Playwright (E2E)
 
 ### Lokalno pokretanje
 

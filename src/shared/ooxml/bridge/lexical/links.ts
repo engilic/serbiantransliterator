@@ -123,7 +123,7 @@ export function bridgeLinksAcrossTextNodes(textNodes: Element[]): number {
 
         // boundary guard: pre fragmenta ne sme biti link-char
         const aCps = getCpArray(aRaw);
-        const prevChar = startCpIndex > 0 ? (aCps[startCpIndex - 1] ?? "") : "";
+        const prevChar = startCpIndex > 0 ? aCps[startCpIndex - 1] ?? "" : "";
         if (prevChar && isLinkChar(prevChar)) continue;
 
         let fragLower = normKey(frag);

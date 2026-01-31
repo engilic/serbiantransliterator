@@ -109,7 +109,7 @@ export function bridgePhrasesAcrossTextNodes(textNodes: Element[], phraseInfos: 
             for (let x = maxX; x >= 1; x--) {
                 const startIdx = aLowerCps.length - x;
 
-                const before = startIdx > 0 ? (aCps[startIdx - 1] ?? "") : "";
+                const before = startIdx > 0 ? aCps[startIdx - 1] ?? "" : "";
                 if (!isBoundaryChar(before)) continue;
 
                 const suffixLower = aLowerCps.slice(startIdx).join("");

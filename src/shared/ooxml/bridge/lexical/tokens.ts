@@ -70,7 +70,7 @@ function bridgeTokensAcrossTextNodes(
         const { frag, startCpIndex } = fragInfo;
 
         const aCps = Array.from(aRaw);
-        const prevChar = startCpIndex > 0 ? (aCps[startCpIndex - 1] ?? "") : "";
+        const prevChar = startCpIndex > 0 ? aCps[startCpIndex - 1] ?? "" : "";
         if (prevChar && isTokenChar(prevChar)) continue;
 
         const fragKey = caseSensitive ? frag : normKey(frag);

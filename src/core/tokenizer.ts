@@ -20,8 +20,8 @@ export function tokenize(text: string): Tok[] {
         if (!ch) break;
 
         // FIX: Osiguravamo da su prev i next uvek stringovi, nikad undefined
-        const prev = i > 0 ? (text[i - 1] ?? "") : "";
-        const next = i + 1 < text.length ? (text[i + 1] ?? "") : "";
+        const prev = i > 0 ? text[i - 1] ?? "" : "";
+        const next = i + 1 < text.length ? text[i + 1] ?? "" : "";
 
         const isJoiner =
             ch === "-" ||
