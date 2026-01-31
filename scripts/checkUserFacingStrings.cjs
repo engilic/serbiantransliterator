@@ -4,41 +4,13 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
+const { C, color, ok, fail, scan } = require("./_ui.cjs");
 
 // --- CONFIG ---
 const ROOT = process.cwd();
 const SRC_DIR = path.join(ROOT, "src");
 
-// --- ANSI COLORS (TTY/NO_COLOR aware) ---
-// Napomena: blue je "bright blue" (94) da bude čitljiv u pwsh na crnoj pozadini.
-const C = {
-    reset: "\x1b[0m",
-    red: "\x1b[31m",
-    green: "\x1b[32m",
-    yellow: "\x1b[33m",
-    blue: "\x1b[94m", // bright blue
-    cyan: "\x1b[96m", // bright cyan (rezerva)
-    magenta: "\x1b[35m",
-    bold: "\x1b[1m",
-    gray: "\x1b[90m",
-};
-
-const COLOR_ENABLED = !!process.stdout.isTTY && !process.env.NO_COLOR;
-
-function c(code, text) {
-    return COLOR_ENABLED ? `${code}${text}${C.reset}` : text;
-}
-
-function ok(text = "OK") {
-    return c(C.green, `✔ ${text}`);
-}
-
-function fail(text = "FAIL") {
-    return c(C.red, `✖ ${text}`);
-}
-
 // --- RULES DEFINITION ---
-// Ovde definišemo šta je zabranjeno.
 const RULES = [
     {
         id: "setStatus-hardcoded",
@@ -78,7 +50,6 @@ function walk(dir) {
         const full = path.join(dir, file);
 
         if (isDir(full)) {
-            // Ignorišemo sistemske foldere
             if (!["node_modules", "dist", "coverage", ".git", "wasm-core"].includes(file)) {
                 results.push(...walk(full));
             }
@@ -113,7 +84,6 @@ function checkFile(filePath) {
 
     for (const rule of RULES) {
         let m;
-        // Reset regex state (bitno kada se koristi global flag u petlji)
         rule.regex.lastIndex = 0;
 
         while ((m = rule.regex.exec(content)) !== null) {
@@ -135,10 +105,10 @@ function checkFile(filePath) {
 }
 
 function main() {
-    console.log(c(C.blue, "🔍 Scanning source code for hardcoded user-facing strings..."));
+    scan("🔍 Scanning source code for hardcoded user-facing strings...");
 
     if (!isDir(SRC_DIR)) {
-        console.error(c(C.red, `✖ ERROR: src directory not found at ${SRC_DIR}`));
+        console.error(color(C.red, `✖ ERROR: src directory not found at ${SRC_DIR}`));
         process.exit(2);
     }
 
@@ -156,10 +126,10 @@ function main() {
 
     console.error(`\n${fail("FATAL")} HARDCODED USER STRINGS DETECTED!`);
     console.error(
-        c(C.yellow, "The following strings are not translatable and will appear hardcoded to users:") + "\n"
+        color(C.yellow, "The following strings are not translatable and will appear hardcoded to users:") +
+            "\n"
     );
 
-    // Group by file for cleaner output
     const grouped = {};
     allViolations.forEach((v) => {
         if (!grouped[v.file]) grouped[v.file] = [];
@@ -167,10 +137,10 @@ function main() {
     });
 
     for (const file of Object.keys(grouped)) {
-        console.error(c(C.bold, `📄 ${file}`));
+        console.error(color(C.bold, `📄 ${file}`));
         for (const v of grouped[file]) {
-            console.error(`   ${c(C.gray, `Line ${v.line}:${v.col}`)}  ${c(C.red, `[${v.ruleId}]`)}`);
-            console.error(`     Snippet: ${c(C.yellow, v.snippet)}`);
+            console.error(`   ${color(C.gray, `Line ${v.line}:${v.col}`)}  ${color(C.red, `[${v.ruleId}]`)}`);
+            console.error(`     Snippet: ${color(C.yellow, v.snippet)}`);
             console.error(`     Fix:     ${v.msg}\n`);
         }
     }

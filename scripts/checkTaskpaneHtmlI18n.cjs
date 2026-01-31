@@ -4,34 +4,14 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
+const { C, color, ok, fail, scan } = require("./_ui.cjs");
 
+// --- CONFIG ---
 const ROOT = process.cwd();
 const FILE = path.join(ROOT, "src", "taskpane", "taskpane.html");
 
+// Regex za slova (Latinica + Ćirilica)
 const LETTER_RE = /[A-Za-zČĆĐŠŽčćđšž\u0400-\u052F]/;
-
-const C = {
-    reset: "\x1b[0m",
-    red: "\x1b[31m",
-    green: "\x1b[32m",
-    yellow: "\x1b[33m",
-    blue: "\x1b[34m",
-    bold: "\x1b[1m",
-    gray: "\x1b[90m",
-};
-
-const COLOR_ENABLED = !!process.stdout.isTTY && !process.env.NO_COLOR;
-function c(code, text) {
-    return COLOR_ENABLED ? `${code}${text}${C.reset}` : text;
-}
-
-function ok(text) {
-    return c(C.green, `✔ ${text}`);
-}
-
-function fail(text) {
-    return c(C.red, `✖ ${text}`);
-}
 
 function posFromIndex(text, idx) {
     const before = text.slice(0, idx);
@@ -49,22 +29,33 @@ function snippetAt(text, idx, maxLen = 80) {
 }
 
 function main() {
-    console.log(c(C.blue, "🔍 Scanning taskpane.html for hardcoded strings..."));
+    scan("🔍 Scanning taskpane.html for hardcoded strings...");
 
     if (!fs.existsSync(FILE)) {
-        console.error(c(C.red, `✖ ERROR: taskpane.html not found at ${FILE}`));
+        console.error(color(C.red, `✖ ERROR: taskpane.html not found at ${FILE}`));
         process.exit(2);
     }
 
     let html = fs.readFileSync(FILE, "utf8");
 
+    // --- PRE-PROCESSING (Cleaning) ---
+    // Using .repeat(m.length) to preserve line numbers/positions
+
+    // 1) Remove Comments <!-- ... -->
     html = html.replace(/<!--[\s\S]*?-->/g, (m) => " ".repeat(m.length));
+
+    // 2) Remove Scripts <script>...</script>
     html = html.replace(/<script\b[^>]*>[\s\S]*?<\/script[^>]*>/gi, (m) => " ".repeat(m.length));
+
+    // 3) Remove Styles <style>...</style>
     html = html.replace(/<style\b[^>]*>[\s\S]*?<\/style[^>]*>/gi, (m) => " ".repeat(m.length));
+
+    // 4) Remove EJS/Template tags <% ... %>
     html = html.replace(/<%[\s\S]*?%>/g, (m) => " ".repeat(m.length));
 
     const violations = [];
 
+    // --- RULE 1: Visible text nodes (> TEXT <) ---
     const reText = />([^<]+)</g;
     let m;
 
@@ -75,6 +66,7 @@ function main() {
         if (!trimmed) continue;
         if (!LETTER_RE.test(trimmed)) continue;
 
+        // Context Check
         const before = html.slice(0, m.index);
         const lastTagOpen = before.lastIndexOf("<");
         if (lastTagOpen === -1) continue;
@@ -94,6 +86,7 @@ function main() {
         });
     }
 
+    // --- RULE 2: Attributes (title, placeholder, aria-label) ---
     const reAttr = /\b(title|placeholder|aria-label)\s*=\s*"([^"]*)"/g;
 
     while ((m = reAttr.exec(html)) !== null) {
@@ -109,7 +102,9 @@ function main() {
 
         if (startTag !== -1 && endTag !== -1) {
             const fullTag = html.slice(startTag, endTag);
-            if (fullTag.includes("data-i18n-attr") && fullTag.includes(`${attrName}:`)) continue;
+            if (fullTag.includes("data-i18n-attr") && fullTag.includes(`${attrName}:`)) {
+                continue;
+            }
         }
 
         const { line, col } = posFromIndex(html, idx);
@@ -123,21 +118,22 @@ function main() {
         });
     }
 
+    // --- REPORTING ---
     if (violations.length === 0) {
         console.log(ok("OK") + " HTML is clean (No hardcoded strings detected).");
         process.exit(0);
     }
 
     console.error(`\n${fail("FATAL")} HARDCODED STRINGS DETECTED IN HTML!`);
-    console.error(c(C.yellow, "Please verify and use data-i18n for these:") + "\n");
+    console.error(color(C.yellow, "Please verify and use data-i18n for these:") + "\n");
 
     for (const v of violations.slice(0, 50)) {
-        console.error(`  📄 ${c(C.bold, `Line ${v.line}:${v.col}`)}  ${c(C.red, `[${v.rule}]`)}`);
-        console.error(`     ${c(C.gray, v.snippet)}\n`);
+        console.error(`  📄 ${color(C.bold, `Line ${v.line}:${v.col}`)}  ${color(C.red, `[${v.rule}]`)}`);
+        console.error(`     ${color(C.gray, v.snippet)}\n`);
     }
 
     if (violations.length > 50) {
-        console.error(c(C.yellow, `...and ${violations.length - 50} more errors.`));
+        console.error(color(C.yellow, `...and ${violations.length - 50} more errors.`));
     }
 
     process.exit(1);

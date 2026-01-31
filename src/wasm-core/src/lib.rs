@@ -1,21 +1,26 @@
-use wasm_bindgen::prelude::*;
-use std::sync::Mutex;
+// src/wasm-core/src/lib.rs
+
+use aho_corasick::AhoCorasick;
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
-use aho_corasick::AhoCorasick;
+use std::sync::Mutex;
+use wasm_bindgen::prelude::*;
 
-mod dictionary;
 mod convert;
+mod dictionary;
 mod rules;
+#[cfg(test)]
 mod tests;
 
+use convert::{convert_dialect_internal, to_cyrillic_internal, to_latin_internal};
 use dictionary::load_dictionary_internal;
-use convert::{to_cyrillic_internal, to_latin_internal, convert_dialect_internal};
 use rules::SYSTEM_EXCEPTIONS;
 
-static REPLACER: Lazy<Mutex<Option<(AhoCorasick, Vec<String>)>>> = Lazy::new(|| {
-    Mutex::new(None)
-});
+type ReplacerState = (AhoCorasick, Vec<String>);
+type ReplacerCache = Option<ReplacerState>;
+type ReplacerLock = Mutex<ReplacerCache>;
+
+static REPLACER: Lazy<ReplacerLock> = Lazy::new(|| Mutex::new(None));
 
 #[wasm_bindgen]
 pub fn init_debug() {
@@ -52,7 +57,7 @@ pub fn init_replacer(custom_json: &str) -> Result<(), JsValue> {
     }
 
     let ac = AhoCorasick::builder()
-        .ascii_case_insensitive(false) 
+        .ascii_case_insensitive(false)
         .match_kind(aho_corasick::MatchKind::LeftmostFirst)
         .build(&patterns)
         .map_err(|e| JsValue::from_str(&format!("AC error: {}", e)))?;
@@ -75,8 +80,7 @@ pub fn apply_replacements(text: &str) -> String {
 
 #[wasm_bindgen]
 pub fn load_dictionary_bin(mode: &str, bin_data: &[u8]) -> Result<(), JsValue> {
-    load_dictionary_internal(mode, bin_data)
-        .map_err(|e| JsValue::from_str(&e))
+    load_dictionary_internal(mode, bin_data).map_err(|e| JsValue::from_str(&e))
 }
 
 #[wasm_bindgen]

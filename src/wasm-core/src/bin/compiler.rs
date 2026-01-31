@@ -1,15 +1,17 @@
+// src/wasm-core/src/bin/compiler.rs
+
+use fst::MapBuilder;
 use std::collections::{BTreeMap, HashMap};
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::Path;
-use fst::MapBuilder;
 
 fn main() {
     println!("Compiling dictionaries to FST with Morphology...");
-    
+
     // Učitaj sufikse jednom (zajednički su)
     let suffixes = load_suffixes();
-    
+
     compile("dict_e2i", &suffixes);
     compile("dict_i2e", &suffixes);
     println!("Done!");
@@ -23,7 +25,8 @@ fn load_suffixes() -> Vec<String> {
     }
     let mut file = File::open(path).expect("Unable to open suffixes.json");
     let mut data = String::new();
-    file.read_to_string(&mut data).expect("Unable to read suffixes");
+    file.read_to_string(&mut data)
+        .expect("Unable to read suffixes");
     serde_json::from_str(&data).expect("Invalid suffixes JSON")
 }
 
@@ -40,7 +43,8 @@ fn compile(name: &str, suffixes: &[String]) {
 
     let mut file = File::open(path).expect("Unable to open JSON file");
     let mut data = String::new();
-    file.read_to_string(&mut data).expect("Unable to read string");
+    file.read_to_string(&mut data)
+        .expect("Unable to read string");
 
     let raw_map: HashMap<String, String> = serde_json::from_str(&data).expect("Invalid JSON");
     let sorted_map: BTreeMap<String, String> = raw_map.into_iter().collect();
@@ -66,19 +70,22 @@ fn compile(name: &str, suffixes: &[String]) {
     // 3. Spajanje
     // Format: [FST_LEN 8b][FST][VAL_LEN 8b][VAL][SUF_LEN 8b][SUF]
     let mut final_file = File::create(bin_path).expect("Unable to create bin file");
-    
+
     let fst_len = fst_buffer.len() as u64;
     let val_len = values_buffer.len() as u64;
     let suf_len = suffixes_bytes.len() as u64;
 
     final_file.write_all(&fst_len.to_le_bytes()).unwrap();
     final_file.write_all(&fst_buffer).unwrap();
-    
+
     final_file.write_all(&val_len.to_le_bytes()).unwrap();
     final_file.write_all(&values_buffer).unwrap();
 
     final_file.write_all(&suf_len.to_le_bytes()).unwrap();
     final_file.write_all(suffixes_bytes).unwrap();
 
-    println!("Saved Enhanced FST binary ({:.2} KB)", (fst_len + val_len + suf_len + 24) as f64 / 1024.0);
+    println!(
+        "Saved Enhanced FST binary ({:.2} KB)",
+        (fst_len + val_len + suf_len + 24) as f64 / 1024.0
+    );
 }

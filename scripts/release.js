@@ -3,18 +3,13 @@
 
 "use strict";
 
-const { spawnSync, execSync } = require("child_process");
+const { spawnSync } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 
 // --- KONFIGURACIJA ---
 const EXTENSION_NAME = "Serbian Transliterator";
-const FILES_TO_UPDATE = [
-    "package.json",
-    "src/wasm-core/Cargo.toml", // Rust
-    "manifest.xml", // Dev
-    "manifest.prod.xml", // Prod
-];
+const FILES_TO_UPDATE = ["package.json", "src/wasm-core/Cargo.toml", "manifest.xml", "manifest.prod.xml"];
 
 // --- ANSI COLORS ---
 const C = {
@@ -22,8 +17,8 @@ const C = {
     green: "\x1b[32m",
     yellow: "\x1b[33m",
     red: "\x1b[31m",
-    blue: "\x1b[34m",
-    cyan: "\x1b[36m",
+    blue: "\x1b[94m",
+    cyan: "\x1b[96m",
     magenta: "\x1b[35m",
     bold: "\x1b[1m",
     gray: "\x1b[90m",
@@ -36,9 +31,33 @@ function beep() {
 
 function printBanner() {
     console.log(`${C.cyan}${C.bold}
-                                         
    🚀 RELEASE COMMANDER • INTELLIGENT SYNC
 ${C.reset}`);
+}
+
+// --------------------------
+// Git runner (NO shell)
+// --------------------------
+function git(args, { stdio = "pipe", allowFail = false } = {}) {
+    const useInherit = stdio === "inherit";
+    const res = spawnSync("git", args, {
+        shell: false,
+        encoding: "utf8",
+        stdio: useInherit ? "inherit" : ["ignore", "pipe", "pipe"],
+    });
+
+    if (res.error) {
+        if (allowFail) return "";
+        throw res.error;
+    }
+
+    if ((res.status ?? 1) !== 0) {
+        if (allowFail) return "";
+        const err = String(res.stderr || "").trim();
+        throw new Error(`git ${args.join(" ")} failed${err ? `: ${err}` : ""}`);
+    }
+
+    return String(res.stdout || "").trim();
 }
 
 async function askSelection(opts) {
@@ -173,19 +192,11 @@ function updateFiles(newVer) {
 }
 
 function updateChangelog(newVer) {
-    let lastTag = "";
-    try {
-        lastTag = execSync("git describe --tags --abbrev=0 2>/dev/null").toString().trim();
-    } catch {}
-
+    const lastTag = git(["describe", "--tags", "--abbrev=0"], { allowFail: true });
     const range = lastTag ? `${lastTag}..HEAD` : "HEAD";
 
-    let logs = "";
-    try {
-        logs = execSync(`git log ${range} --pretty=format:"- %s (%h)"`).toString();
-    } catch {
-        logs = "- Initial release";
-    }
+    let logs = git(["log", range, "--pretty=format:- %s (%h)"], { allowFail: true });
+    if (!logs) logs = "- Initial release";
 
     const p = path.join(process.cwd(), "CHANGELOG.md");
     const old = fs.existsSync(p) ? fs.readFileSync(p, "utf8") : "";
@@ -196,7 +207,8 @@ function updateChangelog(newVer) {
 }
 
 async function main() {
-    if (execSync("git status --porcelain").toString().trim()) {
+    const dirty = git(["status", "--porcelain"]);
+    if (dirty) {
         console.error(`${C.red}⛔ ERROR: Git dirty! Commit changes first.${C.reset}`);
         process.exit(1);
     }
@@ -221,15 +233,15 @@ async function main() {
     console.log(`\n${C.yellow}👀 Review changes.${C.reset}`);
     if (!(await askYesNo("Commit and Tag?"))) {
         console.log(`${C.red}↺ Reverting...${C.reset}`);
-        execSync("git checkout .");
+        git(["checkout", "."], { stdio: "inherit" });
         process.exit(0);
     }
 
     try {
         console.log(`\n${C.blue}💾 Git Commit & Tag...${C.reset}`);
-        execSync("git add .");
-        execSync(`git commit -m "chore(release): v${sel.ver}"`);
-        execSync(`git tag -a v${sel.ver} -m "Release v${sel.ver}"`);
+        git(["add", "."], { stdio: "inherit" });
+        git(["commit", "-m", `chore(release): v${sel.ver}`], { stdio: "inherit" });
+        git(["tag", "-a", `v${sel.ver}`, "-m", `Release v${sel.ver}`], { stdio: "inherit" });
 
         beep();
         console.log(`\n${C.green}${C.bold}✅ RELEASE v${sel.ver} DONE!${C.reset}`);
