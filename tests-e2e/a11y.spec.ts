@@ -1,9 +1,7 @@
 // tests-e2e/a11y.spec.ts
-// tests-e2e/a11y.spec.ts
-// tests-e2e/a11y.spec.ts
-// tests-e2e/a11y.spec.ts
+
 import { test, expect } from "@playwright/test";
-import AxeBuilder from "@axe-core/playwright";
+import { AxeBuilder } from "@axe-core/playwright";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function logViolations(violations: any[]) {
