@@ -1,5 +1,4 @@
 // tests/ooxmlLexicalBridgesCoverage.test.ts
-
 import { describe, it, expect } from "vitest";
 import {
     bridgeExactTokensAcrossTextNodes,

@@ -1,5 +1,4 @@
 // tests/i18nExhaustive.test.ts
-
 import { describe, it, expect, beforeEach } from "vitest";
 import { setLanguage, t, tPlural, isTranslationKey, getLanguage } from "../src/shared/i18n";
 

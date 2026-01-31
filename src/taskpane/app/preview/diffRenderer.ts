@@ -1,5 +1,4 @@
 // src/taskpane/app/preview/diffRenderer.ts
-
 import { myersDiff } from "../../../shared/diff";
 import { escapeHtml } from "../../../shared/safeHtml";
 import type { InteractiveDiff } from "../../../shared/diff/interactive";

@@ -1,5 +1,4 @@
 // tests/taskpaneEntrySmoke.test.ts
-
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // Full mock of textCore to avoid loading WASM or original module logic

@@ -1,5 +1,4 @@
 // src/taskpane/app/types.ts
-
 import type { CurlyProtectionUi } from "./word/curlyProtection";
 import type { InteractiveDiff } from "../../shared/diff/interactive";
 

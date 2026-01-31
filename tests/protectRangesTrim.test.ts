@@ -1,5 +1,4 @@
 // tests/protectRangesTrim.test.ts
-
 import { describe, it, expect } from "vitest";
 import { collectProtectedRanges, type ProtectOptions } from "../src/core/protect";
 

@@ -1,66 +1,65 @@
 // tests/workerClientErrors.test.ts
-
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { WorkerClient } from "../src/taskpane/worker/client";
 
-describe("WorkerClient - Error Handling", () => {
-    let client: WorkerClient;
+class ErrorMockWorker {
+    public onerror: any = null;
+    public onmessage: any = null;
+    constructor() {}
+    postMessage() {}
+    terminate() {}
+    addEventListener() {}
+    removeEventListener() {}
+}
 
+describe("WorkerClient Error Handling", () => {
     beforeEach(() => {
         vi.useFakeTimers();
-        client = new WorkerClient();
+        (globalThis as any).Worker = ErrorMockWorker;
     });
 
     afterEach(() => {
-        client.terminate();
         vi.useRealTimers();
-        vi.unstubAllGlobals();
     });
 
     it("handles worker load error (onerror event)", async () => {
-        vi.stubGlobal(
-            "Worker",
-            class {
-                public onerror: any = null;
-                constructor() {
-                    setTimeout(() => {
-                        if (this.onerror) this.onerror(new Error("Load Error"));
-                    }, 10);
-                }
-                postMessage() {}
-                terminate() {}
-            }
-        );
-
+        const client = new WorkerClient();
         const p = client.init();
 
-        // Prvo setupujemo expectation, pa okidamo tajmere
-        const errorAssertion = expect(p).rejects.toThrow("Worker Load Error");
-        await vi.advanceTimersByTimeAsync(50);
-        await errorAssertion;
+        const instance = (client as any).worker;
+        if (instance) {
+            instance.onerror(new ErrorEvent("error"));
+        }
+
+        await expect(p).rejects.toThrow("Worker Load Error");
     });
 
     it("handles explicit ERROR message from worker", async () => {
-        vi.stubGlobal(
-            "Worker",
-            class {
-                public onmessage: any = null;
-                postMessage(msg: any) {
-                    if (msg.type === "INIT") {
-                        setTimeout(() => {
-                            if (this.onmessage)
-                                this.onmessage({ data: { type: "ERROR", error: "Wasm Panic" } });
-                        }, 10);
+        (globalThis as any).Worker = class {
+            public onmessage: any = null;
+            constructor() {}
+            postMessage() {
+                setTimeout(() => {
+                    if (this.onmessage) {
+                        this.onmessage({ data: { type: "ERROR", error: "Wasm Panic" } });
                     }
-                }
-                terminate() {}
+                }, 10);
             }
-        );
+            terminate() {}
+            addEventListener(t: string, cb: any) {
+                if (t === "message") this.onmessage = cb;
+            }
+            removeEventListener() {}
+        };
 
-        const p = client.init();
+        const client = new WorkerClient();
 
-        const errorAssertion = expect(p).rejects.toThrow("Wasm Panic");
+        // Postavljamo tvrdnju pre pomeranja sata
+        const initPromise = client.init();
+        const expectation = expect(initPromise).rejects.toThrow("Wasm Panic");
+
         await vi.advanceTimersByTimeAsync(50);
-        await errorAssertion;
+
+        await expectation;
     });
 });

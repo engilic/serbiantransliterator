@@ -1,49 +1,71 @@
-=== TRENUTNI STATUS (v1.0.0 - GOLD MASTER + GOD MODE DEVOPS) ===
+=== TRENUTNI STATUS (v1.0.0 - GOLD MASTER + MAX PERFORMANCE) ===
 
-STATUS: Production Ready & Stabilized
+STATUS: Production Ready
 VERZIJA: 1.0.0 (Gold)
 
 ### ✅ ZAVRŠENO (v1.0.0 COMPLETE):
 
-**Core Engine (God Mode):**
+**Core Engine:**
 
-- **Zero-Copy Architecture:** Implementiran binarni prenos podataka (`Uint8Array`) preko _Transferables_ između Word-a i Workera. Komunikacija je svedena na 0ms overheada jer se vlasništvo nad memorijom prenosi bez kopiranja.
-- **Hybrid Engine:** Rust + WebAssembly (Universal Converter) jezgro koje omogućava brzinu od ~100MB/s.
-- **FST Dictionaries:** Rečnici su pakovani u Finite State Transducers format, omogućavajući ultra-brzi lookup uz minimalni memorijski otisak.
-- **Async Selection Worker:** Transliteracija selekcije je potpuno izmeštena u pozadinski thread. Word interfejs ostaje 100% fluidan čak i pri obradi masivnih selekcija.
+- **Hybrid Engine:** Rust + WebAssembly (Universal Converter).
+- **FST Dictionaries:** Zero-Copy deserializacija.
+- **WASM SIMD:** 128-bit vectorization enabled.
+- **[NOVO] Zero-Overhead Caching:** `thread_local!` umesto `Mutex` u Rust jezgru (eliminisan atomski overhead).
 
 **Performance & Resilience:**
 
-- **Off-Main-Thread:** Web Workers rukovode svim transformacijama (selekcija, ceo dokument, metapodaci).
-- **Self-Healing Build:** Integrisan `cargo clean` u Guardian sistem. Rešen hronični problem binarne korupcije Rust artefakata na Windows sistemima.
-- **WASM SIMD:** 128-bitna vektorizacija omogućena za paralelnu obradu karaktera na podržanim procesorima.
+- **Off-Main-Thread:** Web Workers za teške operacije.
+- **Rust FxHash:** 3x brži lookup-ovi.
+- **[NOVO] Robust Worker Loading:** `retry` logika sa eksponencijalnim backoff-om za učitavanje rečnika.
+- **Smart Chunking:** Adaptivna obrada velikih dokumenata bez blokiranja UI.
 
 **Architecture & Code Quality:**
 
-- **Strict File Hygiene:** Implementiran "Mismatch Alarm" u PowerShell-u koji poredi heder fajla sa njegovom putanjom na disku. Fatal Error Build stop sprečava ljudske greške pri radu.
-- **UTF-8 Standardization:** Celokupan codebase je forsiran na UTF-8 bez BOM-a. Rešeni svi problemi sa srpskim karakterima u Prettier i ESLint alatima.
-- **Modularized Codebase:** Jasna separacija između Core (logika), Shared (OOXML/Bridges) i App (Office JS) slojeva.
+- **Modularized Codebase:** Jasna separacija (Core, Shared, App).
+- **[NOVO] Clean Sweep:** Uklonjen tehnički dug (dead code, duplikacije u UI logici).
+- **[NOVO] Rust Rules Extraction:** Poslovna pravila (izuzeci) izvučena u `rules.rs`.
 
-**UX & Accessibility:**
+**UX & Features:**
 
-- **A11y Green:** 100% Axe-core usklađenost. Modali imaju dinamičko upravljanje `aria-hidden` atributima i fallback tekstove za Screen Readere.
-- **Asset Factory:** `ensure-icons.js` automatski generiše svih 7 neophodnih veličina ikona (16x16 do 512x512) direktno iz SVG koda pomoću Playwright browser engine-a.
-- **Smart Status:** Napredno brojanje reči i karaktera sa real-time progresom u Word statusnoj traci.
+- **Zero-Layout-Shift:** Instant load, GPU akceleracija.
+- **Live Status Bar (v2):** Pametno brojanje reči i autodetekcija pisma.
+- **Modern Compact UI:** Bez headera, verzija u footeru.
+- **Auto Dark Mode:** CSS-native detekcija.
+- **Web Batch Mode:** PWA sa Drag & Drop podrškom.
+- **Interactive Preview:** Diff pregled izmena.
 
 **DevOps & Automation:**
 
-- **Guardian System:** Centralna komanda `npm run verify:all` koja garantuje integritet pre svakog push-a.
-- **Smart Push:** Automatska detekcija zaštićenih grana (`master`) i generisanje unikatnih PR grana sa direktnim linkom za Merge.
+- **[NOVO] Automated Release Workflow:** `standard-version` implementiran za automatski changelog i verzionisanje.
+- **Quality Gates:** E2E (Playwright), Fuzzing (fast-check), A11y (Axe-core), CodeQL.
+- **Security:** Strict CSP, SafeHTML, XXE Protection.
 
 ---
 
 ### 🚧 POZNATI IZAZOVI (FUTURE):
 
-- **Memory Overhead:** `DOMParser` (JS) učitava ceo XML u RAM. Trenutni limit je ~500MB. Rešenje: Streaming Rust Parser (Q2 2026).
+- **Memory Overhead:** `DOMParser` (JS) parsira ceo XML u RAM. Limit ~500MB fajlovi. Rešenje: Streaming Rust Parser (Q2 2026).
+
+---
+
+### 🔮 VISION 2027 (THE NEXT FRONTIER):
+
+- [ ] **Streaming Rust Parser:** Zamena `DOMParser`-a sa `quick-xml` (Rust) za fajlove od 1GB+.
+- [ ] **On-Device AI (NER):** Lokalni BERT model (ONNX Runtime) za prepoznavanje imena.
+- [ ] **Cloud Intelligence (Optional):** Hibridni mod sa Cloudflare Workers + LLM API.
+- [ ] **Semantic Style Skipping:** Preskakanje "Code" stilova čitanjem `styles.xml`.
+- [ ] **Smart Clipboard:** Desktop (Tauri) aplikacija.
+- [ ] **Browser Extension:** Univerzalna ekstenzija.
+- [x] **Enterprise Automation:** Semantic Release & Auto-Changelog. (DONE)
+- [ ] **Unified i18n:** Refaktorisanje lokalizacije u jedan fajl.
+- [ ] **Full Icon/Text Separation:** Potpuno odvajanje ikonica od tekstualnih ključeva.
+- [ ] **Legacy .DOC Support:** Podrška za stare binarne fajlove u Web Modu.
+- [ ] **Live Theme Sync:** Instant theme switch bez refresha (WebView2 limit).
 
 ---
 
 ### 🎯 NEXT STEPS (IMMEDIATE):
 
-1. **Microsoft Store Submission:** Finalna validacija manifesta i predaja na review.
-2. **Streaming Research:** Početak rada na `quick-xml` integraciji u Rust jezgru.
+1.  **Interno testiranje:** "Dogfooding" nove `release` skripte i optimizovanog jezgra.
+2.  **Telemetry Analysis:** Praćenje `worker_retry_count` (ako dodamo) i performansi novog keša.
+3.  **Microsoft Store Submission:** Nakon validacije stabilnosti v1.0.0.

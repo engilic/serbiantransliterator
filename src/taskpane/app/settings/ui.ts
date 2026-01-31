@@ -1,5 +1,4 @@
 // src/taskpane/app/settings/ui.ts
-
 import type { UiSettings, ProfilePreset, AppTheme } from "../types";
 import { state } from "../state";
 import { asCurlyProtectionUi } from "../word/curlyProtection";

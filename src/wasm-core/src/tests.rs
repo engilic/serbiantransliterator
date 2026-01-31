@@ -1,5 +1,3 @@
-// src/wasm-core/src/tests.rs
-
 #[cfg(test)]
 mod tests {
     // FIX: Koristimo crate::convert jer je convert sada pub(crate)

@@ -1,5 +1,4 @@
 // src/taskpane/app/i18n/uiI18n.ts
-
 import { setLanguage, t, type Language, getLanguage, isTranslationKey } from "../../../shared/i18n";
 import { safeGetItem, safeSetItem, safeRemoveItem } from "../../../shared/storage/safeLocalStorage";
 

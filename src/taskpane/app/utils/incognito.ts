@@ -1,5 +1,4 @@
 // src/taskpane/app/utils/incognito.ts
-
 import { showPreviewToast } from "../modal/previewModal";
 
 export function checkIncognito() {

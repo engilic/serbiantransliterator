@@ -1,5 +1,4 @@
 // tests/headersFooters.test.ts
-
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // mock convertOoxml used inside headersFooters.ts

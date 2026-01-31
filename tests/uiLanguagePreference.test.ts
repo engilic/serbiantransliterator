@@ -1,5 +1,4 @@
 // tests/uiLanguagePreference.test.ts
-
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 
 import {

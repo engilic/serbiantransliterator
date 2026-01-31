@@ -1,5 +1,4 @@
 // src/shared/locales/en.ts
-
 import { SR_RS } from "./sr";
 
 export type TranslationKey = keyof typeof SR_RS;

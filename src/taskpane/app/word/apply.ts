@@ -1,5 +1,4 @@
 // src/taskpane/app/word/apply.ts
-
 import { unsafeHtml } from "../../../shared/safeHtml";
 import type { OoxmlOptions } from "../../../shared/ooxml/convertOoxml";
 import { t } from "../../../shared/i18n";

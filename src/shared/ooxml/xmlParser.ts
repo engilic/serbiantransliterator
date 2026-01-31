@@ -1,5 +1,4 @@
 // src/shared/ooxml/xmlParser.ts
-
 import { isSafeXml } from "./xmlSafety";
 
 export function parseSafeOoxml(xml: string): Document | null {

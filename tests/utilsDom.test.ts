@@ -1,5 +1,4 @@
 // tests/utilsDom.test.ts
-
 import { describe, it, expect, vi } from "vitest";
 import { get, getOptional, scrollIntoViewIfNeeded } from "../src/taskpane/app/utils/dom";
 

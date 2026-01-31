@@ -1,8 +1,9 @@
 // src/taskpane/app/modal/modal.ts
-
 import { unwrapHtml, type SafeHtml } from "../../../shared/safeHtml";
 import { t } from "../../../shared/i18n";
 import { modalManager } from "./modalManager";
+
+// [REMOVED] clearModalResolver (Dead code)
 
 export function confirmInPanel(safeHtmlMsg: SafeHtml): Promise<boolean> {
     const overlay = document.getElementById("modalOverlay") as HTMLDivElement;
@@ -11,8 +12,6 @@ export function confirmInPanel(safeHtmlMsg: SafeHtml): Promise<boolean> {
     const input = document.getElementById("modalInput") as HTMLTextAreaElement;
     const okBtn = document.getElementById("modalOk") as HTMLButtonElement;
     const cancelBtn = document.getElementById("modalCancel") as HTMLButtonElement;
-
-    if (!overlay) return Promise.resolve(false);
 
     title.style.display = "";
     cancelBtn.style.display = "inline-flex";
@@ -42,20 +41,11 @@ export function confirmInPanel(safeHtmlMsg: SafeHtml): Promise<boolean> {
     cancelBtn.style.border = "";
     cancelBtn.onclick = closeModal;
 
-    const modalDiv = document.getElementById("modal") as HTMLDivElement;
-    if (modalDiv) modalDiv.classList.remove("wide");
-
-    // [A11Y FIX]: Omogućava čitačima ekrana da vide modal
+    (document.getElementById("modal") as HTMLDivElement).classList.remove("wide");
     overlay.style.display = "flex";
-    overlay.setAttribute("aria-hidden", "false");
 
     return new Promise((resolve) => {
-        // [TEST FIX]: DOM sakrivamo tek u callback-u nakon što ModalManager završi
-        modalManager.open("confirm", (res) => {
-            overlay.style.display = "none";
-            overlay.setAttribute("aria-hidden", "true");
-            resolve(res);
-        });
+        modalManager.open("confirm", resolve);
     });
 }
 
@@ -66,8 +56,6 @@ export function showModalInfo(titleStr: string, safeHtmlMsg: SafeHtml) {
     const input = document.getElementById("modalInput") as HTMLTextAreaElement;
     const okBtn = document.getElementById("modalOk") as HTMLButtonElement;
     const cancelBtn = document.getElementById("modalCancel") as HTMLButtonElement;
-
-    if (!overlay) return;
 
     title.style.display = "";
     cancelBtn.style.display = "inline-flex";
@@ -87,26 +75,20 @@ export function showModalInfo(titleStr: string, safeHtmlMsg: SafeHtml) {
     cancelBtn.style.border = "none";
     cancelBtn.onclick = closeModal;
 
-    const modalDiv = document.getElementById("modal") as HTMLDivElement;
-    if (modalDiv) modalDiv.classList.remove("wide");
-
-    // [A11Y FIX]: Prikaži modal
+    (document.getElementById("modal") as HTMLDivElement).classList.remove("wide");
     overlay.style.display = "flex";
-    overlay.setAttribute("aria-hidden", "false");
 
-    modalManager.open("info", () => {
-        // [TEST FIX]: Zatvori modal u callback-u
-        overlay.style.display = "none";
-        overlay.setAttribute("aria-hidden", "true");
-    });
+    modalManager.open("info");
 }
 
 export function handleModalOk() {
+    (document.getElementById("modalOverlay") as HTMLDivElement).style.display = "none";
     resetModalButtons();
     modalManager.resolve(true);
 }
 
 export function closeModal() {
+    (document.getElementById("modalOverlay") as HTMLDivElement).style.display = "none";
     resetModalButtons();
     modalManager.resolve(false);
 }
@@ -115,8 +97,6 @@ export function resetModalButtons() {
     const cancelBtn = document.getElementById("modalCancel") as HTMLButtonElement;
     const okBtn = document.getElementById("modalOk") as HTMLButtonElement;
     const title = document.getElementById("modalTitle") as HTMLHeadingElement;
-
-    if (!cancelBtn || !okBtn || !title) return;
 
     title.style.display = "";
 

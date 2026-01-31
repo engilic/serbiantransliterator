@@ -1,5 +1,4 @@
 // tests/selectionCoverage.test.ts
-
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { checkSelectionAndUpdateButtons, onSelectionChange } from "../src/taskpane/app/selection";
 import { state } from "../src/taskpane/app/state";

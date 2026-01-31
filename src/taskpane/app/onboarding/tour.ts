@@ -1,5 +1,4 @@
 // src/taskpane/app/onboarding/tour.ts
-
 import { safeGetItem, safeSetItem } from "../../../shared/storage/safeLocalStorage";
 import { t, type TranslationKey } from "../../../shared/i18n"; // FIX: import type
 import { get } from "../utils/dom";

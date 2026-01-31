@@ -1,5 +1,4 @@
 // src/taskpane/taskpane.ts
-
 // HITNO: Polyfills za starije Word engine (IE11/Edge Legacy)
 import "core-js/stable";
 import "regenerator-runtime/runtime";

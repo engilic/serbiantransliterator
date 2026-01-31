@@ -1,5 +1,4 @@
 // scripts/checkTaskpaneHtmlI18n.cjs
-
 "use strict";
 
 const fs = require("node:fs");

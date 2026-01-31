@@ -1,5 +1,4 @@
 // tests/previewCacheDecision.test.ts
-
 import { describe, it, expect } from "vitest";
 import { decidePreviewCacheReuse } from "../src/taskpane/app/word/previewCacheDecision";
 

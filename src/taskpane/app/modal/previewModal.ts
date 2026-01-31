@@ -1,5 +1,4 @@
 // src/taskpane/app/modal/previewModal.ts
-
 import { state } from "../state";
 import { applyFromPreview } from "../word/apply";
 import { get, getOptional } from "../utils/dom";

@@ -1,5 +1,4 @@
 // tests/settingsSubsUi.test.ts
-
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { initSubsUi, addSub, renderSubsList } from "../src/taskpane/app/settings/subsUi";
 

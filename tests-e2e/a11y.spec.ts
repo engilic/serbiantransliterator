@@ -1,5 +1,7 @@
 // tests-e2e/a11y.spec.ts
-
+// tests-e2e/a11y.spec.ts
+// tests-e2e/a11y.spec.ts
+// tests-e2e/a11y.spec.ts
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
@@ -122,7 +124,7 @@ test.describe("Accessibility (A11y)", () => {
         // Find header
         let header = page.locator("#advancedHeader");
         if ((await header.count()) === 0) {
-            console.warn("âš ï¸ #advancedHeader not found, falling back to legacy ID");
+            console.warn("⚠️ #advancedHeader not found, falling back to legacy ID");
             header = page.locator("#toggleAdvancedBtn");
         }
 
@@ -157,7 +159,7 @@ test.describe("Accessibility (A11y)", () => {
             if (text) text.innerText = "Test poruka.";
 
             const btnCancel = document.getElementById("modalCancel");
-            if (btnCancel) btnCancel.innerText = "OtkaÅ¾i";
+            if (btnCancel) btnCancel.innerText = "Otkaži";
 
             const btnOk = document.getElementById("modalOk");
             if (btnOk) btnOk.innerText = "OK";
