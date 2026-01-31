@@ -9,7 +9,7 @@ const ARGS = process.argv.slice(2);
 const IS_FAST_MODE = ARGS.includes("--fast");
 const NO_PUSH = ARGS.includes("--no-push");
 
-// --- BOJE (Kopirano iz tvog primera) ---
+// --- BOJE ---
 const C = {
     reset: "\x1b[0m",
     green: "\x1b[32m",
@@ -62,54 +62,92 @@ function run(step, cmd, args, cwd = ROOT) {
     console.log(`${C.green}✅ OK${C.reset}`);
 }
 
-// --- LOGIKA ZA INPUT (Kopirano iz git-cleanup.js) ---
+// --- LOGIKA ZA INPUT (svuda isto) ---
 async function askYesNo(q) {
     return new Promise((resolve) => {
         console.log(`\n${C.magenta}❓ ${q}${C.reset}`);
 
-        // Uputstvo za tastere/miša
-        console.log(
-            `   ${C.white}[${C.green}BACKSPACE / ⬅ / Enter${C.white}] = DA   |   [${C.red}DEL / ➔ / Esc${C.white}] = NE${C.reset}`
-        );
+        // Uputstvo (traženi format + boje):
+        console.log(`   ${C.green}[BACKSPACE / ⬅ / Enter / Y] = ✔ YES${C.reset}`);
+        console.log(`   ${C.red}[DEL / ➔ / Esc / N] = ✖ NO${C.reset}`);
 
-        process.stdin.setRawMode(true);
-        process.stdin.resume();
         process.stdin.setEncoding("utf8");
+        process.stdin.resume();
+
+        let rawOk = true;
+        try {
+            process.stdin.setRawMode(true);
+        } catch {
+            rawOk = false;
+        }
+
+        const cleanup = (result, listener) => {
+            try {
+                if (rawOk) process.stdin.setRawMode(false);
+            } catch {
+                // ignore
+            }
+            process.stdin.pause();
+            if (listener) process.stdin.removeListener("data", listener);
+            resolve(result);
+        };
+
+        // Fallback ako raw mode nije dostupan: korisnik kuca Y/N pa Enter
+        if (!rawOk) {
+            const onLine = (chunk) => {
+                const v = String(chunk || "")
+                    .trim()
+                    .toLowerCase();
+
+                if (v.startsWith("y")) {
+                    process.stdout.write(`${C.green}✔ YES${C.reset}\n`);
+                    cleanup(true, onLine);
+                    return;
+                }
+                if (v.startsWith("n")) {
+                    process.stdout.write(`${C.red}✖ NO${C.reset}\n`);
+                    cleanup(false, onLine);
+                    return;
+                }
+
+                // default: NO (konzervativno)
+                process.stdout.write(`${C.red}✖ NO${C.reset}\n`);
+                cleanup(false, onLine);
+            };
+
+            process.stdin.on("data", onLine);
+            return;
+        }
 
         const listener = (k) => {
             // CTRL+C = Exit
             if (k === "\u0003") {
-                process.stdin.setRawMode(false);
+                try {
+                    process.stdin.setRawMode(false);
+                } catch {}
                 process.exit(1);
             }
 
-            // DA: y, Y, Enter, Backspace (\u007f ili \u0008), Levo (\u001b[D)
-            // Tvoj levi klik na mišu (Backspace) je ovde pokriven (\u0008 ili \u007f)
+            // YES: y, Y, Enter, Backspace (\u007f ili \u0008), Levo (\u001b[D)
             if (
                 k === "y" ||
                 k === "Y" ||
                 k === "\r" ||
+                k === "\n" ||
                 k === "\u007f" ||
                 k === "\u0008" ||
                 k === "\u001b[D"
             ) {
-                process.stdout.write(`${C.green} ✔ DA${C.reset}\n`);
-                cleanup(true);
+                process.stdout.write(`${C.green}✔ YES${C.reset}\n`);
+                cleanup(true, listener);
             }
-            // NE: n, N, Esc, Delete (\u001b[3~), Desno (\u001b[C)
-            // Tvoj desni klik na mišu (Delete) je ovde pokriven (\u001b[3~)
+            // NO: n, N, Esc, Delete (\u001b[3~), Desno (\u001b[C)
             else if (k === "n" || k === "N" || k === "\u001b" || k === "\u001b[3~" || k === "\u001b[C") {
-                process.stdout.write(`${C.red} ✖ NE${C.reset}\n`);
-                cleanup(false);
+                process.stdout.write(`${C.red}✖ NO${C.reset}\n`);
+                cleanup(false, listener);
             }
         };
 
-        function cleanup(result) {
-            process.stdin.setRawMode(false);
-            process.stdin.pause();
-            process.stdin.removeListener("data", listener);
-            resolve(result);
-        }
         process.stdin.on("data", listener);
     });
 }
@@ -198,10 +236,10 @@ async function main() {
         shell: true,
         encoding: "utf8",
     }).stdout.trim();
+
     const isProtected = currentBranch === "master" || currentBranch === "main";
     const prompt = isProtected ? `Master je zaštićen. Auto-grana + Push?` : `Push na '${currentBranch}'?`;
 
-    // OVDE SE KORISTI TVOJA LOGIKA (BACKSPACE=DA, DELETE=NE)
     const shouldPush = await askYesNo(prompt);
 
     if (shouldPush) {

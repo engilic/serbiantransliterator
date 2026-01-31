@@ -20,6 +20,7 @@ const C = {
     red: "\x1b[31m",
     blue: "\x1b[34m",
     cyan: "\x1b[36m",
+    magenta: "\x1b[35m",
     bold: "\x1b[1m",
     gray: "\x1b[90m",
     white: "\x1b[97m",
@@ -40,6 +41,7 @@ ${C.reset}`);
 async function askSelection(opts) {
     return new Promise((resolve) => {
         let idx = 0;
+
         const render = () => {
             console.clear();
             printBanner();
@@ -80,10 +82,11 @@ async function askSelection(opts) {
 
 async function askYesNo(q) {
     return new Promise((r) => {
-        console.log(`\n${C.magenta}❓ ${q} ${C.gray}(Y/n)${C.reset}`);
-        console.log(
-            `   ${C.white}[${C.green}BACKSPACE / ⬅ / Enter${C.white}] = DA   |   [${C.red}DEL / ➔ / Esc${C.white}] = NE${C.reset}`
-        );
+        console.log(`\n${C.magenta}❓ ${q}${C.reset}`);
+
+        // Hint (isti sistem kao u drugim skriptama): ✔ YES / ✖ NO + Y/N podrška
+        console.log(`   ${C.green}[BACKSPACE / ⬅ / Enter / Y] = ✔ YES${C.reset}`);
+        console.log(`   ${C.red}[DEL / ➔ / Esc / N] = ✖ NO${C.reset}`);
 
         process.stdin.setRawMode(true);
         process.stdin.resume();
@@ -92,30 +95,33 @@ async function askYesNo(q) {
         const l = (k) => {
             if (k === "\u0003") process.exit(1);
 
-            // DA: y, Y, Enter, Backspace, Levo
+            // YES: y, Y, Enter, Backspace, Left
             if (
                 k === "y" ||
                 k === "Y" ||
                 k === "\r" ||
+                k === "\n" ||
                 k === "\u007f" ||
                 k === "\u0008" ||
                 k === "\u001b[D"
             ) {
-                process.stdout.write(`${C.green} ✔ DA${C.reset}\n`);
+                process.stdout.write(`${C.green}✔ YES${C.reset}\n`);
                 cleanup(true);
             }
-            // NE: n, N, Esc, Delete, Desno
+            // NO: n, N, Esc, Delete, Right
             else if (k === "n" || k === "N" || k === "\u001b" || k === "\u001b[3~" || k === "\u001b[C") {
-                process.stdout.write(`${C.red} ✖ NE${C.reset}\n`);
+                process.stdout.write(`${C.red}✖ NO${C.reset}\n`);
                 cleanup(false);
             }
         };
+
         const cleanup = (res) => {
             process.stdin.setRawMode(false);
             process.stdin.pause();
             process.stdin.removeListener("data", l);
             r(res);
         };
+
         process.stdin.on("data", l);
     });
 }

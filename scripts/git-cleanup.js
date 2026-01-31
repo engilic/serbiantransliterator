@@ -1,297 +1,302 @@
-// scripts/git-cleanup.js
-const { spawnSync, execSync } = require("child_process");
-const path = require("path");
-const fs = require("fs");
-const os = require("os");
-const dns = require("dns");
+#!/usr/bin/env node
+"use strict";
 
-// --- KONFIGURACIJA ---
-const BASE_KEEP = [".vs", ".vscode", ".idea", "node_modules", ".git", ".env*"];
-const WASM_DIR = path.join(process.cwd(), "src", "wasm-core");
-const BACKUP_STASH_NAME = "OMEGA_EMERGENCY_BACKUP";
+const { execSync } = require("node:child_process");
 
-const NASTY_CACHES = [
-    ".eslintcache",
-    ".stylelintcache",
-    "tsconfig.tsbuildinfo",
-    ".npm-cache",
-    ".jest-cache",
-    ".parcel-cache",
-    ".cache",
-    "dist",
-    "build",
-    "coverage",
-    "target",
-];
+/* -------------------------
+   Shell helpers
+------------------------- */
 
-const args = process.argv.slice(2);
-const FORCE = args.includes("--yes") || args.includes("-y");
+function sh(cmd, { stdio = "pipe" } = {}) {
+    return execSync(cmd, { encoding: "utf8", stdio }).trim();
+}
 
-const C = {
+function trySh(cmd, { stdio = "pipe" } = {}) {
+    try {
+        return { ok: true, out: sh(cmd, { stdio }) };
+    } catch (e) {
+        return {
+            ok: false,
+            cmd,
+            code: e?.status,
+            out: (e?.stdout || "").toString("utf8").trim(),
+            err: (e?.stderr || "").toString("utf8").trim(),
+        };
+    }
+}
+
+function escArg(s) {
+    if (/^[a-zA-Z0-9._/-]+$/.test(s)) return s;
+    return `"${String(s).replace(/"/g, '\\"')}"`;
+}
+
+/* -------------------------
+   Colors + labels
+------------------------- */
+
+const ANSI = {
     reset: "\x1b[0m",
     green: "\x1b[32m",
-    yellow: "\x1b[33m",
     red: "\x1b[31m",
-    blue: "\x1b[34m",
-    magenta: "\x1b[35m",
-    bold: "\x1b[1m",
-    gray: "\x1b[90m",
-    white: "\x1b[97m",
-    bgRed: "\x1b[41m",
-    cyan: "\x1b[36m",
 };
 
-function beep() {
-    process.stdout.write("\x07");
+function colorize(color, text) {
+    if (!process.stdout.isTTY || process.env.NO_COLOR) return text;
+    return `${color}${text}${ANSI.reset}`;
 }
 
-function printBanner() {
-    console.clear();
-    console.log(`${C.red}${C.bold}
-                                      
-    ☣️  OMEGA SANITIZER • CLEANUP TOOL ☣️
-${C.reset}`);
+const YES_LABEL = "✔ YES";
+const NO_LABEL = "✖ NO";
+
+/* -------------------------
+   Raw key YES/NO prompt
+------------------------- */
+
+function hintLine() {
+    const yes = `  [BACKSPACE / ⬅ / Enter / Y] = ${YES_LABEL}`;
+    const no = `  [DEL / ➔ / Esc / N] = ${NO_LABEL}`;
+    return `${colorize(ANSI.green, yes)}   |   ${colorize(ANSI.red, no)}`;
 }
 
-function logDual(emoji, sr, en, color = C.reset) {
-    console.log(`${color}${emoji} ${C.bold}${sr}${C.reset}`);
-    console.log(`   ${C.gray}└─ ${en}${C.reset}`);
-}
+// Raw key sequences (najčešće u terminalima)
+const KEY = {
+    ENTER1: "\r",
+    ENTER2: "\n",
+    ESC: "\x1b",
+    BACKSPACE1: "\b", // 0x08
+    BACKSPACE2: "\x7f", // 0x7f (često backspace u raw-mode)
+    LEFT: "\x1b[D",
+    RIGHT: "\x1b[C",
+    DELETE: "\x1b[3~",
+};
 
-function run(cmd, args, ignoreError = false) {
-    console.log(`${C.gray}$ ${cmd} ${args.join(" ")}${C.reset}`);
-    const result = spawnSync(cmd, args, { stdio: "inherit", shell: true });
-    if (result.status !== 0 && !ignoreError) {
-        console.error(`${C.red}❌ Fail: ${cmd} ${args.join(" ")}${C.reset}`);
-        if (!ignoreError) process.exit(1);
-    }
-    return result.status === 0;
-}
+const YES_KEYS = new Set([KEY.ENTER1, KEY.ENTER2, KEY.BACKSPACE1, KEY.BACKSPACE2, KEY.LEFT, "y", "Y"]);
 
-function getOutput(cmd, args) {
-    const result = spawnSync(cmd, args, { encoding: "utf8", shell: true });
-    if (result.status !== 0) return [];
-    return result.stdout
-        .split("\n")
-        .map((l) => l.trim())
-        .filter((l) => l.length > 0);
-}
+const NO_KEYS = new Set([KEY.DELETE, KEY.RIGHT, KEY.ESC, "n", "N"]);
 
-function notifyDone(duration, savedMB) {
-    const title = "Omega Cleanup Complete";
-    const msg = `Saved: ${savedMB} MB | Time: ${duration}s`;
-    try {
-        if (os.platform() === "darwin") {
-            execSync(`osascript -e 'display notification "${msg}" with title "${title}"'`);
-        } else if (os.platform() === "win32") {
-            const psScript = `
-            [void] [System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms");
-            $objNotifyIcon = New-Object System.Windows.Forms.NotifyIcon;
-            $objNotifyIcon.Icon = [System.Drawing.SystemIcons]::Information;
-            $objNotifyIcon.Visible = $True;
-            $objNotifyIcon.ShowBalloonTip(5000, "${title}", "${msg}", "Info");
-            `;
-            spawnSync("powershell", ["-command", psScript], { stdio: "ignore" });
-        } else {
-            spawnSync("notify-send", [title, msg], { stdio: "ignore" });
-        }
-    } catch (e) {}
-}
-
-async function checkGithubAccess() {
+function readOneKeyRaw() {
     return new Promise((resolve) => {
-        dns.lookup("github.com", (err) => resolve(!err));
+        const onData = (buf) => {
+            process.stdin.off("data", onData);
+            resolve(buf.toString("utf8"));
+        };
+        process.stdin.on("data", onData);
     });
 }
 
-function createEmergencyBackup() {
-    const status = getOutput("git", ["status", "--porcelain"]);
-    if (status.length === 0) return false;
-    console.log(`${C.yellow}🛡️  Pravim sigurnosni backup (Stash)...${C.reset}`);
-    const res = spawnSync("git", ["stash", "push", "-u", "-m", BACKUP_STASH_NAME], { encoding: "utf8" });
-    if (res.status === 0) {
-        console.log(`${C.green}✅ Backup sačuvan: "${BACKUP_STASH_NAME}"${C.reset}`);
-        return true;
-    }
-    return false;
-}
-
-function getFolderSize(dirPath) {
-    if (!fs.existsSync(dirPath)) return 0;
-    let totalSize = 0;
-    try {
-        const stats = fs.statSync(dirPath);
-        if (stats.isDirectory()) {
-            fs.readdirSync(dirPath).forEach((f) => (totalSize += getFolderSize(path.join(dirPath, f))));
-        } else totalSize += stats.size;
-    } catch (e) {}
-    return totalSize;
-}
-
-async function askYesNo(q, dangerLevel = 0) {
+function readLineFallback() {
     return new Promise((resolve) => {
-        let color = C.magenta;
-        if (dangerLevel === 1) color = C.yellow;
-        if (dangerLevel === 2) color = C.red;
-        console.log(`\n${color}❓ ${q}${C.reset}`);
-        if (dangerLevel === 2)
-            console.log(`   ${C.bgRed}${C.white}${C.bold} 💀 OPASNOST! / DANGER! 💀 ${C.reset}`);
-
-        console.log(
-            `   ${C.white}[${C.green}BACKSPACE / ⬅ / Enter${C.white}] = DA   |   [${C.red}DEL / ➔ / Esc${C.white}] = NE${C.reset}`
-        );
-
-        process.stdin.setRawMode(true);
-        process.stdin.resume();
-        process.stdin.setEncoding("utf8");
-
-        const listener = (k) => {
-            if (k === "\u0003") {
-                process.stdin.setRawMode(false);
-                process.exit(1);
-            }
-
-            // DA: y, Y, Enter, Backspace, Levo
-            if (
-                k === "y" ||
-                k === "Y" ||
-                k === "\r" ||
-                k === "\u007f" ||
-                k === "\u0008" ||
-                k === "\u001b[D"
-            ) {
-                process.stdout.write(`${C.green} ✔ DA${C.reset}\n`);
-                cleanup(true);
-            }
-            // NE: n, N, Esc, Delete, Desno
-            else if (k === "n" || k === "N" || k === "\u001b" || k === "\u001b[3~" || k === "\u001b[C") {
-                process.stdout.write(`${C.red} ✖ NE${C.reset}\n`);
-                cleanup(false);
+        let acc = "";
+        const onData = (chunk) => {
+            acc += chunk.toString("utf8");
+            if (acc.includes("\n")) {
+                process.stdin.off("data", onData);
+                resolve(acc);
             }
         };
-        function cleanup(result) {
-            process.stdin.setRawMode(false);
-            process.stdin.pause();
-            process.stdin.removeListener("data", listener);
-            resolve(result);
-        }
-        process.stdin.on("data", listener);
+        process.stdin.on("data", onData);
     });
 }
 
-function detectBaseBranch() {
-    const branches = getOutput("git", ["branch", "-a"]).join(" ");
-    return branches.includes("main") || branches.includes("remotes/origin/main") ? "main" : "master";
+async function askYesNo(question, { defaultYes = false } = {}) {
+    process.stdout.write(`\n${question}\n${hintLine()}\n> `);
+
+    const wasRaw = !!process.stdin.isRaw;
+    process.stdin.setEncoding("utf8");
+    process.stdin.resume();
+
+    let rawOk = true;
+    try {
+        process.stdin.setRawMode(true);
+    } catch {
+        rawOk = false;
+    }
+
+    try {
+        if (!rawOk) {
+            // fallback (npr. CI): kucaj Y/N pa Enter
+            const line = (await readLineFallback()) || "";
+            const v = line.trim().toLowerCase();
+
+            if (v === "y" || v === "yes") {
+                process.stdout.write(colorize(ANSI.green, `${YES_LABEL}\n`));
+                return true;
+            }
+            if (v === "n" || v === "no") {
+                process.stdout.write(colorize(ANSI.red, `${NO_LABEL}\n`));
+                return false;
+            }
+
+            process.stdout.write(
+                defaultYes ? colorize(ANSI.green, `${YES_LABEL}\n`) : colorize(ANSI.red, `${NO_LABEL}\n`)
+            );
+            return defaultYes;
+        }
+
+        while (true) {
+            const k = await readOneKeyRaw();
+
+            if (YES_KEYS.has(k)) {
+                process.stdout.write(colorize(ANSI.green, `${YES_LABEL}\n`));
+                return true;
+            }
+            if (NO_KEYS.has(k)) {
+                process.stdout.write(colorize(ANSI.red, `${NO_LABEL}\n`));
+                return false;
+            }
+            // ignoriši sve ostalo
+        }
+    } finally {
+        try {
+            process.stdin.setRawMode(wasRaw);
+        } catch {
+            // ignore
+        }
+        process.stdin.pause();
+    }
 }
+
+/* -------------------------
+   Git discovery helpers
+------------------------- */
+
+function ensureGitRepo() {
+    const r = trySh("git rev-parse --is-inside-work-tree");
+    if (!r.ok || r.out !== "true") {
+        console.error("Not a git repository.");
+        process.exit(1);
+    }
+}
+
+function currentBranch() {
+    return sh("git rev-parse --abbrev-ref HEAD");
+}
+
+function defaultBranchFromOriginHead() {
+    // refs/remotes/origin/HEAD -> refs/remotes/origin/master|main|...
+    const r = trySh("git symbolic-ref refs/remotes/origin/HEAD");
+    if (r.ok) {
+        const m = r.out.match(/^refs\/remotes\/origin\/(.+)$/);
+        if (m && m[1]) return m[1];
+    }
+
+    // fallback
+    const locals = sh("git for-each-ref --format='%(refname:short)' refs/heads")
+        .split("\n")
+        .map((s) => s.replace(/^'|'$/g, "").trim())
+        .filter(Boolean);
+
+    if (locals.includes("main")) return "main";
+    if (locals.includes("master")) return "master";
+    return "master";
+}
+
+function branchesWithGoneUpstream() {
+    const out = sh("git branch -vv");
+    return out
+        .split("\n")
+        .map((l) => l.trimEnd())
+        .filter((l) => l.includes(": gone]"))
+        .map(
+            (l) =>
+                l
+                    .replace(/^\*\s+/, "")
+                    .trim()
+                    .split(/\s+/)[0]
+        )
+        .filter(Boolean);
+}
+
+function mergedBranches(intoBranch) {
+    const r = trySh(`git branch --merged ${escArg(intoBranch)}`);
+    if (!r.ok) return [];
+    return r.out
+        .split("\n")
+        .map((l) => l.trim())
+        .filter(Boolean)
+        .map((l) => l.replace(/^\*\s+/, "").trim());
+}
+
+/* -------------------------
+   Main
+------------------------- */
 
 async function main() {
-    printBanner();
+    ensureGitRepo();
 
-    if (!FORCE) {
-        logDual("⚠️  OMEGA CLEANUP", "FULL RESET & OPTIMIZE", C.yellow);
-        console.log(`${C.gray} - Nuklearno čišćenje fajlova i grana`);
-        console.log(` - Backup nekomitovanih izmena`);
-        if (!(await askYesNo("Pokrenuti?", 0))) {
-            console.log("❌ Prekinuto.");
-            process.exit(0);
-        }
+    // Ako ima lokalnih izmena, pitaj da li nastavljamo
+    const dirty = sh("git status --porcelain");
+    if (dirty) {
+        console.log("Working tree is NOT clean:");
+        console.log(dirty);
+        const cont = await askYesNo("Continue anyway?");
+        if (!cont) return;
     }
 
-    const baseBranch = detectBaseBranch();
-    const start = Date.now();
-    const hasNet = await checkGithubAccess();
+    // Fetch + prune
+    console.log("\nRunning: git fetch --all --prune");
+    trySh("git fetch --all --prune", { stdio: "inherit" });
 
-    process.stdout.write(`${C.gray}📊 Računam smeće... ${C.reset}`);
-    const pathsToMeasure = ["node_modules", "dist", "build", "coverage", "target"];
-    let totalBytes = 0;
-    pathsToMeasure.forEach((p) => (totalBytes += getFolderSize(path.resolve(process.cwd(), p))));
-    const mbReclaimed = (totalBytes / (1024 * 1024)).toFixed(2);
-    console.log(`${C.green}${mbReclaimed} MB${C.reset}`);
+    const cur = currentBranch();
+    const def = defaultBranchFromOriginHead();
 
-    createEmergencyBackup();
+    // 1) Upstream gone
+    const gone = branchesWithGoneUpstream().filter((b) => b !== cur);
+    if (gone.length) {
+        console.log("\nBranches with upstream ': gone]':");
+        gone.forEach((b) => console.log(`  - ${b}`));
 
-    logDual("🔫 1. Cache Sniper", "1. Removing Hidden Caches", C.green);
-    NASTY_CACHES.forEach((file) => {
-        if (fs.existsSync(file)) fs.rmSync(file, { recursive: true, force: true });
-    });
-
-    logDual("🔄 2. Git Reset", "2. Git Reset", C.green);
-    run("git", ["checkout", baseBranch]);
-
-    if (hasNet) {
-        run("git", ["fetch", "origin"]);
-        run("git", ["reset", "--hard", `origin/${baseBranch}`]);
-        run("git", ["remote", "prune", "origin"]);
-    } else {
-        console.log(`${C.yellow}⚠️ Nema interneta. Preskačem fetch origin.${C.reset}`);
-    }
-
-    logDual("🧹 3. Lokalne Grane", "3. Local Branches", C.green);
-    const localBranches = getOutput("git", ["branch"]);
-    const safeBranches = [baseBranch, "master", "main", "dev", "* " + baseBranch];
-    localBranches.forEach((b) => {
-        // [FIX] Global regex for CodeQL
-        const name = b.replace(/\*/g, "").trim();
-        if (!safeBranches.includes(name)) run("git", ["branch", "-D", name], true);
-    });
-
-    if (!FORCE && hasNet) {
-        console.log(`\n${C.red}---------------------------------------------------${C.reset}`);
-        if (await askYesNo("Obrisati REMOTE grane?", 1)) {
-            beep();
-            if (await askYesNo("SIGURNO? (Nema nazad)", 2)) {
-                console.log(`${C.bgRed}${C.white} 🔥 BRISANJE... 🔥 ${C.reset}`);
-                const rBranches = getOutput("git", ["branch", "-r"]);
-                let cnt = 0;
-                rBranches.forEach((rb) => {
-                    if (rb.includes("->") || rb.includes(baseBranch)) return;
-                    const bName = rb.split("/").slice(1).join("/");
-                    const rName = rb.split("/")[0];
-                    if (bName !== baseBranch && bName !== "master" && bName !== "main") {
-                        console.log(`${C.yellow}Del: ${bName}${C.reset}`);
-                        run("git", ["push", rName, "--delete", bName], true);
-                        cnt++;
-                    }
-                });
-                if (cnt === 0) console.log(`${C.gray}Nema remote grana.${C.reset}`);
+        if (await askYesNo("Delete these local branches?")) {
+            for (const b of gone) {
+                console.log(`Deleting: ${b}`);
+                trySh(`git branch -D ${escArg(b)}`, { stdio: "inherit" });
             }
         }
     }
 
-    logDual("☢️  4. Brisanje fajlova", "4. File Cleanup", C.green);
-    if (fs.existsSync(path.join(WASM_DIR, "Cargo.toml"))) {
-        try {
-            spawnSync("cargo", ["clean"], { cwd: WASM_DIR });
-        } catch (e) {}
-    }
-
-    const keepArgs = [];
-    BASE_KEEP.forEach((f) => keepArgs.push("-e", f));
-    fs.readdirSync(process.cwd()).forEach((file) => {
-        if (file.startsWith(".env")) keepArgs.push("-e", file);
+    // 2) Merged into default
+    const merged = mergedBranches(def).filter((b) => {
+        if (!b) return false;
+        if (b === cur) return false;
+        if (b === def) return false;
+        // dodatna zaštita
+        if (b === "main" || b === "master" || b === "develop") return false;
+        return true;
     });
 
-    run("git", ["clean", "-ffdx", ...keepArgs]);
+    if (merged.length) {
+        console.log(`\nMerged into ${def}:`);
+        merged.forEach((b) => console.log(`  - ${b}`));
 
-    logDual("♻️  5. Git Optimize", "5. Git GC", C.green);
-    run("git", ["gc", "--prune=now", "--aggressive"]);
-
-    logDual("📦 6. Instalacija", "6. Installation", C.green);
-    if (fs.existsSync("package-lock.json")) {
-        if (!run("npm", ["ci"], true)) {
-            console.log(`${C.yellow}⚠️ npm ci failed, fallback to npm install...${C.reset}`);
-            run("npm", ["install"]);
+        if (await askYesNo("Delete these merged branches (safe: git branch -d)?")) {
+            for (const b of merged) {
+                const r = trySh(`git branch -d ${escArg(b)}`, { stdio: "inherit" });
+                if (!r.ok) {
+                    const force = await askYesNo(`Force delete (-D) for ${b}?`, {
+                        defaultYes: false,
+                    });
+                    if (force) {
+                        trySh(`git branch -D ${escArg(b)}`, { stdio: "inherit" });
+                    }
+                }
+            }
         }
-    } else {
-        run("npm", ["install"]);
     }
 
-    const dur = ((Date.now() - start) / 1000).toFixed(2);
-    beep();
-    notifyDone(dur, mbReclaimed);
-    console.log(`\n${C.green}${C.bold}✨ OMEGA COMPLETE ✨${C.reset}`);
-    console.log(`${C.cyan}💾 Space Saved: ${mbReclaimed} MB${C.reset}`);
-    console.log(`${C.gray}⏱️  Time: ${dur}s${C.reset}\n`);
+    // 3) Optional: prune origin
+    if (await askYesNo("\nRun: git remote prune origin? ", { defaultYes: false })) {
+        trySh("git remote prune origin", { stdio: "inherit" });
+    }
+
+    // 4) Optional: git gc
+    if (await askYesNo("\nRun: git gc? ", { defaultYes: false })) {
+        trySh("git gc", { stdio: "inherit" });
+    }
+
+    console.log("\nDone.");
 }
 
-main();
+main().catch((e) => {
+    console.error(e?.message || e);
+    process.exit(1);
+});
