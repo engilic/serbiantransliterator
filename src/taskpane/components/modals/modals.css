@@ -119,6 +119,13 @@
     color: var(--colorNeutralForeground1);
 }
 
+/* A11y: ensure tour text meets WCAG AA contrast (overrides any muted styles) */
+#tourOverlay #tourText,
+#tourOverlay #tourText b,
+#tourOverlay #tourText strong {
+    color: var(--colorNeutralForeground1) !important;
+}
+
 .tour-close {
     position: absolute;
     top: 10px;
