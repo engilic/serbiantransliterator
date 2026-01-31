@@ -8,19 +8,34 @@ const path = require("node:path");
 const ROOT = process.cwd();
 const SRC_DIR = path.join(ROOT, "src");
 
-// --- ANSI COLORS ---
+// --- ANSI COLORS (TTY/NO_COLOR aware) ---
 const C = {
     reset: "\x1b[0m",
     red: "\x1b[31m",
     green: "\x1b[32m",
     yellow: "\x1b[33m",
     blue: "\x1b[34m",
+    cyan: "\x1b[36m",
+    magenta: "\x1b[35m",
     bold: "\x1b[1m",
     gray: "\x1b[90m",
 };
 
+const COLOR_ENABLED = !!process.stdout.isTTY && !process.env.NO_COLOR;
+
+function c(code, text) {
+    return COLOR_ENABLED ? `${code}${text}${C.reset}` : text;
+}
+
+function badgeOk(text = "OK") {
+    return c(C.green, `✔ ${text}`);
+}
+
+function badgeFail(text = "FAIL") {
+    return c(C.red, `✖ ${text}`);
+}
+
 // --- RULES DEFINITION ---
-// Ovde definišemo šta je zabranjeno.
 const RULES = [
     {
         id: "setStatus-hardcoded",
@@ -55,8 +70,10 @@ function isDir(p) {
 function walk(dir) {
     const results = [];
     const list = fs.readdirSync(dir);
+
     list.forEach((file) => {
         const full = path.join(dir, file);
+
         if (isDir(full)) {
             // Ignorišemo sistemske foldere
             if (!["node_modules", "dist", "coverage", ".git", "wasm-core"].includes(file)) {
@@ -69,6 +86,7 @@ function walk(dir) {
             }
         }
     });
+
     return results;
 }
 
@@ -80,7 +98,7 @@ function posFromIndex(text, idx) {
     return { line, col };
 }
 
-function snippetAt(text, idx, maxLen = 60) {
+function snippetAt(text, idx, maxLen = 80) {
     const s = text.slice(idx, Math.min(text.length, idx + maxLen));
     return s.replace(/\s+/g, " ").trim() + "...";
 }
@@ -90,10 +108,9 @@ function checkFile(filePath) {
     const relative = path.relative(ROOT, filePath);
     const violations = [];
 
-    RULES.forEach((rule) => {
+    for (const rule of RULES) {
         let m;
-        // Reset regex state (bitno kada se koristi global flag u petlji)
-        rule.regex.lastIndex = 0;
+        rule.regex.lastIndex = 0; // bitno za global regex
 
         while ((m = rule.regex.exec(content)) !== null) {
             const idx = m.index;
@@ -108,16 +125,25 @@ function checkFile(filePath) {
                 snippet: snippetAt(content, idx),
             });
         }
-    });
+    }
 
     return violations;
 }
 
+function groupByFile(violations) {
+    const grouped = {};
+    for (const v of violations) {
+        if (!grouped[v.file]) grouped[v.file] = [];
+        grouped[v.file].push(v);
+    }
+    return grouped;
+}
+
 function main() {
-    console.log(`${C.blue}🔍 Scanning source code for hardcoded user-facing strings...${C.reset}`);
+    console.log(c(C.blue, "🔍 Scanning source code for hardcoded user-facing strings..."));
 
     if (!isDir(SRC_DIR)) {
-        console.error(`${C.red}ERROR: src directory not found at ${SRC_DIR}${C.reset}`);
+        console.error(c(C.red, `✖ ERROR: src directory not found at ${SRC_DIR}`));
         process.exit(2);
     }
 
@@ -129,30 +155,25 @@ function main() {
     }
 
     if (allViolations.length === 0) {
-        console.log(`${C.green}✅ No hardcoded user strings found in Logic/UI calls.${C.reset}`);
+        console.log(`${badgeOk("OK")} No hardcoded user strings found in Logic/UI calls.`);
         process.exit(0);
     }
 
-    console.error(`\n${C.red}${C.bold}🚨 HARDCODED USER STRINGS DETECTED!${C.reset}`);
+    console.error(`\n${badgeFail("FATAL")} HARDCODED USER STRINGS DETECTED!`);
     console.error(
-        `${C.yellow}The following strings are not translatable and will appear hardcoded to users:${C.reset}\n`
+        c(C.yellow, "The following strings are not translatable and will appear hardcoded to users:") + "\n"
     );
 
-    // Group by file for cleaner output
-    const grouped = {};
-    allViolations.forEach((v) => {
-        if (!grouped[v.file]) grouped[v.file] = [];
-        grouped[v.file].push(v);
-    });
+    const grouped = groupByFile(allViolations);
 
-    Object.keys(grouped).forEach((file) => {
-        console.error(`${C.bold}📄 ${file}${C.reset}`);
-        grouped[file].forEach((v) => {
-            console.error(`   ${C.gray}Line ${v.line}:${v.col}${C.reset}  ${C.red}[${v.ruleId}]${C.reset}`);
-            console.error(`     Snippet: ${C.yellow}${v.snippet}${C.reset}`);
+    for (const file of Object.keys(grouped)) {
+        console.error(c(C.bold, `📄 ${file}`));
+        for (const v of grouped[file]) {
+            console.error(`   ${c(C.gray, `Line ${v.line}:${v.col}`)}  ${c(C.red, `[${v.ruleId}]`)}`);
+            console.error(`     Snippet: ${c(C.yellow, v.snippet)}`);
             console.error(`     Fix:     ${v.msg}\n`);
-        });
-    });
+        }
+    }
 
     process.exit(1);
 }

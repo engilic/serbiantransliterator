@@ -11,7 +11,7 @@ const FILE = path.join(ROOT, "src", "taskpane", "taskpane.html");
 // Regex za slova (Latinica + Ćirilica)
 const LETTER_RE = /[A-Za-zČĆĐŠŽčćđšž\u0400-\u052F]/;
 
-// --- ANSI COLORS ---
+// --- ANSI COLORS (TTY/NO_COLOR aware) ---
 const C = {
     reset: "\x1b[0m",
     red: "\x1b[31m",
@@ -21,6 +21,19 @@ const C = {
     bold: "\x1b[1m",
     gray: "\x1b[90m",
 };
+
+const COLOR_ENABLED = !!process.stdout.isTTY && !process.env.NO_COLOR;
+function c(code, text) {
+    return COLOR_ENABLED ? `${code}${text}${C.reset}` : text;
+}
+
+function ok(text) {
+    return c(C.green, `✔ ${text}`);
+}
+
+function fail(text) {
+    return c(C.red, `✖ ${text}`);
+}
 
 function posFromIndex(text, idx) {
     const before = text.slice(0, idx);
@@ -33,15 +46,15 @@ function posFromIndex(text, idx) {
 function snippetAt(text, idx, maxLen = 80) {
     const start = Math.max(0, idx - 10);
     const end = Math.min(text.length, idx + maxLen);
-    let s = text.slice(start, end);
+    const s = text.slice(start, end);
     return s.replace(/\n/g, "↵").trim();
 }
 
 function main() {
-    console.log(`${C.blue}🔍 Scanning taskpane.html for hardcoded strings...${C.reset}`);
+    console.log(c(C.blue, "🔍 Scanning taskpane.html for hardcoded strings..."));
 
     if (!fs.existsSync(FILE)) {
-        console.error(`${C.red}❌ ERROR: taskpane.html not found at ${FILE}${C.reset}`);
+        console.error(c(C.red, `✖ ERROR: taskpane.html not found at ${FILE}`));
         process.exit(2);
     }
 
@@ -50,18 +63,18 @@ function main() {
     // --- PRE-PROCESSING (Cleaning) ---
     // Using .repeat(m.length) to preserve line numbers/positions
 
-    // 1. Remove Comments <!-- ... -->
+    // 1) Remove Comments <!-- ... -->
     html = html.replace(/<!--[\s\S]*?-->/g, (m) => " ".repeat(m.length));
 
-    // 2. Remove Scripts <script>...</script>
+    // 2) Remove Scripts <script>...</script>
     // [FIX] CodeQL Compliant: Catch malformed closing tags like </script foo>
     html = html.replace(/<script\b[^>]*>[\s\S]*?<\/script[^>]*>/gi, (m) => " ".repeat(m.length));
 
-    // 3. Remove Styles <style>...</style>
+    // 3) Remove Styles <style>...</style>
     // [FIX] CodeQL Compliant
     html = html.replace(/<style\b[^>]*>[\s\S]*?<\/style[^>]*>/gi, (m) => " ".repeat(m.length));
 
-    // 4. Remove EJS/Template tags <% ... %>
+    // 4) Remove EJS/Template tags <% ... %>
     html = html.replace(/<%[\s\S]*?%>/g, (m) => " ".repeat(m.length));
 
     const violations = [];
@@ -69,6 +82,7 @@ function main() {
     // --- RULE 1: Visible text nodes (> TEXT <) ---
     const reText = />([^<]+)</g;
     let m;
+
     while ((m = reText.exec(html)) !== null) {
         const content = m[1];
         const trimmed = content.replace(/\s+/g, " ").trim();
@@ -100,6 +114,7 @@ function main() {
 
     // --- RULE 2: Attributes (title, placeholder, aria-label) ---
     const reAttr = /\b(title|placeholder|aria-label)\s*=\s*"([^"]*)"/g;
+
     while ((m = reAttr.exec(html)) !== null) {
         const attrName = m[1];
         const attrVal = m[2] || "";
@@ -131,20 +146,20 @@ function main() {
 
     // --- REPORTING ---
     if (violations.length === 0) {
-        console.log(`${C.green}✅ HTML is clean (No hardcoded strings detected).${C.reset}`);
+        console.log(ok("OK") + " HTML is clean (No hardcoded strings detected).");
         process.exit(0);
     }
 
-    console.error(`\n${C.red}${C.bold}🚨 HARDCODED STRINGS DETECTED IN HTML!${C.reset}`);
-    console.error(`${C.yellow}Please verify and use data-i18n for these:${C.reset}\n`);
+    console.error(`\n${fail("FATAL")} HARDCODED STRINGS DETECTED IN HTML!`);
+    console.error(c(C.yellow, "Please verify and use data-i18n for these:") + "\n");
 
     for (const v of violations.slice(0, 50)) {
-        console.error(`  📄 ${C.bold}Line ${v.line}:${v.col}${C.reset}  ${C.red}[${v.rule}]${C.reset}`);
-        console.error(`     ${C.gray}${v.snippet}${C.reset}\n`);
+        console.error(`  📄 ${c(C.bold, `Line ${v.line}:${v.col}`)}  ${c(C.red, `[${v.rule}]`)}`);
+        console.error(`     ${c(C.gray, v.snippet)}\n`);
     }
 
     if (violations.length > 50) {
-        console.error(`${C.yellow}...and ${violations.length - 50} more errors.${C.reset}`);
+        console.error(c(C.yellow, `...and ${violations.length - 50} more errors.`));
     }
 
     process.exit(1);

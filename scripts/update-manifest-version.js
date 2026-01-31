@@ -1,4 +1,6 @@
 // scripts/update-manifest-version.js
+"use strict";
+
 const fs = require("fs");
 const path = require("path");
 
@@ -6,7 +8,7 @@ const path = require("path");
 const EXTENSION_NAME = "Serbian Transliterator";
 const MANIFESTS = ["manifest.xml", "manifest.prod.xml"];
 
-// --- ANSI BOJE ---
+// --- ANSI BOJE (TTY/NO_COLOR aware) ---
 const C = {
     reset: "\x1b[0m",
     green: "\x1b[32m",
@@ -17,81 +19,101 @@ const C = {
     red: "\x1b[31m",
 };
 
-console.log(`${C.blue}${C.bold}🔄 MANIFEST SYNC UTILITY${C.reset}`);
+const COLOR_ENABLED = !!process.stdout.isTTY && !process.env.NO_COLOR;
+function c(code, text) {
+    return COLOR_ENABLED ? `${code}${text}${C.reset}` : text;
+}
 
-// 1. Učitaj verziju iz package.json
+console.log(c(C.blue + C.bold, "🔄 MANIFEST SYNC UTILITY"));
+
+// 1) Učitaj verziju iz package.json
 const pkgPath = path.resolve(__dirname, "../package.json");
 if (!fs.existsSync(pkgPath)) {
-    console.error(`${C.red}❌ ERROR: package.json not found!${C.reset}`);
+    console.error(c(C.red, "✖ ERROR: package.json not found!"));
     process.exit(1);
 }
 
-const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
-const version = pkg.version;
+let pkg;
+try {
+    pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
+} catch (e) {
+    console.error(c(C.red, "✖ ERROR: Failed to parse package.json"));
+    console.error(e?.message || e);
+    process.exit(1);
+}
+
+const version = String(pkg.version || "").trim();
+if (!version) {
+    console.error(c(C.red, "✖ ERROR: package.json has no valid 'version' field."));
+    process.exit(1);
+}
 
 // Office zahteva 4 cifre (1.0.0 -> 1.0.0.0)
 const officeVersion = version.split(".").length === 3 ? `${version}.0` : version;
 const displayName = `${EXTENSION_NAME} (v${version})`;
 
-console.log(`   Target Version: ${C.yellow}${version}${C.reset}`);
-console.log(`   Office Format:  ${C.yellow}${officeVersion}${C.reset}`);
-console.log(`   Display Name:   ${C.yellow}${displayName}${C.reset}\n`);
+console.log(`   Target Version: ${c(C.yellow, version)}`);
+console.log(`   Office Format:  ${c(C.yellow, officeVersion)}`);
+console.log(`   Display Name:   ${c(C.yellow, displayName)}\n`);
 
-// 2. Ažuriraj fajlove
+// 2) Ažuriraj fajlove
 let updatedCount = 0;
 
 MANIFESTS.forEach((fname) => {
     const file = path.resolve(__dirname, "..", fname);
     if (!fs.existsSync(file)) {
-        console.log(`${C.gray}Skipped: ${fname} (Not found)${C.reset}`);
+        console.log(c(C.gray, `Skipped: ${fname} (Not found)`));
         return;
     }
 
-    let content = fs.readFileSync(file, "utf8");
+    const before = fs.readFileSync(file, "utf8");
+    let content = before;
     let changed = false;
 
-    // A. Ažuriraj sistemsku <Version>
-    const verRegex = /<Version>.*?<\/Version>/;
+    // A) Ažuriraj sistemsku <Version>
+    // (global 'g' da bi zamenio sve pojave, ako ih ima više)
+    const verRegex = /<Version>.*?<\/Version>/g;
     if (verRegex.test(content)) {
         const newVerTag = `<Version>${officeVersion}</Version>`;
-        if (!content.includes(newVerTag)) {
-            content = content.replace(verRegex, newVerTag);
+        const next = content.replace(verRegex, newVerTag);
+        if (next !== content) {
+            content = next;
             changed = true;
         }
     }
 
-    // B. Ažuriraj glavni <DisplayName>
-    const dnRegex = /<DisplayName DefaultValue=".*?"\/>/;
+    // B) Ažuriraj glavni <DisplayName>
+    const dnRegex = /<DisplayName DefaultValue=".*?"\/>/g;
     if (dnRegex.test(content)) {
         const newDnTag = `<DisplayName DefaultValue="${displayName}"/>`;
-        if (!content.includes(newDnTag)) {
-            content = content.replace(dnRegex, newDnTag);
+        const next = content.replace(dnRegex, newDnTag);
+        if (next !== content) {
+            content = next;
             changed = true;
         }
     }
 
-    // C. Ažuriraj GetStarted.Title (Resource string)
-    const gsRegex = /(<bt:String id="GetStarted.Title" DefaultValue=").*?("\/>)/;
+    // C) Ažuriraj GetStarted.Title (Resource string)
+    const gsRegex = /(<bt:String id="GetStarted\.Title" DefaultValue=").*?("\/>)/g;
     if (gsRegex.test(content)) {
-        // Provera da li je već ažurirano je teža sa regexom, pa samo menjamo
-        const newContent = content.replace(gsRegex, `$1${displayName}$2`);
-        if (newContent !== content) {
-            content = newContent;
+        const next = content.replace(gsRegex, `$1${displayName}$2`);
+        if (next !== content) {
+            content = next;
             changed = true;
         }
     }
 
     if (changed) {
         fs.writeFileSync(file, content, "utf8");
-        console.log(`${C.green}✅ Updated: ${fname}${C.reset}`);
+        console.log(c(C.green, `✔ Updated: ${fname}`));
         updatedCount++;
     } else {
-        console.log(`${C.gray}✨ Up to date: ${fname}${C.reset}`);
+        console.log(c(C.gray, `✨ Up to date: ${fname}`));
     }
 });
 
 if (updatedCount > 0) {
-    console.log(`\n${C.green}${C.bold}✔ Successfully updated ${updatedCount} manifests.${C.reset}`);
+    console.log(`\n${c(C.green + C.bold, `✔ Successfully updated ${updatedCount} manifests.`)}`);
 } else {
-    console.log(`\n${C.green}✔ All manifests are already in sync.${C.reset}`);
+    console.log(`\n${c(C.green, "✔ All manifests are already in sync.")}`);
 }
