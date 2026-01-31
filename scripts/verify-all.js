@@ -36,6 +36,33 @@ function resolveCmd(cmd) {
     return cmd;
 }
 
+/**
+ * Cross-platform spawn:
+ * - keeps shell:false (safer)
+ * - BUT on Windows, npm/npx are .cmd shims and often fail with shell:false
+ *   so we run them via cmd.exe /c.
+ *
+ * This is why your old code "worked": shell:true (or calling through a shell)
+ * can run .cmd files; shell:false often cannot.
+ */
+function spawnCross(cmd, args, opts) {
+    const isWin = process.platform === "win32";
+    const c = String(cmd);
+
+    // npm/npx on Windows are .cmd shims -> run via cmd.exe
+    if (isWin && /^(npm|npx)(\.cmd)?$/i.test(c)) {
+        const base = c.replace(/\.cmd$/i, ""); // npm.cmd -> npm
+        const comspec = process.env.ComSpec || "cmd.exe";
+
+        return spawnSync(comspec, ["/d", "/s", "/c", base, ...(args || [])], {
+            ...opts,
+            shell: false,
+        });
+    }
+
+    return spawnSync(cmd, args, { ...opts, shell: false });
+}
+
 function quoteForDisplay(s) {
     const v = String(s);
     if (/^[a-zA-Z0-9._\/:-]+$/.test(v)) return v;
@@ -83,16 +110,17 @@ function run(step, cmd, args, cwd = ROOT) {
 
     const start = Date.now();
 
-    const res = spawnSync(resolveCmd(cmd), args, {
+    const res = spawnCross(resolveCmd(cmd), args, {
         cwd,
         stdio: "inherit",
-        shell: false,
         env: { ...process.env, FORCE_COLOR: "1" },
     });
 
     TIMINGS.push({ step, time: ((Date.now() - start) / 1000).toFixed(2) });
 
+    if (res.error) console.error(res.error);
     if (res.status !== 0) die(step);
+
     console.log(color(C.green, `\n✅ [${stepNo(step)}] OK — ${step}\n`));
 }
 
@@ -159,9 +187,8 @@ function runWithStats_PrettyWrite(step, cmd, args, cwd = ROOT) {
 
     const start = Date.now();
 
-    const res = spawnSync(resolveCmd(cmd), args, {
+    const res = spawnCross(resolveCmd(cmd), args, {
         cwd,
-        shell: false,
         encoding: "utf8",
         stdio: ["ignore", "pipe", "pipe"],
         env: { ...process.env, FORCE_COLOR: "1" },
@@ -173,6 +200,7 @@ function runWithStats_PrettyWrite(step, cmd, args, cwd = ROOT) {
 
     TIMINGS.push({ step, time: ((Date.now() - start) / 1000).toFixed(2) });
 
+    if (res.error) console.error(res.error);
     if (res.status !== 0) die(step);
 
     const combined = String(res.stdout || "") + "\n" + String(res.stderr || "");
@@ -288,10 +316,9 @@ function checkEnv() {
 }
 
 function runCmdStatus(cmd, args, cwd) {
-    const res = spawnSync(resolveCmd(cmd), args, {
+    const res = spawnCross(resolveCmd(cmd), args, {
         cwd,
         stdio: "inherit",
-        shell: false,
         env: { ...process.env, FORCE_COLOR: "1" },
     });
     return res.status ?? 1;
@@ -509,7 +536,7 @@ async function runRustTestsAligned() {
     const maxLeft = leftParts.reduce((m, s) => Math.max(m, s.length), 0);
 
     // Control: minimum dots for the LONGEST test line
-    const MIN_DOTS = 12;
+    const MIN_DOTS = 5;
 
     const RIGHT = ` ${color(C.green, "ok")}`;
     const RIGHT_VISIBLE_LEN = 3; // " ok"
