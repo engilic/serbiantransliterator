@@ -16,12 +16,13 @@
         "dicts:compile": "cd src/wasm-core && cargo run --bin compiler && cd ../..",
         "dev-server": "webpack serve --mode development",
         "start": "npm run wasm:build && npm run dicts:compile && npm run dev-server",
+        "build": "npm run wasm:build && npm run dicts:compile && webpack --mode production",
         "sideload:word": "office-addin-dev-settings sideload manifest.xml --app word",
         "dev": "concurrently --kill-others \"npm run start\" \"wait-on https://localhost:3000/taskpane.html && npm run sideload:word\"",
         "typecheck": "tsc --noEmit",
         "test": "vitest run",
-        "test:fuzz": "vitest run tests/fuzz",
-        "test:coverage": "vitest run --coverage",
+        "test:fuzz": "cross-env VITE_CJS_IGNORE_WARNING=1 vitest run tests/fuzz",
+        "test:coverage": "cross-env VITE_CJS_IGNORE_WARNING=1 vitest run --coverage",
         "test:e2e": "playwright test",
         "format:fix": "prettier --write .",
         "audit:high": "npm audit --audit-level=high"
@@ -53,7 +54,7 @@
         "cross-env": "10.1.0",
         "css-loader": "7.1.2",
         "eslint": "8.57.1",
-        "eslint-plugin-office-addins": "latest",
+        "eslint-plugin-office-addins": "3.0.3",
         "fast-check": "4.5.3",
         "html-loader": "5.1.0",
         "html-webpack-plugin": "5.6.0",
@@ -68,8 +69,6 @@
         "office-addin-manifest": "latest",
         "prettier": "3.2.5",
         "rimraf": "6.1.2",
-        "standard-version": "9.5.0",
-        "terser-webpack-plugin": "5.3.9",
         "typescript": "5.4.5",
         "vitest": "3.2.4",
         "wait-on": "7.2.0",
@@ -80,11 +79,6 @@
         "ts-loader": "9.5.1",
         "@typescript-eslint/eslint-plugin": "7.18.0",
         "@typescript-eslint/parser": "7.18.0"
-    },
-    "lint-staged": {
-        "**/*.{ts,js,cjs,mjs,json,css,md,html}": [
-            "prettier --write"
-        ]
     },
     "overrides": {
         "eslint": "8.57.1",
