@@ -9,7 +9,7 @@ $JsonExtensions = @(".json")
 # FOLDERI KOJE POTPUNO IGNORIŠEMO
 $IgnoreFolders = @("node_modules", "dist", "coverage", ".git", "target", "pkg", ".vs", ".vscode", "bin", "obj", "assets", "test-results", "playwright-report", "_", ".stryker-tmp", "reports")
 
-# [GOD MODE FIX]: Dodat 'stryker.config.json' na listu ignorisanja
+# Specifični fajlovi koji se nikada ne diraju automatski
 $IgnoreFiles = @("package-lock.json", "cargo.lock", "slnx.sqlite", "stryker.config.json")
 
 $Stats = @{ Scanned=0; Fixed=0; CleanedJson=0; Unchanged=0 }
@@ -48,7 +48,9 @@ function Process-File($FilePath) {
 
     # Normalizacija linija (LF) i brisanje razmaka na krajevima redova
     $Lines = New-Object System.Collections.Generic.List[string]
-    foreach ($Line in ($RawContent.Replace("`r`n", "`n") -split "`n")) { $Lines.Add($Line.TrimEnd()) }
+    foreach ($Line in ($RawContent.Replace("`r`n", "`n") -split "`n")) {
+        $Lines.Add($Line.TrimEnd())
+    }
     
     # --- 4. ALARM ZA MISMATCH ---
     $LineIndex = 0
@@ -99,13 +101,14 @@ function Process-File($FilePath) {
     if ($NewText -ne ($Lines -join "`n").TrimEnd() + "`n") {
         try { 
             [System.IO.File]::WriteAllText($FilePath, $NewText, $Utf8NoBom)
-            if ($Ext -eq ".json") { $Stats.CleanedJson++; Write-Host "   -> CLEANED JSON: $RelPath" -ForegroundColor Green } 
-            else { $Stats.Fixed++; Write-Host "   -> FIXED HEADER: $RelPath" -ForegroundColor Green }
+            if ($Ext -eq ".json") { $Stats.CleanedJson++ } else { 
+                $Stats.Fixed++; Write-Host "   -> FIXED HEADER: $RelPath" -ForegroundColor Green
+            }
         } catch { }
     } else { $Stats.Unchanged++ }
 }
 
-Write-Host "HYGIENE SYSTEM: Source Normalization & Mismatch Protection..." -ForegroundColor Cyan
+Write-Host "HYGIENE SYSTEM: Source Normalization..." -ForegroundColor Cyan
 Get-ChildItem -Path $Root -Recurse -File | ForEach-Object { Process-File $_.FullName }
 
 $jsonColor = if ($Stats.CleanedJson -gt 0) { "Green" } else { "Gray" }

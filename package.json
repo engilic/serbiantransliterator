@@ -16,6 +16,7 @@
         "build:wasm": "cd src/wasm-core && wasm-pack build --target web --out-name index",
         "compile:dicts": "cd src/wasm-core && cargo run --bin compiler && cd ../..",
         "prebuild": "npm run clean && npm run update:version",
+        "build:prod": "npm run build:wasm && npm run compile:dicts && webpack --mode production",
         "build": "npm run build:wasm && npm run compile:dicts && webpack --mode production",
         "dev-server": "npm run build:wasm && npm run compile:dicts && webpack serve --mode development",
         "start": "npm run dev-server",
