@@ -1,8 +1,0 @@
-node_modules/
-dist/
-coverage/
-.vitest/
-playwright-report/
-test-results/
-*.tsbuildinfo
-package-lock.json
