@@ -10,6 +10,7 @@
     "scripts": {
         "git:reset": "node scripts/git-cleanup.js",
         "verify:all": "node scripts/verify-all.js",
+        "verify:all:strict": "node scripts/verify-all.js --strict",
         "update:version": "node scripts/update-manifest-version.js",
         "clean": "rimraf dist coverage playwright-report test-results pkg src/wasm-core/pkg",
         "build:wasm": "cd src/wasm-core && wasm-pack build --target web --out-name index",
