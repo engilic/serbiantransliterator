@@ -101,11 +101,10 @@
         "@typescript-eslint/eslint-plugin": "7.18.0",
         "@typescript-eslint/parser": "7.18.0",
         "@typescript-eslint/utils": "7.18.0",
-        "@typescript-eslint/type-utils": "7.18.0",
-        "@eslint-community/eslint-utils": "4.4.1",
         "braces": "3.0.3",
         "micromatch": "4.0.8",
         "cross-spawn": "7.0.6",
-        "word-wrap": "1.2.5"
+        "tmp": "0.2.3",
+        "@eslint-community/eslint-utils": "4.4.1"
     }
 }
