@@ -7,6 +7,7 @@
  * Centralni nadzorni sistem za Serbian Transliterator.
  * Upravlja kompletnim pipeline-om i garantuje stabilnost pre svakog push-a.
  *
+ * [GOD MODE FIX]: Sniffer sada eksplicitno ignoriše .stryker-tmp i reports foldere.
  * [GOD MODE FIX]: Detaljno izveštavanje Sniffer-a (ispisuje fajlove sa greškom).
  * [GOD MODE FIX]: Implementirana ULTRA-ŠIROKA virtuelna kolona (COLUMNS=1000).
  *
@@ -57,6 +58,7 @@ function beep() {
  * Prikazuje Guardian banner na vrhu terminala.
  */
 function printBanner() {
+    // console.clear() je uklonjen po tvom zahtevu radi čuvanja istorije rada
     console.log(`\n${C.magenta}${C.bold}
     🛡️  GUARDIAN SYSTEM • LEVEL: GOD MODE 🛡️
     ========================================
@@ -95,26 +97,38 @@ function run(step, cmd, args, cwd = ROOT, useInherit = false) {
     const fullCommandString = `${cmd} ${args.join(" ")}`;
     const res = spawnSync(fullCommandString, options);
 
+    // Ako smo koristili pipe, obrađujemo output red po red radi poravnanja (npr. Rust testovi)
     if (options.stdio === "pipe") {
         let stdout = res.stdout ? res.stdout.toString() : "";
         let stderr = res.stderr ? res.stderr.toString() : "";
-        let combined = stdout + stderr;
+        let lines = (stdout + stderr).split("\n");
 
-        combined = combined.replace(
-            /warning|deprecated|vulnerability|vulnerabilities|moderate|high/gi,
-            (match) => {
-                return `${C.yellow}${match}${C.reset}`;
-            }
-        );
+        const formattedOutput = lines
+            .map((line) => {
+                let processed = line;
 
-        combined = combined.replace(
-            /v\d+\.\d+\.\d+|v8|success|compiled successfully|up to date/gi,
-            (match) => {
-                return `${C.cyan}${match}${C.reset}`;
-            }
-        );
+                // Poravnanje za Rust testove: "test ime ... ok"
+                if (processed.includes("test ") && processed.includes(" ... ok")) {
+                    const parts = processed.split(" ... ok");
+                    const testName = parts[0].trim();
+                    processed = `${alignWithDots(testName, 75)}${C.green} ok${C.reset}`;
+                }
 
-        process.stdout.write(combined);
+                // Opšte bojenje upozorenja
+                processed = processed.replace(
+                    /warning|deprecated|vulnerability|vulnerabilities|moderate|high/gi,
+                    (m) => `${C.yellow}${m}${C.reset}`
+                );
+                processed = processed.replace(
+                    /v\d+\.\d+\.\d+|v8|success|compiled successfully|up to date/gi,
+                    (m) => `${C.cyan}${m}${C.reset}`
+                );
+
+                return processed;
+            })
+            .join("\n");
+
+        process.stdout.write(formattedOutput);
     }
 
     const duration = ((Date.now() - start) / 1000).toFixed(2);
@@ -127,6 +141,7 @@ function run(step, cmd, args, cwd = ROOT, useInherit = false) {
         process.exit(1);
     }
 
+    // Finalno poravnanje OK statusa sa tačkicama
     const statusLine = alignWithDots(step, 50);
     if (res.status === 0 || res.status === 2) {
         console.log(`\n${C.green}${statusLine}${C.green} ✅ OK${C.reset}`);
@@ -200,7 +215,7 @@ function checkEnv() {
 
 /**
  * Sniffer: Skenira izvorni kod na 'debugger' i tajne ključeve.
- * [GOD MODE FIX]: Sada ispisuje tačan naziv fajla u kojem je greška.
+ * [GOD MODE FIX]: Sada ignoriše .stryker-tmp i reports foldere.
  */
 async function runSniffer() {
     console.log(`\n${C.cyan}${C.bold}>>> Sniffer & Secret Hunter${C.reset}`);
@@ -221,7 +236,16 @@ async function runSniffer() {
     ];
 
     files.forEach((f) => {
-        if (f.startsWith("scripts/") || f.includes("test") || f.includes("spec")) return;
+        // [GOD MODE FIX]: Ignorišemo privremene fajlove Mutation Testing-a i izveštaje
+        if (
+            f.startsWith("scripts/") ||
+            f.includes("test") ||
+            f.includes("spec") ||
+            f.includes(".stryker-tmp") ||
+            f.includes("reports/")
+        ) {
+            return;
+        }
 
         try {
             const content = fs.readFileSync(f, "utf8");
@@ -240,7 +264,9 @@ async function runSniffer() {
             }
 
             if (fileHasIssue) issuesFound++;
-        } catch (e) {}
+        } catch (e) {
+            // Tiho preskačemo nečitljive fajlove
+        }
     });
 
     if (issuesFound > 0) {
@@ -290,10 +316,13 @@ async function main() {
     const statusOutput = spawnSync("git status --porcelain", { shell: true, encoding: "utf8" }).stdout.trim();
     if (statusOutput) {
         console.log(`\n${C.cyan}ℹ️  Auto-commit: Sinhronizacija formata i higijene...${C.reset}`);
+
+        // Hirurški precizan git add koji ignoriše temp smeće
         spawnSync(
             "git add src scripts tests assets manifest.xml manifest.prod.xml package.json package-lock.json vitest.config.ts playwright.config.ts",
             { shell: true, stdio: "inherit" }
         );
+
         spawnSync('git commit -m "chore: hygiene & auto-format sync" --no-verify', {
             shell: true,
             stdio: "inherit",
@@ -311,14 +340,14 @@ async function main() {
         run("7. E2E Tests", "npm", ["run", "test:e2e"]);
     }
 
+    // --- [GOD MODE]: ADAPTIVNI FINAL REPORT ---
     console.log(`\n${C.cyan}${C.bold}📊 FINAL REPORT:${C.reset}`);
     const longestStepName = Math.max(...TIMINGS.map((t) => t.step.length));
     const reportPadding = longestStepName + 2;
 
     TIMINGS.forEach((t) => {
-        const label = t.step + " ";
-        const dots = ".".repeat(Math.max(3, reportPadding - label.length));
-        console.log(`   • ${C.white}${label}${C.gray}${dots}${C.reset} : ${C.white}${t.time}s${C.reset}`);
+        const labelWithDots = alignWithDots(t.step, reportPadding);
+        console.log(`   • ${C.white}${labelWithDots}${C.reset} : ${C.white}${t.time}s${C.reset}`);
     });
 
     beep();
@@ -338,6 +367,8 @@ async function main() {
         if (shouldPushAuto) {
             spawnSync(`git push -u origin ${currentBranch}`, { shell: true, stdio: "inherit" });
             console.log(`\n${C.green}${C.bold}✅ USPEŠNO AŽURIRANO!${C.reset}`);
+        } else {
+            console.log(`\n${C.gray}⛔ Push otkazan.${C.reset}`);
         }
         return;
     }
@@ -351,11 +382,15 @@ async function main() {
         if (isProtected) {
             const timestamp = Math.floor(Date.now() / 1000);
             const newBranchName = `chore/verified-update-${timestamp}`;
+
             console.log(`\n${C.cyan}ℹ️  Pravim novu granu: ${newBranchName}${C.reset}`);
             spawnSync(`git checkout -b ${newBranchName}`, { shell: true, stdio: "inherit" });
+
+            console.log(`${C.blue}🚀 Pushing to origin...${C.reset}`);
             spawnSync(`git push -u origin ${newBranchName}`, { shell: true, stdio: "inherit" });
+
             console.log(
-                `\n${C.green}${C.bold}🏆 USPEH! Link: https://github.com/engilic/serbiantransliterator/pull/new/${newBranchName}${C.reset}\n`
+                `\n${C.green}${C.bold}🏆 USPEH! Link za tvoj PR: https://github.com/engilic/serbiantransliterator/pull/new/${newBranchName}${C.reset}\n`
             );
         } else {
             spawnSync(`git push`, { shell: true, stdio: "inherit" });
