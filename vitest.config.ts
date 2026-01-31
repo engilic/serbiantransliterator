@@ -1,7 +1,14 @@
 // vitest.config.ts
 
+/// <reference types="node" />
+
 import { defineConfig } from "vitest/config";
-import path from "path";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+// ESM-safe __dirname (Vite/Vitest config se često učitava kao ESM)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // 8-bajtni validni WASM magic header (\0asm + version 1)
 const DUMMY_DATA = "data:application/octet-stream;base64,AGFzbQEAAAA=";

@@ -26,6 +26,8 @@ jobs:
         steps:
             - name: Checkout
               uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
 
             - name: Initialize CodeQL
               uses: github/codeql-action/init@v3
@@ -40,8 +42,9 @@ jobs:
 
             - name: Install deps (npm ci)
               run: npm ci
+              env:
+                  HUSKY: "0"
 
-            # --- POPRAVKA: Instalacija wasm-pack pre build-a ---
             - name: Install wasm-pack
               uses: jetli/wasm-pack-action@v0.4.0
               with:

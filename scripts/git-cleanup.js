@@ -3,34 +3,55 @@
 
 "use strict";
 
-const { execSync } = require("node:child_process");
+const { spawnSync } = require("node:child_process");
 
-/**
- * Pitanja:
- *   [BACKSPACE / ⬅ / Enter / Y] = ✔ YES    |   [DEL / ➔ / Esc / N] = ✖ NO
- */
+// --------------------------
+// Safe command runner (NO shell)
+// --------------------------
+function sh(cmd, args = [], { stdio = "pipe" } = {}) {
+    const useInherit = stdio === "inherit";
 
-function sh(cmd, { stdio = "pipe" } = {}) {
-    return execSync(cmd, { encoding: "utf8", stdio }).trim();
+    const res = spawnSync(cmd, args, {
+        shell: false, // IMPORTANT: avoids shell injection + no need for escaping
+        encoding: "utf8",
+        stdio: useInherit ? "inherit" : ["ignore", "pipe", "pipe"],
+        env: { ...process.env, FORCE_COLOR: "1" },
+    });
+
+    if (res.error) throw res.error;
+    if (res.status !== 0) {
+        const e = new Error(
+            `Command failed (${res.status}): ${cmd} ${args.map((a) => JSON.stringify(String(a))).join(" ")}`
+        );
+        e.status = res.status;
+        e.stdout = res.stdout || "";
+        e.stderr = res.stderr || "";
+        throw e;
+    }
+
+    // If stdio is inherit, stdout is not captured
+    return String(res.stdout || "").trim();
 }
 
-function trySh(cmd, { stdio = "pipe" } = {}) {
+function trySh(cmd, args = [], { stdio = "pipe" } = {}) {
     try {
-        return { ok: true, out: sh(cmd, { stdio }) };
+        return { ok: true, out: sh(cmd, args, { stdio }) };
     } catch (e) {
         return {
             ok: false,
-            cmd,
+            cmd: [cmd, ...(args || [])].join(" "),
             code: e?.status,
-            out: (e?.stdout || "").toString("utf8").trim(),
-            err: (e?.stderr || "").toString("utf8").trim(),
+            out: String(e?.stdout || "").trim(),
+            err: String(e?.stderr || e?.message || "").trim(),
         };
     }
 }
 
-function escArg(s) {
-    if (/^[a-zA-Z0-9._/-]+$/.test(s)) return s;
-    return `"${String(s).replace(/[\\"]/g, "\\$&")}"`;
+function git(args = [], opts = {}) {
+    return sh("git", args, opts);
+}
+function tryGit(args = [], opts = {}) {
+    return trySh("git", args, opts);
 }
 
 const ANSI = {
@@ -65,7 +86,6 @@ const KEY = {
 };
 
 const YES_KEYS = new Set([KEY.ENTER1, KEY.ENTER2, KEY.BACKSPACE1, KEY.BACKSPACE2, KEY.LEFT, "y", "Y"]);
-
 const NO_KEYS = new Set([KEY.DELETE, KEY.RIGHT, KEY.ESC, "n", "N"]);
 
 function readOneKeyRaw() {
@@ -147,7 +167,7 @@ async function askYesNo(question, { defaultYes = false } = {}) {
 }
 
 function ensureGitRepo() {
-    const r = trySh("git rev-parse --is-inside-work-tree");
+    const r = tryGit(["rev-parse", "--is-inside-work-tree"]);
     if (!r.ok || r.out !== "true") {
         console.error("Not a git repository.");
         process.exit(1);
@@ -155,19 +175,20 @@ function ensureGitRepo() {
 }
 
 function currentBranch() {
-    return sh("git rev-parse --abbrev-ref HEAD");
+    return git(["rev-parse", "--abbrev-ref", "HEAD"]);
 }
 
 function defaultBranchFromOriginHead() {
-    const r = trySh("git symbolic-ref refs/remotes/origin/HEAD");
+    const r = tryGit(["symbolic-ref", "refs/remotes/origin/HEAD"]);
     if (r.ok) {
         const m = r.out.match(/^refs\/remotes\/origin\/(.+)$/);
         if (m && m[1]) return m[1];
     }
 
-    const locals = sh("git for-each-ref --format='%(refname:short)' refs/heads")
+    // IMPORTANT: no shell quoting needed; pass --format as a single arg
+    const locals = git(["for-each-ref", "--format=%(refname:short)", "refs/heads"])
         .split("\n")
-        .map((s) => s.replace(/^'|'$/g, "").trim())
+        .map((s) => s.trim())
         .filter(Boolean);
 
     if (locals.includes("main")) return "main";
@@ -176,7 +197,7 @@ function defaultBranchFromOriginHead() {
 }
 
 function branchesWithGoneUpstream() {
-    const out = sh("git branch -vv");
+    const out = git(["branch", "-vv"]);
     return out
         .split("\n")
         .map((l) => l.trimEnd())
@@ -192,7 +213,7 @@ function branchesWithGoneUpstream() {
 }
 
 function mergedBranches(intoBranch) {
-    const r = trySh(`git branch --merged ${escArg(intoBranch)}`);
+    const r = tryGit(["branch", "--merged", intoBranch]);
     if (!r.ok) return [];
     return r.out
         .split("\n")
@@ -204,7 +225,7 @@ function mergedBranches(intoBranch) {
 async function main() {
     ensureGitRepo();
 
-    const dirty = sh("git status --porcelain");
+    const dirty = git(["status", "--porcelain"]);
     if (dirty) {
         console.log("Working tree is NOT clean:");
         console.log(dirty);
@@ -213,7 +234,7 @@ async function main() {
     }
 
     console.log("\nRunning: git fetch --all --prune");
-    trySh("git fetch --all --prune", { stdio: "inherit" });
+    tryGit(["fetch", "--all", "--prune"], { stdio: "inherit" });
 
     const cur = currentBranch();
     const def = defaultBranchFromOriginHead();
@@ -226,7 +247,7 @@ async function main() {
         if (await askYesNo("Delete these local branches?")) {
             for (const b of gone) {
                 console.log(`Deleting: ${b}`);
-                trySh(`git branch -D ${escArg(b)}`, { stdio: "inherit" });
+                tryGit(["branch", "-D", b], { stdio: "inherit" });
             }
         }
     }
@@ -245,21 +266,21 @@ async function main() {
 
         if (await askYesNo("Delete these merged branches (safe: git branch -d)?")) {
             for (const b of merged) {
-                const r = trySh(`git branch -d ${escArg(b)}`, { stdio: "inherit" });
+                const r = tryGit(["branch", "-d", b], { stdio: "inherit" });
                 if (!r.ok) {
                     const force = await askYesNo(`Force delete (-D) for ${b}?`, { defaultYes: false });
-                    if (force) trySh(`git branch -D ${escArg(b)}`, { stdio: "inherit" });
+                    if (force) tryGit(["branch", "-D", b], { stdio: "inherit" });
                 }
             }
         }
     }
 
     if (await askYesNo("\nRun: git remote prune origin? ", { defaultYes: false })) {
-        trySh("git remote prune origin", { stdio: "inherit" });
+        tryGit(["remote", "prune", "origin"], { stdio: "inherit" });
     }
 
     if (await askYesNo("\nRun: git gc? ", { defaultYes: false })) {
-        trySh("git gc", { stdio: "inherit" });
+        tryGit(["gc"], { stdio: "inherit" });
     }
 
     console.log("\nDone.");

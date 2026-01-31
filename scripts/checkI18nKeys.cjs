@@ -4,143 +4,419 @@
 
 const fs = require("fs");
 const path = require("path");
+const { spawnSync } = require("child_process");
+const { C, color, ok, fail, scan } = require("./_ui.cjs");
 
+// --- CONFIG ---
 const ROOT = process.cwd();
 const LOCALE_FILE = path.join(ROOT, "src/shared/locales/sr.ts");
 const SRC_DIR = path.join(ROOT, "src");
 
-const C = {
-    reset: "\x1b[0m",
-    red: "\x1b[31m",
-    green: "\x1b[32m",
-    yellow: "\x1b[33m",
-    gray: "\x1b[90m",
-    bold: "\x1b[1m",
-    blue: "\x1b[34m",
-};
+const SHOW_MISSING_LIMIT = 200;
+const SHOW_SAFE_DELETE_LIMIT = 100;
 
-const COLOR_ENABLED = !!process.stdout.isTTY && !process.env.NO_COLOR;
-function c(code, text) {
-    return COLOR_ENABLED ? `${code}${text}${C.reset}` : text;
-}
-function ok(text) {
-    return c(C.green, `✔ ${text}`);
-}
-function warn(text) {
-    return c(C.yellow, `⚠ ${text}`);
-}
-function fail(text) {
-    return c(C.red, `✖ ${text}`);
+// =====================
+// YES/NO prompt (same UX)
+// =====================
+function canRawMode() {
+    return !!process.stdin.isTTY && typeof process.stdin.setRawMode === "function";
 }
 
-function loadKeys() {
+async function askYesNo(q) {
+    return new Promise((resolve) => {
+        console.log(`\n${color(C.magenta, "❓ " + q)}`);
+        console.log(
+            `   ${color(C.green, "[BACKSPACE / ⬅ / Enter / Y] = ✔ YES")}    |   ${color(
+                C.red,
+                "[DEL / ➔ / Esc / N] = ✖ NO"
+            )}`
+        );
+
+        process.stdin.setEncoding("utf8");
+        process.stdin.resume();
+
+        // fallback: Y/N + Enter
+        if (!canRawMode()) {
+            const onData = (chunk) => {
+                const v = String(chunk || "")
+                    .trim()
+                    .toLowerCase();
+                process.stdin.off("data", onData);
+                process.stdin.pause();
+
+                if (v.startsWith("y")) {
+                    process.stdout.write(color(C.green, "✔ YES\n"));
+                    return resolve(true);
+                }
+                process.stdout.write(color(C.red, "✖ NO\n"));
+                return resolve(false);
+            };
+            process.stdin.on("data", onData);
+            return;
+        }
+
+        process.stdin.setRawMode(true);
+
+        const listener = (k) => {
+            if (k === "\u0003") {
+                cleanup(false);
+                process.exit(1);
+            }
+
+            // YES
+            if (
+                k === "y" ||
+                k === "Y" ||
+                k === "\r" ||
+                k === "\n" ||
+                k === "\u007f" ||
+                k === "\u0008" ||
+                k === "\u001b[D"
+            ) {
+                process.stdout.write(color(C.green, "✔ YES\n"));
+                cleanup(true);
+            }
+            // NO
+            else if (k === "n" || k === "N" || k === "\u001b" || k === "\u001b[3~" || k === "\u001b[C") {
+                process.stdout.write(color(C.red, "✖ NO\n"));
+                cleanup(false);
+            }
+        };
+
+        function cleanup(result) {
+            try {
+                process.stdin.setRawMode(false);
+            } catch {}
+            process.stdin.pause();
+            process.stdin.removeListener("data", listener);
+            resolve(result);
+        }
+
+        process.stdin.on("data", listener);
+    });
+}
+
+// =====================
+// Locale parsing
+// =====================
+function loadLocaleKeysDetailed() {
     if (!fs.existsSync(LOCALE_FILE)) {
-        console.error(c(C.red, `✖ FATAL: Locale file missing at ${LOCALE_FILE}`));
+        console.error(color(C.red, `✖ FATAL: Locale file missing at ${LOCALE_FILE}`));
         process.exit(1);
     }
+
     const content = fs.readFileSync(LOCALE_FILE, "utf8");
+    const keyRe = /^\s*["']?([a-zA-Z0-9_]+)["']?\s*:/gm;
+
     const keys = new Set();
-    const re = /^\s*["']?([a-zA-Z0-9_]+)["']?\s*:/gm;
+    const duplicates = [];
+
     let m;
-    while ((m = re.exec(content)) !== null) keys.add(m[1]);
-    return keys;
+    while ((m = keyRe.exec(content)) !== null) {
+        const k = m[1];
+        if (keys.has(k)) duplicates.push(k);
+        keys.add(k);
+    }
+
+    return { keys, duplicates };
 }
 
-function scanFiles(dir, definedKeys, usedKeysSet) {
-    const files = fs.readdirSync(dir, { withFileTypes: true });
-    let missingErrors = 0;
+// =====================
+// Usage scan (source)
+// =====================
+function shouldSkipDir(name) {
+    return ["node_modules", "dist", "wasm-core", "coverage", ".git"].includes(name);
+}
 
-    for (const f of files) {
-        const fullPath = path.join(dir, f.name);
+function scanFiles(dir, definedKeys, usedKeysSet, missingKeys, stats) {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
 
-        if (f.isDirectory()) {
-            if (["node_modules", "dist", "wasm-core", "coverage", ".git"].includes(f.name)) continue;
-            missingErrors += scanFiles(fullPath, definedKeys, usedKeysSet);
+    for (const e of entries) {
+        const fullPath = path.join(dir, e.name);
+
+        if (e.isDirectory()) {
+            if (shouldSkipDir(e.name)) continue;
+            scanFiles(fullPath, definedKeys, usedKeysSet, missingKeys, stats);
             continue;
         }
 
-        if (!f.name.endsWith(".ts") && !f.name.endsWith(".tsx") && !f.name.endsWith(".html")) continue;
-        if (f.name === "sr.ts") continue;
-
-        const content = fs.readFileSync(fullPath, "utf8");
-        const relativeName = path.relative(ROOT, fullPath);
-
-        const patterns = [/\bt\(\s*<!--citation:1-->["']\s*[,)]/g, /data-i18n=<!--citation:1-->["']/g];
-
-        for (const re of patterns) {
-            let m;
-            while ((m = re.exec(content)) !== null) {
-                const key = m[1];
-                usedKeysSet.add(key);
-
-                if (!definedKeys.has(key)) {
-                    console.error(
-                        `${c(C.red, "✖ MISSING:")} '${c(C.bold, key)}' used in ${c(C.gray, relativeName)}`
-                    );
-                    missingErrors++;
-                }
-            }
+        if (
+            !e.name.endsWith(".ts") &&
+            !e.name.endsWith(".tsx") &&
+            !e.name.endsWith(".js") &&
+            !e.name.endsWith(".cjs") &&
+            !e.name.endsWith(".mjs") &&
+            !e.name.endsWith(".html")
+        ) {
+            continue;
         }
 
-        const reAttr = /data-i18n-attr=<!--citation:2-->["']/g;
+        if (e.name === "sr.ts") continue;
+
+        let content = "";
+        try {
+            content = fs.readFileSync(fullPath, "utf8");
+        } catch {
+            continue;
+        }
+
+        const rel = path.relative(ROOT, fullPath).replace(/\\/g, "/");
+        stats.filesScanned++;
+
+        // t("key") / t('key') / t(`key`)
+        const reT = /\bt\s*\(\s*([`"'])([a-zA-Z0-9_]+)\1\s*[,)]/g;
         let m;
-        while ((m = reAttr.exec(content)) !== null) {
-            const pairs = m[1].split(",");
-            for (const p of pairs) {
-                const parts = p.trim().split(":");
-                if (parts.length === 2) {
-                    const key = parts[1].trim();
-                    usedKeysSet.add(key);
+        while ((m = reT.exec(content)) !== null) {
+            const key = m[2];
+            usedKeysSet.add(key);
+            if (!definedKeys.has(key)) missingKeys.add(`${key} @ ${rel}`);
+        }
 
-                    if (!definedKeys.has(key)) {
-                        console.error(
-                            `${c(C.red, "✖ MISSING:")} '${c(C.bold, key)}' used in ${c(C.gray, relativeName)}`
-                        );
-                        missingErrors++;
-                    }
-                }
+        // data-i18n="key"
+        const reData = /\bdata-i18n\s*=\s*(["'])([a-zA-Z0-9_]+)\1/g;
+        while ((m = reData.exec(content)) !== null) {
+            const key = m[2];
+            usedKeysSet.add(key);
+            if (!definedKeys.has(key)) missingKeys.add(`${key} @ ${rel}`);
+        }
+
+        // data-i18n-attr="title:key1,placeholder:key2"
+        const reAttr = /\bdata-i18n-attr\s*=\s*(["'])([^"']+)\1/g;
+        while ((m = reAttr.exec(content)) !== null) {
+            const pairs = String(m[2] || "")
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean);
+
+            for (const p of pairs) {
+                const parts = p.split(":").map((s) => s.trim());
+                if (parts.length !== 2) continue;
+
+                const key = parts[1];
+                if (!key) continue;
+
+                usedKeysSet.add(key);
+                if (!definedKeys.has(key)) missingKeys.add(`${key} @ ${rel}`);
             }
         }
     }
-
-    return missingErrors;
 }
 
-function main() {
-    console.log(c(C.blue + C.bold, "🌍 I18n Integrity Check..."));
+// =====================
+// Safety checks via git grep (strict GOD1)
+// =====================
+function gitGrepLines(args) {
+    const res = spawnSync("git", ["grep", ...args], {
+        encoding: "utf8",
+        shell: false,
+        stdio: ["ignore", "pipe", "pipe"],
+    });
 
-    const definedKeys = loadKeys();
-    console.log(c(C.gray, `   Loaded ${definedKeys.size} translation keys from sr.ts`));
-
-    const usedKeysSet = new Set();
-    const missingCount = scanFiles(SRC_DIR, definedKeys, usedKeysSet);
-
-    const unusedKeys = [...definedKeys].filter((k) => !usedKeysSet.has(k));
-
-    console.log(c(C.gray, "---------------------------------------------------"));
-
-    if (missingCount > 0) {
-        console.error(`\n${fail("CRITICAL:")} Found ${missingCount} MISSING translation keys!`);
-    } else {
-        console.log(`${ok("Integrity OK:")} All used keys exist.`);
+    // 0 = match, 1 = no match, >1 = error
+    if (res.status === 1) return [];
+    if (res.status === 0) {
+        return String(res.stdout || "")
+            .split("\n")
+            .map((s) => s.trim())
+            .filter(Boolean);
     }
 
-    if (unusedKeys.length > 0) {
-        const SHOW_LIMIT = 100;
-        console.warn(`\n${warn("BLOAT WARNING:")} ${unusedKeys.length} keys are defined but NEVER used:`);
+    const err = String(res.stderr || res.stdout || "").trim();
+    throw new Error(`git grep failed: ${err || "unknown error"}`);
+}
 
-        unusedKeys.slice(0, SHOW_LIMIT).forEach((k) => console.warn(`   ${c(C.yellow, "-")} ${k}`));
+function normalizeRel(p) {
+    return String(p || "")
+        .replace(/\\/g, "/")
+        .replace(/^\.\//, "");
+}
 
-        if (unusedKeys.length > SHOW_LIMIT) {
-            console.warn(c(C.gray, `   ...and ${unusedKeys.length - SHOW_LIMIT} more.`));
+function isOnlyInLocaleFile(grepLines, localeRel) {
+    const target = normalizeRel(localeRel);
+    return grepLines.every((ln) => normalizeRel(ln).startsWith(`${target}:`));
+}
+
+function computeSafeToDelete(unusedKeys, localeRel) {
+    const safe = [];
+
+    for (const key of unusedKeys) {
+        // A) whole-word hits outside sr.ts -> NOT SAFE
+        const hits = gitGrepLines(["-n", "-w", "--fixed-strings", key]);
+        if (!isOnlyInLocaleFile(hits, localeRel)) continue;
+
+        // B) prefix "key_" outside sr.ts -> NOT SAFE (dynamic)
+        const prefixHits = gitGrepLines(["-n", "--fixed-strings", `${key}_`]);
+        if (!isOnlyInLocaleFile(prefixHits, localeRel)) continue;
+
+        // C) plural heuristic: foo_one/few/many/other => check foo_ usage too
+        const pm = key.match(/^(.*)_(one|few|many|other)$/);
+        if (pm) {
+            const baseHits = gitGrepLines(["-n", "--fixed-strings", `${pm[1]}_`]);
+            if (!isOnlyInLocaleFile(baseHits, localeRel)) continue;
         }
 
-        console.warn(`\n${c(C.gray, "👉 Safe to delete from src/shared/locales/sr.ts")}`);
-    } else {
-        console.log(`${ok("Clean:")} No unused keys found.`);
+        safe.push(key);
     }
 
-    process.exit(missingCount > 0 ? 1 : 0);
+    return safe;
 }
 
-main();
+// =====================
+// Auto-delete unused keys (strict safe mode)
+// Only removes single-line string entries
+// =====================
+function removeUnusedKeysFromLocale(keysToRemove) {
+    const content = fs.readFileSync(LOCALE_FILE, "utf8");
+    const lines = content.split(/\r\n|\n/);
+
+    const keySet = new Set(keysToRemove);
+
+    const removed = [];
+    const skipped = [];
+
+    const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+    const singleLineStringProp = (key) =>
+        new RegExp("^\\s*([\"']?)" + escapeRe(key) + "\\1\\s*:\\s*([`\"']).*\\2\\s*,?\\s*$");
+
+    const out = [];
+    for (const line of lines) {
+        let matchedKey = null;
+
+        for (const k of keySet) {
+            if (singleLineStringProp(k).test(line)) {
+                matchedKey = k;
+                break;
+            }
+        }
+
+        if (matchedKey) {
+            removed.push(matchedKey);
+            keySet.delete(matchedKey);
+            continue;
+        }
+
+        out.push(line);
+    }
+
+    for (const k of keySet) skipped.push(k);
+
+    if (removed.length > 0) {
+        fs.writeFileSync(LOCALE_FILE, out.join("\n"), "utf8");
+    }
+
+    return { removed, skipped };
+}
+
+// =====================
+// Main
+// =====================
+async function main() {
+    scan("🌍 I18n Integrity + Safe Bloat Cleanup (GOD1)...");
+
+    const { keys: definedKeys, duplicates } = loadLocaleKeysDetailed();
+
+    if (!fs.existsSync(SRC_DIR)) {
+        console.error(color(C.red, `✖ FATAL: src directory missing at ${SRC_DIR}`));
+        process.exit(1);
+    }
+
+    const usedKeys = new Set();
+    const missingKeys = new Set();
+    const stats = { filesScanned: 0 };
+
+    scanFiles(SRC_DIR, definedKeys, usedKeys, missingKeys, stats);
+
+    const missingCount = missingKeys.size;
+    const unusedKeys = [...definedKeys].filter((k) => !usedKeys.has(k)).sort();
+
+    const localeRel = normalizeRel(path.relative(ROOT, LOCALE_FILE));
+
+    // SAFE calculation
+    let safeToDelete = [];
+    try {
+        if (unusedKeys.length > 0) safeToDelete = computeSafeToDelete(unusedKeys, localeRel);
+    } catch {
+        safeToDelete = [];
+    }
+
+    // Summary (uvek)
+    console.log(color(C.gray, "---------------------------------------------------"));
+    console.log(color(C.cyan, "📎 Summary:"));
+    console.log(`   • files scanned:  ${stats.filesScanned}`);
+    console.log(`   • defined keys:   ${definedKeys.size}`);
+    console.log(`   • used keys:      ${usedKeys.size}`);
+    console.log(`   • missing keys:   ${missingCount}`);
+    console.log(`   • unused keys:    ${unusedKeys.length}`);
+
+    // SAFE line (poslednja) + boje:
+    // 0 -> yellow (različito od unused)
+    // >0 -> green+bold (različito od oba)
+    const safeLine = `   • safe to delete: ${safeToDelete.length}`;
+    if (safeToDelete.length > 0) {
+        console.log(color(C.green + C.bold, safeLine));
+    } else {
+        console.log(color(C.yellow, safeLine));
+    }
+
+    // duplicates = hard fail
+    if (duplicates.length > 0) {
+        console.error(`\n${fail("FATAL")} Duplicate keys detected in sr.ts (later one overrides earlier):`);
+        [...new Set(duplicates)].slice(0, 200).forEach((k) => console.error(`   ${color(C.red, "-")} ${k}`));
+        process.exit(1);
+    }
+
+    // missing keys = hard fail
+    if (missingCount > 0) {
+        console.error(`\n${fail("CRITICAL")} Missing translation keys (used but not defined):`);
+        [...missingKeys]
+            .slice(0, SHOW_MISSING_LIMIT)
+            .forEach((s) => console.error(`   ${color(C.red, "-")} ${s}`));
+        if (missingCount > SHOW_MISSING_LIMIT) {
+            console.error(color(C.yellow, `   ...and ${missingCount - SHOW_MISSING_LIMIT} more`));
+        }
+        process.exit(1);
+    }
+
+    console.log(`${ok("OK")} All used keys exist.`);
+
+    // If SAFE=0 → ništa dalje
+    if (safeToDelete.length === 0) process.exit(0);
+
+    // If SAFE>0 → list keys + files + prompt
+    console.log(color(C.cyan, `\n🧹 SAFE to delete keys: ${safeToDelete.length}`));
+    console.log(color(C.cyan, "📎 Will delete from files:"));
+    console.log(`   - ${color(C.bold, localeRel)}`);
+    console.log(color(C.cyan, "📎 Keys (SAFE):"));
+
+    safeToDelete.slice(0, SHOW_SAFE_DELETE_LIMIT).forEach((k) => console.log(`   - ${k}`));
+    if (safeToDelete.length > SHOW_SAFE_DELETE_LIMIT) {
+        console.log(color(C.gray, `   ...and ${safeToDelete.length - SHOW_SAFE_DELETE_LIMIT} more`));
+    }
+
+    const shouldDelete = await askYesNo("Proceed with auto-deleting SAFE unused translation keys now?");
+
+    if (shouldDelete) {
+        const { removed, skipped } = removeUnusedKeysFromLocale(safeToDelete);
+
+        console.log(color(C.cyan, "\n📎 Auto-delete report (SAFE mode):"));
+        console.log(`   • file:    ${localeRel}`);
+        console.log(`   • removed: ${removed.length}`);
+        console.log(`   • skipped: ${skipped.length}`);
+
+        if (skipped.length > 0) {
+            console.warn(color(C.yellow, "\n⚠ Skipped SAFE keys (manual check recommended):"));
+            skipped.slice(0, 200).forEach((k) => console.warn(`   - ${k}`));
+            if (skipped.length > 200) console.warn(color(C.gray, `   ...and ${skipped.length - 200} more`));
+        }
+    } else {
+        console.log(color(C.gray, "\n⛔ No changes made."));
+    }
+
+    process.exit(0);
+}
+
+main().catch((e) => {
+    console.error(e?.stack || e?.message || e);
+    process.exit(1);
+});

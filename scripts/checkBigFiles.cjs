@@ -1,4 +1,5 @@
 // scripts/checkBigFiles.cjs
+
 "use strict";
 
 const fs = require("node:fs");

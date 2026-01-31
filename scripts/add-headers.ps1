@@ -4,8 +4,9 @@ $ErrorActionPreference = "Stop"
 
 $Root = Get-Location
 
-# samo fajlovi koji podržavaju komentare (NE md)
-$Extensions = @(".ts", ".tsx", ".js", ".cjs", ".mjs", ".css", ".html", ".ps1", ".sh")
+# Samo fajlovi koji podržavaju komentare (NE .md)
+# DODATO: .rs
+$Extensions = @(".ts", ".tsx", ".js", ".cjs", ".mjs", ".css", ".html", ".ps1", ".sh", ".rs")
 
 $IgnorePrefixes = @(
     "node_modules/",
@@ -37,7 +38,7 @@ function Get-ExpectedHeaderLine([string]$Ext, [string]$RelPath) {
         ".css"  { return "/* $RelPath */" }
         ".ps1"  { return "# $RelPath" }
         ".sh"   { return "# $RelPath" }
-        default { return "// $RelPath" }
+        default { return "// $RelPath" } # uključuje .rs
     }
 }
 
@@ -45,7 +46,7 @@ function IsLikelyHeaderPathToken([string]$p) {
     if (-not $p) { return $false }
     $p = $p.Trim()
     if ($p.Contains("/")) { return $true }                    # folder/file.ext
-    if ($p -match "\.[a-zA-Z0-9]{2,8}$") { return $true }     # file.ext
+    if ($p -match "\.[a-zA-Z0-9]{1,8}$") { return $true }     # file.ext
     return $false
 }
 
@@ -90,11 +91,18 @@ function Extract-HeaderPathStrict([string]$Line) {
 function Is-DirectiveLine([string]$TrimmedLine) {
     if (-not $TrimmedLine) { return $false }
 
-    if ($TrimmedLine.StartsWith("#!")) { return $true }                  # shebang
-    if ($TrimmedLine.StartsWith("///")) { return $true }                 # TS triple slash
+    # Shebang (bash/node)
+    if ($TrimmedLine.StartsWith("#!")) { return $true }
+
+    # TS triple-slash refs (i Rust doc /// na samom vrhu neće škoditi ako je tretiraš kao direktivu)
+    if ($TrimmedLine.StartsWith("///")) { return $true }
+
+    # ESLint / global blocks
     if ($TrimmedLine.StartsWith("/* eslint")) { return $true }
     if ($TrimmedLine.StartsWith("/* global")) { return $true }
-    if ($TrimmedLine.ToLower().StartsWith("#requires")) { return $true } # PowerShell
+
+    # PowerShell
+    if ($TrimmedLine.ToLower().StartsWith("#requires")) { return $true }
 
     return $false
 }
@@ -189,7 +197,7 @@ function Fix-OneFile([string]$AbsPath, [string]$RelPath) {
     if ($lines.Count -eq 0) { return }
     $lines[0] = $lines[0] -replace "^\uFEFF", ""
 
-    # 1) directives
+    # 1) directives (shebang itd.)
     $directives = New-Object System.Collections.Generic.List[string]
     $i = 0
     while ($i -lt $lines.Count -and (Is-DirectiveLine $lines[$i].Trim())) {
@@ -197,17 +205,13 @@ function Fix-OneFile([string]$AbsPath, [string]$RelPath) {
         $i++
     }
 
-    # 2) preskoči blank + header linije posle direktiva
+    # 2) preskoči blank + header linije posle direktiva (auto-fix zona)
     while ($i -lt $lines.Count) {
         $t = $lines[$i].Trim()
         if ($t -eq "") { $i++; continue }
 
         $hp = Extract-HeaderPathStrict $t
-        if ($hp) {
-            # wrong-path je već abortovan u pre-scan fazi
-            $i++
-            continue
-        }
+        if ($hp) { $i++; continue } # wrong-path već stopiran u pass 1
 
         if ($t -match "===\s*FILE:") { $i++; continue }
 
@@ -218,7 +222,7 @@ function Fix-OneFile([string]$AbsPath, [string]$RelPath) {
     $code = New-Object System.Collections.Generic.List[string]
     for (; $i -lt $lines.Count; $i++) { $code.Add($lines[$i]) }
 
-    # 4) ukloni leading prazne linije u code delu
+    # 4) ukloni leading prazne linije u code delu (da ne bude 2+ prazne linije posle headera)
     while ($code.Count -gt 0 -and $code[0].Trim() -eq "") {
         $code.RemoveAt(0)
     }
@@ -253,13 +257,13 @@ if ($tracked.Count -eq 0) {
     exit 0
 }
 
-# procesuiraj ovaj skript LAST
+# procesuiraj ovaj skript LAST (bezbednije dok radi)
 $selfRel = "scripts/add-headers.ps1"
 if ($tracked -contains $selfRel) {
     $tracked = @($tracked | Where-Object { $_ -ne $selfRel }) + @($selfRel)
 }
 
-# PASS 1: abort on wrong-path in header zone
+# PASS 1: abort on copy/paste wrong-path header u header zoni
 $wrong = New-Object System.Collections.Generic.List[object]
 
 foreach ($rel in $tracked) {
@@ -293,7 +297,7 @@ if ($wrong.Count -gt 0) {
     exit 1
 }
 
-# PASS 2: auto-fix
+# PASS 2: auto-fix everything else
 Write-Host "🧹 HEADER AUTO-FIX: applying fixes..." -ForegroundColor Cyan
 
 foreach ($rel in $tracked) {
