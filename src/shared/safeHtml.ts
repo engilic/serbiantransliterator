@@ -1,4 +1,5 @@
 // src/shared/safeHtml.ts
+
 /**
  * SafeHtml runtime wrapper.
  *

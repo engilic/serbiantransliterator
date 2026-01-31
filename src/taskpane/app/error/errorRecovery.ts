@@ -1,4 +1,5 @@
 // src/taskpane/app/error/errorRecovery.ts
+
 import { t } from "../../../shared/i18n";
 import { setStatus } from "../status";
 import { logger } from "../telemetry/logger"; // NEW

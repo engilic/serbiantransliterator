@@ -1,4 +1,5 @@
 // src/taskpane/app/word/extras.ts
+
 import type { OoxmlOptions } from "../../../shared/ooxml/convertOoxml";
 import type { UiSettings, ExtrasSummary } from "../types";
 import { emptyExtrasSummary } from "../types";

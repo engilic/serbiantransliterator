@@ -1,4 +1,5 @@
 // src/taskpane/app/utils/audio.ts
+
 let audioCtx: AudioContext | null = null;
 
 export function playSuccessSound() {

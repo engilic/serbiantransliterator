@@ -1,4 +1,5 @@
 // src/taskpane/app/ui/accordion.ts
+
 import { safeGetItem, safeSetItem } from "../../../shared/storage/safeLocalStorage";
 import { scrollIntoViewIfNeeded } from "../utils/dom";
 

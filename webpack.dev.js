@@ -1,8 +1,6 @@
 /* eslint-disable no-undef */
 // webpack.dev.js
-// webpack.dev.js
-// webpack.dev.js
-// webpack.dev.js
+
 module.exports = {
     mode: "development",
     devtool: "source-map",

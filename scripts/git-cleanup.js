@@ -1,11 +1,14 @@
 #!/usr/bin/env node
+// scripts/git-cleanup.js
+
 "use strict";
 
 const { execSync } = require("node:child_process");
 
-/* -------------------------
-   Shell helpers
-------------------------- */
+/**
+ * Pitanja:
+ *   [BACKSPACE / ⬅ / Enter / Y] = ✔ YES    |   [DEL / ➔ / Esc / N] = ✖ NO
+ */
 
 function sh(cmd, { stdio = "pipe" } = {}) {
     return execSync(cmd, { encoding: "utf8", stdio }).trim();
@@ -30,10 +33,6 @@ function escArg(s) {
     return `"${String(s).replace(/"/g, '\\"')}"`;
 }
 
-/* -------------------------
-   Colors + labels
-------------------------- */
-
 const ANSI = {
     reset: "\x1b[0m",
     green: "\x1b[32m",
@@ -48,23 +47,18 @@ function colorize(color, text) {
 const YES_LABEL = "✔ YES";
 const NO_LABEL = "✖ NO";
 
-/* -------------------------
-   Raw key YES/NO prompt
-------------------------- */
-
 function hintLine() {
     const yes = `  [BACKSPACE / ⬅ / Enter / Y] = ${YES_LABEL}`;
     const no = `  [DEL / ➔ / Esc / N] = ${NO_LABEL}`;
-    return `${colorize(ANSI.green, yes)}   |   ${colorize(ANSI.red, no)}`;
+    return `${colorize(ANSI.green, yes)}    |   ${colorize(ANSI.red, no)}`;
 }
 
-// Raw key sequences (najčešće u terminalima)
 const KEY = {
     ENTER1: "\r",
     ENTER2: "\n",
     ESC: "\x1b",
-    BACKSPACE1: "\b", // 0x08
-    BACKSPACE2: "\x7f", // 0x7f (često backspace u raw-mode)
+    BACKSPACE1: "\b",
+    BACKSPACE2: "\x7f",
     LEFT: "\x1b[D",
     RIGHT: "\x1b[C",
     DELETE: "\x1b[3~",
@@ -114,7 +108,6 @@ async function askYesNo(question, { defaultYes = false } = {}) {
 
     try {
         if (!rawOk) {
-            // fallback (npr. CI): kucaj Y/N pa Enter
             const line = (await readLineFallback()) || "";
             const v = line.trim().toLowerCase();
 
@@ -144,21 +137,14 @@ async function askYesNo(question, { defaultYes = false } = {}) {
                 process.stdout.write(colorize(ANSI.red, `${NO_LABEL}\n`));
                 return false;
             }
-            // ignoriši sve ostalo
         }
     } finally {
         try {
             process.stdin.setRawMode(wasRaw);
-        } catch {
-            // ignore
-        }
+        } catch {}
         process.stdin.pause();
     }
 }
-
-/* -------------------------
-   Git discovery helpers
-------------------------- */
 
 function ensureGitRepo() {
     const r = trySh("git rev-parse --is-inside-work-tree");
@@ -173,14 +159,12 @@ function currentBranch() {
 }
 
 function defaultBranchFromOriginHead() {
-    // refs/remotes/origin/HEAD -> refs/remotes/origin/master|main|...
     const r = trySh("git symbolic-ref refs/remotes/origin/HEAD");
     if (r.ok) {
         const m = r.out.match(/^refs\/remotes\/origin\/(.+)$/);
         if (m && m[1]) return m[1];
     }
 
-    // fallback
     const locals = sh("git for-each-ref --format='%(refname:short)' refs/heads")
         .split("\n")
         .map((s) => s.replace(/^'|'$/g, "").trim())
@@ -217,14 +201,9 @@ function mergedBranches(intoBranch) {
         .map((l) => l.replace(/^\*\s+/, "").trim());
 }
 
-/* -------------------------
-   Main
-------------------------- */
-
 async function main() {
     ensureGitRepo();
 
-    // Ako ima lokalnih izmena, pitaj da li nastavljamo
     const dirty = sh("git status --porcelain");
     if (dirty) {
         console.log("Working tree is NOT clean:");
@@ -233,14 +212,12 @@ async function main() {
         if (!cont) return;
     }
 
-    // Fetch + prune
     console.log("\nRunning: git fetch --all --prune");
     trySh("git fetch --all --prune", { stdio: "inherit" });
 
     const cur = currentBranch();
     const def = defaultBranchFromOriginHead();
 
-    // 1) Upstream gone
     const gone = branchesWithGoneUpstream().filter((b) => b !== cur);
     if (gone.length) {
         console.log("\nBranches with upstream ': gone]':");
@@ -254,12 +231,10 @@ async function main() {
         }
     }
 
-    // 2) Merged into default
     const merged = mergedBranches(def).filter((b) => {
         if (!b) return false;
         if (b === cur) return false;
         if (b === def) return false;
-        // dodatna zaštita
         if (b === "main" || b === "master" || b === "develop") return false;
         return true;
     });
@@ -272,23 +247,17 @@ async function main() {
             for (const b of merged) {
                 const r = trySh(`git branch -d ${escArg(b)}`, { stdio: "inherit" });
                 if (!r.ok) {
-                    const force = await askYesNo(`Force delete (-D) for ${b}?`, {
-                        defaultYes: false,
-                    });
-                    if (force) {
-                        trySh(`git branch -D ${escArg(b)}`, { stdio: "inherit" });
-                    }
+                    const force = await askYesNo(`Force delete (-D) for ${b}?`, { defaultYes: false });
+                    if (force) trySh(`git branch -D ${escArg(b)}`, { stdio: "inherit" });
                 }
             }
         }
     }
 
-    // 3) Optional: prune origin
     if (await askYesNo("\nRun: git remote prune origin? ", { defaultYes: false })) {
         trySh("git remote prune origin", { stdio: "inherit" });
     }
 
-    // 4) Optional: git gc
     if (await askYesNo("\nRun: git gc? ", { defaultYes: false })) {
         trySh("git gc", { stdio: "inherit" });
     }

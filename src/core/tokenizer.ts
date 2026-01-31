@@ -1,4 +1,5 @@
 // src/core/tokenizer.ts
+
 export type Tok = { type: "word" | "other"; value: string };
 
 function isLetterOrDigit(ch: string): boolean {

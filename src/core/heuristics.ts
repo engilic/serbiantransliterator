@@ -1,4 +1,5 @@
 // src/core/heuristics.ts
+
 import { Tok, prevNextWord, getPrevWord, getNextWord } from "./tokenizer";
 import { ALWAYS_LATIN_TOKENS_AMBIGUOUS, ALWAYS_LATIN_TOKENS_STRICT } from "./rules";
 

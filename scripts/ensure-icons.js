@@ -1,9 +1,9 @@
 // scripts/ensure-icons.js
+
 const fs = require("fs");
 const path = require("path");
 const { chromium } = require("@playwright/test");
 
-// --- ANSI COLORS (iste kao u ostalim skriptama) ---
 const C = {
     reset: "\x1b[0m",
     green: "\x1b[32m",
@@ -40,16 +40,13 @@ const SVG_CONTENT = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 51
 </svg>`;
 
 async function generateIcons() {
-    // 1) Proveri da li assets folder postoji (recursive da ne pukne na nested putanjama)
     if (!fs.existsSync(ASSETS_DIR)) fs.mkdirSync(ASSETS_DIR, { recursive: true });
 
-    // 2) Osiguraj da logo.svg postoji
     if (!fs.existsSync(SVG_PATH)) {
         fs.writeFileSync(SVG_PATH, SVG_CONTENT, "utf8");
         console.log(colorize(C.green, "✔ Created: assets/logo.svg"));
     }
 
-    // 3) Proveri koje ikonice fale
     const missingSizes = SIZES.filter((s) => !fs.existsSync(path.resolve(ASSETS_DIR, `icon-${s}.png`)));
 
     if (missingSizes.length === 0) {
@@ -57,14 +54,11 @@ async function generateIcons() {
         return;
     }
 
-    console.log(
-        `${colorize(C.cyan, "🚀 Generišem ikonice pomoću Playwright-a za veličine:")} ${missingSizes.join(", ")}...`
-    );
+    console.log(`${colorize(C.cyan, "🚀 Generišem ikonice (Playwright):")} ${missingSizes.join(", ")}...`);
 
-    const browser = await chromium.launch(); // headless je default u Playwright-u
+    const browser = await chromium.launch();
     const page = await browser.newPage();
 
-    // Postavi SVG sadržaj u stranicu sa providnom pozadinom
     await page.setContent(`
     <style>
       body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
@@ -77,7 +71,6 @@ async function generateIcons() {
         const iconPath = path.resolve(ASSETS_DIR, `icon-${size}.png`);
         await page.setViewportSize({ width: size, height: size });
         await page.screenshot({ path: iconPath, omitBackground: true, scale: "device" });
-
         console.log(colorize(C.green, `   ✔ Kreirano: icon-${size}.png`));
     }
 

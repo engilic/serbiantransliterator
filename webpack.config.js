@@ -1,8 +1,6 @@
 /* eslint-disable no-undef */
 // webpack.config.js
-// webpack.config.js
-// webpack.config.js
-// webpack.config.js
+
 const { merge } = require("webpack-merge");
 const devCerts = require("office-addin-dev-certs");
 

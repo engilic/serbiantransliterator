@@ -1,4 +1,8 @@
+#!/usr/bin/env node
 // scripts/release.js
+
+"use strict";
+
 const { spawnSync, execSync } = require("child_process");
 const fs = require("fs");
 const path = require("path");
@@ -8,8 +12,8 @@ const EXTENSION_NAME = "Serbian Transliterator";
 const FILES_TO_UPDATE = [
     "package.json",
     "src/wasm-core/Cargo.toml", // Rust
-    "manifest.xml", // Dev manifest
-    "manifest.prod.xml", // Prod manifest
+    "manifest.xml", // Dev
+    "manifest.prod.xml", // Prod
 ];
 
 // --- ANSI COLORS ---
@@ -31,7 +35,6 @@ function beep() {
 }
 
 function printBanner() {
-    console.clear();
     console.log(`${C.cyan}${C.bold}
                                          
    🚀 RELEASE COMMANDER • INTELLIGENT SYNC
@@ -62,9 +65,8 @@ async function askSelection(opts) {
         render();
 
         process.stdin.on("data", (key) => {
-            if (key === "\u0003") {
-                process.exit(0);
-            }
+            if (key === "\u0003") process.exit(0);
+
             if (key === "\u001b[A") {
                 idx = idx > 0 ? idx - 1 : opts.length - 1;
                 render();
@@ -83,8 +85,6 @@ async function askSelection(opts) {
 async function askYesNo(q) {
     return new Promise((r) => {
         console.log(`\n${C.magenta}❓ ${q}${C.reset}`);
-
-        // Hint (isti sistem kao u drugim skriptama): ✔ YES / ✖ NO + Y/N podrška
         console.log(
             `   ${C.green}[BACKSPACE / ⬅ / Enter / Y] = ✔ YES${C.reset}    |   ${C.red}[DEL / ➔ / Esc / N] = ✖ NO${C.reset}`
         );
@@ -96,7 +96,6 @@ async function askYesNo(q) {
         const l = (k) => {
             if (k === "\u0003") process.exit(1);
 
-            // YES: y, Y, Enter, Backspace, Left
             if (
                 k === "y" ||
                 k === "Y" ||
@@ -108,9 +107,7 @@ async function askYesNo(q) {
             ) {
                 process.stdout.write(`${C.green}✔ YES${C.reset}\n`);
                 cleanup(true);
-            }
-            // NO: n, N, Esc, Delete, Right
-            else if (k === "n" || k === "N" || k === "\u001b" || k === "\u001b[3~" || k === "\u001b[C") {
+            } else if (k === "n" || k === "N" || k === "\u001b" || k === "\u001b[3~" || k === "\u001b[C") {
                 process.stdout.write(`${C.red}✖ NO${C.reset}\n`);
                 cleanup(false);
             }
@@ -179,13 +176,14 @@ function updateChangelog(newVer) {
     let lastTag = "";
     try {
         lastTag = execSync("git describe --tags --abbrev=0 2>/dev/null").toString().trim();
-    } catch (e) {}
+    } catch {}
+
     const range = lastTag ? `${lastTag}..HEAD` : "HEAD";
 
     let logs = "";
     try {
         logs = execSync(`git log ${range} --pretty=format:"- %s (%h)"`).toString();
-    } catch (e) {
+    } catch {
         logs = "- Initial release";
     }
 

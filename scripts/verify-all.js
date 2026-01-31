@@ -1,4 +1,8 @@
+#!/usr/bin/env node
 // scripts/verify-all.js
+
+"use strict";
+
 const { spawnSync } = require("child_process");
 const path = require("path");
 const fs = require("fs");
@@ -31,18 +35,22 @@ function beep() {
 }
 
 function printBanner() {
-    console.clear();
+    // NAMERNO: bez console.clear() da vidiš kraj prethodne komande
     console.log(`${C.magenta}${C.bold}
     🛡️  GUARDIAN SYSTEM • LEVEL: GOD MODE 🛡️
 ${C.reset}`);
 }
 
-// Wrapper za pokretanje komandi bez DEP0190 warninga
+function stepNo(step) {
+    const m = String(step).match(/^(\d+)\./);
+    return m ? m[1] : "?";
+}
+
+// Wrapper za pokretanje komandi
 function run(step, cmd, args, cwd = ROOT) {
     console.log(`\n${C.blue}${C.bold}>>> ${step}${C.reset}`);
     const start = Date.now();
 
-    // Spajamo komandu i argumente u jedan string
     const fullCmd = `${cmd} ${args.join(" ")}`;
 
     const res = spawnSync(fullCmd, {
@@ -56,80 +64,33 @@ function run(step, cmd, args, cwd = ROOT) {
 
     if (res.status !== 0) {
         beep();
-        console.error(`\n${C.bgRed} ❌ FATAL ERROR: ${step} ${C.reset}`);
+        console.error(`\n${C.bgRed} ❌ FATAL ERROR: ${step} ${C.reset}\n`);
         process.exit(1);
     }
-    console.log(`${C.green}✅ OK${C.reset}`);
+
+    console.log(`\n${C.green}✅ [${stepNo(step)}] OK — ${step}${C.reset}\n`);
 }
 
-// --- LOGIKA ZA INPUT (svuda isto) ---
+// --------------------------
+// YES/NO INPUT (1-line hint)
+// --------------------------
 async function askYesNo(q) {
     return new Promise((resolve) => {
         console.log(`\n${C.magenta}❓ ${q}${C.reset}`);
-
-        // Uputstvo (traženi format + boje):
         console.log(
             `   ${C.green}[BACKSPACE / ⬅ / Enter / Y] = ✔ YES${C.reset}    |   ${C.red}[DEL / ➔ / Esc / N] = ✖ NO${C.reset}`
         );
 
         process.stdin.setEncoding("utf8");
         process.stdin.resume();
-
-        let rawOk = true;
-        try {
-            process.stdin.setRawMode(true);
-        } catch {
-            rawOk = false;
-        }
-
-        const cleanup = (result, listener) => {
-            try {
-                if (rawOk) process.stdin.setRawMode(false);
-            } catch {
-                // ignore
-            }
-            process.stdin.pause();
-            if (listener) process.stdin.removeListener("data", listener);
-            resolve(result);
-        };
-
-        // Fallback ako raw mode nije dostupan: korisnik kuca Y/N pa Enter
-        if (!rawOk) {
-            const onLine = (chunk) => {
-                const v = String(chunk || "")
-                    .trim()
-                    .toLowerCase();
-
-                if (v.startsWith("y")) {
-                    process.stdout.write(`${C.green}✔ YES${C.reset}\n`);
-                    cleanup(true, onLine);
-                    return;
-                }
-                if (v.startsWith("n")) {
-                    process.stdout.write(`${C.red}✖ NO${C.reset}\n`);
-                    cleanup(false, onLine);
-                    return;
-                }
-
-                // default: NO (konzervativno)
-                process.stdout.write(`${C.red}✖ NO${C.reset}\n`);
-                cleanup(false, onLine);
-            };
-
-            process.stdin.on("data", onLine);
-            return;
-        }
+        process.stdin.setRawMode(true);
 
         const listener = (k) => {
-            // CTRL+C = Exit
             if (k === "\u0003") {
-                try {
-                    process.stdin.setRawMode(false);
-                } catch {}
+                cleanup(false);
                 process.exit(1);
             }
 
-            // YES: y, Y, Enter, Backspace (\u007f ili \u0008), Levo (\u001b[D)
             if (
                 k === "y" ||
                 k === "Y" ||
@@ -140,17 +101,36 @@ async function askYesNo(q) {
                 k === "\u001b[D"
             ) {
                 process.stdout.write(`${C.green}✔ YES${C.reset}\n`);
-                cleanup(true, listener);
-            }
-            // NO: n, N, Esc, Delete (\u001b[3~), Desno (\u001b[C)
-            else if (k === "n" || k === "N" || k === "\u001b" || k === "\u001b[3~" || k === "\u001b[C") {
+                cleanup(true);
+            } else if (k === "n" || k === "N" || k === "\u001b" || k === "\u001b[3~" || k === "\u001b[C") {
                 process.stdout.write(`${C.red}✖ NO${C.reset}\n`);
-                cleanup(false, listener);
+                cleanup(false);
             }
         };
 
+        function cleanup(result) {
+            process.stdin.setRawMode(false);
+            process.stdin.pause();
+            process.stdin.removeListener("data", listener);
+            resolve(result);
+        }
+
         process.stdin.on("data", listener);
     });
+}
+
+function detectPowerShell() {
+    // Prefer pwsh, fallback powershell (Windows)
+    const candidates = ["pwsh", "powershell"];
+    for (const exe of candidates) {
+        const r = spawnSync(exe, ["-NoProfile", "-Command", "$PSVersionTable.PSVersion"], {
+            encoding: "utf8",
+            shell: false,
+            stdio: ["ignore", "pipe", "ignore"],
+        });
+        if (r.status === 0) return exe;
+    }
+    return null;
 }
 
 function checkEnv() {
@@ -193,6 +173,21 @@ async function runSniffer() {
 async function main() {
     printBanner();
     checkEnv();
+
+    // 0) AUTO-FIX headers + report
+    const ps = detectPowerShell();
+    if (!ps) {
+        console.error(`${C.red}❌ PowerShell (pwsh/powershell) not found. Can't auto-fix headers.${C.reset}`);
+        process.exit(1);
+    }
+    run("0. Header Auto-Fix", ps, [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "scripts/add-headers.ps1",
+    ]);
+
     await runSniffer();
 
     run("1. Install", "npm", ["ci"]);
@@ -232,7 +227,6 @@ async function main() {
 
     if (NO_PUSH) return;
 
-    // --- SMART PUSH SYSTEM ---
     const currentBranch = spawnSync("git rev-parse --abbrev-ref HEAD", {
         shell: true,
         encoding: "utf8",

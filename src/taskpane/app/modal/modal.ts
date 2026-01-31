@@ -1,4 +1,5 @@
 // src/taskpane/app/modal/modal.ts
+
 import { unwrapHtml, type SafeHtml } from "../../../shared/safeHtml";
 import { t } from "../../../shared/i18n";
 import { modalManager } from "./modalManager";

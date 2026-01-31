@@ -1,4 +1,5 @@
 // scripts/update-manifest-version.js
+
 "use strict";
 
 const fs = require("fs");
@@ -26,7 +27,6 @@ function c(code, text) {
 
 console.log(c(C.blue + C.bold, "🔄 MANIFEST SYNC UTILITY"));
 
-// 1) Učitaj verziju iz package.json
 const pkgPath = path.resolve(__dirname, "../package.json");
 if (!fs.existsSync(pkgPath)) {
     console.error(c(C.red, "✖ ERROR: package.json not found!"));
@@ -48,7 +48,6 @@ if (!version) {
     process.exit(1);
 }
 
-// Office zahteva 4 cifre (1.0.0 -> 1.0.0.0)
 const officeVersion = version.split(".").length === 3 ? `${version}.0` : version;
 const displayName = `${EXTENSION_NAME} (v${version})`;
 
@@ -56,7 +55,6 @@ console.log(`   Target Version: ${c(C.yellow, version)}`);
 console.log(`   Office Format:  ${c(C.yellow, officeVersion)}`);
 console.log(`   Display Name:   ${c(C.yellow, displayName)}\n`);
 
-// 2) Ažuriraj fajlove
 let updatedCount = 0;
 
 MANIFESTS.forEach((fname) => {
@@ -70,8 +68,6 @@ MANIFESTS.forEach((fname) => {
     let content = before;
     let changed = false;
 
-    // A) Ažuriraj sistemsku <Version>
-    // (global 'g' da bi zamenio sve pojave, ako ih ima više)
     const verRegex = /<Version>.*?<\/Version>/g;
     if (verRegex.test(content)) {
         const newVerTag = `<Version>${officeVersion}</Version>`;
@@ -82,7 +78,6 @@ MANIFESTS.forEach((fname) => {
         }
     }
 
-    // B) Ažuriraj glavni <DisplayName>
     const dnRegex = /<DisplayName DefaultValue=".*?"\/>/g;
     if (dnRegex.test(content)) {
         const newDnTag = `<DisplayName DefaultValue="${displayName}"/>`;
@@ -93,7 +88,6 @@ MANIFESTS.forEach((fname) => {
         }
     }
 
-    // C) Ažuriraj GetStarted.Title (Resource string)
     const gsRegex = /(<bt:String id="GetStarted\.Title" DefaultValue=").*?("\/>)/g;
     if (gsRegex.test(content)) {
         const next = content.replace(gsRegex, `$1${displayName}$2`);

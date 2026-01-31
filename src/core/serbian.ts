@@ -1,4 +1,5 @@
 // src/core/serbian.ts
+
 export type ScriptMajority = "latin" | "cyrillic";
 
 const LAT_TO_CYR_1: Record<string, string> = {

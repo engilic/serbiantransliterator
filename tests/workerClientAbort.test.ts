@@ -1,4 +1,5 @@
 // tests/workerClientAbort.test.ts
+
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { WorkerClient } from "../src/taskpane/worker/client";
 import { state } from "../src/taskpane/app/state";

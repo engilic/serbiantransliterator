@@ -1,4 +1,5 @@
 // src/shared/diff/myers.ts
+
 /**
  * Myers Diff Algorithm
  *

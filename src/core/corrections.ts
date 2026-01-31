@@ -1,4 +1,5 @@
 // src/core/corrections.ts
+
 function preserveFirstLetterCase(input: unknown, replacement: unknown): string {
     const inp = String(input || "");
     const rep = String(replacement || "");

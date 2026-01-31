@@ -1,4 +1,5 @@
 // src/shared/diff/interactive.ts
+
 import type { DiffOp } from "./index";
 
 export class InteractiveDiff {

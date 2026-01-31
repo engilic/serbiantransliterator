@@ -1,15 +1,14 @@
 // scripts/checkI18nKeys.cjs
+
 "use strict";
 
 const fs = require("fs");
 const path = require("path");
 
-// --- CONFIG ---
 const ROOT = process.cwd();
 const LOCALE_FILE = path.join(ROOT, "src/shared/locales/sr.ts");
 const SRC_DIR = path.join(ROOT, "src");
 
-// --- ANSI COLORS (TTY/NO_COLOR aware) ---
 const C = {
     reset: "\x1b[0m",
     red: "\x1b[31m",
@@ -24,15 +23,12 @@ const COLOR_ENABLED = !!process.stdout.isTTY && !process.env.NO_COLOR;
 function c(code, text) {
     return COLOR_ENABLED ? `${code}${text}${C.reset}` : text;
 }
-
 function ok(text) {
     return c(C.green, `✔ ${text}`);
 }
-
 function warn(text) {
     return c(C.yellow, `⚠ ${text}`);
 }
-
 function fail(text) {
     return c(C.red, `✖ ${text}`);
 }
@@ -42,18 +38,11 @@ function loadKeys() {
         console.error(c(C.red, `✖ FATAL: Locale file missing at ${LOCALE_FILE}`));
         process.exit(1);
     }
-
     const content = fs.readFileSync(LOCALE_FILE, "utf8");
     const keys = new Set();
-
-    // hvata: key: "..." / '...' / `...` / bez navodnika
     const re = /^\s*["']?([a-zA-Z0-9_]+)["']?\s*:/gm;
-
     let m;
-    while ((m = re.exec(content)) !== null) {
-        keys.add(m[1]);
-    }
-
+    while ((m = re.exec(content)) !== null) keys.add(m[1]);
     return keys;
 }
 
@@ -86,8 +75,7 @@ function scanFiles(dir, definedKeys, usedKeysSet) {
 
                 if (!definedKeys.has(key)) {
                     console.error(
-                        `${c(C.red, "✖ MISSING:")} '${c(C.bold, key)}' ` +
-                            `used in ${c(C.gray, relativeName)}`
+                        `${c(C.red, "✖ MISSING:")} '${c(C.bold, key)}' used in ${c(C.gray, relativeName)}`
                     );
                     missingErrors++;
                 }
@@ -106,8 +94,7 @@ function scanFiles(dir, definedKeys, usedKeysSet) {
 
                     if (!definedKeys.has(key)) {
                         console.error(
-                            `${c(C.red, "✖ MISSING:")} '${c(C.bold, key)}' ` +
-                                `used in ${c(C.gray, relativeName)}`
+                            `${c(C.red, "✖ MISSING:")} '${c(C.bold, key)}' used in ${c(C.gray, relativeName)}`
                         );
                         missingErrors++;
                     }
@@ -153,8 +140,7 @@ function main() {
         console.log(`${ok("Clean:")} No unused keys found.`);
     }
 
-    if (missingCount > 0) process.exit(1);
-    process.exit(0);
+    process.exit(missingCount > 0 ? 1 : 0);
 }
 
 main();

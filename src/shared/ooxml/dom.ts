@@ -1,4 +1,5 @@
 // src/shared/ooxml/dom.ts
+
 export const XML_NS = "http://www.w3.org/XML/1998/namespace";
 export const WORD_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
 

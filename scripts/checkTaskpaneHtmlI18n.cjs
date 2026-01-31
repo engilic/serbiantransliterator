@@ -1,17 +1,15 @@
 // scripts/checkTaskpaneHtmlI18n.cjs
+
 "use strict";
 
 const fs = require("node:fs");
 const path = require("node:path");
 
-// --- CONFIG ---
 const ROOT = process.cwd();
 const FILE = path.join(ROOT, "src", "taskpane", "taskpane.html");
 
-// Regex za slova (Latinica + Ćirilica)
 const LETTER_RE = /[A-Za-zČĆĐŠŽčćđšž\u0400-\u052F]/;
 
-// --- ANSI COLORS (TTY/NO_COLOR aware) ---
 const C = {
     reset: "\x1b[0m",
     red: "\x1b[31m",
@@ -60,26 +58,13 @@ function main() {
 
     let html = fs.readFileSync(FILE, "utf8");
 
-    // --- PRE-PROCESSING (Cleaning) ---
-    // Using .repeat(m.length) to preserve line numbers/positions
-
-    // 1) Remove Comments <!-- ... -->
     html = html.replace(/<!--[\s\S]*?-->/g, (m) => " ".repeat(m.length));
-
-    // 2) Remove Scripts <script>...</script>
-    // [FIX] CodeQL Compliant: Catch malformed closing tags like </script foo>
     html = html.replace(/<script\b[^>]*>[\s\S]*?<\/script[^>]*>/gi, (m) => " ".repeat(m.length));
-
-    // 3) Remove Styles <style>...</style>
-    // [FIX] CodeQL Compliant
     html = html.replace(/<style\b[^>]*>[\s\S]*?<\/style[^>]*>/gi, (m) => " ".repeat(m.length));
-
-    // 4) Remove EJS/Template tags <% ... %>
     html = html.replace(/<%[\s\S]*?%>/g, (m) => " ".repeat(m.length));
 
     const violations = [];
 
-    // --- RULE 1: Visible text nodes (> TEXT <) ---
     const reText = />([^<]+)</g;
     let m;
 
@@ -90,14 +75,11 @@ function main() {
         if (!trimmed) continue;
         if (!LETTER_RE.test(trimmed)) continue;
 
-        // Context Check
         const before = html.slice(0, m.index);
         const lastTagOpen = before.lastIndexOf("<");
         if (lastTagOpen === -1) continue;
 
-        const tagStr = before.slice(lastTagOpen); // e.g. <div id="app" data-i18n="key">
-
-        // Ignore if tag has data-i18n
+        const tagStr = before.slice(lastTagOpen);
         if (tagStr.includes("data-i18n")) continue;
 
         const idx = m.index + 1;
@@ -112,7 +94,6 @@ function main() {
         });
     }
 
-    // --- RULE 2: Attributes (title, placeholder, aria-label) ---
     const reAttr = /\b(title|placeholder|aria-label)\s*=\s*"([^"]*)"/g;
 
     while ((m = reAttr.exec(html)) !== null) {
@@ -128,9 +109,7 @@ function main() {
 
         if (startTag !== -1 && endTag !== -1) {
             const fullTag = html.slice(startTag, endTag);
-            if (fullTag.includes("data-i18n-attr") && fullTag.includes(`${attrName}:`)) {
-                continue;
-            }
+            if (fullTag.includes("data-i18n-attr") && fullTag.includes(`${attrName}:`)) continue;
         }
 
         const { line, col } = posFromIndex(html, idx);
@@ -144,7 +123,6 @@ function main() {
         });
     }
 
-    // --- REPORTING ---
     if (violations.length === 0) {
         console.log(ok("OK") + " HTML is clean (No hardcoded strings detected).");
         process.exit(0);

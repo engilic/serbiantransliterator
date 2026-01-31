@@ -1,8 +1,6 @@
 /* global window */
 // tests-e2e/mocks/office.js
-// tests-e2e/mocks/office.js
-// tests-e2e/mocks/office.js
-// tests-e2e/mocks/office.js
+
 window.Office = {
     HostType: { Word: "Word" },
     EventType: { DocumentSelectionChanged: "DocumentSelectionChanged" },

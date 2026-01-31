@@ -1,30 +1,37 @@
 # scripts/add-headers.ps1
+
 $ErrorActionPreference = "Stop"
 
 $Root = Get-Location
 
-# Dodao sam .ps1 i .sh (po tvojim primerima)
-$Extensions = @(".ts", ".js", ".cjs", ".mjs", ".tsx", ".css", ".html", ".ps1", ".sh")
+# samo fajlovi koji podržavaju komentare (NE md)
+$Extensions = @(".ts", ".tsx", ".js", ".cjs", ".mjs", ".css", ".html", ".ps1", ".sh")
 
-# Napomena: Ignore se proverava preko relativne putanje na početku
-$Ignore = @(
-    "node_modules",
-    "dist",
-    "coverage",
-    ".git",
-    "wasm-core/pkg",
-    "wasm-core/target"
+$IgnorePrefixes = @(
+    "node_modules/",
+    "dist/",
+    "coverage/",
+    ".git/",
+    "wasm-core/pkg/",
+    "wasm-core/target/",
+    "src/wasm-core/pkg/",
+    "src/wasm-core/target/"
 )
 
 $Stats = @{
     Scanned = 0
-    Cleaned = 0
+    Fixed   = 0
     Skipped = 0
 }
 
-# -------------------------
-# Header helpers
-# -------------------------
+$FixedFiles = New-Object System.Collections.Generic.List[string]
+
+function Is-IgnoredRel([string]$Rel) {
+    foreach ($p in $IgnorePrefixes) {
+        if ($Rel.StartsWith($p)) { return $true }
+    }
+    return $false
+}
 
 function Get-ExpectedHeaderLine([string]$Ext, [string]$RelPath) {
     switch ($Ext) {
@@ -36,68 +43,51 @@ function Get-ExpectedHeaderLine([string]$Ext, [string]$RelPath) {
     }
 }
 
-function Is-Ignored([string]$RelPath) {
-    foreach ($I in $Ignore) {
-        if ($RelPath.StartsWith($I)) { return $true }
-    }
-    return $false
-}
-
-function LooksLike-RepoPath([string]$p) {
+function IsLikelyHeaderPathToken([string]$p) {
     if (-not $p) { return $false }
     $p = $p.Trim()
-
-    # vrlo namerno usko: da ne hvata random komentare
-    # proširi po potrebi (npr. "apps/", "packages/" itd.)
-    if ($p -match "^(src|scripts|tests|assets)/") { return $true }
-
+    if ($p.Contains("/")) { return $true }                    # folder/file.ext
+    if ($p -match "\.[a-zA-Z0-9]{2,8}$") { return $true }     # file.ext
     return $false
 }
 
-function Extract-HeaderPath([string]$Line) {
-    # Vrati putanju ako linija liči na naš header format.
-    # Ako nije header => $null
-
+# STRICT: linija mora biti samo "comment + path" (bez dodatnog teksta)
+function Extract-HeaderPathStrict([string]$Line) {
     if (-not $Line) { return $null }
     $t = $Line.Trim()
 
-    # Stari format
+    # === FILE: path
     if ($t -match "===\s*FILE:\s*(.+)$") {
-        $p = ($Matches[1] -as [string]).Trim()
-        if (LooksLike-RepoPath $p) { return $p }
+        $p = ($Matches[1] -as [string]).Trim().Replace("\", "/")
+        if (IsLikelyHeaderPathToken $p) { return $p }
         return $null
     }
 
     # // path
-    if ($t -match "^//\s+(.+)$") {
-        $p = ($Matches[1] -as [string]).Trim()
-        # uzmi samo prvu “reč” da izbegnemo komentare tipa "// src/x.ts - note"
-        $p = ($p -split "\s+")[0]
-        if (LooksLike-RepoPath $p) { return $p }
+    if ($t -match "^//\s+([^\s]+)\s*$") {
+        $p = ($Matches[1] -as [string]).Trim().Replace("\", "/")
+        if (IsLikelyHeaderPathToken $p) { return $p }
         return $null
     }
 
-    # # path (ps1/sh)
-    if ($t -match "^#\s+(.+)$") {
-        $p = ($Matches[1] -as [string]).Trim()
-        $p = ($p -split "\s+")[0]
-        if (LooksLike-RepoPath $p) { return $p }
+    # # path
+    if ($t -match "^#\s+([^\s]+)\s*$") {
+        $p = ($Matches[1] -as [string]).Trim().Replace("\", "/")
+        if (IsLikelyHeaderPathToken $p) { return $p }
         return $null
     }
 
     # /* path */
-    if ($t -match "^/\*\s+(.+?)\s*\*/$") {
-        $p = ($Matches[1] -as [string]).Trim()
-        $p = ($p -split "\s+")[0]
-        if (LooksLike-RepoPath $p) { return $p }
+    if ($t -match "^/\*\s+([^\s]+)\s*\*/\s*$") {
+        $p = ($Matches[1] -as [string]).Trim().Replace("\", "/")
+        if (IsLikelyHeaderPathToken $p) { return $p }
         return $null
     }
 
     # <!-- path -->
-    if ($t -match "^<!--\s+(.+?)\s*-->$") {
-        $p = ($Matches[1] -as [string]).Trim()
-        $p = ($p -split "\s+")[0]
-        if (LooksLike-RepoPath $p) { return $p }
+    if ($t -match "^<!--\s+([^\s]+)\s*-->\s*$") {
+        $p = ($Matches[1] -as [string]).Trim().Replace("\", "/")
+        if (IsLikelyHeaderPathToken $p) { return $p }
         return $null
     }
 
@@ -107,61 +97,90 @@ function Extract-HeaderPath([string]$Line) {
 function Is-DirectiveLine([string]$TrimmedLine) {
     if (-not $TrimmedLine) { return $false }
 
-    # Shebang (bash/node)
-    if ($TrimmedLine.StartsWith("#!")) { return $true }
-
-    # TS triple-slash refs
-    if ($TrimmedLine.StartsWith("///")) { return $true }
-
-    # ESLint / global blocks (na početku fajla)
+    if ($TrimmedLine.StartsWith("#!")) { return $true }                  # shebang
+    if ($TrimmedLine.StartsWith("///")) { return $true }                 # TS triple slash
     if ($TrimmedLine.StartsWith("/* eslint")) { return $true }
     if ($TrimmedLine.StartsWith("/* global")) { return $true }
-
-    # PowerShell directives
-    if ($TrimmedLine.StartsWith("#requires")) { return $true }
+    if ($TrimmedLine.ToLower().StartsWith("#requires")) { return $true } # PowerShell
 
     return $false
 }
 
-function Is-AnyHeaderLine([string]$TrimmedLine) {
-    # Sve što liči na header putanju ili stari === FILE:
-    if (Extract-HeaderPath $TrimmedLine) { return $true }
-    if ($TrimmedLine -match "===\s*FILE:") { return $true }
-    return $false
+function Write-Utf8NoBom([string]$FilePath, [string]$Content) {
+    # pwsh: utf8 = no BOM, ali eksplicitno je lepše
+    try {
+        $Content | Set-Content -Path $FilePath -NoNewline -Encoding utf8NoBOM
+    } catch {
+        $Content | Set-Content -Path $FilePath -NoNewline -Encoding utf8
+    }
 }
 
-# -------------------------
-# Validation: stop if wrong path exists
-# -------------------------
+function Get-TrackedFiles() {
+    $out = (& git ls-files) 2>$null
+    if (-not $out) { return @() }
 
-function Find-HeaderPathMismatches([string]$FilePath) {
-    $RelPath = $FilePath.Substring($Root.Path.Length + 1).Replace("\", "/")
-    if (Is-Ignored $RelPath) { return @() }
+    return ($out -split "`n") |
+        ForEach-Object { $_.Trim() } |
+        Where-Object { $_ } |
+        ForEach-Object { $_.Replace("\", "/") }
+}
 
-    $Ext = [System.IO.Path]::GetExtension($FilePath)
-    if ($Extensions -notcontains $Ext) { return @() }
+function Get-HeaderZoneIndices([string[]]$Lines) {
+    # vraća indeks gde počinje "code" nakon direktiva + (blank/header/oldheader) zone
+    $i = 0
 
-    $Content = Get-Content $FilePath -Raw
-    if (-not $Content) { return @() }
+    # 0) strip BOM sa prve linije u memoriji (ako postoji)
+    if ($Lines.Count -gt 0) {
+        $Lines[0] = $Lines[0] -replace "^\uFEFF", ""
+    }
 
-    $Lines = $Content -split "`r`n|`n"
-    if ($Lines.Count -eq 0) { return @() }
+    # 1) directives
+    while ($i -lt $Lines.Count -and (Is-DirectiveLine $Lines[$i].Trim())) { $i++ }
+
+    # 2) header zone: blank lines + header lines + old === FILE:
+    while ($i -lt $Lines.Count) {
+        $t = $Lines[$i].Trim()
+        if ($t -eq "") { $i++; continue }
+
+        $maybe = Extract-HeaderPathStrict $t
+        if ($maybe) { $i++; continue }
+
+        if ($t -match "===\s*FILE:") { $i++; continue }
+
+        break
+    }
+
+    return $i
+}
+
+function Scan-WrongPathHeaderZone([string]$AbsPath, [string]$RelPath) {
+    $ext = [System.IO.Path]::GetExtension($RelPath).ToLower()
+    if ($Extensions -notcontains $ext) { return @() }
+    if (Is-IgnoredRel $RelPath) { return @() }
+
+    $content = Get-Content -Path $AbsPath -Raw -ErrorAction SilentlyContinue
+    if (-not $content) { return @() }
+
+    $lines = $content -split "`r`n|`n"
+    if ($lines.Count -eq 0) { return @() }
+    $lines[0] = $lines[0] -replace "^\uFEFF", ""
+
+    # od početka do kraja "header zone"
+    $zoneEnd = Get-HeaderZoneIndices $lines
 
     $issues = New-Object System.Collections.Generic.List[object]
+    for ($ln = 0; $ln -lt $zoneEnd; $ln++) {
+        $t = $lines[$ln].Trim()
+        $p = Extract-HeaderPathStrict $t
+        if (-not $p) { continue }
 
-    for ($i = 0; $i -lt $Lines.Count; $i++) {
-        $line = $Lines[$i]
-        $found = Extract-HeaderPath $line
-        if (-not $found) { continue }
-
-        # Ako negde postoji header putanja koja NIJE putanja tog fajla => greška
-        if ($found -ne $RelPath) {
+        if ($p -ne $RelPath) {
             $issues.Add([pscustomobject]@{
                 File     = $RelPath
-                Line     = ($i + 1)
-                Found    = $found
+                Line     = ($ln + 1)
+                Found    = $p
                 Expected = $RelPath
-                Raw      = $line.Trim()
+                Raw      = $t
             })
         }
     }
@@ -169,68 +188,74 @@ function Find-HeaderPathMismatches([string]$FilePath) {
     return $issues
 }
 
-# -------------------------
-# Rewrite
-# -------------------------
+function Fix-OneFile([string]$AbsPath, [string]$RelPath) {
+    $ext = [System.IO.Path]::GetExtension($RelPath).ToLower()
+    if ($Extensions -notcontains $ext) { return }
 
-function Process-File([string]$FilePath) {
-    $RelPath = $FilePath.Substring($Root.Path.Length + 1).Replace("\", "/")
-    if (Is-Ignored $RelPath) { return }
-
-    $Ext = [System.IO.Path]::GetExtension($FilePath)
-    if ($Extensions -notcontains $Ext) { return }
+    if (Is-IgnoredRel $RelPath) { return }
 
     $Stats.Scanned++
 
-    $ExpectedHeader = Get-ExpectedHeaderLine $Ext $RelPath
+    $expectedHeader = Get-ExpectedHeaderLine $ext $RelPath
+    $content = Get-Content -Path $AbsPath -Raw -ErrorAction SilentlyContinue
+    if (-not $content) { return }
 
-    $Content = Get-Content $FilePath -Raw
-    if (-not $Content) { return }
+    $lines = $content -split "`r`n|`n"
+    if ($lines.Count -eq 0) { return }
+    $lines[0] = $lines[0] -replace "^\uFEFF", ""
 
-    $Lines = $Content -split "`r`n|`n"
-    if ($Lines.Count -eq 0) { return }
-
-    $Directives = New-Object System.Collections.Generic.List[string]
-    $CodeLines = New-Object System.Collections.Generic.List[string]
-
-    $InDirectives = $true
-
-    foreach ($L in $Lines) {
-        $Trimmed = $L.Trim()
-
-        if ($InDirectives -and (Is-DirectiveLine $Trimmed)) {
-            $Directives.Add($L)
-            continue
-        }
-
-        $InDirectives = $false
-
-        # ukloni sve stare header linije (bilo koji format)
-        if (Is-AnyHeaderLine $Trimmed) {
-            continue
-        }
-
-        # ukloni prazne linije na samom početku code dela (da ne bude “rupa” posle header-a)
-        if ($CodeLines.Count -eq 0 -and $Trimmed -eq "") {
-            continue
-        }
-
-        $CodeLines.Add($L)
+    # 1) directives
+    $directives = New-Object System.Collections.Generic.List[string]
+    $i = 0
+    while ($i -lt $lines.Count -and (Is-DirectiveLine $lines[$i].Trim())) {
+        $directives.Add($lines[$i])
+        $i++
     }
 
-    # Sklopi: Direktive + Header + PRAZNA LINIJA + Kod
-    $FinalLines = New-Object System.Collections.Generic.List[string]
-    $FinalLines.AddRange($Directives)
-    $FinalLines.Add($ExpectedHeader)
-    $FinalLines.Add("") # obavezna prazna linija posle putanje
-    $FinalLines.AddRange($CodeLines)
+    # 2) preskoči sve blank/header linije u header zoni (sve što možemo da "auto-fixujemo")
+    while ($i -lt $lines.Count) {
+        $t = $lines[$i].Trim()
+        if ($t -eq "") { $i++; continue }
 
-    $NewContent = $FinalLines -join "`n"
+        $hp = Extract-HeaderPathStrict $t
+        if ($hp) {
+            # ovde su već eliminisane WRONG-path situacije u pre-scan fazi,
+            # ali ostavljamo safety:
+            if ($hp -ne $RelPath) {
+                throw "WRONG PATH HEADER encountered during fix (should have been caught earlier) in $RelPath"
+            }
+            $i++
+            continue
+        }
 
-    if ($NewContent.Trim() -ne $Content.Trim()) {
-        Write-Host ("✔ CLEANED: {0}" -f $RelPath) -ForegroundColor Green
-        $Stats.Cleaned++
-        $NewContent | Set-Content $FilePath -NoNewline -Encoding UTF8
+        if ($t -match "===\s*FILE:") { $i++; continue }
+
+        break
+    }
+
+    # 3) ostatak je code
+    $code = New-Object System.Collections.Generic.List[string]
+    for (; $i -lt $lines.Count; $i++) { $code.Add($lines[$i]) }
+
+    # 4) ukloni leading prazne linije u "code" delu (da ne bude 2+ prazne linije posle headera)
+    while ($code.Count -gt 0 -and $code[0].Trim() -eq "") {
+        $code.RemoveAt(0)
+    }
+
+    # 5) sklopi: directives + header (odmah) + BLANK LINE + code
+    $final = New-Object System.Collections.Generic.List[string]
+    $final.AddRange($directives)
+    $final.Add($expectedHeader)
+    $final.Add("") # obavezna prazna linija ispod putanje
+    $final.AddRange($code)
+
+    $newContent = $final -join "`n"
+
+    if ($newContent.Trim() -ne $content.Trim()) {
+        Write-Host ("✔ FIXED: {0}" -f $RelPath) -ForegroundColor Green
+        $Stats.Fixed++
+        $FixedFiles.Add($RelPath) | Out-Null
+        Write-Utf8NoBom $AbsPath $newContent
     } else {
         $Stats.Skipped++
     }
@@ -240,29 +265,47 @@ function Process-File([string]$FilePath) {
 # MAIN
 # -------------------------
 
-Write-Host "🔍 VALIDATING HEADERS..." -ForegroundColor Cyan
+Write-Host "🔍 HEADER AUTO-FIX: scanning git-tracked files..." -ForegroundColor Cyan
 
-$AllFiles = Get-ChildItem -Path $Root -Recurse -File
-$AllIssues = New-Object System.Collections.Generic.List[object]
-
-foreach ($f in $AllFiles) {
-    $issues = Find-HeaderPathMismatches $f.FullName
-    foreach ($i in $issues) { $AllIssues.Add($i) }
+$tracked = Get-TrackedFiles
+if ($tracked.Count -eq 0) {
+    Write-Host "⚠ No git-tracked files found (or git not available)." -ForegroundColor Yellow
+    exit 0
 }
 
-if ($AllIssues.Count -gt 0) {
-    Write-Host ""
-    Write-Host "✖ HEADER PATH MISMATCHES DETECTED. Aborting." -ForegroundColor Red
-    Write-Host "   Fix these (wrong path headers) and rerun." -ForegroundColor Yellow
+# procesuiraj ovaj skript LAST (sigurnije dok radi)
+$selfRel = "scripts/add-headers.ps1"
+if ($tracked -contains $selfRel) {
+    $tracked = @($tracked | Where-Object { $_ -ne $selfRel }) + @($selfRel)
+}
+
+# PASS 1: nađi copy/paste greške (wrong-path header u header zoni)
+$wrong = New-Object System.Collections.Generic.List[object]
+
+foreach ($rel in $tracked) {
+    $ext = [System.IO.Path]::GetExtension($rel).ToLower()
+    if ($Extensions -notcontains $ext) { continue }
+    if (Is-IgnoredRel $rel) { continue }
+
+    $abs = Join-Path $Root $rel
+    if (-not (Test-Path $abs)) { continue }
+
+    $issues = Scan-WrongPathHeaderZone $abs $rel
+    foreach ($it in $issues) { $wrong.Add($it) | Out-Null }
+}
+
+if ($wrong.Count -gt 0) {
+    Write-Host "" 
+    Write-Host "✖ COPY/PASTE PATH HEADER ERROR — aborting (not auto-fixing these)." -ForegroundColor Red
+    Write-Host "  Fix these manually (wrong file path in header zone), then rerun." -ForegroundColor Yellow
     Write-Host ""
 
-    # grupisanje po fajlu radi čitljivosti
-    $grouped = $AllIssues | Group-Object File
+    $grouped = $wrong | Group-Object File
     foreach ($g in $grouped) {
         Write-Host ("📄 {0}" -f $g.Name) -ForegroundColor White
         foreach ($it in $g.Group) {
-            Write-Host ("   Line {0}: Found '{1}' but expected '{2}'" -f $it.Line, $it.Found, $it.Expected) -ForegroundColor Red
-            Write-Host ("     Raw: {0}" -f $it.Raw) -ForegroundColor Gray
+            Write-Host ("   line {0}: Found '{1}' but expected '{2}'" -f $it.Line, $it.Found, $it.Expected) -ForegroundColor Red
+            Write-Host ("     Raw: {0}" -f $it.Raw) -ForegroundColor DarkGray
         }
         Write-Host ""
     }
@@ -270,13 +313,30 @@ if ($AllIssues.Count -gt 0) {
     exit 1
 }
 
-Write-Host "🧹 PURGING & RE-HEADERIZING..." -ForegroundColor Cyan
+# PASS 2: auto-fix everything else
+Write-Host "🧹 HEADER AUTO-FIX: applying fixes..." -ForegroundColor Cyan
 
-foreach ($f in $AllFiles) {
-    Process-File $f.FullName
+foreach ($rel in $tracked) {
+    $ext = [System.IO.Path]::GetExtension($rel).ToLower()
+    if ($Extensions -notcontains $ext) { continue }
+    if (Is-IgnoredRel $rel) { continue }
+
+    $abs = Join-Path $Root $rel
+    if (-not (Test-Path $abs)) { continue }
+
+    Fix-OneFile $abs $rel
 }
 
-Write-Host "`n📊 REPORT:" -ForegroundColor White
+Write-Host "`n📊 HEADER AUTO-FIX REPORT:" -ForegroundColor White
 Write-Host ("   Scanned: {0}" -f $Stats.Scanned)
-Write-Host ("   Cleaned: {0}" -f $Stats.Cleaned) -ForegroundColor Green
+Write-Host ("   Fixed:   {0}" -f $Stats.Fixed) -ForegroundColor Green
 Write-Host ("   Skipped: {0}" -f $Stats.Skipped) -ForegroundColor Gray
+
+if ($FixedFiles.Count -gt 0) {
+    Write-Host "`n✅ Fixed files:" -ForegroundColor Green
+    foreach ($f in $FixedFiles) {
+        Write-Host ("   - {0}" -f $f) -ForegroundColor Green
+    }
+} else {
+    Write-Host "`n✨ No changes needed (all headers already OK)." -ForegroundColor Green
+}

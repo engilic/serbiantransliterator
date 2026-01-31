@@ -1,4 +1,5 @@
 // src/shared/ooxml/bridge/structural/spaces.ts
+
 /**
  * Spaja višestruke space koji su razbijeni preko više <w:t> čvorova.
  * Primer: "između" + "  " + "reči" → "između" + " " + "reči"
