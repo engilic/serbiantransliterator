@@ -68,8 +68,9 @@ async function askYesNo(q) {
         console.log(`\n${C.magenta}❓ ${q}${C.reset}`);
 
         // Uputstvo (traženi format + boje):
-        console.log(`   ${C.green}[BACKSPACE / ⬅ / Enter / Y] = ✔ YES${C.reset}`);
-        console.log(`   ${C.red}[DEL / ➔ / Esc / N] = ✖ NO${C.reset}`);
+        console.log(
+            `   ${C.green}[BACKSPACE / ⬅ / Enter / Y] = ✔ YES${C.reset}    |   ${C.red}[DEL / ➔ / Esc / N] = ✖ NO${C.reset}`
+        );
 
         process.stdin.setEncoding("utf8");
         process.stdin.resume();

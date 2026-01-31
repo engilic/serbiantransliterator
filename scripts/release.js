@@ -85,8 +85,9 @@ async function askYesNo(q) {
         console.log(`\n${C.magenta}❓ ${q}${C.reset}`);
 
         // Hint (isti sistem kao u drugim skriptama): ✔ YES / ✖ NO + Y/N podrška
-        console.log(`   ${C.green}[BACKSPACE / ⬅ / Enter / Y] = ✔ YES${C.reset}`);
-        console.log(`   ${C.red}[DEL / ➔ / Esc / N] = ✖ NO${C.reset}`);
+        console.log(
+            `   ${C.green}[BACKSPACE / ⬅ / Enter / Y] = ✔ YES${C.reset}    |   ${C.red}[DEL / ➔ / Esc / N] = ✖ NO${C.reset}`
+        );
 
         process.stdin.setRawMode(true);
         process.stdin.resume();
