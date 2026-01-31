@@ -2,14 +2,15 @@
 
 $Root = Get-Location
 
-# --- 1. KONFIGURACIJA ---
+# --- 1. KONFIGURACIJA (Whitelist i Blacklist) ---
 $SupportedExtensions = @(".ts", ".js", ".cjs", ".mjs", ".tsx", ".css", ".html", ".xml", ".rs", ".sh", ".ps1")
 $JsonExtensions = @(".json")
 
 # FOLDERI KOJE POTPUNO IGNORIŠEMO
 $IgnoreFolders = @("node_modules", "dist", "coverage", ".git", "target", "pkg", ".vs", ".vscode", "bin", "obj", "assets", "test-results", "playwright-report", "_", ".stryker-tmp", "reports")
 
-$IgnoreFiles = @("package-lock.json", "cargo.lock", "slnx.sqlite")
+# [GOD MODE FIX]: Dodat 'stryker.config.json' na listu ignorisanja
+$IgnoreFiles = @("package-lock.json", "cargo.lock", "slnx.sqlite", "stryker.config.json")
 
 $Stats = @{ Scanned=0; Fixed=0; CleanedJson=0; Unchanged=0 }
 $Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
@@ -29,7 +30,9 @@ function Process-File($FilePath) {
     
     # Detaljna provera foldera
     $PathParts = $RelPath -split '/'
-    foreach ($Part in $PathParts) { if ($IgnoreFolders -contains $Part) { return } }
+    foreach ($Part in $PathParts) {
+        if ($IgnoreFolders -contains $Part) { return }
+    }
     
     # Provera ignorisanih fajlova
     if ($IgnoreFiles -contains $FileName) { return }
@@ -55,7 +58,10 @@ function Process-File($FilePath) {
         if ($L.Trim() -match "^(//|#|<!--|/\*)\s*([a-zA-Z0-9_\-\.\/]+\.[a-z0-9]+)") {
             $Found = $Matches[2].Trim().ToLower()
             if ($Found -ne $RelPath.ToLower() -and (Test-Path (Join-Path $Root $Found))) {
-                Write-Host "`n[FATAL ERROR] HEADER MISMATCH: $RelPath" -BackgroundColor Red; exit 1
+                Write-Host "`n[FATAL ERROR] HEADER MISMATCH DETECTED!" -ForegroundColor White -BackgroundColor Red
+                Write-Host "File on disk:  $RelPath" -ForegroundColor Yellow
+                Write-Host "Header says:   $Found" -ForegroundColor Red
+                exit 1
             }
         }
     }
@@ -99,7 +105,7 @@ function Process-File($FilePath) {
     } else { $Stats.Unchanged++ }
 }
 
-Write-Host "HYGIENE SYSTEM: Source Normalization..." -ForegroundColor Cyan
+Write-Host "HYGIENE SYSTEM: Source Normalization & Mismatch Protection..." -ForegroundColor Cyan
 Get-ChildItem -Path $Root -Recurse -File | ForEach-Object { Process-File $_.FullName }
 
 $jsonColor = if ($Stats.CleanedJson -gt 0) { "Green" } else { "Gray" }
