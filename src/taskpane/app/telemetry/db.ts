@@ -9,35 +9,72 @@ interface TelemetryDB extends DBSchema {
             timestamp: number;
             level: string;
             message: string;
-            data?: unknown; // FIX: any -> unknown
+            data?: unknown;
         };
         indexes: { "by-time": number };
+    };
+    counters: {
+        key: string;
+        value: {
+            key: string;
+            count: number;
+            updatedAt: number;
+        };
+        indexes: Record<string, never>;
     };
 }
 
 const DB_NAME = "SerbianTransliteratorDB";
-const STORE_NAME = "logs";
+const DB_VERSION = 2;
+
+const STORE_LOGS = "logs";
+const STORE_COUNTERS = "counters";
+
+function hasIndexedDb(): boolean {
+    return typeof indexedDB !== "undefined";
+}
 
 export async function initDB() {
-    return openDB<TelemetryDB>(DB_NAME, 1, {
-        upgrade(db) {
-            const store = db.createObjectStore(STORE_NAME, { autoIncrement: true });
-            store.createIndex("by-time", "timestamp");
+    return openDB<TelemetryDB>(DB_NAME, DB_VERSION, {
+        upgrade(db, oldVersion) {
+            // v1: logs
+            if (oldVersion < 1) {
+                const store = db.createObjectStore(STORE_LOGS, { autoIncrement: true });
+                store.createIndex("by-time", "timestamp");
+            } else {
+                if (!db.objectStoreNames.contains(STORE_LOGS)) {
+                    const store = db.createObjectStore(STORE_LOGS, { autoIncrement: true });
+                    store.createIndex("by-time", "timestamp");
+                }
+            }
+
+            // v2: counters
+            if (oldVersion < 2) {
+                if (!db.objectStoreNames.contains(STORE_COUNTERS)) {
+                    db.createObjectStore(STORE_COUNTERS, { keyPath: "key" });
+                }
+            } else {
+                if (!db.objectStoreNames.contains(STORE_COUNTERS)) {
+                    db.createObjectStore(STORE_COUNTERS, { keyPath: "key" });
+                }
+            }
         },
     });
 }
 
 export async function addLog(level: string, message: string, data?: unknown) {
-    // FIX: any -> unknown
     try {
+        // In tests / non-browser environments, IndexedDB may not exist.
+        if (!hasIndexedDb()) return;
+
         const db = await initDB();
-        // Ograniči veličinu: Ako ima više od 1000 logova, obriši stare
-        const count = await db.count(STORE_NAME);
+
+        // Limit size: if more than 1000 logs, delete oldest 100
+        const count = await db.count(STORE_LOGS);
         if (count > 1000) {
-            // Obriši najstarijih 100
-            const keys = await db.getAllKeys(STORE_NAME, null, 100);
+            const keys = await db.getAllKeys(STORE_LOGS, null, 100);
             if (keys.length > 0) {
-                const tx = db.transaction(STORE_NAME, "readwrite");
+                const tx = db.transaction(STORE_LOGS, "readwrite");
                 for (const key of keys) {
                     tx.store.delete(key);
                 }
@@ -45,9 +82,9 @@ export async function addLog(level: string, message: string, data?: unknown) {
             }
         }
 
-        // Sanitize data (ukloni ciklične reference i non-serializable objekte)
+        // Sanitize data (remove cycles and non-serializable objects)
         let safeData = undefined;
-        if (data) {
+        if (data !== undefined) {
             try {
                 safeData = JSON.parse(JSON.stringify(data));
             } catch {
@@ -55,7 +92,7 @@ export async function addLog(level: string, message: string, data?: unknown) {
             }
         }
 
-        await db.add(STORE_NAME, {
+        await db.add(STORE_LOGS, {
             timestamp: Date.now(),
             level,
             message,
@@ -68,8 +105,60 @@ export async function addLog(level: string, message: string, data?: unknown) {
 
 export async function getAllLogs() {
     try {
+        if (!hasIndexedDb()) return [];
         const db = await initDB();
-        return db.getAllFromIndex(STORE_NAME, "by-time");
+        return db.getAllFromIndex(STORE_LOGS, "by-time");
+    } catch {
+        return [];
+    }
+}
+
+/**
+ * Increment a persistent telemetry counter.
+ * Best-effort; must never throw or block the app.
+ */
+export async function incrementCounter(key: string, delta = 1): Promise<void> {
+    try {
+        if (!hasIndexedDb()) return;
+
+        const db = await initDB();
+        const tx = db.transaction(STORE_COUNTERS, "readwrite");
+
+        const existing = await tx.store.get(key);
+        const currentCount = existing ? existing.count : 0;
+
+        const next = {
+            key,
+            count: currentCount + delta,
+            updatedAt: Date.now(),
+        };
+
+        await tx.store.put(next);
+        await tx.done;
+    } catch {
+        // Ignore telemetry failures silently.
+    }
+}
+
+export async function getCounter(key: string): Promise<number> {
+    try {
+        if (!hasIndexedDb()) return 0;
+
+        const db = await initDB();
+        const v = await db.get(STORE_COUNTERS, key);
+        return v ? v.count : 0;
+    } catch {
+        return 0;
+    }
+}
+
+export async function getAllCounters(): Promise<Array<{ key: string; count: number; updatedAt: number }>> {
+    try {
+        if (!hasIndexedDb()) return [];
+
+        const db = await initDB();
+        const all = await db.getAll(STORE_COUNTERS);
+        return all || [];
     } catch {
         return [];
     }

@@ -8,7 +8,7 @@ export type WorkerMessage =
           payload: {
               dictE2i: Uint8Array;
               dictI2e: Uint8Array;
-              wasmModule: Uint8Array; // [FIX] Added WASM module bytes
+              wasmModule: Uint8Array;
           };
       }
     | { type: "CONVERT"; id: string; payload: { xml: string; options: OoxmlOptions } };
