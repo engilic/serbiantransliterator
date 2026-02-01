@@ -1,6 +1,8 @@
-﻿# Releasing Serbian Transliterator
+# Releasing Serbian Transliterator
 
 Ovaj repo je Word Office.js taskpane add-in koji se hostuje na Cloudflare Pages.
+
+---
 
 ## 0) Versioning policy (kada bump-ovati)
 
@@ -21,6 +23,8 @@ Koristimo SemVer za `package.json`, i 4-part verziju za Office manifest.
 
 Napomena: manifest verzija je važna jer Word/Office kešira add-in. Kad imaš “release”, bump manifest verzije pomaže da se nova verzija pouzdano učita.
 
+---
+
 ## Manifest bump (OBAVEZNO zbog Office cache-a)
 
 Word/Office često kešira add-in. Zbog toga je pri svakom produkcionom deploy-u preporučeno (a praktično obavezno) da bumpuješ verziju u `manifest.prod.xml`, čak i ako `package.json` ostaje na istoj verziji.
@@ -32,15 +36,12 @@ Minimalna praksa:
 
 Ovo obezbeđuje da Word pouzdano povuče novu verziju add-in-a.
 
+---
+
 ## 1) Pre-release checks
 
-Pokreni sve lokalno:
+Najsigurnije (GOD1) je da koristiš Guardian pipeline:
 
 ```pwsh
-npm test
-npm run typecheck
-npm run lint
-npm run build
-npm run validate
-npm run validate:prod
+npm run verify:all -- --no-push
 ```
