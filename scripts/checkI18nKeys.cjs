@@ -340,23 +340,31 @@ async function main() {
         safeToDelete = [];
     }
 
-    // Summary (uvek)
+    // Summary (aligned)
     console.log(color(C.gray, "---------------------------------------------------"));
     console.log(color(C.cyan, "📎 Summary:"));
-    console.log(`   • files scanned:  ${stats.filesScanned}`);
-    console.log(`   • defined keys:   ${definedKeys.size}`);
-    console.log(`   • used keys:      ${usedKeys.size}`);
-    console.log(`   • missing keys:   ${missingCount}`);
-    console.log(`   • unused keys:    ${unusedKeys.length}`);
 
-    // SAFE line (poslednja) + boje:
-    // 0 -> yellow (različito od unused)
-    // >0 -> green+bold (različito od oba)
-    const safeLine = `   • safe to delete: ${safeToDelete.length}`;
-    if (safeToDelete.length > 0) {
-        console.log(color(C.green + C.bold, safeLine));
-    } else {
-        console.log(color(C.yellow, safeLine));
+    const rows = [
+        ["files scanned", stats.filesScanned],
+        ["defined keys", definedKeys.size],
+        ["used keys", usedKeys.size],
+        ["missing keys", missingCount],
+        ["unused keys", unusedKeys.length],
+        ["safe to delete", safeToDelete.length],
+    ];
+
+    const keyW = Math.max(...rows.map(([k]) => k.length));
+    const valW = Math.max(...rows.map(([, v]) => String(v).length));
+
+    for (const [k, v] of rows) {
+        const line = `   • ${k.padEnd(keyW)}: ${String(v).padStart(valW)}`;
+
+        if (k === "safe to delete") {
+            if (safeToDelete.length > 0) console.log(color(C.green + C.bold, line));
+            else console.log(color(C.yellow, line));
+        } else {
+            console.log(line);
+        }
     }
 
     // duplicates = hard fail

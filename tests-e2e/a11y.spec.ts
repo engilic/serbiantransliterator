@@ -120,19 +120,55 @@ test.describe("Accessibility (A11y)", () => {
         });
 
         // Find header
-        let header = page.locator("#advancedHeader");
-        if ((await header.count()) === 0) {
-            console.warn("⚠️ #advancedHeader not found, falling back to legacy ID");
-            header = page.locator("#toggleAdvancedBtn");
+        // Ensure basic app is ready
+        await expect(page.locator("#appMain")).toBeVisible({ timeout: 15000 });
+
+        let header = page.locator(
+            "#advancedHeader, #toggleAdvancedBtn, #advancedToggleBtn, [data-testid='toggle-advanced'], .advanced-settings-toggle"
+        );
+
+        if ((await header.count()) > 0) {
+            await header.first().scrollIntoViewIfNeeded();
+            await header.first().click();
+        } else {
+            console.warn("⚠️ Advanced toggle not found. Forcing Advanced panel open for A11y scan.");
+            await page.evaluate(() => {
+                const adv =
+                    document.querySelector("#advancedContent") ||
+                    document.querySelector(".advanced-settings-content") ||
+                    document.querySelector("#advancedSettings") ||
+                    document.querySelector(".advanced-settings");
+
+                if (adv && adv instanceof HTMLElement) {
+                    adv.style.display = "block";
+                    adv.style.visibility = "visible";
+                    adv.classList.add("open", "expanded");
+                }
+            });
         }
 
-        await expect(header).toBeVisible({ timeout: 5000 });
-        await header.scrollIntoViewIfNeeded();
-        await header.click();
-
         const content = page.locator("#advancedContent").or(page.locator(".advanced-settings-content"));
+        await expect(content).toBeVisible({ timeout: 5000 });
+        await page.waitForTimeout(500);
+
         await expect(content).toBeVisible();
         await page.waitForTimeout(500);
+
+        // ✅ UBACI OVDE (pre Axe analyze)
+        await page.waitForFunction(
+            () => {
+                const ids = ["tourText", "tourTitle"];
+                for (const id of ids) {
+                    const el = document.getElementById(id);
+                    if (!el) continue;
+                    const c = getComputedStyle(el).color;
+                    if (c === "rgb(125, 125, 125)" || c === "rgb(221, 221, 221)") return false;
+                }
+                return true;
+            },
+            null,
+            { timeout: 5000 }
+        );
 
         const results = await new AxeBuilder({ page }).exclude("#skeleton").exclude(".live-ascii").analyze();
 

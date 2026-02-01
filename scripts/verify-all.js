@@ -24,6 +24,21 @@ const TIMINGS = [];
 const EXECUTED = [];
 const SKIPPED = [];
 
+let STEP_NO = 0;
+
+function nextStep(title) {
+    const n = STEP_NO++;
+    return `${n}. ${title}`;
+}
+
+function runStep(title, cmd, args, cwd = ROOT) {
+    return run(nextStep(title), cmd, args, cwd);
+}
+
+function runInlineStep(title, fn) {
+    return runInline(nextStep(title), fn);
+}
+
 // --------------------------
 // Small helpers
 // --------------------------
@@ -38,12 +53,9 @@ function resolveCmd(cmd) {
 
 /**
  * Cross-platform spawn:
- * - keeps shell:false (safer)
+ * - keep shell:false (safer)
  * - BUT on Windows, npm/npx are .cmd shims and often fail with shell:false
- *   so we run them via cmd.exe /c.
- *
- * This is why your old code "worked": shell:true (or calling through a shell)
- * can run .cmd files; shell:false often cannot.
+ *   so we run them via cmd.exe /c (still shell:false).
  */
 function spawnCross(cmd, args, opts) {
     const isWin = process.platform === "win32";
@@ -53,7 +65,6 @@ function spawnCross(cmd, args, opts) {
     if (isWin && /^(npm|npx)(\.cmd)?$/i.test(c)) {
         const base = c.replace(/\.cmd$/i, ""); // npm.cmd -> npm
         const comspec = process.env.ComSpec || "cmd.exe";
-
         return spawnSync(comspec, ["/d", "/s", "/c", base, ...(args || [])], {
             ...opts,
             shell: false,
@@ -171,11 +182,7 @@ function parsePrettierWriteOutput(allOut) {
         else changed++;
     }
 
-    return {
-        total: fileLines.length,
-        changed,
-        unchanged,
-    };
+    return { total: fileLines.length, changed, unchanged };
 }
 
 function runWithStats_PrettyWrite(step, cmd, args, cwd = ROOT) {
@@ -206,10 +213,18 @@ function runWithStats_PrettyWrite(step, cmd, args, cwd = ROOT) {
     const combined = String(res.stdout || "") + "\n" + String(res.stderr || "");
     const stats = parsePrettierWriteOutput(combined);
 
+    // ✅ aligned numbers (right aligned)
     console.log(color(C.cyan, "\n📎 Prettier --write stats:"));
-    console.log(`   • total files:     ${stats.total}`);
-    console.log(color(C.green, `   • changed:         ${stats.changed}`));
-    console.log(color(C.gray, `   • unchanged:       ${stats.unchanged}`));
+    const rows = [
+        ["total files", stats.total],
+        ["changed", stats.changed],
+        ["unchanged", stats.unchanged],
+    ];
+    const keyW = Math.max(...rows.map(([k]) => k.length));
+    const valW = Math.max(...rows.map(([, v]) => String(v).length));
+    for (const [k, v] of rows) {
+        console.log(`   • ${k.padEnd(keyW)}: ${String(v).padStart(valW)}`);
+    }
 
     console.log(color(C.green, `\n✅ [${stepNo(step)}] OK — ${step}\n`));
 }
@@ -360,17 +375,52 @@ function printFinalReport() {
     if (TIMINGS.length === 0) {
         console.log(color(C.gray, "   (no timings recorded)"));
     } else {
-        TIMINGS.forEach((t) => console.log(`   • ${t.step.padEnd(44)}: ${t.time}s`));
+        // Parse "N. Title" (if present)
+        const rows = TIMINGS.map((t) => {
+            const m = String(t.step).match(/^(\d+)\.\s*(.*)$/);
+            const no = m ? m[1] : "";
+            const title = m ? m[2] : String(t.step);
+            const time = `${t.time}s`;
+            return { no, title, time };
+        });
 
-        const total = TIMINGS.reduce((acc, t) => acc + (Number(t.time) || 0), 0).toFixed(2);
-        const totalLine = `   • ${"TOTAL".padEnd(44)}: ${total}s`;
-        console.log(color(C.magenta + C.bold, totalLine));
+        const noW = Math.max(2, ...rows.map((r) => r.no.length)); // aligns 0..20..100
+        const titleW = Math.max(...rows.map((r) => r.title.length)); // title column
+        const totalTime = TIMINGS.reduce((acc, t) => acc + (Number(t.time) || 0), 0).toFixed(2) + "s";
+        const timeW = Math.max(...rows.map((r) => r.time.length), totalTime.length); // include TOTAL!
+
+        for (const r of rows) {
+            const left = `${r.no.padStart(noW)}. ${r.title}`.padEnd(noW + 2 + titleW);
+            const right = r.time.padStart(timeW);
+            console.log(`   • ${left} : ${right}`);
+        }
+
+        // TOTAL: aligned with titles, but WITHOUT dot/number
+        const totalLeft = `${"".padStart(noW)}  TOTAL`.padEnd(noW + 2 + titleW);
+        console.log(color(C.magenta + C.bold, `     ${totalLeft} : ${totalTime.padStart(timeW)}`));
     }
 
     console.log(color(C.cyan, "\n📎 EXECUTION REPORT:"));
     console.log(`   • strict: ${IS_STRICT ? "YES" : "NO"}`);
     console.log(`   • fast:   ${IS_FAST_MODE ? "YES" : "NO"}`);
-    console.log(`   • push:   ${NO_PUSH ? "DISABLED" : "ENABLED"}`);
+    console.log(`   • push:   ${NO_PUSH ? "DISABLED (--no-push)" : "PROMPT (enabled)"}`);
+    if (!NO_PUSH) {
+        const cur = spawnSync("git", ["rev-parse", "--abbrev-ref", "HEAD"], {
+            cwd: ROOT,
+            shell: false,
+            encoding: "utf8",
+            stdio: ["ignore", "pipe", "ignore"],
+        }).stdout.trim();
+
+        const isProtected = cur === "master" || cur === "main";
+        console.log(`   • branch: ${cur}`);
+        console.log(
+            color(
+                C.gray,
+                `   • push flow: ${isProtected ? "auto-branch + push (on confirm)" : "push current branch (on confirm)"}`
+            )
+        );
+    }
 
     if (SKIPPED.length > 0) {
         console.log(color(C.yellow, "\n   • skipped steps:"));
@@ -394,7 +444,7 @@ function printFinalReport() {
 }
 
 // --------------------------
-// 3) Sniffer & Secret Hunter (kratak report)
+// 3) Sniffer & Secret Hunter (aligned report)
 // --------------------------
 async function runSniffer() {
     const filesOut = spawnSync("git", ["ls-files"], { shell: false, encoding: "utf8" }).stdout || "";
@@ -455,10 +505,20 @@ async function runSniffer() {
     }
 
     console.log(color(C.cyan, "📎 Sniffer report:"));
-    console.log(`   • scanned:  ${scanned}`);
-    console.log(`   • skipped:  ${skipped} (scripts/ + test/spec)`);
-    console.log(`   • secrets:  ${secretHits}`);
-    console.log(`   • debugger: ${debuggerHits}`);
+
+    const rows = [
+        ["scanned", scanned, ""],
+        ["skipped", skipped, " (scripts/ + test/spec)"],
+        ["secrets", secretHits, ""],
+        ["debugger", debuggerHits, ""],
+    ];
+
+    const keyW = Math.max(...rows.map(([k]) => k.length));
+    const valW = Math.max(...rows.map(([, v]) => String(v).length));
+
+    for (const [k, v, extra] of rows) {
+        console.log(`   • ${k.padEnd(keyW)}: ${String(v).padStart(valW)}${extra}`);
+    }
 
     if (samples.length) {
         console.log(color(C.yellow, "   • samples:"));
@@ -535,12 +595,11 @@ async function runRustTestsAligned() {
     const leftParts = names.map((n) => `test ${n} `);
     const maxLeft = leftParts.reduce((m, s) => Math.max(m, s.length), 0);
 
-    // Control: minimum dots for the LONGEST test line
+    // ✅ requested: minimum dots on the LONGEST line
     const MIN_DOTS = 5;
 
     const RIGHT = ` ${color(C.green, "ok")}`;
     const RIGHT_VISIBLE_LEN = 3; // " ok"
-
     const WIDTH = maxLeft + MIN_DOTS + RIGHT_VISIBLE_LEN;
 
     for (const left of leftParts) {
@@ -563,79 +622,78 @@ async function main() {
         process.exit(1);
     }
 
-    run("0. Header Auto-Fix", ps, [
+    runStep("Header Auto-Fix", ps, [
         "-NoProfile",
         "-ExecutionPolicy",
         "Bypass",
         "-File",
         "scripts/add-headers.ps1",
     ]);
-
-    run("1. Merge Conflict Markers", "node", ["scripts/checkConflicts.cjs"]);
+    runStep("Merge Conflict Markers", "node", ["scripts/checkConflicts.cjs"]);
 
     // Large files gate (max 5MB per tracked file)
-    run("2. Large Files Gate", "node", ["scripts/checkBigFiles.cjs", "--max-mb=5"]);
+    runStep("Large Files Gate", "node", ["scripts/checkBigFiles.cjs", "--max-mb=5"]);
 
-    await runInline("3. Sniffer & Secret Hunter", runSniffer);
+    await runInlineStep("Sniffer & Secret Hunter", runSniffer);
 
-    run("4. I18n Keys Integrity", "node", ["scripts/checkI18nKeys.cjs"]);
-    run("5. No Hardcoded User Strings", "node", ["scripts/checkUserFacingStrings.cjs"]);
-    run("6. taskpane.html I18n", "node", ["scripts/checkTaskpaneHtmlI18n.cjs"]);
+    runStep("I18n Keys Integrity", "node", ["scripts/checkI18nKeys.cjs"]);
+    runStep("No Hardcoded User Strings", "node", ["scripts/checkUserFacingStrings.cjs"]);
+    runStep("taskpane.html I18n", "node", ["scripts/checkTaskpaneHtmlI18n.cjs"]);
 
     // Lockfile integrity around npm ci
     const lockPath = path.join(ROOT, "package-lock.json");
     const lockHashBefore = fs.existsSync(lockPath) ? hashFileSha256(lockPath) : null;
 
-    run("7. Install (npm ci)", "npm", ["ci"]);
+    const INSTALL_STEP = nextStep("Install (npm ci)");
+    run(INSTALL_STEP, "npm", ["ci"]);
 
     const lockHashAfter = fs.existsSync(lockPath) ? hashFileSha256(lockPath) : null;
     if (lockHashBefore && lockHashAfter && lockHashBefore !== lockHashAfter) {
-        die("7. Install (npm ci) / Lockfile integrity");
+        die(`${INSTALL_STEP} / Lockfile integrity`);
     }
 
     // Prettier: ALWAYS FIX, THEN CHECK (no prompt)
-    runWithStats_PrettyWrite("8. Format (prettier --write)", "npm", ["run", "format:fix"]);
-    run("9. Format check (prettier --check)", "npm", ["run", "format:check"]);
+    runWithStats_PrettyWrite(nextStep("Format (prettier --write)"), "npm", ["run", "format:fix"]);
+    runStep("Format check (prettier --check)", "npm", ["run", "format:check"]);
 
-    run("10. Lint (eslint)", "npm", ["run", "lint"]);
-    run("11. Typecheck", "npm", ["run", "typecheck"]);
+    runStep("Lint (eslint)", "npm", ["run", "lint"]);
+    runStep("Typecheck", "npm", ["run", "typecheck"]);
 
-    // Sync manifests before validate
-    run("12. Update manifest version", "npm", ["run", "update:version"]);
-    run("13. Manifest validate (dev)", "npm", ["run", "validate"]);
-    run("14. Manifest validate (prod)", "npm", ["run", "validate:prod"]);
+    // NOTE: removed "update:version" step to avoid duplication (build prebuild runs it)
+    runStep("Manifest validate (dev)", "npm", ["run", "validate"]);
+    runStep("Manifest validate (prod)", "npm", ["run", "validate:prod"]);
 
     if (IS_STRICT) {
-        run("15. Audit (high)", "npm", ["run", "audit:high"]);
+        runStep("Audit (high)", "npm", ["run", "audit:high"]);
     } else {
-        SKIPPED.push("15. Audit (high) (strict-only)");
+        SKIPPED.push("Audit (high) (strict-only)");
     }
 
-    await runInline("16. Rust fmt (check + auto-fix)", rustFmtGate);
-    run("17. Rust clippy (-Dwarnings)", "cargo", ["clippy", "--", "-Dwarnings"], WASM_DIR);
-    await runInline("18. Rust tests", runRustTestsAligned);
+    await runInlineStep("Rust fmt (check + auto-fix)", rustFmtGate);
+    runStep("Rust clippy (-Dwarnings)", "cargo", ["clippy", "--", "-Dwarnings"], WASM_DIR);
+    await runInlineStep("Rust tests", runRustTestsAligned);
 
     // Clean build gate
-    run("19. Clean (pre-build)", "npm", ["run", "clean"]);
-    run("20. Build", "npm", ["run", "build"]);
+    runStep("Clean (pre-build)", "npm", ["run", "clean"]);
+    const BUILD_STEP = nextStep("Build");
+    run(BUILD_STEP, "npm", ["run", "build"]);
 
     // Validate output artifacts
     const wasmPath = path.join(WASM_DIR, "pkg/serbian_transliterator_wasm_bg.wasm");
     if (fs.existsSync(wasmPath) && fs.statSync(wasmPath).size / 1024 / 1024 > 2.0) {
         console.error(color(C.red, "❌ WASM prevelik!"));
-        die("20. Build");
+        die(BUILD_STEP);
     }
     if (!fs.existsSync(path.join(ROOT, "dist", "taskpane.html"))) {
         console.error(color(C.red, "❌ Build failed (no dist/taskpane.html)"));
-        die("20. Build");
+        die(BUILD_STEP);
     }
 
-    // Tests
+    // ✅ Tests (ALWAYS coverage when not --fast)
     if (!IS_FAST_MODE) {
-        if (IS_STRICT) run("21. Unit Tests (coverage)", "npm", ["run", "test:coverage"]);
-        else run("21. Unit Tests", "npm", ["run", "test"]);
+        runStep("Unit Tests (coverage)", "npm", ["run", "test:coverage"]);
 
-        run("22. E2E Tests (trace on failure)", "npm", [
+        runStep("E2E Tests (trace on failure)", "npm", [
             "run",
             "test:e2e",
             "--",
@@ -643,8 +701,8 @@ async function main() {
             "retain-on-failure",
         ]);
     } else {
-        SKIPPED.push("21. Unit Tests (fast)");
-        SKIPPED.push("22. E2E Tests (fast)");
+        SKIPPED.push("Unit Tests (fast)");
+        SKIPPED.push("E2E Tests (fast)");
         console.log(color(C.gray, "\n(FAST MODE) Skipping Unit/E2E tests.\n"));
     }
 
@@ -654,6 +712,17 @@ async function main() {
     printFinalReport();
 
     if (NO_PUSH) return;
+
+    // --------------------------
+    // Dirty repo gate (prevents pushing only part of the work)
+    // --------------------------
+    const dirty = getRepoStatusPorcelain();
+    if (dirty) {
+        console.error(color(C.red, "\n❌ Repo is dirty. Commit changes before pushing.\n"));
+        console.error(color(C.yellow, "git status --porcelain:\n"));
+        console.error(dirty);
+        process.exit(1);
+    }
 
     // Smart push (protected master -> auto branch)
     const currentBranch = spawnSync("git", ["rev-parse", "--abbrev-ref", "HEAD"], {
@@ -676,7 +745,11 @@ async function main() {
             spawnSync("git", ["checkout", "-b", autoBranch], { shell: false, stdio: "inherit" });
 
             console.log(color(C.blue, `🚀 Pushing ${autoBranch}...`));
-            spawnSync("git", ["push", "-u", "origin", autoBranch], { shell: false, stdio: "inherit" });
+            spawnSync("git", ["push", "-u", "origin", autoBranch], {
+                shell: false,
+                stdio: "inherit",
+                env: { ...process.env, HUSKY: "0" },
+            });
 
             console.log(color(C.green, `\n✅ Uspešno! Otvori Pull Request ovde:`));
             console.log(
@@ -684,7 +757,11 @@ async function main() {
             );
         } else {
             console.log(color(C.blue, `🚀 Pushing ${currentBranch}...`));
-            spawnSync("git", ["push", "-u", "origin", currentBranch], { shell: false, stdio: "inherit" });
+            spawnSync("git", ["push", "-u", "origin", currentBranch], {
+                shell: false,
+                stdio: "inherit",
+                env: { ...process.env, HUSKY: "0" },
+            });
         }
     } else {
         console.log(color(C.gray, `\n⛔ Operacija završena bez push-a.`));

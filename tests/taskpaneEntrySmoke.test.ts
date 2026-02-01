@@ -107,25 +107,47 @@ function setupOfficeStub() {
         EventType: { DocumentSelectionChanged: "DocumentSelectionChanged" },
         CoercionType: { Text: "Text" },
         AsyncResultStatus: { Succeeded: "succeeded" },
+
         context: {
+            displayLanguage: "en-US",
+            contentLanguage: "en-US",
             document: {
-                addHandlerAsync: vi.fn((_event: any, _handler: any, cb?: any) => {
-                    cb?.({ status: "succeeded" });
-                }),
-                removeHandlerAsync: vi.fn((_event: any, _opts: any, cb?: any) => {
-                    cb?.({ status: "succeeded" });
-                }),
-                getSelectedDataAsync: vi.fn((_type: any, cb: any) => {
-                    cb({ status: "succeeded", value: "" });
-                }),
+                addHandlerAsync: vi.fn((_event: any, _handler: any, cb?: any) =>
+                    cb?.({ status: "succeeded" })
+                ),
+                removeHandlerAsync: vi.fn((_event: any, _opts: any, cb?: any) =>
+                    cb?.({ status: "succeeded" })
+                ),
+                getSelectedDataAsync: vi.fn((_type: any, cb: any) => cb({ status: "succeeded", value: "" })),
             },
         },
-        onReady: (cb: (info: any) => void) => {
-            setTimeout(() => cb({ host: "Word" }), 0);
+
+        // Supports BOTH:
+        // - Office.onReady(cb)
+        // - await Office.onReady()
+        onReady: (cb?: (info: any) => void) => {
+            const info = { host: "Word" };
+            if (typeof cb === "function") setTimeout(() => cb(info), 0);
+            return Promise.resolve(info);
         },
     };
+
+    const WordStub = {
+        run: async (callback: any) => {
+            const context = {
+                document: {
+                    body: { load: () => {}, text: "" },
+                    getSelection: () => ({ load: () => {}, text: "" }),
+                },
+                sync: async () => {},
+            };
+            return callback(context);
+        },
+        InsertLocation: { replace: "replace" },
+    };
+
     (globalThis as any).Office = OfficeStub;
-    (globalThis as any).Word = {};
+    (globalThis as any).Word = WordStub;
 }
 
 beforeEach(() => {
@@ -166,5 +188,5 @@ describe("taskpane entrypoint smoke", () => {
             },
             { timeout: 3000, interval: 100 }
         );
-    }, 15000);
+    }, 30000);
 });

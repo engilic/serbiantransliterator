@@ -311,7 +311,23 @@ foreach ($rel in $tracked) {
     Fix-OneFile $abs $rel
 }
 
+# Aligned report (right-aligned numbers)
 Write-Host "`n📊 HEADER AUTO-FIX REPORT:" -ForegroundColor White
-Write-Host ("   Scanned: {0}" -f $Stats.Scanned)
-Write-Host ("   Fixed:   {0}" -f $Stats.Fixed) -ForegroundColor Green
-Write-Host ("   Skipped: {0}" -f $Stats.Skipped) -ForegroundColor Gray
+
+$rows = @(
+    @{ Label = "Scanned"; Value = $Stats.Scanned; Color = $null },
+    @{ Label = "Fixed";   Value = $Stats.Fixed;   Color = "Green" },
+    @{ Label = "Skipped"; Value = $Stats.Skipped; Color = "Gray" }
+)
+
+$labelWidth = ($rows | ForEach-Object { ($_.Label + ":").Length } | Measure-Object -Maximum).Maximum
+$valWidth   = ($rows | ForEach-Object { $_.Value.ToString().Length } | Measure-Object -Maximum).Maximum
+
+foreach ($r in $rows) {
+    $label = ($r.Label + ":").PadRight($labelWidth)
+    $val   = ($r.Value.ToString()).PadLeft($valWidth)
+    $line  = ("   {0} {1}" -f $label, $val)
+
+    if ($r.Color) { Write-Host $line -ForegroundColor $r.Color }
+    else { Write-Host $line }
+}

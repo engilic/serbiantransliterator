@@ -10,9 +10,9 @@ if [ $? -ne 0 ]; then
  exit 1
 fi
 
-# 2. Proveri Unit Testove
-echo "🧪 Running Unit Tests..."
-npm test
+# 2. Proveri Unit Testove (sa coverage)
+echo "🧪 Running Unit Tests (coverage)..."
+npm run test:coverage
 if [ $? -ne 0 ]; then
  echo "❌ Tests failed. Push aborted."
  exit 1
