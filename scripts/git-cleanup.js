@@ -371,7 +371,8 @@ async function nukeAllBranches({ skipTokenConfirm = false } = {}) {
             const short = stripRemotePrefix(remoteName, full);
             console.log(`  Deleting remote branch: ${remoteName}/${short}`);
 
-            const r = tryGit(["push", remoteName, "--delete", short], { stdio: "inherit" });
+            // IMPORTANT: avoid triggering pre-push hooks (Husky) which can run verify/test pipelines.
+            const r = tryGit(["push", "--no-verify", remoteName, "--delete", short], { stdio: "inherit" });
             if (!r.ok) {
                 console.log(colorize(ANSI.red, `  Failed to delete remote branch: ${remoteName}/${short}`));
             }
