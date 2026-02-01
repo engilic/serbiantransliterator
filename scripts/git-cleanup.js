@@ -58,7 +58,6 @@ const ANSI = {
     reset: "\x1b[0m",
     green: "\x1b[32m",
     red: "\x1b[31m",
-    yellow: "\x1b[33m",
 };
 
 function colorize(color, text) {
@@ -113,7 +112,12 @@ function readLineFallback() {
     });
 }
 
-async function askYesNo(question, { defaultYes = false } = {}) {
+async function askYesNo(question, { defaultYes = false, forceYes = false } = {}) {
+    if (forceYes) {
+        process.stdout.write(`\n${question}\n${colorize(ANSI.green, `${YES_LABEL} (forced by --yes)\n`)}`);
+        return true;
+    }
+
     process.stdout.write(`\n${question}\n${hintLine()}\n> `);
 
     const wasRaw = !!process.stdin.isRaw;
@@ -167,47 +171,18 @@ async function askYesNo(question, { defaultYes = false } = {}) {
     }
 }
 
-async function askTypeToConfirm(question, expectedToken) {
-    process.stdout.write(`\n${question}\n`);
-    process.stdout.write(colorize(ANSI.yellow, `Type EXACTLY: ${expectedToken}\n`));
-    process.stdout.write("> ");
-
-    const wasRaw = !!process.stdin.isRaw;
-    process.stdin.setEncoding("utf8");
-    process.stdin.resume();
-
-    try {
-        try {
-            process.stdin.setRawMode(false);
-        } catch {
-            // ignore
-        }
-
-        const line = (await readLineFallback()) || "";
-        const v = line.trim();
-
-        if (v === expectedToken) {
-            process.stdout.write(colorize(ANSI.green, `${YES_LABEL}\n`));
-            return true;
-        }
-
-        process.stdout.write(colorize(ANSI.red, `${NO_LABEL}\n`));
-        process.stdout.write(colorize(ANSI.red, "Confirmation mismatch. Aborting.\n"));
-        return false;
-    } finally {
-        try {
-            process.stdin.setRawMode(wasRaw);
-        } catch {}
-        process.stdin.pause();
-    }
-}
-
 function ensureGitRepo() {
     const r = tryGit(["rev-parse", "--is-inside-work-tree"]);
     if (!r.ok || r.out !== "true") {
         console.error("Not a git repository.");
         process.exit(1);
     }
+}
+
+function getRepoStatusPorcelain() {
+    const r = tryGit(["status", "--porcelain"]);
+    if (!r.ok) return "";
+    return String(r.out || "").trim();
 }
 
 function currentBranch() {
@@ -221,7 +196,6 @@ function defaultBranchFromOriginHead() {
         if (m && m[1]) return m[1];
     }
 
-    // IMPORTANT: no shell quoting needed; pass --format as a single arg
     const locals = git(["for-each-ref", "--format=%(refname:short)", "refs/heads"])
         .split("\n")
         .map((s) => s.trim())
@@ -230,32 +204,6 @@ function defaultBranchFromOriginHead() {
     if (locals.includes("main")) return "main";
     if (locals.includes("master")) return "master";
     return "master";
-}
-
-function branchesWithGoneUpstream() {
-    const out = git(["branch", "-vv"]);
-    return out
-        .split("\n")
-        .map((l) => l.trimEnd())
-        .filter((l) => l.includes(": gone]"))
-        .map(
-            (l) =>
-                l
-                    .replace(/^\*\s+/, "")
-                    .trim()
-                    .split(/\s+/)[0]
-        )
-        .filter(Boolean);
-}
-
-function mergedBranches(intoBranch) {
-    const r = tryGit(["branch", "--merged", intoBranch]);
-    if (!r.ok) return [];
-    return r.out
-        .split("\n")
-        .map((l) => l.trim())
-        .filter(Boolean)
-        .map((l) => l.replace(/^\*\s+/, "").trim());
 }
 
 function listLocalBranches() {
@@ -287,143 +235,112 @@ function stripRemotePrefix(remoteName, fullRef) {
     return fullRef.slice(prefix.length);
 }
 
-async function nukeAllBranches({ skipTokenConfirm = false } = {}) {
-    const remoteName = "origin";
+// --------------------------
+// GOD1 POST-MERGE NUKE
+// --------------------------
+async function postMergeNuke({ yes = false } = {}) {
+    ensureGitRepo();
 
-    console.log("\n============================================================");
-    console.log(colorize(ANSI.red, "NUKE MODE: DELETE ALL LOCAL + REMOTE BRANCHES"));
-    console.log("============================================================");
-    console.log(
-        colorize(
-            ANSI.red,
-            "WARNING: This will attempt to delete ALL local branches and ALL branches on the remote (origin)."
-        )
-    );
-    console.log(
-        "Notes:\n" +
-            "  - You cannot delete the currently checked out local branch unless we detach HEAD first.\n" +
-            "  - Remote may reject deletion of protected/default branches (e.g., main/master).\n" +
-            "  - You must have permissions to delete remote branches.\n"
-    );
-
-    const proceed = await askYesNo("Proceed with NUKE MODE?", { defaultYes: false });
-    if (!proceed) return;
-
-    if (!skipTokenConfirm) {
-        const confirmed = await askTypeToConfirm(
-            "Final confirmation required.",
-            "DELETE_ALL_LOCAL_AND_REMOTE_BRANCHES"
-        );
-        if (!confirmed) return;
-    } else {
-        console.log(colorize(ANSI.yellow, "\nSkipping token confirmation (--no-token-confirm enabled)."));
+    const dirty = getRepoStatusPorcelain();
+    if (dirty) {
+        console.error("Working tree is NOT clean. Commit/stash changes before running post-merge cleanup.");
+        console.error(dirty);
+        process.exit(1);
     }
 
-    console.log("\nRunning: git fetch --all --prune");
+    const remoteName = "origin";
+    const def = defaultBranchFromOriginHead();
+
+    console.log(`\n[post-merge] Default branch: ${def}`);
+    console.log(`[post-merge] Running: git fetch --all --prune`);
     tryGit(["fetch", "--all", "--prune"], { stdio: "inherit" });
 
-    const cur = currentBranch();
-    const headSha = git(["rev-parse", "HEAD"]);
+    console.log(`\n[post-merge] Switching to ${def}`);
+    tryGit(["switch", def], { stdio: "inherit" });
+
+    console.log(`\n[post-merge] Pulling latest (${def}) (ff-only)`);
+    const pullRes = tryGit(["pull", "--ff-only"], { stdio: "inherit" });
+    if (!pullRes.ok) {
+        console.error(
+            "git pull --ff-only failed. Resolve divergence manually (rebase/merge) and retry post-merge cleanup."
+        );
+        process.exit(1);
+    }
 
     const locals = listLocalBranches();
     const remotes = listRemoteBranches(remoteName);
 
-    console.log("\nLocal branches to delete:");
-    if (locals.length === 0) {
-        console.log("  (none)");
-    } else {
-        for (const b of locals) console.log(`  - ${b}${b === cur ? " (CURRENT)" : ""}`);
-    }
+    const localsToDelete = locals.filter((b) => b && b !== def);
+    const remotesToDelete = remotes
+        .map((full) => stripRemotePrefix(remoteName, full))
+        .filter((b) => b && b !== def);
 
-    console.log(`\nRemote branches to delete (${remoteName}):`);
-    if (remotes.length === 0) {
-        console.log("  (none)");
-    } else {
-        for (const b of remotes) console.log(`  - ${b}`);
-    }
+    console.log("\n[post-merge] Plan:");
+    console.log(`  - Keep local:  ${def}`);
+    console.log(`  - Delete local branches:  ${localsToDelete.length}`);
+    console.log(`  - Keep remote: ${remoteName}/${def}`);
+    console.log(`  - Delete remote branches: ${remotesToDelete.length}`);
 
-    const proceedLocal = await askYesNo("\nDelete ALL LOCAL branches listed above?", { defaultYes: false });
-    if (proceedLocal) {
-        // If we're on a local branch, detach so we can delete it too.
-        if (cur !== "HEAD") {
-            console.log(`\nDetaching HEAD at ${headSha} so current branch '${cur}' can be deleted...`);
-            tryGit(["switch", "--detach", headSha], { stdio: "inherit" });
+    const ok = await askYesNo(
+        "Proceed with post-merge cleanup: delete ALL local+remote branches except default?",
+        {
+            defaultYes: false,
+            forceYes: yes,
         }
+    );
+    if (!ok) return;
 
-        console.log("\nDeleting local branches (-D):");
-        for (const b of locals) {
-            console.log(`  Deleting local branch: ${b}`);
+    // Delete local branches
+    if (localsToDelete.length > 0) {
+        console.log("\n[post-merge] Deleting local branches (-D):");
+        for (const b of localsToDelete) {
+            console.log(`  - ${b}`);
             const r = tryGit(["branch", "-D", b], { stdio: "inherit" });
             if (!r.ok) {
-                console.log(colorize(ANSI.red, `  Failed to delete local branch: ${b}`));
+                console.log(colorize(ANSI.red, `    Failed to delete local branch: ${b}`));
             }
         }
-    } else {
-        console.log("\nSkipping local branch deletion.");
     }
 
-    const proceedRemote = await askYesNo(`\nDelete ALL REMOTE branches on ${remoteName}?`, {
-        defaultYes: false,
-    });
-    if (proceedRemote) {
-        console.log(`\nDeleting remote branches (git push ${remoteName} --delete <branch>):`);
-        for (const full of remotes) {
-            const short = stripRemotePrefix(remoteName, full);
-            console.log(`  Deleting remote branch: ${remoteName}/${short}`);
-
-            // IMPORTANT: avoid triggering pre-push hooks (Husky) which can re-run verify/test pipelines.
-            const r = tryGit(["push", "--no-verify", remoteName, "--delete", short], { stdio: "inherit" });
+    // Delete remote branches (skip hooks)
+    if (remotesToDelete.length > 0) {
+        console.log(
+            `\n[post-merge] Deleting remote branches on ${remoteName} (git push --no-verify --delete ...):`
+        );
+        for (const b of remotesToDelete) {
+            console.log(`  - ${remoteName}/${b}`);
+            const r = tryGit(["push", "--no-verify", remoteName, "--delete", b], { stdio: "inherit" });
             if (!r.ok) {
-                console.log(colorize(ANSI.red, `  Failed to delete remote branch: ${remoteName}/${short}`));
+                console.log(
+                    colorize(
+                        ANSI.red,
+                        `    Failed to delete remote branch: ${remoteName}/${b} (maybe protected or no permission)`
+                    )
+                );
             }
         }
-    } else {
-        console.log("\nSkipping remote branch deletion.");
     }
 
-    if (await askYesNo("\nRun: git remote prune origin? ", { defaultYes: false })) {
-        tryGit(["remote", "prune", "origin"], { stdio: "inherit" });
-    }
+    console.log(`\n[post-merge] Pruning remote refs (${remoteName})...`);
+    tryGit(["remote", "prune", remoteName], { stdio: "inherit" });
 
-    if (await askYesNo("\nRun: git gc? ", { defaultYes: false })) {
-        tryGit(["gc"], { stdio: "inherit" });
-    }
+    console.log("\n[post-merge] Running git gc...");
+    tryGit(["gc"], { stdio: "inherit" });
 
-    console.log("\nDone (NUKE MODE).");
+    console.log("\n[post-merge] Done.");
 }
 
-function parseArgs(argv) {
-    const out = {
-        nukeBranches: false,
-        noTokenConfirm: false,
-    };
-
-    for (const a of argv) {
-        if (a === "--nuke-branches" || a === "--nuke" || a === "--nuke-all-branches") {
-            out.nukeBranches = true;
-        }
-        if (a === "--no-token-confirm" || a === "--skip-token-confirm" || a === "--no-final-confirm") {
-            out.noTokenConfirm = true;
-        }
-    }
-
-    return out;
-}
-
-async function main() {
+// --------------------------
+// Existing (simple) cleanup mode
+// --------------------------
+async function simpleCleanup({ yes = false } = {}) {
     ensureGitRepo();
 
-    const args = parseArgs(process.argv.slice(2));
-    if (args.nukeBranches) {
-        await nukeAllBranches({ skipTokenConfirm: args.noTokenConfirm });
-        return;
-    }
-
-    const dirty = git(["status", "--porcelain"]);
+    const dirty = getRepoStatusPorcelain();
     if (dirty) {
         console.log("Working tree is NOT clean:");
         console.log(dirty);
-        const cont = await askYesNo("Continue anyway?");
+        const cont = await askYesNo("Continue anyway?", { defaultYes: false, forceYes: yes });
         if (!cont) return;
     }
 
@@ -433,12 +350,26 @@ async function main() {
     const cur = currentBranch();
     const def = defaultBranchFromOriginHead();
 
-    const gone = branchesWithGoneUpstream().filter((b) => b !== cur);
+    const goneOut = git(["branch", "-vv"]);
+    const gone = goneOut
+        .split("\n")
+        .map((l) => l.trimEnd())
+        .filter((l) => l.includes(": gone]"))
+        .map(
+            (l) =>
+                l
+                    .replace(/^\*\s+/, "")
+                    .trim()
+                    .split(/\s+/)[0]
+        )
+        .filter(Boolean)
+        .filter((b) => b !== cur);
+
     if (gone.length) {
         console.log("\nBranches with upstream ': gone]':");
         gone.forEach((b) => console.log(`  - ${b}`));
 
-        if (await askYesNo("Delete these local branches?")) {
+        if (await askYesNo("Delete these local branches?", { defaultYes: false, forceYes: yes })) {
             for (const b of gone) {
                 console.log(`Deleting: ${b}`);
                 tryGit(["branch", "-D", b], { stdio: "inherit" });
@@ -446,38 +377,83 @@ async function main() {
         }
     }
 
-    const merged = mergedBranches(def).filter((b) => {
-        if (!b) return false;
-        if (b === cur) return false;
-        if (b === def) return false;
-        if (b === "main" || b === "master" || b === "develop") return false;
-        return true;
-    });
+    const mergedRes = tryGit(["branch", "--merged", def]);
+    const merged = mergedRes.ok
+        ? mergedRes.out
+              .split("\n")
+              .map((l) => l.trim())
+              .filter(Boolean)
+              .map((l) => l.replace(/^\*\s+/, "").trim())
+              .filter((b) => {
+                  if (!b) return false;
+                  if (b === cur) return false;
+                  if (b === def) return false;
+                  if (b === "main" || b === "master" || b === "develop") return false;
+                  return true;
+              })
+        : [];
 
     if (merged.length) {
         console.log(`\nMerged into ${def}:`);
         merged.forEach((b) => console.log(`  - ${b}`));
 
-        if (await askYesNo("Delete these merged branches (safe: git branch -d)?")) {
+        if (
+            await askYesNo("Delete these merged branches (safe: git branch -d)?", {
+                defaultYes: false,
+                forceYes: yes,
+            })
+        ) {
             for (const b of merged) {
                 const r = tryGit(["branch", "-d", b], { stdio: "inherit" });
                 if (!r.ok) {
-                    const force = await askYesNo(`Force delete (-D) for ${b}?`, { defaultYes: false });
+                    const force = await askYesNo(`Force delete (-D) for ${b}?`, {
+                        defaultYes: false,
+                        forceYes: yes,
+                    });
                     if (force) tryGit(["branch", "-D", b], { stdio: "inherit" });
                 }
             }
         }
     }
 
-    if (await askYesNo("\nRun: git remote prune origin? ", { defaultYes: false })) {
+    if (await askYesNo("\nRun: git remote prune origin? ", { defaultYes: false, forceYes: yes })) {
         tryGit(["remote", "prune", "origin"], { stdio: "inherit" });
     }
 
-    if (await askYesNo("\nRun: git gc? ", { defaultYes: false })) {
+    if (await askYesNo("\nRun: git gc? ", { defaultYes: false, forceYes: yes })) {
         tryGit(["gc"], { stdio: "inherit" });
     }
 
     console.log("\nDone.");
+}
+
+function parseArgs(argv) {
+    const out = {
+        postMerge: false,
+        yes: false,
+    };
+
+    for (const a of argv) {
+        if (a === "--post-merge" || a === "--post-merge-nuke" || a === "--after-merge") {
+            out.postMerge = true;
+        }
+        if (a === "--yes" || a === "-y") {
+            out.yes = true;
+        }
+    }
+
+    return out;
+}
+
+async function main() {
+    const args = parseArgs(process.argv.slice(2));
+
+    if (args.postMerge) {
+        await postMergeNuke({ yes: args.yes });
+        return;
+    }
+
+    await simpleCleanup({ yes: args.yes });
 }
 
 main().catch((e) => {
