@@ -1,20 +1,24 @@
 // src/taskpane/app/error/uiErrorBoundary.ts
 
 import { logger } from "../telemetry/logger";
+import { normalizeUnknownError } from "../../../shared/normalizeError";
 
 export function initGlobalErrorBoundary() {
     window.onerror = (msg, url, line, col, error) => {
-        handleFatalError(error instanceof Error ? error : new Error(String(msg)));
-        return true; // prevent default browser error
+        const raw = error ?? msg;
+        handleFatalError(raw);
+        return true;
     };
 
     window.onunhandledrejection = (event) => {
-        handleFatalError(event.reason instanceof Error ? event.reason : new Error(String(event.reason)));
+        handleFatalError(event.reason);
     };
 }
 
-function handleFatalError(error: Error) {
-    logger.error("FATAL UI ERROR", error);
+function handleFatalError(raw: unknown) {
+    const normalized = normalizeUnknownError(raw, "Unexpected UI error");
+
+    logger.error("FATAL UI ERROR", { normalized });
 
     const main = document.getElementById("appMain");
     const skeleton = document.getElementById("skeleton");
@@ -44,7 +48,7 @@ function handleFatalError(error: Error) {
             Ponovo učitaj
         </button>
         <div style="margin-top: 20px; font-size: 10px; color: red; text-align: left; background: #eee; padding: 10px; border-radius: 4px; max-width: 100%; overflow: hidden;">
-            ${error.message}
+            ${normalized.message}
         </div>
     `;
 

@@ -1,6 +1,7 @@
 // src/taskpane/app/telemetry/logger.ts
 
 import { addLog, getAllLogs } from "./db";
+import { normalizeUnknownError } from "../../../shared/normalizeError";
 
 export type LogLevel = "info" | "warn" | "error";
 
@@ -12,7 +13,7 @@ export interface LogEntry {
 }
 
 export class BreadcrumbLogger {
-    // Čuvamo mali buffer u memoriji za trenutni prikaz/brzinu
+    // Small in-memory buffer for fast UI diagnostics
     private memoryLogs: LogEntry[] = [];
     private readonly MAX_MEM_LOGS = 50;
 
@@ -39,14 +40,29 @@ export class BreadcrumbLogger {
             data: this.serializeData(data),
         };
 
-        // 1. Memory Buffer
+        // 1. Memory buffer
         this.memoryLogs.push(entry);
         if (this.memoryLogs.length > this.MAX_MEM_LOGS) {
             this.memoryLogs.shift();
         }
 
-        // 2. Persistent Storage (Fire & Forget)
+        // 2. Persistent storage (fire & forget)
         addLog(level, message, entry.data);
+    }
+
+    private isLikelyDomEventLike(data: unknown): data is Record<string, unknown> {
+        if (typeof data !== "object" || data === null) return false;
+
+        const r = data as Record<string, unknown>;
+        if (typeof r.type !== "string") return false;
+
+        // Heuristic to avoid misclassifying normal objects with "type".
+        // Real DOM/Worker events often have isTrusted, timeStamp, target/currentTarget.
+        const hasIsTrusted = typeof r.isTrusted === "boolean";
+        const hasTimeStamp = typeof r.timeStamp === "number";
+        const hasTarget = "target" in r || "currentTarget" in r;
+
+        return hasIsTrusted || hasTimeStamp || hasTarget;
     }
 
     private serializeData(data: unknown): unknown {
@@ -57,6 +73,17 @@ export class BreadcrumbLogger {
                 stack: data.stack,
             };
         }
+
+        // Prevent "[object Event]" and huge cyclic Event objects from entering logs.
+        if (this.isLikelyDomEventLike(data)) {
+            const norm = normalizeUnknownError(data, "Event");
+            return {
+                name: norm.name,
+                message: norm.message,
+                details: norm.details,
+            };
+        }
+
         try {
             return JSON.parse(JSON.stringify(data));
         } catch {
@@ -71,7 +98,7 @@ export class BreadcrumbLogger {
         try {
             const dbLogs = await getAllLogs();
             if (!dbLogs || dbLogs.length === 0) {
-                return this.exportLogs(); // Fallback to memory logs
+                return this.exportLogs(); // fallback to memory logs
             }
 
             return dbLogs

@@ -2,7 +2,8 @@
 
 import { t } from "../../../shared/i18n";
 import { setStatus } from "../status";
-import { logger } from "../telemetry/logger"; // NEW
+import { logger } from "../telemetry/logger";
+import { normalizeUnknownError } from "../../../shared/normalizeError";
 
 export interface ErrorContext {
     operation: string;
@@ -32,7 +33,6 @@ export class ErrorRecoveryHandler {
         const errorInfo = this.extractErrorInfo(error);
         const strategy = this.determineStrategy(errorInfo, context);
 
-        // Log for debugging (NEW: using logger)
         logger.error(`Error in ${context.operation}: ${errorInfo.message}`, { errorInfo, context });
 
         // Track retry attempts
@@ -68,7 +68,6 @@ export class ErrorRecoveryHandler {
      * Reset retry count for an operation.
      */
     public resetRetries(operation: string): void {
-        // Clear all retry counts for this operation
         for (const key of this.retryCount.keys()) {
             if (key.startsWith(operation + ":")) {
                 this.retryCount.delete(key);
@@ -77,34 +76,26 @@ export class ErrorRecoveryHandler {
     }
 
     private extractErrorInfo(error: unknown): ErrorInfo {
-        if (error instanceof Error) {
-            const message = error.message;
+        const normalized = normalizeUnknownError(error, "Unknown error");
+        const message = normalized.message;
 
-            // Check for specific error patterns
-            if (message.includes("InvalidBinding")) {
-                return { code: "INVALID_BINDING", message, isRecoverable: true };
-            }
-            if (message.includes("NetworkError") || message.includes("fetch")) {
-                return { code: "NETWORK_ERROR", message, isRecoverable: true };
-            }
-            if (message.includes("OutOfMemory") || message.includes("too large")) {
-                return { code: "OUT_OF_MEMORY", message, isRecoverable: false };
-            }
-            if (message.includes("RichApi.Error") || message.includes("GeneralException")) {
-                return { code: "OFFICE_API_ERROR", message, isRecoverable: true };
-            }
-            if (message.includes("ItemNotFound")) {
-                return { code: "ITEM_NOT_FOUND", message, isRecoverable: false };
-            }
-
-            return { code: "UNKNOWN_ERROR", message, isRecoverable: false };
+        if (message.includes("InvalidBinding")) {
+            return { code: "INVALID_BINDING", message, isRecoverable: true };
+        }
+        if (message.includes("NetworkError") || message.includes("fetch")) {
+            return { code: "NETWORK_ERROR", message, isRecoverable: true };
+        }
+        if (message.includes("OutOfMemory") || message.includes("too large")) {
+            return { code: "OUT_OF_MEMORY", message, isRecoverable: false };
+        }
+        if (message.includes("RichApi.Error") || message.includes("GeneralException")) {
+            return { code: "OFFICE_API_ERROR", message, isRecoverable: true };
+        }
+        if (message.includes("ItemNotFound")) {
+            return { code: "ITEM_NOT_FOUND", message, isRecoverable: false };
         }
 
-        return {
-            code: "UNKNOWN_ERROR",
-            message: String(error),
-            isRecoverable: false,
-        };
+        return { code: "UNKNOWN_ERROR", message, isRecoverable: false };
     }
 
     private determineStrategy(errorInfo: ErrorInfo, context: ErrorContext): RecoveryStrategy {
@@ -123,13 +114,12 @@ export class ErrorRecoveryHandler {
                 shouldRetry: context.canRetry !== false,
                 retryDelay: this.getRetryDelay(context.operation, errorInfo.code),
                 fallbackAction: async () => {
-                    // Force a context sync to recover binding
                     try {
                         await Word.run(async (ctx) => {
                             await ctx.sync();
                         });
                     } catch {
-                        // Ignore sync errors
+                        // ignore
                     }
                 },
                 userMessage: t("error_word_api_retrying"),

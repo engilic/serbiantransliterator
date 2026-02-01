@@ -58,6 +58,7 @@ const ANSI = {
     reset: "\x1b[0m",
     green: "\x1b[32m",
     red: "\x1b[31m",
+    yellow: "\x1b[33m",
 };
 
 function colorize(color, text) {
@@ -166,6 +167,41 @@ async function askYesNo(question, { defaultYes = false } = {}) {
     }
 }
 
+async function askTypeToConfirm(question, expectedToken) {
+    process.stdout.write(`\n${question}\n`);
+    process.stdout.write(colorize(ANSI.yellow, `Type EXACTLY: ${expectedToken}\n`));
+    process.stdout.write("> ");
+
+    const wasRaw = !!process.stdin.isRaw;
+    process.stdin.setEncoding("utf8");
+    process.stdin.resume();
+
+    try {
+        try {
+            process.stdin.setRawMode(false);
+        } catch {
+            // ignore
+        }
+
+        const line = (await readLineFallback()) || "";
+        const v = line.trim();
+
+        if (v === expectedToken) {
+            process.stdout.write(colorize(ANSI.green, `${YES_LABEL}\n`));
+            return true;
+        }
+
+        process.stdout.write(colorize(ANSI.red, `${NO_LABEL}\n`));
+        process.stdout.write(colorize(ANSI.red, "Confirmation mismatch. Aborting.\n"));
+        return false;
+    } finally {
+        try {
+            process.stdin.setRawMode(wasRaw);
+        } catch {}
+        process.stdin.pause();
+    }
+}
+
 function ensureGitRepo() {
     const r = tryGit(["rev-parse", "--is-inside-work-tree"]);
     if (!r.ok || r.out !== "true") {
@@ -222,8 +258,165 @@ function mergedBranches(intoBranch) {
         .map((l) => l.replace(/^\*\s+/, "").trim());
 }
 
+function listLocalBranches() {
+    const out = git(["for-each-ref", "--format=%(refname:short)", "refs/heads"]);
+    return out
+        .split("\n")
+        .map((s) => s.trim())
+        .filter(Boolean);
+}
+
+function listRemoteBranches(remoteName) {
+    const out = git(["for-each-ref", "--format=%(refname:short)", `refs/remotes/${remoteName}`]);
+    const all = out
+        .split("\n")
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+    const filtered = [];
+    for (const b of all) {
+        if (b === `${remoteName}/HEAD`) continue;
+        filtered.push(b);
+    }
+    return filtered;
+}
+
+function stripRemotePrefix(remoteName, fullRef) {
+    const prefix = `${remoteName}/`;
+    if (!fullRef.startsWith(prefix)) return fullRef;
+    return fullRef.slice(prefix.length);
+}
+
+async function nukeAllBranches({ skipTokenConfirm = false } = {}) {
+    const remoteName = "origin";
+
+    console.log("\n============================================================");
+    console.log(colorize(ANSI.red, "NUKE MODE: DELETE ALL LOCAL + REMOTE BRANCHES"));
+    console.log("============================================================");
+    console.log(
+        colorize(
+            ANSI.red,
+            "WARNING: This will attempt to delete ALL local branches and ALL branches on the remote (origin)."
+        )
+    );
+    console.log(
+        "Notes:\n" +
+            "  - You cannot delete the currently checked out local branch unless we detach HEAD first.\n" +
+            "  - Remote may reject deletion of protected/default branches (e.g., main/master).\n" +
+            "  - You must have permissions to delete remote branches.\n"
+    );
+
+    const proceed = await askYesNo("Proceed with NUKE MODE?", { defaultYes: false });
+    if (!proceed) return;
+
+    if (!skipTokenConfirm) {
+        const confirmed = await askTypeToConfirm(
+            "Final confirmation required.",
+            "DELETE_ALL_LOCAL_AND_REMOTE_BRANCHES"
+        );
+        if (!confirmed) return;
+    } else {
+        console.log(colorize(ANSI.yellow, "\nSkipping token confirmation (--no-token-confirm enabled)."));
+    }
+
+    console.log("\nRunning: git fetch --all --prune");
+    tryGit(["fetch", "--all", "--prune"], { stdio: "inherit" });
+
+    const cur = currentBranch();
+    const headSha = git(["rev-parse", "HEAD"]);
+
+    const locals = listLocalBranches();
+    const remotes = listRemoteBranches(remoteName);
+
+    console.log("\nLocal branches to delete:");
+    if (locals.length === 0) {
+        console.log("  (none)");
+    } else {
+        for (const b of locals) console.log(`  - ${b}${b === cur ? " (CURRENT)" : ""}`);
+    }
+
+    console.log(`\nRemote branches to delete (${remoteName}):`);
+    if (remotes.length === 0) {
+        console.log("  (none)");
+    } else {
+        for (const b of remotes) console.log(`  - ${b}`);
+    }
+
+    const proceedLocal = await askYesNo("\nDelete ALL LOCAL branches listed above?", { defaultYes: false });
+    if (proceedLocal) {
+        // If we're on a local branch, detach so we can delete it too.
+        if (cur !== "HEAD") {
+            console.log(`\nDetaching HEAD at ${headSha} so current branch '${cur}' can be deleted...`);
+            tryGit(["switch", "--detach", headSha], { stdio: "inherit" });
+        }
+
+        console.log("\nDeleting local branches (-D):");
+        for (const b of locals) {
+            console.log(`  Deleting local branch: ${b}`);
+            const r = tryGit(["branch", "-D", b], { stdio: "inherit" });
+            if (!r.ok) {
+                console.log(colorize(ANSI.red, `  Failed to delete local branch: ${b}`));
+            }
+        }
+    } else {
+        console.log("\nSkipping local branch deletion.");
+    }
+
+    const proceedRemote = await askYesNo(`\nDelete ALL REMOTE branches on ${remoteName}?`, {
+        defaultYes: false,
+    });
+    if (proceedRemote) {
+        console.log(`\nDeleting remote branches (git push ${remoteName} --delete <branch>):`);
+        for (const full of remotes) {
+            const short = stripRemotePrefix(remoteName, full);
+            console.log(`  Deleting remote branch: ${remoteName}/${short}`);
+
+            const r = tryGit(["push", remoteName, "--delete", short], { stdio: "inherit" });
+            if (!r.ok) {
+                console.log(colorize(ANSI.red, `  Failed to delete remote branch: ${remoteName}/${short}`));
+            }
+        }
+    } else {
+        console.log("\nSkipping remote branch deletion.");
+    }
+
+    if (await askYesNo("\nRun: git remote prune origin? ", { defaultYes: false })) {
+        tryGit(["remote", "prune", "origin"], { stdio: "inherit" });
+    }
+
+    if (await askYesNo("\nRun: git gc? ", { defaultYes: false })) {
+        tryGit(["gc"], { stdio: "inherit" });
+    }
+
+    console.log("\nDone (NUKE MODE).");
+}
+
+function parseArgs(argv) {
+    const out = {
+        nukeBranches: false,
+        noTokenConfirm: false,
+    };
+
+    for (const a of argv) {
+        if (a === "--nuke-branches" || a === "--nuke" || a === "--nuke-all-branches") {
+            out.nukeBranches = true;
+        }
+        if (a === "--no-token-confirm" || a === "--skip-token-confirm" || a === "--no-final-confirm") {
+            out.noTokenConfirm = true;
+        }
+    }
+
+    return out;
+}
+
 async function main() {
     ensureGitRepo();
+
+    const args = parseArgs(process.argv.slice(2));
+    if (args.nukeBranches) {
+        await nukeAllBranches({ skipTokenConfirm: args.noTokenConfirm });
+        return;
+    }
 
     const dirty = git(["status", "--porcelain"]);
     if (dirty) {
