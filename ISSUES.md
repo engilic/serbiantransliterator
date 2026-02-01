@@ -29,8 +29,12 @@ Ovde pratimo aktivne bagove, UX nedoumice i sitne zadatke koji nisu deo glavnog 
 
 6. **Worker Error Reporting (`[object Event]`)**
     - **Opis:** Kada worker pukne (npr. mrežna greška), ponekad vrati `Event` objekat umesto jasne poruke greške, pa UI ispiše `[object Event]`.
-    - **Status:** Delimično rešeno kroz `WorkerClient` refaktorizaciju (bolje hvatanje grešaka), ali treba pratiti u telemetriji da li se i dalje javlja.
-    - **Next:** Standardizovati error serialization (`message`, `name`, `stack`, `cause`) i osigurati da se `Event` mapira u čitljivu poruku.
+    - **Status:** FIXED (GOD1). Uvedena standardizacija error normalizacije/serijalizacije i worker crash recovery:
+        - `Event` / `ErrorEvent` / ne-Error oblici se mapiraju u čitljivu poruku (`name`, `message`, opcioni `details`).
+        - Runtime worker crash prelazi u fallback bez prekida operacije (seamless recovery), uz telemetry brojače.
+    - **Next (Telemetry validation):**
+        - Pratiti `worker_runtime_crash_count` i `worker_fallback_activated_reason:*` tokom dogfooding-a.
+        - Ako brojači rastu u realnim dokumentima, dodati “Diagnostics” prikaz u Stats panelu.
 
 7. **WebView2 Theme Sync**
     - **Opis:** Na Windowsu, kada se promeni sistemska tema (Light/Dark), Taskpane ne reaguje momentalno dok se ne uradi reload ili fokusira prozor. Ovo je limitacija WebView2 kontrole.
@@ -38,4 +42,4 @@ Ovde pratimo aktivne bagove, UX nedoumice i sitne zadatke koji nisu deo glavnog 
 
 8. **DOMParser Memory Limit**
     - **Opis:** Pokušaj učitavanja fajla od 1GB u Web Mode-u će srušiti tab (Out of Memory).
-    - **Plan:** Rešava se u Q2 2026 implementacijom Rust Streaming parsera.
+    - **Plan:** Rešava se u Q2 2026 implementacijom Rust Streaming parsera (`quick-xml`).
