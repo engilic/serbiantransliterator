@@ -1,45 +1,63 @@
-# POZNATI PROBLEMI & ZADACI (TRACKING)
+# 🛠️ INTERNAL ISSUE TRACKER & TECHNICAL DEBT REGISTRY — v1.0.0 Gold
 
-Ovde pratimo aktivne bagove, UX nedoumice i sitne zadatke koji nisu deo glavnog Roadmap-a.
-
----
-
-## ✅ REŠENO (CLOSED)
-
-1. **Preslovljavanje ne radi (`wasmModule.init_replacer` is not a function)**
-    - **Status:** Fixovano u PR-u (Max3 Hardening). Provereni exporti u `lib.rs` i tipovi u TypeScript-u. Worker sada pravilno čeka inicijalizaciju.
-
-2. **ASCII i Live Stats su "grayed out"**
-    - **Status:** Rešeno. Logika `shouldEnable` u `selection.ts` je ažurirana da dozvoli ASCII konverziju ako tekst sadrži bilo kakvu latinicu (naša slova) ili ćirilicu.
-
-3. **Tekst (Nema podataka) poravnanje**
-    - **Status:** Rešeno kroz CSS (`global.css`). Padding je usaglašen sa ostatkom UI-ja.
-
-4. **A11y (Axe) - `color-contrast` failure u Tour UI (flaky u E2E)**
-    - **Status:** Rešeno. Podešen kontrast za tour tekst/naslov (WCAG AA) i stabilizovan A11y E2E test (čekanje da se stil/theme stabilizuje pre Axe analize).
+Ovaj dokument služi kao primarni registar svih identifikovanih sistemskih ograničenja, tehničkog duga i planiranih ispravki. Fokus je na prebacivanju sa "Functional" na "Bulletproof" stabilnost (Faza 2 Hardening).
 
 ---
 
-## ⚠️ AKTIVNO (OPEN / INVESTIGATING)
+## 🔴 CRITICAL: MEMORY & PERFORMANCE (Priority: P0)
 
-5. **Dugme OK vs Cancel (Vizuelni stil)**
-    - **Opis:** Postoji vizuelna nekonzistentnost. "Cancel" je outline dugme (`.secondary-btn`), dok je "OK" solid dugme (`.primary-btn`).
-    - **Pitanje:** Da li želimo da oba budu outline ili oba solid?
-    - **Preporuka:** Zadržati trenutno stanje (Fluent UI standard) — primarna akcija treba da bude istaknuta. Ako se menja, menjati globalno u `footer.css` / `modals.css`.
+### 1. DOMParser Memory Bloat (The "RAM Wall")
+- **Opis:** Trenutna implementacija u `src/shared/ooxml/xmlParser.ts` koristi pretraživačev `DOMParser`. Za dokument od 100MB, DOM stablo u RAM-u može zauzeti preko 800MB zbog načina na koji V8 mapira čvorove.
+- **Simptomi:** Pad Web Workera sa greškom `Out of Memory` ili totalno zamrzavanje WebView2 kontrole na računarima sa 8GB RAM-a.
+- **Privremeno rešenje:** Adaptive Chunking (procesiranje po 50 paragrafa).
+- **Finalno rešenje:** Implementacija **Rust Streaming Pull-Parsera** koristeći `quick-xml`. Cilj je procesiranje neograničeno velikih XML-ova uz konstantnu potrošnju memorije od <50MB.
 
-6. **Worker Error Reporting (`[object Event]`)**
-    - **Opis:** Kada worker pukne (npr. mrežna greška), ponekad vrati `Event` objekat umesto jasne poruke greške, pa UI ispiše `[object Event]`.
-    - **Status:** FIXED (GOD1). Uvedena standardizacija error normalizacije/serijalizacije i worker crash recovery:
-        - `Event` / `ErrorEvent` / ne-Error oblici se mapiraju u čitljivu poruku (`name`, `message`, opcioni `details`).
-        - Runtime worker crash prelazi u fallback bez prekida operacije (seamless recovery), uz telemetry brojače.
-    - **Next (Telemetry validation):**
-        - Pratiti `worker_runtime_crash_count` i `worker_fallback_activated_reason:*` tokom dogfooding-a.
-        - Ako brojači rastu u realnim dokumentima, dodati “Diagnostics” prikaz u Stats panelu.
+### 2. Worker Lifecycle & Panic Recovery (Self-Healing)
+- **Opis:** Ako WASM jezgro baci `panic!` (npr. zbog neočekivanog Unicode karaktera), Web Worker umire. Trenutni `WorkerClient.ts` prelazi na main-thread fallback, što rezultira blokiranjem UI-ja.
+- **Zadatak:** Implementirati supervisor pattern. Ako Worker crash-uje, klijent mora automatski da instancira novi Worker, ponovo učita rečnike i pokuša operaciju još jednom pre nego što odustane.
+- **Status:** Investigating (Potrebno u v1.1.0).
 
-7. **WebView2 Theme Sync**
-    - **Opis:** Na Windowsu, kada se promeni sistemska tema (Light/Dark), Taskpane ne reaguje momentalno dok se ne uradi reload ili fokusira prozor. Ovo je limitacija WebView2 kontrole.
-    - **Moguće rešenje:** Polling ili oslanjanje na Office.js `Office.context.officeTheme` (ako postane pouzdaniji).
+---
 
-8. **DOMParser Memory Limit**
-    - **Opis:** Pokušaj učitavanja fajla od 1GB u Web Mode-u će srušiti tab (Out of Memory).
-    - **Plan:** Rešava se u Q2 2026 implementacijom Rust Streaming parsera (`quick-xml`).
+## 🟡 HIGH PRIORITY: UX & INTEGRATION (Priority: P1)
+
+### 3. WebView2 Office Theme Sync Failure
+- **Opis:** Na Windows desktop verziji Word-a, promena sistemske teme (Light -> Dark) se ne propagira u Taskpane u realnom vremenu. Korisnik vidi "stari" UI dok ne klikne na Add-in ili ne uradi reload.
+- **Tehnički uzrok:** WebView2 ne ispaljuje uvek `media-query` change event unutar Office iframe-a.
+- **Planirani fix:** Uvesti aktivni polling (svakih 2s) na `Office.context.officeTheme` ili uvesti osvežavanje stila pri `window.focus` eventu.
+
+### 4. State Persistence (Recovery after Close)
+- **Opis:** Ako korisnik zatvori Taskpane, gubi se istorija poslednje operacije, izabrani filteri u "Zaštićeno" sekciji i rezultati poslednje statistike.
+- **Zadatak:** Implementirati `sessionStorage` sinhronizaciju za `AppState`. Pri inicijalizaciji (`init.ts`), proveriti postojanje sačuvanog stanja i uraditi "rehydration".
+
+---
+
+## 🟢 MEDIUM PRIORITY: LINGUISTICS & LOGIC (Priority: P2)
+
+### 5. Digraph Ambiguity in Bridge Logic
+- **Opis:** "Bridging" logika u `src/shared/ooxml/bridge` ponekad pogrešno spoji karaktere na granici run-ova koji nisu deo iste reči (npr. kraj reči 'n' i početak sledeće reči 'j').
+- **Zadatak:** Poboljšati heuristiku u `digraphs.ts` tako da se spajanje vrši samo ako oba karaktera pripadaju istom leksičkom kontekstu (bez razmaka ili interpunkcije između njih, čak i ako su u različitim `<w:t>`).
+
+### 6. I18n Bloat & Dead Keys
+- **Opis:** Tokom brzog razvoja dodato je mnogo ključeva u `sr.ts` i `en.ts` koji se više ne koriste u UI.
+- **Zadatak:** Pokrenuti skriptu `checkI18nKeys.cjs` i obrisati sve "orphan" ključeve radi smanjenja bundle veličine.
+
+---
+
+## ⚪ LOW PRIORITY: POLISH & TOOLING (Priority: P3)
+
+### 7. Large File Fuzzing
+- **Opis:** Trenutni testovi pokrivaju male OOXML fragmente. Nemamo automatizovan test za fajlove od 500+ strana u CI okruženju.
+- **Zadatak:** Dodati `tests/stress` folder sa generisanim džinovskim XML fajlovima.
+
+### 8. Custom Subs Separator Risk
+- **Opis:** Korisnici u "Sopstvene zamene" koriste `->` kao separator. Ako reč sadrži taj niz karaktera, parser puca.
+- **Zadatak:** Dodati validaciju ili escape mehanizam u `subsUi.ts`.
+
+---
+
+## 📋 BACKLOG ZA VERZIJU 1.1.0 (Summary)
+1. [ ] Rust `quick-xml` integracija.
+2. [ ] Worker restart logika (Self-healing).
+3. [ ] Persistence layer (sessionStorage).
+4. [ ] NER (Named Entity Recognition) research spike.
