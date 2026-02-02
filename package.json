@@ -98,7 +98,8 @@
         ]
     },
     "overrides": {
-        "tmp": "^0.2.3"
+        "tmp": "^0.2.3",
+        "playwright-core": "$@playwright/test"
     },
     "volta": {
         "node": "20.20.0",
