@@ -33,17 +33,57 @@ jobs:
           node-version: "20"
           cache: "npm"
 
-      - name: Setup Rust (stable + components)
+      - name: Setup Rust (stable + components + wasm target)
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
           targets: wasm32-unknown-unknown
 
-      - name: Install cargo-audit
-        run: cargo install cargo-audit --locked
+      # ----------------------------
+      # Rust caches (fast CI)
+      # ----------------------------
+      # 1) Cache cargo tools (cargo-audit binary lives here after install)
+      - name: Cache cargo tools (~/.cargo/bin)
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin
+          key: cargo-tools-${{ runner.os }}-v1
+
+      # 2) Cache cargo registry + git index (downloads)
+      - name: Cache cargo registry (~/.cargo/registry + ~/.cargo/git)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: cargo-registry-${{ runner.os }}-${{ hashFiles('src/wasm-core/Cargo.lock') }}
+          restore-keys: |
+            cargo-registry-${{ runner.os }}-
+
+      # 3) Cache Rust build artifacts for wasm-core (can be big, but speeds up a lot)
+      - name: Cache wasm-core target/ (Rust build outputs)
+        uses: actions/cache@v4
+        with:
+          path: src/wasm-core/target
+          key: cargo-target-wasmcore-${{ runner.os }}-${{ hashFiles('src/wasm-core/Cargo.lock') }}
+          restore-keys: |
+            cargo-target-wasmcore-${{ runner.os }}-
+
+      # Ensure cargo bin dir is on PATH (usually already, but safe)
+      - name: Ensure ~/.cargo/bin on PATH
+        run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      # Install cargo-audit only if missing (then it gets cached)
+      - name: Install cargo-audit (if missing)
+        run: |
+          if ! command -v cargo-audit >/dev/null 2>&1; then
+            cargo install cargo-audit --locked
+          else
+            echo "cargo-audit already present (cached)"
+          fi
 
       # NOTE:
-      # wasm-pack is installed via npm devDependency now (npm ci), no separate action needed.
+      # wasm-pack is installed via npm devDependency (npm ci), no separate action needed.
 
       - name: GOD1 verify (strict, fast, no-push)
         run: npm run verify:all:strict -- --fast --no-push
