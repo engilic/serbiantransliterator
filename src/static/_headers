@@ -1,22 +1,60 @@
 /*
-  Access-Control-Allow-Origin: *
+  # -------------------------
+  # Global security headers
+  # -------------------------
+
+  # Remove permissive CORS if Cloudflare default adds it.
+  ! Access-Control-Allow-Origin
+
   X-Content-Type-Options: nosniff
   Referrer-Policy: no-referrer
-  Content-Security-Policy: default-src 'none'; script-src 'self' https://appsforoffice.microsoft.com https://ajax.aspnetcdn.com blob: 'unsafe-inline' 'unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; font-src 'self'; frame-ancestors https://*.office.com https://*.officeapps.live.com https://*.microsoft.com https://*.sharepoint.com https://*.sharepoint-df.com;
 
-# [MAX3] Immutable Cache za hashovane fajlove (Webpack output)
-# Ovi fajlovi imaju hash u imenu (npr. taskpane.a1b2c3.js), pa ih možemo keširati zauvek.
+  # Important for Office Dialog API compatibility (prevents error 12006 if dialogs are used)
+  Cross-Origin-Opener-Policy: unsafe-none
+
+  # Basic permissions hardening (safe defaults; does not block core add-in behavior)
+  Permissions-Policy: geolocation=(), camera=(), microphone=(), payment=(), usb=(), accelerometer=(), gyroscope=(), magnetometer=()
+
+  # -------------------------
+  # CSP (Final tighten)
+  # -------------------------
+  Content-Security-Policy: default-src 'none'; base-uri 'none'; object-src 'none'; form-action 'none'; manifest-src 'self'; script-src 'self' https://appsforoffice.microsoft.com https://ajax.aspnetcdn.com 'wasm-unsafe-eval'; worker-src 'self' blob:; child-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; frame-src 'self' https://*.office.com https://*.officeapps.live.com https://*.microsoft.com https://*.sharepoint.com https://*.sharepoint-df.com https://onedrive.live.com https://*.onedrive.live.com https://teams.microsoft.com https://*.teams.microsoft.com; connect-src 'self' https://*.office.com https://*.officeapps.live.com https://*.microsoft.com https://*.microsoftonline.com https://login.microsoftonline.com https://*.msauth.net https://*.msftauth.net https://*.sharepoint.com https://*.sharepoint-df.com https://onedrive.live.com https://*.onedrive.live.com; frame-ancestors 'self' https://*.office.com https://*.officeapps.live.com https://*.microsoft.com https://*.sharepoint.com https://*.sharepoint-df.com https://onedrive.live.com https://*.onedrive.live.com https://teams.microsoft.com https://*.teams.microsoft.com https://*.skype.com https://*.teams.microsoft.us https://local.teams.office.com https://teams.microsoftonline.cn https://*.powerapps.com https://*.yammer.com https://*.microsoftstream.com https://*.dynamics.com https://securebroker.sharepointonline.com;
+
+# -------------------------
+# NO-CACHE: HTML entrypoints
+# -------------------------
+/*.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+/manifest.webmanifest
+  Cache-Control: public, max-age=0, must-revalidate
+
+# -------------------------
+# NO-CACHE: Service Worker (MUST update reliably)
+# -------------------------
+/sw.js
+  ! Cache-Control
+  Cache-Control: public, max-age=0, must-revalidate
+
+# -------------------------
+# IMMUTABLE: Fingerprinted assets (webpack contenthash)
+# -------------------------
 /*.js
   Cache-Control: public, max-age=31536000, immutable
-/*.wasm
-  Cache-Control: public, max-age=31536000, immutable
+
 /*.css
   Cache-Control: public, max-age=31536000, immutable
 
-# Binarni rečnici u assets
-/assets/*
+/*.wasm
   Cache-Control: public, max-age=31536000, immutable
 
-# HTML se NE kešira agresivno (entry point mora biti svež da bi povukao novi JS/CSS)
-/*.html
+# -------------------------
+# Assets folder
+#   - icons: NO-CACHE (stable filenames)
+#   - everything else: IMMUTABLE
+# -------------------------
+/assets/icon-*.png
   Cache-Control: public, max-age=0, must-revalidate
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

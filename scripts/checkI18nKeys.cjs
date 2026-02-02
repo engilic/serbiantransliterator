@@ -348,8 +348,8 @@ async function main() {
         ["files scanned", stats.filesScanned],
         ["defined keys", definedKeys.size],
         ["used keys", usedKeys.size],
-        ["missing keys", missingCount],
         ["unused keys", unusedKeys.length],
+        ["missing keys", missingCount],
         ["safe to delete", safeToDelete.length],
     ];
 

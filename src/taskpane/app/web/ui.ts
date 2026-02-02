@@ -1,14 +1,14 @@
 // src/taskpane/app/web/ui.ts
 
 import { processDocxFile } from "./batch";
-import { t } from "../../../shared/i18n";
+import { t, type TranslationKey } from "../../../shared/i18n";
 import { showModalInfo } from "../modal/modal";
-import { html } from "../../../shared/safeHtml";
+import { html, escapeHtml } from "../../../shared/safeHtml";
 import { convertPlainText, type Direction, type CoreOptions } from "../../../core/textCore";
 import { getSettingsFromUi } from "../settings/getters";
 import { state } from "../state";
-import { playSuccessSound } from "../utils/audio"; // [CHANGED] Updated path
-import { checkIncognito } from "../utils/incognito"; // [CHANGED] Updated path
+import { playSuccessSound } from "../utils/audio";
+import { checkIncognito } from "../utils/incognito";
 import DOMPurify from "dompurify"; // [MAX3] Security Standard
 
 interface FileSystemFileHandle {
@@ -24,6 +24,10 @@ interface LaunchQueue {
 }
 interface WindowWithLaunchQueue extends Window {
     launchQueue?: LaunchQueue;
+}
+
+function tt(key: TranslationKey, ...args: (string | number)[]): string {
+    return escapeHtml(t(key, ...args));
 }
 
 // Rekurzivna transliteracija DOM-a
@@ -66,7 +70,7 @@ export function initWebModeUi() {
         dropZone.className = "drop-zone fade-in";
         dropZone.innerHTML = `
             <div class="drop-icon">📂</div>
-            <div class="drop-text">${t("web_drop_title")}<br>${t("web_drop_subtitle")}</div>
+            <div class="drop-text">${tt("web_drop_title")}<br>${tt("web_drop_subtitle")}</div>
             <input type="file" id="webFileInput" accept=".docx" multiple style="display:none">
         `;
 
@@ -76,13 +80,17 @@ export function initWebModeUi() {
 
         clipboardSection.innerHTML = `
             <div class="section-header">
-                <div class="section-title">${t("web_clipboard_header")}</div>
+                <div class="section-title">${tt("web_clipboard_header")}</div>
             </div>
-            <div id="webRichInput" class="web-clipboard-area rich-input" contenteditable="true" 
-                 data-placeholder="${t("web_clipboard_placeholder")}"></div>
+            <div id="webRichInput" class="web-clipboard-area rich-input" contenteditable="true"
+                 data-placeholder="${tt("web_clipboard_placeholder")}"></div>
             <div class="web-actions">
-                <button id="webConvertBtn" class="primary-btn" style="max-width: 200px;">${t("web_clipboard_convert")}</button>
-                <button id="webCopyBtn" class="secondary-btn" style="max-width: 200px; display:none;">${t("web_clipboard_copy")}</button>
+                <button id="webConvertBtn" class="primary-btn" style="max-width: 200px;">${tt(
+                    "web_clipboard_convert"
+                )}</button>
+                <button id="webCopyBtn" class="secondary-btn" style="max-width: 200px; display:none;">${tt(
+                    "web_clipboard_copy"
+                )}</button>
             </div>
         `;
 
@@ -159,13 +167,13 @@ export function initWebModeUi() {
 
         convertBtn.onclick = doConvert;
 
-        // [MAX3] Universal Smart Copy
+        // [MAX3] Universal Smart Copy (sanitize HTML before exporting)
         copyBtn.onclick = async () => {
             try {
-                const htmlContent = richInput.innerHTML;
+                const sanitizedHtml = DOMPurify.sanitize(richInput.innerHTML);
                 const textContent = richInput.innerText || richInput.textContent || "";
 
-                const htmlBlob = new Blob([htmlContent], { type: "text/html" });
+                const htmlBlob = new Blob([sanitizedHtml], { type: "text/html" });
                 const textBlob = new Blob([textContent], { type: "text/plain" });
 
                 const item = new ClipboardItem({
@@ -197,7 +205,9 @@ export function initWebModeUi() {
             const textData = e.clipboardData?.getData("text/plain");
 
             // [FIX] Hack to bypass ESLint office-addins rule
-            const getSel = window["getSelection"];
+            const getSel = window["getSelection" as keyof Window] as unknown as
+                | (() => Selection | null)
+                | undefined;
             const selection = getSel ? getSel.call(window) : null;
 
             if (!selection || !selection.rangeCount) return;
@@ -206,11 +216,8 @@ export function initWebModeUi() {
             range.deleteContents();
 
             if (htmlData) {
-                // [SECURITY FIX] Use DOMPurify for bulletproof XSS protection
                 const fragment = DOMPurify.sanitize(htmlData, {
                     RETURN_DOM_FRAGMENT: true,
-                    // Optional: Whitelist to preserve specific formatting
-                    // ALLOWED_TAGS: ['b', 'i', 'u', 'strong', 'em', 'p', 'br', 'ul', 'ol', 'li', 'table', 'tr', 'td', 'th', 'div', 'span']
                 });
 
                 range.insertNode(fragment);

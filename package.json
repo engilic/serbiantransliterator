@@ -37,6 +37,7 @@
         "format:check": "prettier --check .",
         "format:fix": "prettier --write .",
         "audit:high": "npm audit --audit-level=high",
+        "audit:prod:high": "npm audit --omit=dev --audit-level=high",
         "release": "node scripts/release.js"
     },
     "dependencies": {

@@ -2,6 +2,7 @@
 
 import { SR_RS } from "./locales/sr";
 import { EN_US } from "./locales/en";
+import { sanitizeLimitedHtml, type SafeHtml } from "./safeHtml";
 
 function getSerbianPluralForm(n: number): "one" | "few" | "many" {
     const n100 = n % 100;
@@ -50,6 +51,18 @@ export function t(key: TranslationKey, ...args: (string | number)[]): string {
     return str;
 }
 
+/**
+ * tHtml: za poruke koje smeju da sadrže MINIMALNI markup (npr. <br>, <b>).
+ *
+ * Bezbednost:
+ * - DOMPurify allowlist + bez atributa
+ * - ako sanitizacija ne radi u okruženju, fallback je plain text (escape).
+ */
+export function tHtml(key: TranslationKey, ...args: (string | number)[]): SafeHtml {
+    const raw = t(key, ...args);
+    return sanitizeLimitedHtml(raw);
+}
+
 export function tPlural(key: TranslationKey, count: number): string {
     const dict = TRANSLATIONS[currentLang] || SR_RS;
 
@@ -64,6 +77,11 @@ export function tPlural(key: TranslationKey, count: number): string {
     }
 
     return t(key, count);
+}
+
+export function tPluralHtml(key: TranslationKey, count: number): SafeHtml {
+    const raw = tPlural(key, count);
+    return sanitizeLimitedHtml(raw);
 }
 
 export function isTranslationKey(k: string): k is TranslationKey {

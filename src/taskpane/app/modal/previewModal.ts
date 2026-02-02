@@ -9,7 +9,7 @@ import { myersDiff, type DiffOp } from "../../../shared/diff";
 import { InteractiveDiff } from "../../../shared/diff/interactive";
 import { PREVIEW_BATCH } from "../preview/constants";
 import { convertTextForPreviewPlain } from "../preview/convertPreviewPlain";
-import { t } from "../../../shared/i18n";
+import { t, type TranslationKey } from "../../../shared/i18n";
 
 function tokenize(text: string): string[] {
     return text.split(/([ \t\n\r]+)/).filter((x) => x);
@@ -22,6 +22,14 @@ function raf(cb: FrameRequestCallback): number {
         () => cb(typeof performance !== "undefined" ? performance.now() : Date.now()),
         0
     ) as unknown as number;
+}
+
+/**
+ * Escape translation for safe usage inside HTML strings / attributes.
+ * IMPORTANT: Use this for anything interpolated into innerHTML templates.
+ */
+function tt(key: TranslationKey, ...args: (string | number)[]): string {
+    return escapeHtml(t(key, ...args));
 }
 
 /**
@@ -42,17 +50,18 @@ function renderDiffAsync(holder: HTMLElement, interactive: InteractiveDiff, sess
 
         if (op.type === "insert") {
             cls = "diff-added clickable";
-            tooltip = t("preview_diff_tip_insert");
+            tooltip = tt("preview_diff_tip_insert");
             if (rejected) cls += " diff-rejected";
         } else if (op.type === "delete") {
             cls = "diff-removed clickable";
-            tooltip = t("preview_diff_tip_delete");
+            tooltip = tt("preview_diff_tip_delete");
             if (rejected) cls += " diff-rejected";
         }
 
         if (op.type === "equal") {
             return val;
         } else {
+            // tooltip is already escaped for attribute context via tt()
             return `<span class="${cls}" data-idx="${i}" title="${tooltip}">${val}</span>`;
         }
     };
@@ -114,22 +123,28 @@ export function showPreviewModal() {
         <div class="preview-header-row">
             <div class="preview-title" data-testid="previewTitleText">${escapeHtml(state.preview.titleText)}</div>
             <div class="preview-header-right">
-                <button class="preview-close-btn" id="previewCloseX" title="${t("preview_close_title")}">&times;</button>
+                <button class="preview-close-btn" id="previewCloseX" title="${tt("preview_close_title")}">&times;</button>
                 <div class="preview-header-buttons">
-                    <button id="modalOk" class="btn-primary" type="button">${t("preview_btn_apply")}</button>
+                    <button id="modalOk" class="btn-primary" type="button">${tt("preview_btn_apply")}</button>
                 </div>
             </div>
         </div>
         <div class="button-group" style="margin-top:8px; justify-content: flex-start;">
-            <button id="pBtnDiff" class="mini-btn ${state.preview.mode === "diff" ? "active" : ""}">${t("preview_btn_diff")}</button>
-            <button id="pBtnSide" class="mini-btn ${state.preview.mode === "side" ? "active" : ""}">${t("preview_btn_side")}</button>
-            <button id="pBtnPlain" class="mini-btn ${state.preview.mode === "plain" ? "active" : ""}">${t("preview_btn_plain")}</button>
+            <button id="pBtnDiff" class="mini-btn ${state.preview.mode === "diff" ? "active" : ""}">${tt("preview_btn_diff")}</button>
+            <button id="pBtnSide" class="mini-btn ${state.preview.mode === "side" ? "active" : ""}">${tt("preview_btn_side")}</button>
+            <button id="pBtnPlain" class="mini-btn ${state.preview.mode === "plain" ? "active" : ""}">${tt("preview_btn_plain")}</button>
         </div>
       </div>
       <div id="previewHolder" class="preview-text-pane"></div>
-      
-      ${showLoadMore ? `<div style="margin-top:10px; text-align:center"><button id="previewLoadMoreBtn" class="mini-btn">${t("btn_load_more")}</button></div>` : ""}
-      
+
+      ${
+          showLoadMore
+              ? `<div style="margin-top:10px; text-align:center"><button id="previewLoadMoreBtn" class="mini-btn">${tt(
+                    "btn_load_more"
+                )}</button></div>`
+              : ""
+      }
+
       <div id="previewToast" class="preview-toast"></div>
     `;
 
@@ -232,8 +247,8 @@ function updateActiveButton(id: string, active: boolean) {
     if (btn) {
         if (active) btn.classList.add("active");
         else btn.classList.remove("active");
-        btn.style.backgroundColor = active ? "var(--neutral-light)" : "var(--bg-color)";
-        btn.style.borderColor = active ? "var(--primary-color)" : "var(--border-color)";
+        (btn as HTMLElement).style.backgroundColor = active ? "var(--neutral-light)" : "var(--bg-color)";
+        (btn as HTMLElement).style.borderColor = active ? "var(--primary-color)" : "var(--border-color)";
     }
 }
 

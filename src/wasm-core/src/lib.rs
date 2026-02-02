@@ -3,7 +3,7 @@
 use aho_corasick::AhoCorasick;
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
-use std::sync::Mutex;
+use std::sync::{Mutex, MutexGuard};
 use wasm_bindgen::prelude::*;
 
 mod convert;
@@ -22,8 +22,22 @@ type ReplacerLock = Mutex<ReplacerCache>;
 
 static REPLACER: Lazy<ReplacerLock> = Lazy::new(|| Mutex::new(None));
 
+/// Poison-tolerant lock helper.
+///
+/// Why:
+/// - In Rust, if a thread panics while holding a mutex, the mutex becomes "poisoned".
+/// - `.lock().unwrap()` would panic, which in WASM (panic=abort) can kill the module.
+/// - We prefer resilience: recover poisoned state via `into_inner()`.
+fn replacer_lock() -> MutexGuard<'static, ReplacerCache> {
+    match REPLACER.lock() {
+        Ok(g) => g,
+        Err(poisoned) => poisoned.into_inner(),
+    }
+}
+
 #[wasm_bindgen]
 pub fn init_debug() {
+    // Safe to call multiple times; set_once is idempotent.
     console_error_panic_hook::set_once();
 }
 
@@ -38,7 +52,7 @@ pub fn init_replacer(custom_json: &str) -> Result<(), JsValue> {
     };
 
     let mut patterns: Vec<String> = Vec::new();
-    let mut replacements = Vec::new();
+    let mut replacements: Vec<String> = Vec::new();
 
     for (pat, rep) in SYSTEM_EXCEPTIONS {
         patterns.push(pat.to_string());
@@ -51,7 +65,7 @@ pub fn init_replacer(custom_json: &str) -> Result<(), JsValue> {
     }
 
     if patterns.is_empty() {
-        let mut global = REPLACER.lock().unwrap();
+        let mut global = replacer_lock();
         *global = None;
         return Ok(());
     }
@@ -62,7 +76,7 @@ pub fn init_replacer(custom_json: &str) -> Result<(), JsValue> {
         .build(&patterns)
         .map_err(|e| JsValue::from_str(&format!("AC error: {}", e)))?;
 
-    let mut global = REPLACER.lock().unwrap();
+    let mut global = replacer_lock();
     *global = Some((ac, replacements));
 
     Ok(())
@@ -70,7 +84,7 @@ pub fn init_replacer(custom_json: &str) -> Result<(), JsValue> {
 
 #[wasm_bindgen]
 pub fn apply_replacements(text: &str) -> String {
-    let guard = REPLACER.lock().unwrap();
+    let guard = replacer_lock();
     if let Some((ac, replacements)) = &*guard {
         ac.replace_all(text, replacements)
     } else {

@@ -71,3 +71,46 @@ export function unsafeHtml(trustedHtml: string): SafeHtml {
 export function unwrapHtml(safe: SafeHtml): string {
     return safe.__html;
 }
+
+/**
+ * Sanitize HTML -> SafeHtml uz strogi allowlist.
+ *
+ * Use-case:
+ * - i18n stringovi koji sadrže minimalni markup (npr. <br>, <b>)
+ * - renderovanje kratkih “rich text” poruka u modalu
+ *
+ * Security:
+ * - NEMA atributa (ALLOWED_ATTR: [])
+ * - Dozvoljeni su samo najbezbedniji tagovi (bez <a>, bez <img>, bez style)
+ * - Ako DOMPurify nije dostupan (edge env), fail-closed: sve se escape-uje.
+ */
+export function sanitizeLimitedHtml(input: string): SafeHtml {
+    const raw = String(input ?? "");
+
+    // Prefer fail-closed: ako nešto pođe po zlu, tretiraj kao plain text.
+    try {
+        // DOMPurify u nekim okruženjima može da zahteva window/document.
+        // Import ovde je OK jer ovaj modul koristiš u UI/web kontekstu.
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const DOMPurify = require("dompurify") as unknown as {
+            sanitize: (dirty: string, cfg: Record<string, unknown>) => string;
+        };
+
+        if (!DOMPurify || typeof DOMPurify.sanitize !== "function") {
+            return { __html: escapeHtml(raw) };
+        }
+
+        const clean = DOMPurify.sanitize(raw, {
+            // Minimal allowlist (bez linkova i bez atributa)
+            ALLOWED_TAGS: ["br", "b", "strong", "i", "em", "u", "small", "code"],
+            ALLOWED_ATTR: [],
+            KEEP_CONTENT: true,
+            // Dodatno: ne dozvoli data-*/aria-* injection preko atributa (ionako su zabranjeni)
+        });
+
+        return { __html: String(clean ?? "") };
+    } catch {
+        // Fallback: pokaži kao plain text (bez renderovanja HTML-a)
+        return { __html: escapeHtml(raw) };
+    }
+}

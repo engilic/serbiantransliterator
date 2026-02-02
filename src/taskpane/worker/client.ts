@@ -14,11 +14,15 @@ import dictE2iData from "../../static/assets/dict_e2i.bin";
 import dictI2eData from "../../static/assets/dict_i2e.bin";
 import wasmData from "../../wasm-core/pkg/index_bg.wasm";
 
-// Worker URL. Webpack 5 will bundle this into a separate worker file.
-const WorkerUrl = new URL("./transliteration.worker.ts", import.meta.url);
-
 type ConvertPayload = { xml: string; options: OoxmlOptions };
 type ConvertResult = { xml: string; type: string; stats: ConvertStats };
+
+// DoS hard limits (keep consistent with xmlSafety.ts)
+const MAX_XML_CHARS = 5_000_000;
+const MAX_INIT_DICT_BYTES = 5 * 1024 * 1024; // 5MB per dictionary
+const MAX_INIT_WASM_BYTES = 3 * 1024 * 1024; // safety cap
+const MAX_USER_PROTECTED = 5000;
+const MAX_IGNORED_STYLES = 500;
 
 interface InFlightJob {
     id: string;
@@ -47,11 +51,36 @@ function makeAbortError(): Error {
     return e;
 }
 
+function ensureConvertPayloadSafe(xml: string, options: OoxmlOptions): void {
+    if (typeof xml !== "string") {
+        throw new Error("Invalid input: xml must be a string");
+    }
+    if (xml.length > MAX_XML_CHARS) {
+        throw new Error("Input too large (5MB limit)");
+    }
+
+    const up = (options && Array.isArray(options.userProtected) ? options.userProtected : []) as unknown[];
+    if (up.length > MAX_USER_PROTECTED) throw new Error("Too many protected tokens/phrases");
+
+    const ig = (options && Array.isArray(options.ignoredStyles) ? options.ignoredStyles : []) as unknown[];
+    if (ig.length > MAX_IGNORED_STYLES) throw new Error("Too many ignored styles");
+}
+
 function dataUriToBytes(dataUri: string | null | undefined): Uint8Array {
     const str = String(dataUri || "");
+
+    // Defensive: must be a data URI; otherwise treat as empty.
+    if (!str.startsWith("data:")) return new Uint8Array(0);
+
     const parts = str.split(",");
     const base64 = parts.length > 1 ? parts[1] : null;
     if (!base64) return new Uint8Array(0);
+
+    // Quick cap to avoid pathological atob input (should never happen for our bundled assets).
+    if (base64.length > 10 * 1024 * 1024) {
+        throw new Error("Init payload too large (base64)");
+    }
+
     const binaryStr = window.atob(base64);
     const bytes = new Uint8Array(binaryStr.length);
     for (let i = 0; i < binaryStr.length; i++) {
@@ -62,8 +91,7 @@ function dataUriToBytes(dataUri: string | null | undefined): Uint8Array {
 
 function computeRemainingTimeoutMs(deadlineTs: number | null): number | null {
     if (deadlineTs === null) return null;
-    const remaining = deadlineTs - Date.now();
-    return remaining;
+    return deadlineTs - Date.now();
 }
 
 export class WorkerClient {
@@ -103,7 +131,10 @@ export class WorkerClient {
             try {
                 console.log("[WorkerClient] Initializing...");
 
-                this.worker = new Worker(WorkerUrl);
+                // ✅ CRITICAL: inline URL + module worker => webpack bundles worker as JS (not .ts)
+                this.worker = new Worker(new URL("./transliteration.worker.ts", import.meta.url), {
+                    type: "module",
+                });
 
                 // Heartbeat timeout for dead workers (e.g., blocked by enterprise policies)
                 const heartbeatTimeout = setTimeout(async () => {
@@ -189,6 +220,14 @@ export class WorkerClient {
                 const b1 = dataUriToBytes(dictE2iData as unknown as string);
                 const b2 = dataUriToBytes(dictI2eData as unknown as string);
                 const wasmBytes = dataUriToBytes(wasmData as unknown as string);
+
+                // DoS caps: if violated, something is badly wrong
+                if (b1.byteLength === 0 || b2.byteLength === 0 || wasmBytes.byteLength === 0) {
+                    throw new Error("Worker init payload missing (dict/wasm)");
+                }
+                if (b1.byteLength > MAX_INIT_DICT_BYTES) throw new Error("dictE2i too large");
+                if (b2.byteLength > MAX_INIT_DICT_BYTES) throw new Error("dictI2e too large");
+                if (wasmBytes.byteLength > MAX_INIT_WASM_BYTES) throw new Error("WASM too large");
 
                 const msg: WorkerMessage = {
                     type: "INIT",
@@ -393,6 +432,14 @@ export class WorkerClient {
             return;
         }
 
+        try {
+            ensureConvertPayloadSafe(q.payload.xml, q.payload.options);
+        } catch (e) {
+            q.reject(this.makeStableError(e, "Invalid convert payload"));
+            this.pumpQueue();
+            return;
+        }
+
         const remaining = computeRemainingTimeoutMs(q.deadlineTs);
         if (remaining !== null && remaining <= 0) {
             q.reject(new Error("Worker timeout processing chunk"));
@@ -536,6 +583,8 @@ export class WorkerClient {
     public async convert(xml: string, options: OoxmlOptions, timeoutMs = 60_000): Promise<ConvertResult> {
         const signal = state.activeAbortController?.signal ?? null;
         if (signal?.aborted) throw makeAbortError();
+
+        ensureConvertPayloadSafe(xml, options);
 
         if (!this.isReady && !this.useFallback) await this.init();
 
