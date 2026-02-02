@@ -520,7 +520,6 @@ function printFinalReport() {
     console.log(`   • fast:   ${IS_FAST_MODE ? "YES" : "NO"}`);
     console.log(`   • push:   ${NO_PUSH ? "DISABLED (--no-push)" : "PROMPT (enabled)"}`);
     console.log(color(C.yellow, "\n   • skipped steps:"));
-
     if (SKIPPED.length === 0) {
         console.log(color(C.gray, "     (none)"));
     } else {
