@@ -17,6 +17,14 @@
 
   # -------------------------
   # CSP (Final tighten)
+  #
+  # Key points:
+  # - default-src 'none' => deny-by-default
+  # - script-src removes 'unsafe-inline' and removes 'unsafe-eval'
+  # - allows WebAssembly via 'wasm-unsafe-eval' (needed for WASM)
+  # - keep style-src 'unsafe-inline' because HTML uses inline style=""
+  # - connect-src includes common Microsoft endpoints (still restricted, not "https:")
+  # - frame-ancestors includes Office/SharePoint/Teams/OneDrive family hosts
   # -------------------------
   Content-Security-Policy: default-src 'none'; base-uri 'none'; object-src 'none'; form-action 'none'; manifest-src 'self'; script-src 'self' https://appsforoffice.microsoft.com https://ajax.aspnetcdn.com 'wasm-unsafe-eval'; worker-src 'self' blob:; child-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; frame-src 'self' https://*.office.com https://*.officeapps.live.com https://*.microsoft.com https://*.sharepoint.com https://*.sharepoint-df.com https://onedrive.live.com https://*.onedrive.live.com https://teams.microsoft.com https://*.teams.microsoft.com; connect-src 'self' https://*.office.com https://*.officeapps.live.com https://*.microsoft.com https://*.microsoftonline.com https://login.microsoftonline.com https://*.msauth.net https://*.msftauth.net https://*.sharepoint.com https://*.sharepoint-df.com https://onedrive.live.com https://*.onedrive.live.com; frame-ancestors 'self' https://*.office.com https://*.officeapps.live.com https://*.microsoft.com https://*.sharepoint.com https://*.sharepoint-df.com https://onedrive.live.com https://*.onedrive.live.com https://teams.microsoft.com https://*.teams.microsoft.com https://*.skype.com https://*.teams.microsoft.us https://local.teams.office.com https://teams.microsoftonline.cn https://*.powerapps.com https://*.yammer.com https://*.microsoftstream.com https://*.dynamics.com https://securebroker.sharepointonline.com;
 
@@ -27,13 +35,6 @@
   Cache-Control: public, max-age=0, must-revalidate
 
 /manifest.webmanifest
-  Cache-Control: public, max-age=0, must-revalidate
-
-# -------------------------
-# NO-CACHE: Service Worker (MUST update reliably)
-# -------------------------
-/sw.js
-  ! Cache-Control
   Cache-Control: public, max-age=0, must-revalidate
 
 # -------------------------
@@ -49,12 +50,23 @@
   Cache-Control: public, max-age=31536000, immutable
 
 # -------------------------
-# Assets folder
-#   - icons: NO-CACHE (stable filenames)
-#   - everything else: IMMUTABLE
+# Assets folder (default)
 # -------------------------
-/assets/icon-*.png
-  Cache-Control: public, max-age=0, must-revalidate
-
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
+
+# -------------------------
+# OVERRIDES (MUST be AFTER generic rules)
+# -------------------------
+
+# NO-CACHE: Service Worker (MUST update reliably)
+# Overrides the generic "*.js immutable" rule.
+/sw.js
+  ! Cache-Control
+  Cache-Control: public, max-age=0, must-revalidate
+
+# NO-CACHE: Icons (stable filenames)
+# Overrides the generic "/assets/* immutable" rule.
+/assets/icon-*.png
+  ! Cache-Control
+  Cache-Control: public, max-age=0, must-revalidate
