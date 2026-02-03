@@ -532,10 +532,12 @@ function printFinalReport() {
             console.log(`   • ${left} : ${right}${errTag}`);
         });
 
-        // TOTAL line
-        const totalLabel = hasError ? "❌ TOTAL" : "✅ TOTAL";
-        const totalLeft = totalLabel.padEnd(leftW);
-        const totalLine = `   ${totalLeft} : ${totalTime.padStart(timeW)}`;
+        // TOTAL line (use single-width marks for stable alignment)
+        const totalPrefix = hasError ? "   ✖ " : "   ✔ ";
+        const totalLeft = "TOTAL".padEnd(leftW);
+        const totalLine = `${totalPrefix}${totalLeft} : ${totalTime.padStart(timeW)}`;
+
+        console.log(color(hasError ? C.red + C.bold : C.green + C.bold, totalLine));
 
         if (hasError) {
             console.log(color(C.red + C.bold, totalLine));

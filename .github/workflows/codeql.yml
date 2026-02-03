@@ -80,8 +80,8 @@ jobs:
                   input: ${{ steps.sarif.outputs.file }}
                   output: ${{ steps.sarif.outputs.file }}
                   patterns: |
-                      -**/src/shared/ooxml/xmlParser.ts:js/xss
-                      -**/src/shared/ooxml/xmlParser.ts:js/xml-bomb
+                      -**/xmlParser.ts:js/xss
+                      -**/xmlParser.ts:js/xml-bomb
 
             - name: Upload SARIF (filtered)
               id: upload
@@ -90,3 +90,10 @@ jobs:
                   sarif_file: ${{ steps.sarif.outputs.file }}
                   category: "/language:${{ matrix.language }}"
                   wait-for-processing: true
+
+            - name: Upload SARIF as artifact (debug)
+              uses: actions/upload-artifact@v4
+              with:
+                  name: sarif-results
+                  path: sarif-results
+                  retention-days: 1
