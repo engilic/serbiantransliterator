@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// scripts/filter-codeql-sarif.cjs
+
 "use strict";
 
 const fs = require("fs");
