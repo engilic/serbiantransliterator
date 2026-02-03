@@ -18,7 +18,6 @@ const WASM_DIR = path.join(ROOT, "src", "wasm-core");
 
 // ✅ Verify pipeline identity
 const VERIFY_TEST_NAME = "GOD1 VERIFY";
-const VERIFY_TEST_VERSION = "1.0.0";
 
 // ✅ Global start timestamp for cumulative checkpoint time
 const RUN_START_TS = Date.now();
@@ -209,7 +208,7 @@ function printBanner() {
     console.log(
         color(
             C.magenta + C.bold,
-            `\n🛡️  ${VERIFY_TEST_NAME} v${VERIFY_TEST_VERSION} • App v${APP_VERSION} 🛡️\n`
+            `\n🛡️  ${VERIFY_TEST_NAME} • App v${APP_VERSION} 🛡️\n`
         )
     );
 
