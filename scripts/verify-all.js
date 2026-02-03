@@ -45,8 +45,6 @@ const TIMINGS = [];
 const EXECUTED = [];
 const SKIPPED = [];
 
-let FINAL_REPORT_PRINTED = false;
-
 let FAILED_STEP = null; // set when die(step) is called
 
 let STEP_NO = 0;
@@ -205,12 +203,7 @@ function beep() {
 }
 
 function printBanner() {
-    console.log(
-        color(
-            C.magenta + C.bold,
-            `\n🛡️  ${VERIFY_TEST_NAME} • App v${APP_VERSION} 🛡️\n`
-        )
-    );
+    console.log(color(C.magenta + C.bold, `\n🛡️  ${VERIFY_TEST_NAME} • App v${APP_VERSION} 🛡️\n`));
 
     const nodeVer = process.version;
     const npmVer = runCaptureText("npm", ["-v"], ROOT) || "unknown";
@@ -386,7 +379,7 @@ async function askYesNo(q) {
         function cleanup(result) {
             try {
                 process.stdin.setRawMode(false);
-            } catch {}
+            } catch { }
             process.stdin.pause();
             process.stdin.removeListener("data", listener);
             resolve(result);
@@ -459,44 +452,41 @@ function legendForStatus(xy) {
         x === " "
             ? "index clean"
             : x === "M"
-              ? "index modified (staged)"
-              : x === "A"
-                ? "index added (staged)"
-                : x === "D"
-                  ? "index deleted (staged)"
-                  : x === "R"
-                    ? "index renamed (staged)"
-                    : x === "C"
-                      ? "index copied (staged)"
-                      : x === "U"
-                        ? "index unmerged"
-                        : `index ${x}`;
+                ? "index modified (staged)"
+                : x === "A"
+                    ? "index added (staged)"
+                    : x === "D"
+                        ? "index deleted (staged)"
+                        : x === "R"
+                            ? "index renamed (staged)"
+                            : x === "C"
+                                ? "index copied (staged)"
+                                : x === "U"
+                                    ? "index unmerged"
+                                    : `index ${x}`;
 
     const yPart =
         y === " "
             ? "worktree clean"
             : y === "M"
-              ? "worktree modified (unstaged)"
-              : y === "A"
-                ? "worktree added"
-                : y === "D"
-                  ? "worktree deleted"
-                  : y === "R"
-                    ? "worktree renamed"
-                    : y === "C"
-                      ? "worktree copied"
-                      : y === "U"
-                        ? "worktree unmerged"
-                        : `worktree ${y}`;
+                ? "worktree modified (unstaged)"
+                : y === "A"
+                    ? "worktree added"
+                    : y === "D"
+                        ? "worktree deleted"
+                        : y === "R"
+                            ? "worktree renamed"
+                            : y === "C"
+                                ? "worktree copied"
+                                : y === "U"
+                                    ? "worktree unmerged"
+                                    : `worktree ${y}`;
 
     return `${xPart}, ${yPart}`;
 }
 
 function printFinalReport() {
-    if (FINAL_REPORT_PRINTED) return;
-    FINAL_REPORT_PRINTED = true;
-
-    console.log(color(C.cyan, "\n📊 TIMINGS REPORT:"));
+    console.log(color(C.cyan, "\n⏱️  TIMINGS REPORT:"));
 
     const hasError = !!FAILED_STEP;
 
@@ -519,7 +509,7 @@ function printFinalReport() {
         const timeW = Math.max(...rows.map((r) => r.time.length), totalTime.length);
 
         // Find failing row by exact step string; if missing (e.g. failure in runInline before timing was pushed),
-        // mark the last printed row as ERROR to match the "last step shows ERROR" requirement.
+        // mark the last printed row as ERROR to match "last step shows ERROR".
         let failIndex = -1;
         if (hasError) {
             failIndex = rows.findIndex((r) => r.step === FAILED_STEP);
@@ -536,9 +526,12 @@ function printFinalReport() {
             console.log(`   • ${left} : ${right}${errTag}`);
         });
 
-        // TOTAL line (use single-width marks for stable alignment)
-        const totalPrefix = hasError ? "   ✖  " : "   ✔  "; // 2 spaces after the mark
-        const totalLeftW = Math.max(0, leftW - 1); // compensate for the extra space in prefix
+        // TOTAL line (stable alignment; +3 spaces before mark, 1 space after)
+        const totalPrefix = `${"   " + " ".repeat(3)}${hasError ? "✖" : "✔"}${" ".repeat(1)}`;
+
+        // compensate so ':' stays aligned with other rows
+        const totalLeftW = Math.max(0, leftW - (totalPrefix.length - "   • ".length));
+
         const totalLeft = "TOTAL".padEnd(totalLeftW);
         const totalLine = `${totalPrefix}${totalLeft} : ${totalTime.padStart(timeW)}`;
 
@@ -692,9 +685,7 @@ async function prettierGate() {
 
     const chk2 = runCmdCapture("npm", ["run", "format:check"], ROOT);
     if (chk2.status !== 0) {
-        throw new Error(
-            "Prettier still not clean after auto-fix. Run 'npm run format:check' to see details."
-        );
+        throw new Error("Prettier still not clean after auto-fix. Run 'npm run format:check' to see details.");
     }
 }
 
@@ -845,11 +836,7 @@ async function main() {
     if (IS_STRICT) {
         runStep("Audit (npm prod/high)", "npm", ["run", "audit:prod:high"]);
 
-        await runInlineStepCmd(
-            "Cargo audit (wasm-core)",
-            "cargo audit --deny warnings",
-            cargoAuditStrictGate
-        );
+        await runInlineStepCmd("Cargo audit (wasm-core)", "cargo audit --deny warnings", cargoAuditStrictGate);
     } else {
         SKIPPED.push("Audit (npm prod/high) (strict-only)");
         SKIPPED.push("Cargo audit (wasm-core) (strict-only)");
@@ -885,13 +872,7 @@ async function main() {
         const COV_STEP = nextStep("Unit Tests (coverage)");
         run(COV_STEP, "npm", ["run", "test:coverage"], ROOT, { beforeOk: printCoverageLocations });
 
-        runStep("E2E Tests (trace on failure)", "npm", [
-            "run",
-            "test:e2e",
-            "--",
-            "--trace",
-            "retain-on-failure",
-        ]);
+        runStep("E2E Tests (trace on failure)", "npm", ["run", "test:e2e", "--", "--trace", "retain-on-failure"]);
     } else {
         SKIPPED.push("Unit Tests (fast)");
         SKIPPED.push("E2E Tests (fast)");
@@ -942,9 +923,7 @@ async function main() {
             });
 
             console.log(color(C.green, `\n✅ Uspešno! Otvori Pull Request ovde:`));
-            console.log(
-                color(C.cyan, `https://github.com/engilic/serbiantransliterator/pull/new/${autoBranch}\n`)
-            );
+            console.log(color(C.cyan, `https://github.com/engilic/serbiantransliterator/pull/new/${autoBranch}\n`));
         } else {
             console.log(color(C.blue, `🚀 Pushing ${currentBranch}...`));
             spawnSync("git", ["push", "-u", "origin", currentBranch], {
