@@ -1,159 +1,93 @@
 // src/sw.ts
 
-/* eslint-disable no-restricted-globals */
 /// <reference lib="webworker" />
 
-declare const __BUILD_ID__: string;
+import { cleanupOutdatedCaches, precacheAndRoute } from "workbox-precaching";
+import { registerRoute, NavigationRoute } from "workbox-routing";
+import { NetworkFirst, StaleWhileRevalidate, CacheFirst } from "workbox-strategies";
+import { CacheableResponsePlugin } from "workbox-cacheable-response";
+import { ExpirationPlugin } from "workbox-expiration";
 
-// Force correct SW typing (prevents TS thinking `self` is Window)
-const sw = self as unknown as ServiceWorkerGlobalScope;
+declare const self: ServiceWorkerGlobalScope;
 
-const BUILD_ID = typeof __BUILD_ID__ === "string" && __BUILD_ID__.length > 0 ? __BUILD_ID__ : "dev";
-const CACHE_NAME = `serbian-trans:${BUILD_ID}`;
-
-// Minimal core URLs (HTML must stay update-safe via network-first fetch logic)
-const CORE_URLS: string[] = ["./", "./index.html", "./taskpane.html", "./manifest.webmanifest"];
-
-async function safeAdd(cache: Cache, url: string): Promise<void> {
-    try {
-        await cache.add(new Request(url, { cache: "reload" }));
-    } catch {
-        // SW install must never fail because of a single asset
-    }
-}
-
-function isSameOriginRequest(req: Request): boolean {
-    try {
-        const url = new URL(req.url);
-        return url.origin === sw.location.origin;
-    } catch {
-        return false;
-    }
-}
-
-function isHtmlRequest(req: Request): boolean {
-    if (req.mode === "navigate") return true;
-    const accept = req.headers.get("accept") || "";
-    return accept.includes("text/html");
-}
-
-function isAssetRequest(req: Request): boolean {
-    try {
-        const url = new URL(req.url);
-        const p = url.pathname.toLowerCase();
-        return (
-            p.endsWith(".js") ||
-            p.endsWith(".css") ||
-            p.endsWith(".wasm") ||
-            p.endsWith(".png") ||
-            p.endsWith(".jpg") ||
-            p.endsWith(".jpeg") ||
-            p.endsWith(".gif") ||
-            p.endsWith(".svg") ||
-            p.endsWith(".ico") ||
-            p.endsWith(".webp") ||
-            p.endsWith(".woff") ||
-            p.endsWith(".woff2") ||
-            p.endsWith(".ttf")
-        );
-    } catch {
-        return false;
-    }
-}
-
-sw.addEventListener("install", (event: Event) => {
-    const e = event as ExtendableEvent;
-    e.waitUntil(
-        (async () => {
-            const cache = await caches.open(CACHE_NAME);
-            for (const url of CORE_URLS) {
-                await safeAdd(cache, url);
-            }
-            await sw.skipWaiting();
-        })()
-    );
+// 1. Force immediate update (opciono, ali dobro za brze fixeve)
+self.addEventListener("install", () => {
+    self.skipWaiting();
 });
 
-sw.addEventListener("activate", (event: Event) => {
-    const e = event as ExtendableEvent;
-    e.waitUntil(
-        (async () => {
-            const keys = await caches.keys();
-            await Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)));
-            await sw.clients.claim();
-        })()
-    );
+self.addEventListener("activate", () => {
+    self.clients.claim();
 });
 
-sw.addEventListener("fetch", (event: Event) => {
-    const e = event as FetchEvent;
-    const req = e.request;
+// 2. Očisti stare verzije keša (automatski briše stare hash fajlove)
+cleanupOutdatedCaches();
 
-    if (req.method !== "GET") return;
-    if (!isSameOriginRequest(req)) return;
+// 3. Precache - Ovde Webpack ubacuje listu svih fajlova!
+// (JS, CSS, HTML, Icons, WASM - sve što je Webpack napravio)
+precacheAndRoute(self.__WB_MANIFEST);
 
-    // never cache sw.js
-    try {
-        const u = new URL(req.url);
-        if (u.pathname.endsWith("/sw.js")) return;
-    } catch {
-        // ignore
-    }
+// 4. Runtime Caching Strategies
 
-    // HTML: network-first (update safety)
-    if (isHtmlRequest(req)) {
-        e.respondWith(
+// A. Navigacija (HTML) -> Network First, fallback to Offline Cache
+// Ako server ima noviju verziju, uzmi nju. Ako nema neta, uzmi keš.
+const navigationRoute = new NavigationRoute(
+    new NetworkFirst({
+        cacheName: "pages-cache",
+        plugins: [
+            new CacheableResponsePlugin({
+                statuses: [0, 200],
+            }),
+        ],
+    })
+);
+registerRoute(navigationRoute);
+
+// B. Google Fonts (ako koristiš) ili eksterni CDN
+registerRoute(
+    ({ url }) => url.origin === "https://fonts.googleapis.com" || url.origin === "https://fonts.gstatic.com",
+    new StaleWhileRevalidate({
+        cacheName: "google-fonts",
+        plugins: [new ExpirationPlugin({ maxEntries: 20 })],
+    })
+);
+
+// C. Slike koje nisu u Webpacku (ako ih ima)
+registerRoute(
+    ({ request }) => request.destination === "image",
+    new CacheFirst({
+        cacheName: "images-cache",
+        plugins: [
+            new ExpirationPlugin({
+                maxEntries: 50,
+                maxAgeSeconds: 30 * 24 * 60 * 60, // 30 dana
+            }),
+        ],
+    })
+);
+
+// 5. Fallback za offline ako navigacija pukne skroz
+// (Workbox precache obično ovo rešava, ali za svaki slučaj)
+self.addEventListener("fetch", (event) => {
+    if (event.request.mode === "navigate") {
+        event.respondWith(
             (async () => {
-                const cache = await caches.open(CACHE_NAME);
                 try {
-                    const fresh = await fetch(req);
-                    try {
-                        await cache.put(req, fresh.clone());
-                    } catch {
-                        // ignore
+                    // Probaj mrežu ili keširanu navigaciju
+                    const preloadResponse = await event.preloadResponse;
+                    if (preloadResponse) {
+                        return preloadResponse;
                     }
-                    return fresh;
-                } catch {
-                    const cached = await cache.match(req);
-                    if (cached) return cached;
+                    return await fetch(event.request);
+                } catch (error) {
+                    // Ako nema neta, vrati keširani index.html ili web.html
+                    // Workbox precache je već to keširao pod ključem koji se poklapa sa URL-om
+                    const cache = await caches.open(self.registration.scope);
+                    // Pokušaj da nađeš tačan URL ili fallback
+                    const cachedResponse = await cache.match(event.request.url);
+                    if (cachedResponse) return cachedResponse;
 
-                    const indexCached = await cache.match("./index.html");
-                    if (indexCached) return indexCached;
-
-                    return new Response("Offline", { status: 503, statusText: "Offline" });
+                    return (await cache.match("/web.html")) || (await cache.match("./web.html"));
                 }
-            })()
-        );
-        return;
-    }
-
-    // Assets: cache-first, then refresh cache in background
-    if (isAssetRequest(req)) {
-        e.respondWith(
-            (async () => {
-                const cache = await caches.open(CACHE_NAME);
-                const cached = await cache.match(req);
-                if (cached) {
-                    e.waitUntil(
-                        (async () => {
-                            try {
-                                const fresh = await fetch(req);
-                                await cache.put(req, fresh.clone());
-                            } catch {
-                                // ignore
-                            }
-                        })()
-                    );
-                    return cached;
-                }
-
-                const fresh = await fetch(req);
-                try {
-                    await cache.put(req, fresh.clone());
-                } catch {
-                    // ignore
-                }
-                return fresh;
             })()
         );
     }

@@ -5,11 +5,11 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Serbian Transliterator - Besplatan Word Dodatak</title>
+        <title>Serbian Transliterator</title>
         <link rel="manifest" href="manifest.webmanifest" />
         <meta
             name="description"
-            content="Najbrži način za preslovljavanje ćirilice i latinice u Word-u. Offline, siguran i pametan."
+            content="Pametno preslovljavanje (Lat ↔ Ćir) offline-first. Web aplikacija + Word dodatak."
         />
         <style>
             :root {
@@ -29,7 +29,12 @@
             }
 
             body {
-                font-family: "Segoe UI", sans-serif;
+                font-family:
+                    "Segoe UI",
+                    system-ui,
+                    -apple-system,
+                    Arial,
+                    sans-serif;
                 margin: 0;
                 padding: 0;
                 background-color: var(--bg);
@@ -43,23 +48,25 @@
             }
 
             .container {
-                max-width: 800px;
+                max-width: 900px;
                 padding: 40px 20px;
             }
 
             h1 {
-                font-size: 2.5rem;
+                font-size: 2.6rem;
                 margin-bottom: 10px;
                 color: var(--primary);
+                letter-spacing: -0.02em;
             }
 
             p.subtitle {
-                font-size: 1.2rem;
-                opacity: 0.8;
+                font-size: 1.1rem;
+                opacity: 0.85;
                 margin-bottom: 40px;
-                max-width: 600px;
+                max-width: 650px;
                 margin-left: auto;
                 margin-right: auto;
+                line-height: 1.5;
             }
 
             .cards {
@@ -71,49 +78,59 @@
 
             .card {
                 background: var(--card-bg);
-                padding: 30px;
-                border-radius: 12px;
-                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-                width: 300px;
-                transition: transform 0.2s;
+                padding: 28px;
+                border-radius: 14px;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+                width: 320px;
+                transition:
+                    transform 0.2s ease,
+                    box-shadow 0.2s ease;
                 display: flex;
                 flex-direction: column;
                 align-items: center;
+                text-align: left;
             }
 
             .card:hover {
-                transform: translateY(-5px);
+                transform: translateY(-4px);
+                box-shadow: 0 14px 40px rgba(0, 0, 0, 0.16);
             }
 
             .card-icon {
-                font-size: 48px;
-                margin-bottom: 20px;
+                font-size: 40px;
+                margin-bottom: 16px;
+                align-self: flex-start;
             }
 
             .card h3 {
                 margin: 0 0 10px 0;
+                letter-spacing: -0.01em;
             }
 
             .card p {
-                font-size: 0.95rem;
-                opacity: 0.7;
-                margin-bottom: 20px;
+                font-size: 0.98rem;
+                opacity: 0.75;
+                margin-bottom: 18px;
                 flex: 1;
+                line-height: 1.45;
             }
 
             .btn {
                 display: inline-block;
-                padding: 12px 24px;
+                padding: 12px 18px;
                 background-color: var(--primary);
                 color: white;
                 text-decoration: none;
-                border-radius: 6px;
-                font-weight: 600;
+                border-radius: 10px;
+                font-weight: 650;
                 transition: opacity 0.2s;
+                width: 100%;
+                text-align: center;
+                box-sizing: border-box;
             }
 
             .btn:hover {
-                opacity: 0.9;
+                opacity: 0.92;
             }
 
             .btn.secondary {
@@ -123,13 +140,13 @@
             }
 
             .btn.secondary:hover {
-                background-color: rgba(15, 108, 189, 0.1);
+                background-color: rgba(15, 108, 189, 0.08);
             }
 
             footer {
-                margin-top: 60px;
-                font-size: 0.9rem;
-                opacity: 0.6;
+                margin-top: 42px;
+                font-size: 0.92rem;
+                opacity: 0.65;
             }
 
             footer a {
@@ -141,24 +158,23 @@
         <div class="container">
             <h1>Serbian Transliterator</h1>
             <p class="subtitle">
-                Pametno preslovljavanje (Lat ↔ Ćir) za Microsoft Word. <br />Offline, brzo i besplatno.
+                Preslovljavanje (Lat ↔ Ćir) sa istim engine‑om kao Word dodatak. <br />
+                Web aplikacija radi direktno u pregledaču (DOCX upload + konverzija).
             </p>
 
             <div class="cards">
                 <div class="card">
                     <div class="card-icon">🌍</div>
-                    <h3>Web Aplikacija</h3>
-                    <p>Preslovite dokumente (.docx) direktno u pregledaču. Nije potrebna instalacija.</p>
-                    <a href="taskpane.html?mode=web" class="btn">Pokreni Online</a>
+                    <h3>Web aplikacija</h3>
+                    <p>Otpremi .docx, preslovi i preuzmi rezultat. Bez instalacije, radi i offline (PWA).</p>
+                    <a href="web.html" class="btn">Otvori web aplikaciju</a>
                 </div>
 
                 <div class="card">
                     <div class="card-icon">📝</div>
-                    <h3>Word Dodatak</h3>
-                    <p>Integrisano rešenje za Word. Preslovljavanje jednim klikom unutar dokumenta.</p>
-                    <a href="https://appsource.microsoft.com/en-us/product/office/WA..." class="btn secondary"
-                        >Preuzmi za Word</a
-                    >
+                    <h3>Word dodatak</h3>
+                    <p>Integrisano u Microsoft Word. Preslovljavanje selekcije ili celog dokumenta.</p>
+                    <a href="https://appsource.microsoft.com/" class="btn secondary">Preuzmi za Word</a>
                 </div>
             </div>
 

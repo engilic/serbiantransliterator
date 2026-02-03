@@ -177,7 +177,7 @@ export class WorkerClient {
                 this.worker.onmessageerror = async (e: MessageEvent) => {
                     clearTimeout(heartbeatTimeout);
 
-                    // During init: treat as init failure. After init: GOD1 recovery.
+                    // During init: treat as init failure. After init: MAX1 recovery.
                     if (!this.isReady) {
                         if (this.isTesting) {
                             this.initPromise = null;
@@ -212,7 +212,7 @@ export class WorkerClient {
                         return;
                     }
 
-                    // Runtime crash: GOD1 recovery -> seamless fallback + requeue in-flight jobs (no reject).
+                    // Runtime crash: MAX1 recovery -> seamless fallback + requeue in-flight jobs (no reject).
                     console.error("[WorkerClient] Worker onerror (runtime):", e);
                     await this.handleWorkerFatalError(e, "onerror");
                 };
@@ -309,7 +309,7 @@ export class WorkerClient {
         void incrementCounter("worker_runtime_crash_count", 1);
         void incrementCounter(`worker_fallback_activated_reason:${source}`, 1);
 
-        logger.warn("Worker runtime crash detected; switching to fallback (GOD1 seamless recovery)", {
+        logger.warn("Worker runtime crash detected; switching to fallback (seamless recovery)", {
             source,
             error: stable,
         });
@@ -325,7 +325,7 @@ export class WorkerClient {
         this.jobs.clear();
         this.inFlightCount = 0;
 
-        // Requeue in-flight jobs (GOD1 mode) so promises continue and resolve via fallback.
+        // Requeue in-flight jobs (MAX1 mode) so promises continue and resolve via fallback.
         const requeue: QueuedJob[] = [];
         for (const job of inFlight) {
             const signalAborted = job.signal?.aborted === true;

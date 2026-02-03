@@ -1,7 +1,8 @@
 {
     "name": "Serbian Transliterator",
     "short_name": "Srpski Trans",
-    "start_url": "./index.html",
+    "start_url": "./web.html",
+    "scope": "./",
     "display": "standalone",
     "background_color": "#ffffff",
     "theme_color": "#0f6cbd",
@@ -20,7 +21,7 @@
     ],
     "file_handlers": [
         {
-            "action": "/index.html",
+            "action": "./web.html",
             "accept": {
                 "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"]
             }

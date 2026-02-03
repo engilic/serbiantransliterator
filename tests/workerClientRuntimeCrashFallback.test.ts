@@ -48,7 +48,7 @@ class CrashAfterConvertWorker {
     removeEventListener() {}
 }
 
-describe("WorkerClient - GOD1 runtime crash recovery (requeue + fallback, no reject)", () => {
+describe("WorkerClient - runtime crash recovery (requeue + fallback, no reject)", () => {
     beforeEach(() => {
         vi.useFakeTimers();
         (globalThis as any).Worker = CrashAfterConvertWorker;

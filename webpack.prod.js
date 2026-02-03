@@ -1,8 +1,9 @@
-/* eslint-disable no-undef */
 // webpack.prod.js
 
 const TerserPlugin = require("terser-webpack-plugin");
 const CompressionPlugin = require("compression-webpack-plugin");
+// [NOVO] Workbox za generisanje manifesta
+const { InjectManifest } = require("workbox-webpack-plugin");
 
 module.exports = {
     mode: "production",
@@ -15,19 +16,18 @@ module.exports = {
             new TerserPlugin({
                 parallel: true,
                 extractComments: false,
-                // [FIX] Isključi minifikaciju za velike binarne fajlove
                 exclude: /\/node_modules\/|.*\.bin\.js/,
                 terserOptions: {
                     compress: {
                         drop_console: true,
-                        passes: 1, // Brzina
+                        passes: 1,
                     },
                     mangle: {
                         toplevel: true,
                     },
                     output: {
                         comments: false,
-                        max_line_len: 1000, // Brzina za velike linije
+                        max_line_len: 1000,
                     },
                 },
             }),
@@ -35,7 +35,7 @@ module.exports = {
         splitChunks: {
             chunks: "all",
             minSize: 20000,
-            maxSize: 500000, // Veći chunkovi za rečnike
+            maxSize: 500000,
             cacheGroups: {
                 vendors: {
                     test: /[\\/]node_modules[\\/]/,
@@ -54,6 +54,29 @@ module.exports = {
             test: /\.(js|css|html|svg|wasm)$/,
             threshold: 10240,
             minRatio: 0.8,
+        }),
+
+        // [NOVO] Generisanje liste fajlova za SW
+        new InjectManifest({
+            swSrc: "./src/sw.ts", // Tvoj izvorni SW
+            swDest: "sw.js", // Gde Webpack izbacuje finalni SW
+            include: [
+                /\.html$/,
+                /\.js$/,
+                /\.css$/,
+                /\.wasm$/,
+                /\.png$/,
+                /\.json$/,
+                /manifest\.webmanifest$/, // Uključi PWA manifest
+            ],
+            // [BITNO] Ne keširaj Add-in fajlove za Web korisnike!
+            exclude: [
+                /taskpane/,
+                /commands/,
+                /manifest\.xml$/, // Office manifest
+                /manifest\.prod\.xml$/, // Office manifest
+            ],
+            maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB limit (zbog WASM/Dict)
         }),
     ],
 

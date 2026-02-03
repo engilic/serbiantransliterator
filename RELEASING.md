@@ -40,7 +40,7 @@ Ovo obezbeđuje da Word pouzdano povuče novu verziju add-in-a.
 
 ## 1) Pre-release checks
 
-Najsigurnije (GOD1) je da koristiš Guardian pipeline:
+Najsigurnije (MAX1) je da koristiš Guardian pipeline:
 
 ```pwsh
 npm run verify:all -- --no-push

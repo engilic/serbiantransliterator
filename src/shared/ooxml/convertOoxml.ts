@@ -27,8 +27,7 @@ import {
     buildPhraseInfos,
 } from "./bridge/index";
 import { URL_RE_G, EMAIL_RE_G } from "../patterns/links";
-import { perfMonitor } from "../../taskpane/app/telemetry/performanceMonitor";
-
+import { perf } from "../telemetry/perf";
 import { removeProofingTags, findAncestor, countMatches, toAscii } from "./converterUtils";
 import { parseSafeOoxml } from "./xmlParser";
 import { createEmptyStats, type ConvertStats } from "./stats";
@@ -331,13 +330,11 @@ export function convertOoxml(
     const t1 = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
     const duration = Math.max(0, t1 - t0);
 
-    if (typeof perfMonitor !== "undefined") {
-        perfMonitor.record("convertOoxml", textNodes.length, duration, {
-            sizeKb: ooxmlSizeKb,
-            direction: direction,
-            bridges: Object.values(bridges).reduce((a, b) => a + b, 0),
-        });
-    }
+    perf.record("convertOoxml", textNodes.length, duration, {
+        sizeKb: ooxmlSizeKb,
+        direction: direction,
+        bridges: Object.values(bridges).reduce((a, b) => a + b, 0),
+    });
 
     const stats: ConvertStats = {
         direction: direction as ConvertStats["direction"],
