@@ -10,10 +10,7 @@ function escapeXmlText(s: string): string {
     // (XML 1.0 only allows TAB, LF, CR from C0 controls; others should not appear directly)
     const stripped = s.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\uD800-\uDFFF\uFFFE\uFFFF]/g, "");
     // Escape markup-sensitive chars
-    return stripped
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
+    return stripped.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 // Arbitrary generators for OOXML structure

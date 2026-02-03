@@ -46,6 +46,8 @@ const TIMINGS = [];
 const EXECUTED = [];
 const SKIPPED = [];
 
+let FAILED_STEP = null; // set when die(step) is called
+
 let STEP_NO = 0;
 
 function nextStep(title) {
@@ -240,6 +242,8 @@ function stepNo(step) {
 }
 
 function die(step) {
+    FAILED_STEP = step;
+
     beep();
     console.error(`\n${color(C.bgRed, " ❌ FATAL ERROR: " + step + " ")}\n`);
     printFinalReport();
@@ -489,6 +493,9 @@ function legendForStatus(xy) {
 
 function printFinalReport() {
     console.log(color(C.cyan, "\n📊 TIMINGS REPORT:"));
+
+    const hasError = !!FAILED_STEP;
+
     if (TIMINGS.length === 0) {
         console.log(color(C.gray, "   (no timings recorded)"));
     } else {
@@ -497,22 +504,44 @@ function printFinalReport() {
             const no = m ? m[1] : "";
             const title = m ? m[2] : String(t.step);
             const time = `${t.time}s`;
-            return { no, title, time };
+            return { no, title, time, step: t.step };
         });
 
         const noW = Math.max(2, ...rows.map((r) => r.no.length));
         const titleW = Math.max(...rows.map((r) => r.title.length));
+        const leftW = noW + 2 + titleW;
+
         const totalTime = TIMINGS.reduce((acc, t) => acc + (Number(t.time) || 0), 0).toFixed(2) + "s";
         const timeW = Math.max(...rows.map((r) => r.time.length), totalTime.length);
 
-        for (const r of rows) {
-            const left = `${r.no.padStart(noW)}. ${r.title}`.padEnd(noW + 2 + titleW);
-            const right = r.time.padStart(timeW);
-            console.log(`   • ${left} : ${right}`);
+        // Find failing row by exact step string; if missing (e.g. failure in runInline before timing was pushed),
+        // mark the last printed row as ERROR to match the "last step shows ERROR" requirement.
+        let failIndex = -1;
+        if (hasError) {
+            failIndex = rows.findIndex((r) => r.step === FAILED_STEP);
+            if (failIndex < 0 && rows.length > 0) failIndex = rows.length - 1;
         }
 
-        const totalLeft = `${"".padStart(noW)}  TOTAL`.padEnd(noW + 2 + titleW);
-        console.log(color(C.magenta + C.bold, `     ${totalLeft} : ${totalTime.padStart(timeW)}`));
+        rows.forEach((r, idx) => {
+            const left = `${r.no.padStart(noW)}. ${r.title}`.padEnd(leftW);
+            const right = r.time.padStart(timeW);
+
+            const isFailRow = hasError && idx === failIndex;
+            const errTag = isFailRow ? " " + color(C.red + C.bold, "ERROR") : "";
+
+            console.log(`   • ${left} : ${right}${errTag}`);
+        });
+
+        // TOTAL line
+        const totalLabel = hasError ? "❌ TOTAL" : "✅ TOTAL";
+        const totalLeft = totalLabel.padEnd(leftW);
+        const totalLine = `   ${totalLeft} : ${totalTime.padStart(timeW)}`;
+
+        if (hasError) {
+            console.log(color(C.red + C.bold, totalLine));
+        } else {
+            console.log(color(C.green + C.bold, totalLine));
+        }
     }
 
     console.log(color(C.cyan, "\n📎 EXECUTION REPORT:"));
