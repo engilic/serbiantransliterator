@@ -9,6 +9,12 @@ on:
         - cron: "0 6 * * 1"
     workflow_dispatch:
 
+# (Opcionalno, ali preporučeno) sprečava da stari run završi posle novog
+# i napravi konfuziju oko “koji rezultat je poslednji”.
+concurrency:
+    group: pr-${{ github.event.pull_request.number || github.ref }}
+    cancel-in-progress: true
+
 jobs:
     analyze:
         name: Analyze (CodeQL)
@@ -60,26 +66,53 @@ jobs:
                   output: sarif-results
                   upload: false
 
-            - name: Locate SARIF file
-              id: sarif
+            - name: List SARIF outputs
               shell: bash
               run: |
                   set -euo pipefail
-                  echo "Listing SARIF outputs:"
+                  echo "Listing sarif-results:"
                   ls -la sarif-results || true
-                  SARIF_FILE="$(ls sarif-results/*.sarif | head -n 1)"
-                  echo "Using SARIF: ${SARIF_FILE}"
-                  echo "file=${SARIF_FILE}" >> "$GITHUB_OUTPUT"
+                  echo "SARIF files:"
+                  ls -la sarif-results/*.sarif 2>/dev/null || true
 
-            - name: Filter SARIF (hard remove OOXML xmlParser false positives)
+            - name: Filter ALL SARIF files (hard remove OOXML xmlParser false positives)
               shell: bash
               run: |
                   set -euo pipefail
-                  node scripts/filter-codeql-sarif.cjs --in "${{ steps.sarif.outputs.file }}" --out "${{ steps.sarif.outputs.file }}"
+                  shopt -s nullglob
+                  files=(sarif-results/*.sarif)
+
+                  if [ ${#files[@]} -eq 0 ]; then
+                    echo "ERROR: No SARIF files found in sarif-results/"
+                    exit 1
+                  fi
+
+                  for f in "${files[@]}"; do
+                    node scripts/filter-codeql-sarif.cjs --in "$f" --out "$f"
+                  done
+
+            - name: Assert filtered SARIF contains no remaining matches
+              shell: bash
+              run: |
+                  set -euo pipefail
+                  shopt -s nullglob
+                  files=(sarif-results/*.sarif)
+
+                  # Fail hard if any remaining js/xss or js/xml-bomb results reference xmlParser.ts
+                  if jq -r '
+                    .runs[].results[]?
+                    | select(.ruleId=="js/xss" or .ruleId=="js/xml-bomb")
+                    | (.locations[0].physicalLocation.artifactLocation.uri // "")
+                  ' "${files[@]}" | grep -Ei "src[\\/]+shared[\\/]+ooxml[\\/]+xmlParser\.ts" -q; then
+                    echo "ERROR: SARIF still contains js/xss or js/xml-bomb results for src/shared/ooxml/xmlParser.ts"
+                    exit 1
+                  fi
+
+                  echo "OK: filtered SARIF has no remaining matches"
 
             - name: Upload SARIF (filtered)
               uses: github/codeql-action/upload-sarif@v4
               with:
-                  sarif_file: ${{ steps.sarif.outputs.file }}
+                  sarif_file: sarif-results
                   category: "/language:${{ matrix.language }}"
                   wait-for-processing: true

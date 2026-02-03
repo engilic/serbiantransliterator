@@ -20,10 +20,14 @@ if (!inFile) {
 
 const sarif = JSON.parse(fs.readFileSync(inFile, "utf8"));
 
-// Remove only these two CodeQL findings...
 const ruleIds = new Set(["js/xss", "js/xml-bomb"]);
-// ...and only when they point at this file (works for relative paths and file:// URIs)
-const targetFileRe = /src[\\/]+shared[\\/]+ooxml[\\/]+xmlParser\.ts$/;
+
+// Robust match:
+// - works for relative paths and file:// URIs
+// - tolerates / or \
+// - tolerates extra suffixes like ?... or #...
+const targetFileRe =
+    /src[\\/]+shared[\\/]+ooxml[\\/]+xmlParser\.ts(?:$|[?#])/i;
 
 function touchesTarget(res) {
     for (const loc of res?.locations || []) {
@@ -34,17 +38,24 @@ function touchesTarget(res) {
 }
 
 let removed = 0;
+let removedByRule = { "js/xss": 0, "js/xml-bomb": 0 };
 
 for (const run of sarif.runs || []) {
     if (!Array.isArray(run.results)) continue;
 
     run.results = run.results.filter((res) => {
-        if (!ruleIds.has(res?.ruleId)) return true;
+        const id = res?.ruleId;
+        if (!ruleIds.has(id)) return true;
         if (!touchesTarget(res)) return true;
+
         removed++;
+        removedByRule[id] = (removedByRule[id] || 0) + 1;
         return false;
     });
 }
 
-console.log(`[sarif-filter] removed=${removed}`);
+console.log(
+    `[sarif-filter] file=${inFile} removed=${removed} (js/xss=${removedByRule["js/xss"]}, js/xml-bomb=${removedByRule["js/xml-bomb"]})`
+);
+
 fs.writeFileSync(outFile, JSON.stringify(sarif, null, 2), "utf8");
