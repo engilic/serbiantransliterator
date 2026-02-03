@@ -19,8 +19,8 @@ Fokus: prelazak sa "Functional" na "Bulletproof" stabilnost (Faza 2 Hardening).
 - **Privremeno rešenje:** Adaptive Chunking (procesiranje po 50 paragrafa).
 - **Finalno rešenje:** Implementacija **Rust Streaming Pull-Parsera** koristeći
   `quick-xml`.
-  - Cilj: procesiranje neograničeno velikih XML-ova uz konstantnu potrošnju
-    memorije od <50MB (cilj/heuristika; validirati kroz stress testove).
+    - Cilj: procesiranje neograničeno velikih XML-ova uz konstantnu potrošnju
+      memorije od <50MB (cilj/heuristika; validirati kroz stress testove).
 
 ### 2) Worker Lifecycle & Panic Recovery (Self-Healing)
 
@@ -28,9 +28,9 @@ Fokus: prelazak sa "Functional" na "Bulletproof" stabilnost (Faza 2 Hardening).
   karaktera), Web Worker umire. Trenutni `WorkerClient.ts` prelazi na
   main-thread fallback, što rezultira blokiranjem UI-ja.
 - **Zadatak:** Implementirati supervisor pattern:
-  - Ako Worker crash-uje, klijent automatski instancira novi Worker
-  - ponovo inicijalizuje WASM/rečnike
-  - retry (npr. 1 pokušaj), pa tek onda hard fail.
+    - Ako Worker crash-uje, klijent automatski instancira novi Worker
+    - ponovo inicijalizuje WASM/rečnike
+    - retry (npr. 1 pokušaj), pa tek onda hard fail.
 - **Status:** Investigating (potrebno u v1.1.0).
 
 ---
@@ -45,16 +45,16 @@ Fokus: prelazak sa "Functional" na "Bulletproof" stabilnost (Faza 2 Hardening).
 - **Tehnički uzrok:** WebView2 ne ispaljuje uvek `media-query` change event unutar
   Office iframe-a.
 - **Planirani fix:**
-  - Uvesti polling (npr. svakih 2s) nad `Office.context.officeTheme`, ili
-  - osvežavanje stila na `window.focus`.
+    - Uvesti polling (npr. svakih 2s) nad `Office.context.officeTheme`, ili
+    - osvežavanje stila na `window.focus`.
 
 ### 4) State Persistence (Recovery after Close)
 
 - **Opis:** Ako korisnik zatvori Taskpane, gubi se istorija poslednje operacije,
   izabrani filteri u "Zaštićeno" sekciji i rezultati poslednje statistike.
 - **Zadatak:** Implementirati `sessionStorage` sinhronizaciju za `AppState`.
-  - Pri inicijalizaciji (`init.ts`) proveriti postojanje sačuvanog stanja i
-    uraditi "rehydration".
+    - Pri inicijalizaciji (`init.ts`) proveriti postojanje sačuvanog stanja i
+      uraditi "rehydration".
 
 ---
 
@@ -67,16 +67,16 @@ Fokus: prelazak sa "Functional" na "Bulletproof" stabilnost (Faza 2 Hardening).
   početak sledeće reči `j`).
 - **Zadatak:** Poboljšati heuristiku u `digraphs.ts` tako da se spajanje vrši
   samo ako oba karaktera pripadaju istom leksičkom kontekstu:
-  - bez razmaka ili interpunkcije između njih,
-  - čak i ako su u različitim `<w:t>`.
+    - bez razmaka ili interpunkcije između njih,
+    - čak i ako su u različitim `<w:t>`.
 
 ### 6) I18n Bloat & Dead Keys
 
 - **Opis:** Tokom brzog razvoja dodato je mnogo ključeva u `sr.ts` i `en.ts` koji
   se više ne koriste u UI.
 - **Zadatak:**
-  - Pokrenuti `scripts/checkI18nKeys.cjs`
-  - obrisati "orphan" ključeve radi smanjenja bundle veličine.
+    - Pokrenuti `scripts/checkI18nKeys.cjs`
+    - obrisati "orphan" ključeve radi smanjenja bundle veličine.
 
 ---
 
