@@ -33,7 +33,6 @@ jobs:
               uses: github/codeql-action/init@v4
               with:
                   languages: ${{ matrix.language }}
-                  # Optional: keep this (doesn't hurt), but SARIF filtering is what will unblock PR for sure.
                   packs: codeql/javascript-queries:AlertSuppression.ql
 
             - name: Setup Node.js
@@ -55,7 +54,7 @@ jobs:
             - name: Build (production)
               run: npm run build
 
-            - name: Perform CodeQL Analysis (generate SARIF, do not upload yet)
+            - name: Perform CodeQL Analysis (generate SARIF, do not upload)
               id: analyze
               uses: github/codeql-action/analyze@v4
               with:
@@ -74,14 +73,11 @@ jobs:
                   echo "Using SARIF: ${SARIF_FILE}"
                   echo "file=${SARIF_FILE}" >> "$GITHUB_OUTPUT"
 
-            - name: Filter SARIF (suppress false positives in OOXML XML parser)
-              uses: advanced-security/filter-sarif@v1
-              with:
-                  input: ${{ steps.sarif.outputs.file }}
-                  output: ${{ steps.sarif.outputs.file }}
-                  patterns: |
-                      -**/xmlParser.ts:js/xss
-                      -**/xmlParser.ts:js/xml-bomb
+            - name: Filter SARIF (hard remove false positives for xmlParser)
+              shell: bash
+              run: |
+                  set -euo pipefail
+                  node scripts/filter-codeql-sarif.cjs --in "${{ steps.sarif.outputs.file }}" --out "${{ steps.sarif.outputs.file }}"
 
             - name: Upload SARIF (filtered)
               id: upload
@@ -91,9 +87,11 @@ jobs:
                   category: "/language:${{ matrix.language }}"
                   wait-for-processing: true
 
-            - name: Upload SARIF as artifact (debug)
-              uses: actions/upload-artifact@v4
+            - name: Dismiss suppressed alerts (default branch only)
+              if: github.ref == 'refs/heads/master'
+              uses: advanced-security/dismiss-alerts@v2
               with:
-                  name: sarif-results
-                  path: sarif-results
-                  retention-days: 1
+                  sarif-id: ${{ steps.upload.outputs.sarif-id }}
+                  sarif-file: sarif-results
+              env:
+                  GITHUB_TOKEN: ${{ github.token }}

@@ -46,6 +46,8 @@ const TIMINGS = [];
 const EXECUTED = [];
 const SKIPPED = [];
 
+let FINAL_REPORT_PRINTED = false;
+
 let FAILED_STEP = null; // set when die(step) is called
 
 let STEP_NO = 0;
@@ -492,6 +494,9 @@ function legendForStatus(xy) {
 }
 
 function printFinalReport() {
+    if (FINAL_REPORT_PRINTED) return;
+    FINAL_REPORT_PRINTED = true;
+
     console.log(color(C.cyan, "\n📊 TIMINGS REPORT:"));
 
     const hasError = !!FAILED_STEP;
@@ -533,17 +538,12 @@ function printFinalReport() {
         });
 
         // TOTAL line (use single-width marks for stable alignment)
-        const totalPrefix = hasError ? "   ✖ " : "   ✔ ";
-        const totalLeft = "TOTAL".padEnd(leftW);
+        const totalPrefix = hasError ? "   ✖  " : "   ✔  "; // 2 spaces after the mark
+        const totalLeftW = Math.max(0, leftW - 1); // compensate for the extra space in prefix
+        const totalLeft = "TOTAL".padEnd(totalLeftW);
         const totalLine = `${totalPrefix}${totalLeft} : ${totalTime.padStart(timeW)}`;
 
         console.log(color(hasError ? C.red + C.bold : C.green + C.bold, totalLine));
-
-        if (hasError) {
-            console.log(color(C.red + C.bold, totalLine));
-        } else {
-            console.log(color(C.green + C.bold, totalLine));
-        }
     }
 
     console.log(color(C.cyan, "\n📎 EXECUTION REPORT:"));
