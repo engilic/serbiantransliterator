@@ -34,6 +34,11 @@ export function parseSafeOoxml(xml: string): Document | null {
 
     try {
         const parser = new DOMParser();
+
+        // codeql[js/xss]
+        // codeql[js/xml-bomb]
+        // OOXML is parsed as data-only XML (application/xml), never inserted into live DOM.
+        // Defense-in-depth: block <!DOCTYPE>/<!ENTITY> pre-parse, size limit, reject parsererror/doctype post-parse.
         const doc = parser.parseFromString(xml, "application/xml");
 
         // Reject malformed XML
