@@ -86,12 +86,3 @@ jobs:
                   sarif_file: ${{ steps.sarif.outputs.file }}
                   category: "/language:${{ matrix.language }}"
                   wait-for-processing: true
-
-            - name: Dismiss suppressed alerts (default branch only)
-              if: github.ref == 'refs/heads/master'
-              uses: advanced-security/dismiss-alerts@v2
-              with:
-                  sarif-id: ${{ steps.upload.outputs.sarif-id }}
-                  sarif-file: sarif-results
-              env:
-                  GITHUB_TOKEN: ${{ github.token }}

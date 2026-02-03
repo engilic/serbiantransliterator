@@ -13,7 +13,9 @@ const inFile = readArg("--in");
 const outFile = readArg("--out") || inFile;
 
 if (!inFile) {
-    console.error("Usage: node scripts/filter-codeql-sarif.cjs --in <file.sarif> [--out <file.sarif>]");
+    console.error(
+        "Usage: node scripts/filter-codeql-sarif.cjs --in <file.sarif> [--out <file.sarif>]"
+    );
     process.exit(2);
 }
 
@@ -21,10 +23,7 @@ const sarif = JSON.parse(fs.readFileSync(inFile, "utf8"));
 
 const ruleIds = new Set(["js/xss", "js/xml-bomb"]);
 
-// Matches both:
-// - src/shared/ooxml/xmlParser.ts
-// - file:///.../src/shared/ooxml/xmlParser.ts
-// - windows-style backslashes if ever present
+// matchuje i relative i file:// URI varijante
 const targetFileRe = /(^|[\\/])src[\\/]shared[\\/]ooxml[\\/]xmlParser\.ts$/;
 
 function resultTouchesTargetFile(res) {
@@ -37,33 +36,23 @@ function resultTouchesTargetFile(res) {
 }
 
 let removed = 0;
-let removedByRule = { "js/xss": 0, "js/xml-bomb": 0 };
 
 if (Array.isArray(sarif?.runs)) {
     for (const run of sarif.runs) {
         if (!Array.isArray(run.results)) continue;
 
         const before = run.results.length;
-
         run.results = run.results.filter((res) => {
             const id = res?.ruleId;
             if (!ruleIds.has(id)) return true;
             if (!resultTouchesTargetFile(res)) return true;
-
             removed++;
-            removedByRule[id] = (removedByRule[id] || 0) + 1;
             return false;
         });
-
         const after = run.results.length;
-        // eslint-disable-next-line no-console
         console.log(`[sarif-filter] run: results ${before} -> ${after}`);
     }
 }
 
-// eslint-disable-next-line no-console
-console.log(
-    `[sarif-filter] removed total=${removed} (js/xss=${removedByRule["js/xss"]}, js/xml-bomb=${removedByRule["js/xml-bomb"]})`
-);
-
+console.log(`[sarif-filter] removed total=${removed}`);
 fs.writeFileSync(outFile, JSON.stringify(sarif, null, 2), "utf8");
