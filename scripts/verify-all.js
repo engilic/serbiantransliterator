@@ -336,41 +336,37 @@ function beep() {
 }
 
 function printBanner(changedInfo) {
-    console.log(color(C.magenta + C.bold, `\n🛡️  ${VERIFY_TEST_NAME} • App v${APP_VERSION} 🛡️\n`));
+    console.log(color(C.magenta + C.bold, `\n🛡️  ${VERIFY_TEST_NAME}  🛡️\n`));
 
     const nodeVer = process.version;
     const npmVer = runCaptureText("npm", ["-v"], ROOT) || "unknown";
-
     const ci = getCiLabel();
     const wt = process.env.WT_SESSION ? "WT:yes" : "WT:no";
     const gitBranch = getGitBranch();
     const gitCommit = getGitCommitShort();
-
     const pwshVer = getPwshVersion();
     const winVer = getWindowsVerLine();
 
     console.log(
-        color(
-            C.gray,
-            `   env: node ${nodeVer} | npm ${npmVer} | platform ${process.platform} | ${wt} | ci:${ci}`
-        )
+        color(C.gray, `env: node ${nodeVer} | npm ${npmVer} | ${process.platform} | ci:${ci} | ${wt}`)
     );
-    console.log(color(C.gray, `   git: ${gitBranch} @ ${gitCommit}`));
-    if (pwshVer) console.log(color(C.gray, `   pwsh: ${pwshVer}`));
-    if (winVer) console.log(color(C.gray, `   os: ${winVer}`));
+    console.log(color(C.gray, `git: ${gitBranch} @ ${gitCommit}`));
 
     if (changedInfo) {
         if (changedInfo.unknown) {
-            console.log(color(C.gray, `   diff: unknown (smart-skip disabled; running full pipeline)`));
+            console.log(color(C.gray, `diff: unknown (smart-skip disabled; running full pipeline)`));
         } else {
             console.log(
                 color(
                     C.gray,
-                    `   diff: ${changedInfo.baseRef} -> HEAD (${changedInfo.files.length} files changed)`
+                    `diff: ${changedInfo.baseRef} -> HEAD (${changedInfo.files.length} files changed)`
                 )
             );
         }
     }
+
+    if (winVer) console.log(color(C.gray, `os: ${winVer}`));
+    if (pwshVer) console.log(color(C.gray, `pwsh: ${pwshVer}`));
 
     console.log("");
 

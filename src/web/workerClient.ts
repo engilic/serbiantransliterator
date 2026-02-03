@@ -1,24 +1,14 @@
 // src/web/workerClient.ts
 
-import type { OoxmlOptions, ConvertStats } from "../shared/ooxml/convertOoxml";
+import type { OoxmlOptions } from "../shared/ooxml/convertOoxml";
+import type { WorkerMessage, WorkerResponse } from "../taskpane/worker/types";
 
 import dictE2iData from "../static/assets/dict_e2i.bin";
 import dictI2eData from "../static/assets/dict_i2e.bin";
 import wasmData from "../wasm-core/pkg/index_bg.wasm";
 
-type InitPayload = { dictE2i: Uint8Array; dictI2e: Uint8Array; wasmModule: Uint8Array };
-
-type WorkerMessage =
-    | { type: "INIT"; payload: InitPayload }
-    | { type: "CONVERT"; id: string; payload: { xml: string; options: OoxmlOptions } };
-
-// Definišemo tačan tip onoga što worker vraća kao payload za konverziju
-type ConvertResponsePayload = { xml: string; type: string; stats: ConvertStats };
-
-type WorkerResponse =
-    | { type: "INIT_DONE" }
-    | { type: "CONVERT_DONE"; id: string; payload: ConvertResponsePayload }
-    | { type: "ERROR"; id?: string; error: string };
+type ConvertDone = Extract<WorkerResponse, { type: "CONVERT_DONE" }>;
+export type ConvertResponsePayload = ConvertDone["payload"];
 
 function dataUriToBytes(dataUri: string | null | undefined): Uint8Array {
     const str = String(dataUri || "");
@@ -43,7 +33,6 @@ export class WebWorkerClient {
     private pending = new Map<
         string,
         {
-            // [FIX] Zamenjeno 'any' sa tačnim tipom
             resolve: (v: ConvertResponsePayload) => void;
             reject: (e: Error) => void;
             timeout: ReturnType<typeof setTimeout> | null;
@@ -56,7 +45,6 @@ export class WebWorkerClient {
 
         this.initPromise = new Promise((resolve, reject) => {
             try {
-                // Reuse existing worker implementation
                 this.worker = new Worker(
                     new URL("../taskpane/worker/transliteration.worker.ts", import.meta.url),
                     {
@@ -132,7 +120,6 @@ export class WebWorkerClient {
     ): Promise<ConvertResponsePayload> {
         if (!this.ready) await this.init();
 
-        // [FIX] Uzimamo lokalnu referencu da izbegnemo non-null assertion (!) kasnije
         const worker = this.worker;
         if (!worker) throw new Error("Worker not available");
 
@@ -180,7 +167,6 @@ export class WebWorkerClient {
                 timeout,
             });
 
-            // [FIX] Koristimo 'worker' lokalnu varijablu, nema više uzvičnika
             worker.postMessage(msg);
         });
     }
