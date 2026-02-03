@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// scripts/filter-codeql-sarif.cjs
+
 "use strict";
 
 const fs = require("fs");
@@ -13,9 +15,7 @@ const inFile = readArg("--in");
 const outFile = readArg("--out") || inFile;
 
 if (!inFile) {
-    console.error(
-        "Usage: node scripts/filter-codeql-sarif.cjs --in <file.sarif> [--out <file.sarif>]"
-    );
+    console.error("Usage: node scripts/filter-codeql-sarif.cjs --in <file.sarif> [--out <file.sarif>]");
     process.exit(2);
 }
 

@@ -40,11 +40,13 @@ const ARGS = process.argv.slice(2);
 const IS_FAST_MODE = ARGS.includes("--fast");
 const NO_PUSH = ARGS.includes("--no-push");
 const IS_STRICT = ARGS.includes("--strict");
+const NO_SKIP = ARGS.includes("--no-skip"); // force full run (no smart skipping)
 
 const TIMINGS = [];
 const EXECUTED = [];
 const SKIPPED = [];
 
+let FINAL_REPORT_PRINTED = false;
 let FAILED_STEP = null; // set when die(step) is called
 
 let STEP_NO = 0;
@@ -196,13 +198,133 @@ function toFileUrl(p) {
 }
 
 // --------------------------
+// Smart skipping (changed-files based)
+// --------------------------
+function gitHasRef(ref) {
+    const r = spawnSync("git", ["rev-parse", "--verify", "--quiet", ref], {
+        cwd: ROOT,
+        shell: false,
+        stdio: ["ignore", "ignore", "ignore"],
+    });
+    return r.status === 0;
+}
+
+function getDefaultBaseBranchName() {
+    // In PRs on GitHub, GITHUB_BASE_REF is like "master"
+    if (process.env.GITHUB_BASE_REF) return String(process.env.GITHUB_BASE_REF);
+    return "master";
+}
+
+function getChangedFilesSafe() {
+    // Conservative: if we can't determine diffs, return { unknown:true } => run everything
+    try {
+        const baseBranch = getDefaultBaseBranchName();
+        const baseRef = `origin/${baseBranch}`;
+
+        // Ensure base ref exists in CI
+        if (process.env.GITHUB_ACTIONS && !gitHasRef(baseRef)) {
+            spawnSync("git", ["fetch", "--no-tags", "--prune", "--depth=1", "origin", baseBranch], {
+                cwd: ROOT,
+                shell: false,
+                stdio: ["ignore", "ignore", "ignore"],
+            });
+        }
+
+        if (!gitHasRef(baseRef)) {
+            return { unknown: true, baseRef, files: [] };
+        }
+
+        const mergeBase = runCaptureText("git", ["merge-base", "HEAD", baseRef], ROOT);
+        if (!mergeBase) return { unknown: true, baseRef, files: [] };
+
+        const diffOut = spawnSync("git", ["diff", "--name-only", `${mergeBase}...HEAD`], {
+            cwd: ROOT,
+            shell: false,
+            encoding: "utf8",
+            stdio: ["ignore", "pipe", "ignore"],
+        });
+
+        if ((diffOut.status ?? 1) !== 0) return { unknown: true, baseRef, files: [] };
+
+        const files = String(diffOut.stdout || "")
+            .split(/\r?\n/)
+            .map((s) => s.trim())
+            .filter(Boolean);
+
+        return { unknown: false, baseRef, files };
+    } catch {
+        return { unknown: true, baseRef: "unknown", files: [] };
+    }
+}
+
+function matchAny(file, rules) {
+    for (const r of rules) {
+        if (typeof r === "string") {
+            // Treat "dir/" as prefix
+            if (r.endsWith("/")) {
+                if (file.startsWith(r)) return true;
+            } else {
+                if (file === r) return true;
+                if (file.startsWith(r)) return true;
+            }
+        } else if (r instanceof RegExp) {
+            if (r.test(file)) return true;
+        }
+    }
+    return false;
+}
+
+function anyChanged(changedInfo, rules) {
+    if (NO_SKIP) return true;
+    if (!changedInfo || changedInfo.unknown) return true; // conservative
+    for (const f of changedInfo.files) {
+        if (matchAny(f, rules)) return true;
+    }
+    return false;
+}
+
+// Conservative trigger sets
+const RUST_TRIGGERS = [
+    "src/wasm-core/",
+    ".cargo/",
+    "Cargo.toml",
+    "Cargo.lock",
+    /(^|\/)wasm-pack(\.toml|\.json)?$/,
+    /(^|\/)rust-toolchain(\.toml)?$/,
+];
+
+const BUILD_TRIGGERS = [
+    "src/",
+    "scripts/",
+    "webpack.",
+    "webpack/",
+    "manifest.xml",
+    "manifest.prod.xml",
+    "package.json",
+    "package-lock.json",
+    "tsconfig.json",
+    "tsconfig.node.json",
+    "vitest.config.ts",
+    "playwright.config.ts",
+    "src/static/_headers",
+];
+
+const E2E_TRIGGERS = [
+    ...BUILD_TRIGGERS,
+    "tests-e2e/",
+    "src/taskpane/",
+    "src/commands/",
+    "src/static/",
+];
+
+// --------------------------
 // UI helpers
 // --------------------------
 function beep() {
     process.stdout.write("\x07");
 }
 
-function printBanner() {
+function printBanner(changedInfo) {
     console.log(color(C.magenta + C.bold, `\n🛡️  ${VERIFY_TEST_NAME} • App v${APP_VERSION} 🛡️\n`));
 
     const nodeVer = process.version;
@@ -225,9 +347,20 @@ function printBanner() {
     console.log(color(C.gray, `   git: ${gitBranch} @ ${gitCommit}`));
     if (pwshVer) console.log(color(C.gray, `   pwsh: ${pwshVer}`));
     if (winVer) console.log(color(C.gray, `   os: ${winVer}`));
+
+    if (changedInfo) {
+        if (changedInfo.unknown) {
+            console.log(color(C.gray, `   diff: unknown (smart-skip disabled; running full pipeline)`));
+        } else {
+            console.log(color(C.gray, `   diff: ${changedInfo.baseRef} -> HEAD (${changedInfo.files.length} files changed)`));
+        }
+    }
+
     console.log("");
 
     if (IS_STRICT) console.log(color(C.yellow + C.bold, "   (STRICT MODE ENABLED)\n"));
+    if (IS_FAST_MODE) console.log(color(C.yellow + C.bold, "   (FAST MODE ENABLED)\n"));
+    if (NO_SKIP) console.log(color(C.yellow + C.bold, "   (NO-SKIP MODE ENABLED)\n"));
 }
 
 function stepNo(step) {
@@ -486,6 +619,9 @@ function legendForStatus(xy) {
 }
 
 function printFinalReport() {
+    if (FINAL_REPORT_PRINTED) return;
+    FINAL_REPORT_PRINTED = true;
+
     console.log(color(C.cyan, "\n⏱️  TIMINGS REPORT:"));
 
     const hasError = !!FAILED_STEP;
@@ -508,8 +644,7 @@ function printFinalReport() {
         const totalTime = TIMINGS.reduce((acc, t) => acc + (Number(t.time) || 0), 0).toFixed(2) + "s";
         const timeW = Math.max(...rows.map((r) => r.time.length), totalTime.length);
 
-        // Find failing row by exact step string; if missing (e.g. failure in runInline before timing was pushed),
-        // mark the last printed row as ERROR to match "last step shows ERROR".
+        // Find failing row by exact step string; if missing, mark the last printed row as ERROR.
         let failIndex = -1;
         if (hasError) {
             failIndex = rows.findIndex((r) => r.step === FAILED_STEP);
@@ -528,10 +663,7 @@ function printFinalReport() {
 
         // TOTAL line (stable alignment; +3 spaces before mark, 1 space after)
         const totalPrefix = `${"   " + " ".repeat(3)}${hasError ? "✖" : "✔"}${" ".repeat(1)}`;
-
-        // compensate so ':' stays aligned with other rows
         const totalLeftW = Math.max(0, leftW - (totalPrefix.length - "   • ".length));
-
         const totalLeft = "TOTAL".padEnd(totalLeftW);
         const totalLine = `${totalPrefix}${totalLeft} : ${totalTime.padStart(timeW)}`;
 
@@ -541,6 +673,7 @@ function printFinalReport() {
     console.log(color(C.cyan, "\n📎 EXECUTION REPORT:"));
     console.log(`   • strict: ${IS_STRICT ? "YES" : "NO"}`);
     console.log(`   • fast:   ${IS_FAST_MODE ? "YES" : "NO"}`);
+    console.log(`   • skip:   ${NO_SKIP ? "DISABLED (--no-skip)" : "SMART (changed-files based)"}`);
     console.log(`   • push:   ${NO_PUSH ? "DISABLED (--no-push)" : "PROMPT (enabled)"}`);
     console.log(color(C.yellow, "\n   • skipped steps:"));
     if (SKIPPED.length === 0) {
@@ -782,7 +915,8 @@ async function cargoAuditStrictGate() {
 // Main
 // --------------------------
 async function main() {
-    printBanner();
+    const changedInfo = getChangedFilesSafe();
+    printBanner(changedInfo);
     checkEnv();
 
     const ps = detectPowerShell();
@@ -833,34 +967,45 @@ async function main() {
     runStep("Lint (eslint)", "npm", ["run", "lint"]);
     runStep("Typecheck", "npm", ["run", "typecheck"]);
 
+    // Strict-only audits
     if (IS_STRICT) {
         runStep("Audit (npm prod/high)", "npm", ["run", "audit:prod:high"]);
-
         await runInlineStepCmd("Cargo audit (wasm-core)", "cargo audit --deny warnings", cargoAuditStrictGate);
     } else {
         SKIPPED.push("Audit (npm prod/high) (strict-only)");
         SKIPPED.push("Cargo audit (wasm-core) (strict-only)");
     }
 
-    await runInlineStepCmd(
-        "Rust fmt (check + auto-fix)",
-        "cargo fmt --all -- --check -> (if needed) cargo fmt --all -> cargo fmt --all -- --check",
-        rustFmtGate
-    );
+    // Rust gates (smart-skip if no wasm/rust changes)
+    const shouldRunRust = anyChanged(changedInfo, RUST_TRIGGERS);
+    if (shouldRunRust) {
+        await runInlineStepCmd(
+            "Rust fmt (check + auto-fix)",
+            "cargo fmt --all -- --check -> (if needed) cargo fmt --all -> cargo fmt --all -- --check",
+            rustFmtGate
+        );
 
-    runStep("Rust clippy (-Dwarnings)", "cargo", ["clippy", "--", "-Dwarnings"], WASM_DIR);
-    await runInlineStepCmd("Rust tests", "cargo test -- --quiet", runRustTestsAligned);
+        runStep("Rust clippy (-Dwarnings)", "cargo", ["clippy", "--", "-Dwarnings"], WASM_DIR);
+        await runInlineStepCmd("Rust tests", "cargo test -- --quiet", runRustTestsAligned);
+    } else {
+        SKIPPED.push("Rust fmt (no wasm/rust changes)");
+        SKIPPED.push("Rust clippy (-Dwarnings) (no wasm/rust changes)");
+        SKIPPED.push("Rust tests (no wasm/rust changes)");
+    }
 
-    // ✅ IMPORTANT:
-    // Clean is handled by npm "prebuild" hook now:
-    //   "prebuild": "npm run clean && npm run update:version"
-    const BUILD_STEP = nextStep("Build");
-    run(BUILD_STEP, "npm", ["run", "build"]);
+    // Build (smart-skip if changes are obviously unrelated; conservative trigger set)
+    const shouldRunBuild = anyChanged(changedInfo, BUILD_TRIGGERS);
+    if (shouldRunBuild) {
+        const BUILD_STEP = nextStep("Build");
+        run(BUILD_STEP, "npm", ["run", "build"]);
+    } else {
+        SKIPPED.push("Build (no relevant changes)");
+    }
 
     runStep("Manifest validate (dev)", "npm", ["run", "validate"]);
     runStep("Manifest validate (prod)", "npm", ["run", "validate:prod"]);
 
-    // Dist artifacts gate (always)
+    // Dist artifacts gate (always if build ran; still safe to run even without build if it doesn't require dist)
     if (IS_STRICT) {
         runStep("Dist Artifacts Gate (strict)", "node", ["scripts/checkDistArtifacts.cjs", "--strict"]);
     } else {
@@ -872,7 +1017,18 @@ async function main() {
         const COV_STEP = nextStep("Unit Tests (coverage)");
         run(COV_STEP, "npm", ["run", "test:coverage"], ROOT, { beforeOk: printCoverageLocations });
 
-        runStep("E2E Tests (trace on failure)", "npm", ["run", "test:e2e", "--", "--trace", "retain-on-failure"]);
+        const shouldRunE2E = anyChanged(changedInfo, E2E_TRIGGERS);
+        if (shouldRunE2E) {
+            runStep("E2E Tests (trace on failure)", "npm", [
+                "run",
+                "test:e2e",
+                "--",
+                "--trace",
+                "retain-on-failure",
+            ]);
+        } else {
+            SKIPPED.push("E2E Tests (no relevant changes)");
+        }
     } else {
         SKIPPED.push("Unit Tests (fast)");
         SKIPPED.push("E2E Tests (fast)");
