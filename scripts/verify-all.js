@@ -661,7 +661,7 @@ function printFinalReport() {
         });
 
         // TOTAL line (stable alignment; +3 spaces before mark, 1 space after)
-        const totalPrefix = `${"   " + " ".repeat(3)}${hasError ? "✖" : "✔"}${" ".repeat(1)}`;
+        const totalPrefix = `${"   " + " ".repeat(3)}${hasError ? "✖" : "✔"}${" ".repeat(2)}`;
         const totalLeftW = Math.max(0, leftW - (totalPrefix.length - "   • ".length));
         const totalLeft = "TOTAL".padEnd(totalLeftW);
         const totalLine = `${totalPrefix}${totalLeft} : ${totalTime.padStart(timeW)}`;
