@@ -8,28 +8,20 @@ const CopyWebpackPlugin = require("copy-webpack-plugin");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 
-// Helper za injectovanje HTML parcijala
 function readPart(partialPath) {
     const fullPath = path.resolve(__dirname, "src/taskpane", partialPath);
     return fs.readFileSync(fullPath, "utf8");
 }
 
-// Build ID za cache busting (Cloudflare/GitHub CI kompatibilno)
 function getBuildId() {
-    // Cloudflare Pages
     if (process.env.CF_PAGES_COMMIT_SHA) return String(process.env.CF_PAGES_COMMIT_SHA).slice(0, 12);
-
-    // GitHub Actions
     if (process.env.GITHUB_SHA) return String(process.env.GITHUB_SHA).slice(0, 12);
-
-    // Lokalno (svaki build unikatan)
     return String(Date.now());
 }
 
 const BUILD_ID = getBuildId();
 
 module.exports = {
-    // ✅ Webpack filesystem cache (ne menja output, samo ubrzava)
     cache: {
         type: "filesystem",
         name: "serbian-transliterator-webpack-cache",
@@ -43,29 +35,26 @@ module.exports = {
         taskpane: ["./src/taskpane/taskpane.ts"],
         commands: ["./src/commands/commands.ts"],
 
-        // Service Worker (mora da ostane stabilno ime: sw.js)
-        sw: ["./src/sw.ts"],
+        // ❌ OBRISANO: sw: ["./src/sw.ts"],
+        // (Workbox sada sam uzima src/sw.ts i pravi sw.js)
+
+        webapp: ["./src/web/web.ts"],
     },
 
     // Output Configuration
     output: {
         path: path.resolve(__dirname, "dist"),
 
-        // ✅ Hashovani fajlovi za sve osim SW (SW mora biti "sw.js")
-        filename: (pathData) => {
-            const name = pathData.chunk && pathData.chunk.name ? String(pathData.chunk.name) : "";
-            if (name === "sw") return "sw.js";
-            return "[name].[contenthash:8].js";
-        },
+        // ✅ POJEDNOSTAVLJENO: Svi fajlovi ovde dobijaju hash.
+        // sw.js se pravi odvojeno preko InjectManifest plugina i ne prolazi kroz ovo.
+        filename: "[name].[contenthash:8].js",
 
-        // ✅ I async chunk-ovi dobijaju hash
         chunkFilename: "[name].[contenthash:8].js",
 
-        globalObject: "self", // OBAVEZNO za Workere u Office-u
-        clean: true, // Brise dist pre builda (ok je; i dalje ti prebuild radi clean za sve ostalo)
+        globalObject: "self",
+        clean: true,
     },
 
-    // Resolver
     resolve: {
         extensions: [".ts", ".tsx", ".html", ".js", ".json", ".wasm"],
         alias: {
@@ -74,7 +63,6 @@ module.exports = {
         },
     },
 
-    // Loaders
     module: {
         rules: [
             {
@@ -92,22 +80,15 @@ module.exports = {
                 test: /\.css$/i,
                 use: [MiniCssExtractPlugin.loader, "css-loader"],
             },
-
-            // NOTE: ikonice se kopiraju CopyWebpackPlugin-om pod stabilnim imenima.
-            // Ako importuješ druge slike iz koda, ovo će ih staviti u dist/assets/ bez hash-a (namerno).
             {
                 test: /\.(png|jpg|jpeg|gif|ico)$/,
                 type: "asset/resource",
                 generator: { filename: "assets/[name][ext]" },
             },
-
-            // Inline binarni fajlovi (rečnici)
             {
                 test: /\.bin$/,
                 type: "asset/inline",
             },
-
-            // Inline WASM (najsigurnije za Office)
             {
                 test: /\.wasm$/,
                 type: "asset/inline",
@@ -115,7 +96,6 @@ module.exports = {
         ],
     },
 
-    // Plugins
     plugins: [
         new MiniCssExtractPlugin({ filename: "[name].[contenthash:8].css" }),
 
@@ -141,29 +121,31 @@ module.exports = {
             minify: true,
         }),
 
+        new HtmlWebpackPlugin({
+            filename: "web.html",
+            template: "./src/web/web.html",
+            chunks: ["webapp"],
+            minify: {
+                removeComments: true,
+                collapseWhitespace: true,
+            },
+        }),
+
         new CopyWebpackPlugin({
             patterns: [
-                // ✅ PROD manifest (jedini koji treba da se hostuje javno)
                 { from: "manifest.prod.xml", to: "manifest.prod.xml" },
-
-                // ✅ (preporuka) dist/manifest.xml neka bude production, ne localhost
                 { from: "manifest.prod.xml", to: "manifest.xml" },
-
-                // Cloudflare Pages headers
+                { from: "src/static/index.html", to: "index.html" },
                 { from: "src/static/_headers", to: "_headers", toType: "file" },
-
-                // PWA manifest
                 { from: "src/static/manifest.webmanifest", to: "manifest.webmanifest" },
-
-                // Support/Privacy stranice
                 { from: "src/static/support.html", to: "support.html" },
                 { from: "src/static/privacy.html", to: "privacy.html" },
-
-                // ✅ Ikonice (iz root assets foldera koji si naveo)
                 { from: "assets/icon-16.png", to: "assets/icon-16.png" },
                 { from: "assets/icon-32.png", to: "assets/icon-32.png" },
                 { from: "assets/icon-64.png", to: "assets/icon-64.png" },
                 { from: "assets/icon-80.png", to: "assets/icon-80.png" },
+                { from: "assets/icon-192.png", to: "assets/icon-192.png" },
+                { from: "assets/icon-512.png", to: "assets/icon-512.png" },
             ],
         }),
     ],

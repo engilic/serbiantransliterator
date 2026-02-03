@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="sr">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>Serbian Transliterator — Web</title>
+        <meta name="description" content="DOCX preslovljavanje (Lat ↔ Ćir) direktno u pregledaču." />
+        <link rel="manifest" href="manifest.webmanifest" />
+    </head>
+    <body>
+        <div class="bg"></div>
+
+        <header class="topbar">
+            <div class="brand">
+                <div class="logo">Ž</div>
+                <div class="brand-text">
+                    <div class="title">Serbian Transliterator</div>
+                    <div class="subtitle">Web app (DOCX + Text) • <span id="ver">v?</span></div>
+                </div>
+            </div>
+
+            <nav class="nav">
+                <a class="nav-link" href="index.html">Početna</a>
+                <a class="nav-link" href="support.html">Podrška</a>
+                <a class="nav-link" href="privacy.html">Privatnost</a>
+            </nav>
+        </header>
+
+        <main class="shell">
+            <section class="card">
+                <div class="card-head">
+                    <h1>DOCX preslovljavanje</h1>
+                    <p class="muted">
+                        Otpremi .docx, preslovi u browseru (OOXML) i preuzmi rezultat. Engine je isti kao u
+                        Word add-in.
+                    </p>
+                </div>
+
+                <div id="drop" class="drop">
+                    <input id="file" class="file" type="file" accept=".docx" multiple />
+                    <div class="drop-inner">
+                        <div class="drop-icon">⬆</div>
+                        <div class="drop-title">Prevuci .docx ovde ili klikni da izabereš fajl</div>
+                        <div class="drop-sub">Više fajlova je podržano. Obrada se radi lokalno.</div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <button id="btnConvert" class="btn primary" disabled>Preslovi DOCX</button>
+                    <button id="btnCancel" class="btn ghost" disabled>Otkaži</button>
+                </div>
+
+                <div class="status">
+                    <div id="statusText" class="status-text">Spremno.</div>
+                    <div class="progress">
+                        <div id="bar" class="bar"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="card">
+                <div class="card-head">
+                    <h2>Opcije</h2>
+                    <p class="muted">Minimalan set opcija (možemo proširiti kasnije).</p>
+                </div>
+
+                <div class="grid">
+                    <label class="field">
+                        <span>Smer</span>
+                        <select id="direction">
+                            <option value="auto">Auto</option>
+                            <option value="lat-to-cyr">Lat → Ćir</option>
+                            <option value="cyr-to-lat">Ćir → Lat</option>
+                            <option value="to-ascii">Ošišana latinica</option>
+                        </select>
+                    </label>
+
+                    <label class="check">
+                        <input id="protectBrands" type="checkbox" checked />
+                        <span>Zaštiti brendove/tehnologije (npr. iPhone, Windows)</span>
+                    </label>
+
+                    <label class="check">
+                        <input id="applyQuotes" type="checkbox" checked />
+                        <span>Primeni srpske navodnike (samo Lat → Ćir)</span>
+                    </label>
+
+                    <label class="check">
+                        <input id="preserveCode" type="checkbox" checked />
+                        <span>Sačuvaj code blocks (`...` i ```...```)</span>
+                    </label>
+
+                    <label class="field">
+                        <span>Curly zaštita</span>
+                        <select id="curly">
+                            <option value="placeholders">Samo {placeholders}</option>
+                            <option value="all">Sve {...}</option>
+                            <option value="none">Ništa</option>
+                        </select>
+                    </label>
+
+                    <label class="field full">
+                        <span>Zaštićene reči/fraze (svaka u novom redu)</span>
+                        <textarea
+                            id="protected"
+                            rows="5"
+                            placeholder="npr.\nOpenAI\nMacBook Air\nCtrl + C"
+                        ></textarea>
+                    </label>
+                </div>
+            </section>
+
+            <section class="card">
+                <div class="card-head">
+                    <h2>Brza konverzija teksta</h2>
+                    <p class="muted">Plain text (bez DOCX). Radi lokalno.</p>
+                </div>
+
+                <label class="field">
+                    <span>Tekst</span>
+                    <textarea id="plainIn" rows="6" placeholder="Nalepi tekst ovde..."></textarea>
+                </label>
+
+                <div class="row">
+                    <button id="btnPlain" class="btn secondary">Preslovi tekst</button>
+                    <button id="btnCopy" class="btn ghost" disabled>Kopiraj</button>
+                </div>
+
+                <label class="field">
+                    <span>Rezultat</span>
+                    <textarea
+                        id="plainOut"
+                        rows="6"
+                        readonly
+                        placeholder="Rezultat će se pojaviti ovde..."
+                    ></textarea>
+                </label>
+            </section>
+        </main>
+
+        <footer class="footer">
+            <div class="muted">Offline-first • WASM • OOXML safe parse</div>
+        </footer>
+    </body>
+</html>

@@ -167,6 +167,9 @@ function main() {
 
     // Required artifacts
     const mustExist = [
+        "dist/index.html",
+        "dist/web.html",
+
         "dist/taskpane.html",
         "dist/commands.html",
         "dist/support.html",
@@ -175,11 +178,12 @@ function main() {
         "dist/manifest.webmanifest",
         "dist/sw.js",
 
-        // Icons referenced by manifest
         "dist/assets/icon-16.png",
         "dist/assets/icon-32.png",
         "dist/assets/icon-64.png",
         "dist/assets/icon-80.png",
+        "dist/assets/icon-192.png",
+        "dist/assets/icon-512.png",
     ];
 
     for (const m of mustExist) {
