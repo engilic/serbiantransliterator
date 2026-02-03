@@ -998,8 +998,10 @@ async function main() {
         SKIPPED.push("Rust tests (no wasm/rust changes)");
     }
 
-    // Build (smart-skip if changes are obviously unrelated; conservative trigger set)
-    const shouldRunBuild = anyChanged(changedInfo, BUILD_TRIGGERS);
+    // Build
+    // In STRICT mode we must build, because Dist Artifacts Gate depends on dist/.
+    const shouldRunBuild = IS_STRICT ? true : anyChanged(changedInfo, BUILD_TRIGGERS);
+
     if (shouldRunBuild) {
         const BUILD_STEP = nextStep("Build");
         run(BUILD_STEP, "npm", ["run", "build"]);
@@ -1010,11 +1012,20 @@ async function main() {
     runStep("Manifest validate (dev)", "npm", ["run", "validate"]);
     runStep("Manifest validate (prod)", "npm", ["run", "validate:prod"]);
 
-    // Dist artifacts gate (always if build ran; still safe to run even without build if it doesn't require dist)
-    if (IS_STRICT) {
-        runStep("Dist Artifacts Gate (strict)", "node", ["scripts/checkDistArtifacts.cjs", "--strict"]);
+    // Dist artifacts gate
+    // - STRICT: always run (requires dist, and we forced build above)
+    // - non-STRICT: only run if dist exists (otherwise it's a guaranteed false fail)
+    const distDir = path.join(ROOT, "dist");
+    const distExists = fs.existsSync(distDir);
+
+    if (IS_STRICT || distExists) {
+        if (IS_STRICT) {
+            runStep("Dist Artifacts Gate (strict)", "node", ["scripts/checkDistArtifacts.cjs", "--strict"]);
+        } else {
+            runStep("Dist Artifacts Gate", "node", ["scripts/checkDistArtifacts.cjs"]);
+        }
     } else {
-        runStep("Dist Artifacts Gate", "node", ["scripts/checkDistArtifacts.cjs"]);
+        SKIPPED.push("Dist Artifacts Gate (skipped: dist/ not present and build was skipped)");
     }
 
     // Tests

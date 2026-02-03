@@ -18,26 +18,26 @@ ubiquity of JavaScript with the raw performance of Rust.
 - **Crate:** `serbian-transliterator-wasm`
 - **Compilation Target:** `wasm32-unknown-unknown`
 - **Key Algorithms:**
-  - **FST (Finite State Transducers):** Used for dictionary lookups. We use the
-    `fst` crate to map keys (words) to values (replacements) with O(k) lookup time
-    complexity (where k is key length), regardless of dictionary size.
-  - **Zero-Copy Deserialization:** Dictionaries are baked into the binary bundle
-    as `Uint8Array` assets and passed to WASM memory without copying, using
-    memory mapping techniques.
-  - **Aho-Corasick:** Used for `init_replacer` logic to perform multi-pattern
-    string replacement in a single pass (O(n)).
+    - **FST (Finite State Transducers):** Used for dictionary lookups. We use the
+      `fst` crate to map keys (words) to values (replacements) with O(k) lookup time
+      complexity (where k is key length), regardless of dictionary size.
+    - **Zero-Copy Deserialization:** Dictionaries are baked into the binary bundle
+      as `Uint8Array` assets and passed to WASM memory without copying, using
+      memory mapping techniques.
+    - **Aho-Corasick:** Used for `init_replacer` logic to perform multi-pattern
+      string replacement in a single pass (O(n)).
 - **Optimization:**
-  - **Thread-Local Storage:** We utilize `thread_local!` for caching active
-    dictionaries, bypassing the overhead of `Mutex` locking in the single-threaded
-    Web Worker environment.
-  - **SIMD:** Explicitly enabled 128-bit vectorization for string scanning where
-    supported by the browser.
+    - **Thread-Local Storage:** We utilize `thread_local!` for caching active
+      dictionaries, bypassing the overhead of `Mutex` locking in the single-threaded
+      Web Worker environment.
+    - **SIMD:** Explicitly enabled 128-bit vectorization for string scanning where
+      supported by the browser.
 
 ### B. The Frontend Shell (TypeScript)
 
 - **Framework:** Vanilla TypeScript (No React, Vue, or Angular).
-  - **Rationale:** Reduces bundle size by ~150KB and eliminates Virtual DOM
-    overhead for what is essentially a static UI with minimal reactivity.
+    - **Rationale:** Reduces bundle size by ~150KB and eliminates Virtual DOM
+      overhead for what is essentially a static UI with minimal reactivity.
 - **State Management:** Custom `StateManager` (`src/taskpane/app/state.ts`)
   implementing a lightweight Observer pattern.
 - **Styling:** Fluent UI Variables via CSS Modules. Dark mode is handled via CSS
@@ -49,12 +49,12 @@ ubiquity of JavaScript with the raw performance of Rust.
 - **Architecture:** The UI thread never touches document processing. All heavy
   lifting is offloaded to a dedicated Web Worker.
 - **Communication:**
-  - Main Thread sends: XML String + Configuration Object
-  - Worker returns: Processed XML String + Statistics Object
+    - Main Thread sends: XML String + Configuration Object
+    - Worker returns: Processed XML String + Statistics Object
 - **Resilience:** The `WorkerClient` class wraps the raw Worker API, providing:
-  - Promise-based request/response mapping (UUID job correlation)
-  - Timeout handling (60s soft limit)
-  - **Current Gap:** No automatic restart on crash (target for v1.1.0)
+    - Promise-based request/response mapping (UUID job correlation)
+    - Timeout handling (60s soft limit)
+    - **Current Gap:** No automatic restart on crash (target for v1.1.0)
 
 ---
 
@@ -64,25 +64,25 @@ ubiquity of JavaScript with the raw performance of Rust.
 
 This is the most critical logic layer (`src/shared/ooxml`).
 
-1) **Parsing:** Currently uses browser-native `DOMParser` to convert XML strings
+1. **Parsing:** Currently uses browser-native `DOMParser` to convert XML strings
    into DOM nodes.
-2) **Bridging:** Detects words split across multiple `<w:t>` nodes (common in Word
+2. **Bridging:** Detects words split across multiple `<w:t>` nodes (common in Word
    for styling or spellcheck markers).
-   - **Algorithm:** Look-ahead strategy. If a run ends with part of a protected
-     token (e.g., "Micro"), it scans subsequent nodes to find the suffix ("soft")
-     and merges them before processing.
-3) **Reconstruction:** Uses `XMLSerializer` to return valid OOXML.
+    - **Algorithm:** Look-ahead strategy. If a run ends with part of a protected
+      token (e.g., "Micro"), it scans subsequent nodes to find the suffix ("soft")
+      and merges them before processing.
+3. **Reconstruction:** Uses `XMLSerializer` to return valid OOXML.
 
 ### Dictionary Management
 
 - **Source:** JSON files in `src/static/assets/`.
 - **Build Process:** `npm run compile:dicts` invokes a custom Rust binary
   (`src/wasm-core/src/bin/compiler.rs`) that:
-  1) Reads JSON
-  2) Sorts keys (required for FST)
-  3) Builds the FST binary image
-  4) Compresses metadata
-  5) Outputs `.bin` files directly to `assets/`
+    1. Reads JSON
+    2. Sorts keys (required for FST)
+    3. Builds the FST binary image
+    4. Compresses metadata
+    5. Outputs `.bin` files directly to `assets/`
 
 ---
 
@@ -98,9 +98,9 @@ This is the most critical logic layer (`src/shared/ooxml`).
 ### Bundle Size (Production Release)
 
 - **Total Gzipped:** ~1.8 MB
-  - `taskpane.js`: ~150 KB (Logic + UI)
-  - `wasm_bg.wasm`: ~600 KB (Rust Logic)
-  - `dict_*.bin`: ~1.0 MB (Compressed Dictionaries)
+    - `taskpane.js`: ~150 KB (Logic + UI)
+    - `wasm_bg.wasm`: ~600 KB (Rust Logic)
+    - `dict_*.bin`: ~1.0 MB (Compressed Dictionaries)
 - **Optimization:** Webpack splits chunks for lazy loading. Dictionaries are only
   loaded on demand when the engine initializes.
 
@@ -109,7 +109,7 @@ This is the most critical logic layer (`src/shared/ooxml`).
 - **Idle:** ~20 MB
 - **Active (Small Doc):** ~80 MB
 - **Active (Large Doc > 50MB XML):** spikes to **500MB+** due to `DOMParser`
-  - **Status:** primary bottleneck targeted for v1.1.0 (Streaming Parser)
+    - **Status:** primary bottleneck targeted for v1.1.0 (Streaming Parser)
 
 ---
 
@@ -142,24 +142,24 @@ This is the most critical logic layer (`src/shared/ooxml`).
 ### Testing Pyramid
 
 - **Unit Tests (Vitest):** ~92% coverage on core logic (`src/core`, `src/shared`)
-  - Focus: Regex patterns, tokenizer, OOXML bridging logic
+    - Focus: Regex patterns, tokenizer, OOXML bridging logic
 - **Integration Tests (Rust):** Coverage of FST lookups and basic conversion
   functions
 - **E2E Tests (Playwright):**
-  - Uses a "Mock Office" stub to simulate Word API responses
-  - Tests UI flows: settings change, profile switching, modal interactions
+    - Uses a "Mock Office" stub to simulate Word API responses
+    - Tests UI flows: settings change, profile switching, modal interactions
 - **A11y Tests (Axe-core):**
-  - Automated accessibility scans on every build
-  - **Status:** WCAG 2.1 AA compliant (contrast ratio > 4.5:1, aria labels present)
+    - Automated accessibility scans on every build
+    - **Status:** WCAG 2.1 AA compliant (contrast ratio > 4.5:1, aria labels present)
 
 ### The "Guardian" Pipeline
 
 A node script (`scripts/verify-all.js`) that enforces:
 
-1) File identity headers  
-2) No `console.log` in production paths  
-3) Strict types (no `any` in new code)  
-4) Lockfile integrity (`package-lock.json` must match `package.json`)
+1. File identity headers
+2. No `console.log` in production paths
+3. Strict types (no `any` in new code)
+4. Lockfile integrity (`package-lock.json` must match `package.json`)
 
 ---
 
@@ -188,11 +188,13 @@ A node script (`scripts/verify-all.js`) that enforces:
 ## 7. 📦 DEPENDENCY SNAPSHOT
 
 **Core:**
+
 - rust: 1.75+ (Stable)
 - node: 20.11+ (LTS)
 - typescript: 5.4+
 
 **Key Libraries:**
+
 - `fst` (Rust): 0.4
 - `aho-corasick` (Rust): 1.1
 - `jszip` (JS): 3.10
