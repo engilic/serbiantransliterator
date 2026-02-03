@@ -20,9 +20,9 @@ if (!inFile) {
 
 const sarif = JSON.parse(fs.readFileSync(inFile, "utf8"));
 
-// remove only these two CodeQL findings...
+// Remove only these two CodeQL findings...
 const ruleIds = new Set(["js/xss", "js/xml-bomb"]);
-// ...and only when they point at this file
+// ...and only when they point at this file (works for relative paths and file:// URIs)
 const targetFileRe = /src[\\/]+shared[\\/]+ooxml[\\/]+xmlParser\.ts$/;
 
 function touchesTarget(res) {

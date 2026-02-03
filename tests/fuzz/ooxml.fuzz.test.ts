@@ -36,7 +36,6 @@ const xmlSafeAlphabet =
     "абвгдђежзијклљмнњопрстћуфхцчџш" +
     "АБВГДЂЕЖЗИЈКЛЉМНЊОПРСТЋУФХЦЧЏШ";
 
-// fast-check lets string be built from a custom 'unit' generator
 const hugeTextArb = fc.string({
     unit: fc.constantFrom(...xmlSafeAlphabet),
     minLength: 10000,
@@ -48,14 +47,12 @@ describe("Fuzz Testing: convertOoxml", () => {
         fc.assert(
             fc.property(xmlArb, (randomXml: string) => {
                 try {
-                    // Wrap in valid root to simulate doc
                     const input = `<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${randomXml}</w:body></w:document>`;
                     const result = convertOoxml(input, { direction: "lat-to-cyr" });
 
                     expect(result).toBeTruthy();
                     expect(typeof result.xml).toBe("string");
                     expect(result.stats).toBeTruthy();
-
                     return true;
                 } catch (e) {
                     console.error("Fuzz Crash!", e);
