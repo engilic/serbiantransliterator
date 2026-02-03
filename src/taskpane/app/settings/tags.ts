@@ -1,7 +1,6 @@
 // src/taskpane/app/settings/tags.ts
 
 import { state } from "../state";
-import { escapeHtml } from "../../../shared/safeHtml";
 import { t } from "../../../shared/i18n";
 
 export type TagsCallbacks = {
@@ -30,40 +29,32 @@ function afterTagsChanged() {
     cbRef.updateResetButtonState();
 }
 
-// NEW: Helper for filtering
 function getFilterTerm(): string {
     const el = document.getElementById("tagFilterInput") as HTMLInputElement | null;
     return el ? el.value.trim().toLowerCase() : "";
 }
 
 export function renderTags() {
-    const container = document.getElementById("tagsList") as HTMLDivElement;
-    if (!container) return; // Guard
+    const container = document.getElementById("tagsList") as HTMLDivElement | null;
+    if (!container) return;
 
-    container.innerHTML = "";
+    container.replaceChildren();
 
-    const filter = getFilterTerm(); // Read filter
+    const filter = getFilterTerm();
 
     const customSorted = Array.from(state.customWordsSet).sort();
     const presetSorted = Array.from(state.presetWordsSet).sort();
 
-    // Render loop with filter check AND TYPE CHECK
     customSorted.forEach((word) => {
-        // [FIX] Provera tipa pre toLowerCase
         if (!word || typeof word !== "string") return;
-
-        if (!filter || word.toLowerCase().includes(filter)) {
+        if (!filter || word.toLowerCase().includes(filter))
             container.appendChild(createTagEl(word, "custom"));
-        }
     });
 
     presetSorted.forEach((word) => {
-        // [FIX] Provera tipa pre toLowerCase
         if (!word || typeof word !== "string") return;
-
-        if (!filter || word.toLowerCase().includes(filter)) {
+        if (!filter || word.toLowerCase().includes(filter))
             container.appendChild(createTagEl(word, "preset"));
-        }
     });
 
     updateTagsButtonsState();
@@ -72,14 +63,22 @@ export function renderTags() {
 function createTagEl(text: string, type: "custom" | "preset"): HTMLElement {
     const div = document.createElement("div");
     div.className = `tag ${type}`;
-    div.innerHTML = `<span>${escapeHtml(text)}</span><span class="tag-remove" title="${escapeHtml(
-        t("ui_tag_remove")
-    )}">&times;</span>`;
 
-    div.querySelector(".tag-remove")!.addEventListener("click", (e) => {
+    const label = document.createElement("span");
+    label.textContent = text;
+
+    const remove = document.createElement("span");
+    remove.className = "tag-remove";
+    remove.title = t("ui_tag_remove");
+    remove.textContent = "×";
+
+    remove.addEventListener("click", (e) => {
         e.stopPropagation();
         removeTag(text, type);
     });
+
+    div.appendChild(label);
+    div.appendChild(remove);
 
     return div;
 }
@@ -102,7 +101,6 @@ function addTag() {
     input.value = "";
     addBtn.disabled = true;
 
-    // Clear filter on add so user sees what they added
     const filterEl = document.getElementById("tagFilterInput") as HTMLInputElement | null;
     if (filterEl) filterEl.value = "";
 
@@ -134,7 +132,6 @@ export function setupTagEvents(cb: TagsCallbacks) {
     const container = document.getElementById("tagsContainer") as HTMLDivElement;
     const tagsList = document.getElementById("tagsList") as HTMLDivElement;
 
-    // NEW: Filter Input
     const filterInput = document.getElementById("tagFilterInput") as HTMLInputElement | null;
     if (filterInput) {
         filterInput.oninput = () => {

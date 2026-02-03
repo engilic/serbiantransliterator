@@ -1,7 +1,7 @@
 // src/taskpane/app/onboarding/tour.ts
 
 import { safeGetItem, safeSetItem } from "../../../shared/storage/safeLocalStorage";
-import { t, type TranslationKey } from "../../../shared/i18n"; // FIX: import type
+import { t, type TranslationKey } from "../../../shared/i18n";
 import { get } from "../utils/dom";
 
 const STORAGE_KEY = "serbiantransliterator.tour.seen.v1";
@@ -14,7 +14,6 @@ const STEPS = [
 
 let currentStep = 0;
 
-// OVO MORA DA IMA EXPORT
 export function initOnboarding() {
     if (safeGetItem(STORAGE_KEY) === "true") {
         return;
@@ -54,8 +53,12 @@ function renderStep() {
     const actionBtn = get<HTMLButtonElement>("tourActionBtn");
     const dotsContainer = get<HTMLDivElement>("tourDots");
 
-    titleEl.textContent = t(step.title as TranslationKey); // FIX: Cast to TranslationKey
-    textEl.innerHTML = t(step.text as TranslationKey); // FIX: Cast to TranslationKey
+    titleEl.textContent = t(step.title as TranslationKey);
+
+    // SECURITY: translations are treated as text (no HTML).
+    // This avoids DOM XSS sinks and also keeps CodeQL happy.
+    textEl.textContent = t(step.text as TranslationKey);
+
     iconEl.textContent = step.icon;
 
     if (currentStep === STEPS.length - 1) {
@@ -64,7 +67,8 @@ function renderStep() {
         actionBtn.textContent = t("tour_next");
     }
 
-    dotsContainer.innerHTML = "";
+    // safe: clearing
+    dotsContainer.textContent = "";
     STEPS.forEach((_, idx) => {
         const dot = document.createElement("div");
         dot.className = "dot" + (idx === currentStep ? " active" : "");

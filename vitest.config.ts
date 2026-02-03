@@ -43,5 +43,31 @@ export default defineConfig({
         include: ["tests/**/*.test.ts"],
         setupFiles: ["tests/setup.ts"],
         testTimeout: 30000,
+
+        coverage: {
+            provider: "v8",
+            reportsDirectory: path.resolve(__dirname, "coverage"),
+
+            // ✅ ensures these exist:
+            // - coverage/lcov.info
+            // - coverage/index.html
+            reporter: ["text", "html", "lcov"],
+
+            // ✅ Vitest v4 replacement for removed `coverage.all`
+            // If you want coverage to include uncovered source files too, keep include.
+            // If you want only “files touched by tests”, you can delete `include`.
+            include: ["src/**/*.{ts,tsx,js,jsx}"],
+
+            exclude: [
+                "**/node_modules/**",
+                "**/dist/**",
+                "**/scripts/**",
+                "**/tests/**",
+                "**/tests-e2e/**",
+                "**/__mocks__/**",
+                "**/*.d.ts",
+                "src/wasm-core/pkg/**",
+            ],
+        },
     },
 });

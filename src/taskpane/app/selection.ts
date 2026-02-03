@@ -5,10 +5,45 @@ import { invalidatePreviewCache } from "./preview/cache";
 import { t, tPlural } from "../../shared/i18n";
 import { getSettingsFromUi } from "./settings/getters";
 
-// [MAX3] Fluent UI SVG Ikone
-const ICON_DOC = `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>`;
-const ICON_SEL = `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M2.5 4v3h2V5h15v2h2V4h-19zm19 16v-3h-2v2H4.5v-2h-2v3h19zM6 10h12v4H6v-4z"/></svg>`;
+// -------------------------
+// SVG icons (NO innerHTML)
+// -------------------------
+const SVG_NS = "http://www.w3.org/2000/svg";
 
+const ICON_DOC_PATH_D =
+    "M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z";
+
+const ICON_SEL_PATH_D = "M2.5 4v3h2V5h15v2h2V4h-19zm19 16v-3h-2v2H4.5v-2h-2v3h19zM6 10h12v4H6v-4z";
+
+function buildSvgIcon(pathD: string): SVGSVGElement {
+    const svg = document.createElementNS(SVG_NS, "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("width", "14");
+    svg.setAttribute("height", "14");
+    svg.setAttribute("fill", "currentColor");
+    svg.setAttribute("aria-hidden", "true");
+    // Some hosts honor this (prevents focus)
+    svg.setAttribute("focusable", "false");
+
+    const path = document.createElementNS(SVG_NS, "path");
+    path.setAttribute("d", pathD);
+
+    svg.appendChild(path);
+    return svg;
+}
+
+// Prebuild once, clone per use (fast + no mutation sharing)
+const ICON_DOC_SVG = buildSvgIcon(ICON_DOC_PATH_D);
+const ICON_SEL_SVG = buildSvgIcon(ICON_SEL_PATH_D);
+
+function setLiveIcon(el: HTMLElement, kind: "doc" | "sel") {
+    const node = (kind === "doc" ? ICON_DOC_SVG : ICON_SEL_SVG).cloneNode(true);
+    el.replaceChildren(node);
+}
+
+// -------------------------
+// Rest of file
+// -------------------------
 let cachedDocInfo: { count: number; sample: string; hasLat: boolean; hasCyr: boolean } | null = null;
 let lastDocCheck = 0;
 const DOC_INFO_CACHE_MS = 5000;
@@ -191,7 +226,8 @@ export async function checkSelectionAndUpdateButtons() {
             liveStatus.style.display = "flex";
 
             if (isSelectionMode) {
-                liveIconLeft.innerHTML = ICON_SEL;
+                setLiveIcon(liveIconLeft, "sel");
+
                 const words = countWords(rawText);
                 const label =
                     words >= 1
@@ -199,7 +235,8 @@ export async function checkSelectionAndUpdateButtons() {
                         : tPlural("char_count", countNonSpaceChars(rawText));
                 liveTextLeft.textContent = t("live_sel_words", label);
             } else {
-                liveIconLeft.innerHTML = ICON_DOC;
+                setLiveIcon(liveIconLeft, "doc");
+
                 const docInfo = cachedDocInfo || { count: 0 };
                 liveTextLeft.textContent = t("live_doc_words", tPlural("word_count", docInfo.count));
             }
@@ -216,13 +253,13 @@ export async function checkSelectionAndUpdateButtons() {
 
             if (shouldEnable) {
                 liveStatus.style.opacity = "1";
-                liveIconLeft.style.color = "var(--colorBrandForeground1)";
+                (liveIconLeft as HTMLElement).style.color = "var(--colorBrandForeground1)";
                 runBtn.disabled = false;
                 prevBtn.disabled = false;
                 runBtn.classList.add("pulse-action");
             } else {
                 liveStatus.style.opacity = "0.7";
-                liveIconLeft.style.color = "inherit";
+                (liveIconLeft as HTMLElement).style.color = "inherit";
                 runBtn.disabled = true;
                 prevBtn.disabled = true;
                 runBtn.classList.remove("pulse-action");

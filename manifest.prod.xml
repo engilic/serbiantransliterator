@@ -8,7 +8,7 @@
 	<Description DefaultValue="Preslovljavanje srpskog teksta (latinica ↔ ćirilica) u Word dokumentu. Radi offline."/>
 	<IconUrl DefaultValue="https://serbiantransliterator.pages.dev/assets/icon-32.png"/>
 	<HighResolutionIconUrl DefaultValue="https://serbiantransliterator.pages.dev/assets/icon-64.png"/>
-	<SupportUrl DefaultValue="https://serbiantransliterator.pages.dev/support.html"/>
+	<SupportUrl DefaultValue="https://serbiantransliterator.pages.dev/support"/>
 	<AppDomains>
 		<AppDomain>https://serbiantransliterator.pages.dev</AppDomain>
 	</AppDomains>
@@ -16,7 +16,7 @@
 		<Host Name="Document"/>
 	</Hosts>
 	<DefaultSettings>
-		<SourceLocation DefaultValue="https://serbiantransliterator.pages.dev/taskpane.html"/>
+		<SourceLocation DefaultValue="https://serbiantransliterator.pages.dev/taskpane"/>
 	</DefaultSettings>
 	<Permissions>ReadWriteDocument</Permissions>
 	<VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
@@ -67,9 +67,9 @@
 				<bt:Image id="Icon.80x80" DefaultValue="https://serbiantransliterator.pages.dev/assets/icon-80.png"/>
 			</bt:Images>
 			<bt:Urls>
-				<bt:Url id="GetStarted.LearnMoreUrl" DefaultValue="https://serbiantransliterator.pages.dev/support.html"/>
-				<bt:Url id="Commands.Url" DefaultValue="https://serbiantransliterator.pages.dev/commands.html"/>
-				<bt:Url id="Taskpane.Url" DefaultValue="https://serbiantransliterator.pages.dev/taskpane.html"/>
+				<bt:Url id="GetStarted.LearnMoreUrl" DefaultValue="https://serbiantransliterator.pages.dev/support"/>
+				<bt:Url id="Commands.Url" DefaultValue="https://serbiantransliterator.pages.dev/commands"/>
+				<bt:Url id="Taskpane.Url" DefaultValue="https://serbiantransliterator.pages.dev/taskpane"/>
 			</bt:Urls>
 			<bt:ShortStrings>
 				<bt:String id="GetStarted.Title" DefaultValue="Serbian Transliterator (v1.0.0)"/>

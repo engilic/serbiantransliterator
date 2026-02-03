@@ -1,5 +1,6 @@
 // src/taskpane/app/modal/previewModal.ts
 
+import DOMPurify from "dompurify";
 import { state } from "../state";
 import { applyFromPreview } from "../word/apply";
 import { get, getOptional } from "../utils/dom";
@@ -9,7 +10,7 @@ import { myersDiff, type DiffOp } from "../../../shared/diff";
 import { InteractiveDiff } from "../../../shared/diff/interactive";
 import { PREVIEW_BATCH } from "../preview/constants";
 import { convertTextForPreviewPlain } from "../preview/convertPreviewPlain";
-import { t } from "../../../shared/i18n";
+import { t, type TranslationKey } from "../../../shared/i18n";
 
 function tokenize(text: string): string[] {
     return text.split(/([ \t\n\r]+)/).filter((x) => x);
@@ -25,36 +26,83 @@ function raf(cb: FrameRequestCallback): number {
 }
 
 /**
+ * Escape translation for safe usage inside HTML strings / attributes.
+ * IMPORTANT: Use this for anything interpolated into innerHTML templates.
+ */
+function tt(key: TranslationKey, ...args: (string | number)[]): string {
+    return escapeHtml(t(key, ...args));
+}
+
+function clearEl(el: HTMLElement) {
+    // safer than innerHTML="", avoids accidental HTML sinks
+    el.replaceChildren();
+}
+
+/**
+ * Build a DOM node for a diff operation.
+ * SECURITY: uses textContent for op.value and title; never inserts op.value as HTML.
+ */
+function buildOpNode(op: DiffOp, i: number, rejected: boolean): Node {
+    if (op.type === "equal") {
+        return document.createTextNode(op.value);
+    }
+
+    const span = document.createElement("span");
+
+    let cls = "";
+    let tooltip = "";
+
+    if (op.type === "insert") {
+        cls = "diff-added clickable";
+        tooltip = t("preview_diff_tip_insert");
+        if (rejected) cls += " diff-rejected";
+    } else if (op.type === "delete") {
+        cls = "diff-removed clickable";
+        tooltip = t("preview_diff_tip_delete");
+        if (rejected) cls += " diff-rejected";
+    }
+
+    span.className = cls;
+    span.setAttribute("data-idx", String(i));
+    span.title = tooltip;
+    span.textContent = op.value;
+
+    return span;
+}
+
+/**
  * Async Progressive Renderer for Diff Mode.
  * PR1 hardening: render session token cancellation so loops stop on modal close.
+ *
+ * SECURITY:
+ * - No insertAdjacentHTML
+ * - No innerHTML for diff content
+ * - User-provided text is inserted via textContent / text nodes only
  */
 function renderDiffAsync(holder: HTMLElement, interactive: InteractiveDiff, session: number) {
-    holder.innerHTML = "";
+    clearEl(holder);
 
     const ops = interactive.getOps();
     const CHUNK_SIZE = 400;
     let index = 0;
 
-    const getOpHtml = (op: DiffOp, i: number, rejected: boolean) => {
-        const val = escapeHtml(op.value);
-        let cls = "";
-        let tooltip = "";
+    // Start with one block
+    let currentBlock = document.createElement("div");
+    currentBlock.className = "preview-block";
+    holder.appendChild(currentBlock);
 
-        if (op.type === "insert") {
-            cls = "diff-added clickable";
-            tooltip = t("preview_diff_tip_insert");
-            if (rejected) cls += " diff-rejected";
-        } else if (op.type === "delete") {
-            cls = "diff-removed clickable";
-            tooltip = t("preview_diff_tip_delete");
-            if (rejected) cls += " diff-rejected";
+    const ensureBlock = () => {
+        if (!currentBlock || currentBlock.parentNode !== holder) {
+            currentBlock = document.createElement("div");
+            currentBlock.className = "preview-block";
+            holder.appendChild(currentBlock);
         }
+    };
 
-        if (op.type === "equal") {
-            return val;
-        } else {
-            return `<span class="${cls}" data-idx="${i}" title="${tooltip}">${val}</span>`;
-        }
+    const nextBlock = () => {
+        currentBlock = document.createElement("div");
+        currentBlock.className = "preview-block";
+        holder.appendChild(currentBlock);
     };
 
     const renderChunk = () => {
@@ -64,25 +112,32 @@ function renderDiffAsync(holder: HTMLElement, interactive: InteractiveDiff, sess
         // Also cancel if mode changed away from diff
         if (state.preview.mode !== "diff") return;
 
-        const end = Math.min(index + CHUNK_SIZE, ops.length);
+        ensureBlock();
 
-        let chunkHtml = '<div class="preview-block">';
+        const end = Math.min(index + CHUNK_SIZE, ops.length);
 
         for (let i = index; i < end; i++) {
             const op = ops[i];
             if (!op) continue;
 
             const rejected = interactive.isRejected(i);
-            chunkHtml += getOpHtml(op, i, rejected);
 
-            if (op.value.includes("\n")) {
-                chunkHtml += '</div><div class="preview-block">';
+            // Preserve block splitting on newlines similar to old logic
+            const parts = op.value.split("\n");
+            for (let p = 0; p < parts.length; p++) {
+                const seg = parts[p] ?? "";
+                if (seg.length > 0) {
+                    const segOp: DiffOp = { ...op, value: seg };
+                    currentBlock.appendChild(buildOpNode(segOp, i, rejected));
+                }
+
+                // if there was a newline, start a new block
+                if (p < parts.length - 1) {
+                    nextBlock();
+                }
             }
         }
 
-        chunkHtml += "</div>";
-
-        holder.insertAdjacentHTML("beforeend", chunkHtml);
         index = end;
 
         if (index < ops.length) {
@@ -91,6 +146,18 @@ function renderDiffAsync(holder: HTMLElement, interactive: InteractiveDiff, sess
     };
 
     renderChunk();
+}
+
+/**
+ * Sanitizer for renderer-produced HTML (side-by-side view).
+ * Adjust allowed tags/attrs only if your renderer needs more.
+ */
+function sanitizePreviewHtml(html: string): string {
+    return DOMPurify.sanitize(html, {
+        ALLOW_DATA_ATTR: true,
+        ALLOWED_TAGS: ["div", "span", "br"],
+        ALLOWED_ATTR: ["class", "title", "data-testid", "data-idx"],
+    });
 }
 
 export function showPreviewModal() {
@@ -109,27 +176,34 @@ export function showPreviewModal() {
 
     const showLoadMore = state.preview.scope === "document" && state.preview.canLoadMore;
 
+    // This template is safe because all dynamic interpolations are escaped (escapeHtml/tt).
     modal.innerHTML = `
       <div class="preview-sticky-header">
         <div class="preview-header-row">
             <div class="preview-title" data-testid="previewTitleText">${escapeHtml(state.preview.titleText)}</div>
             <div class="preview-header-right">
-                <button class="preview-close-btn" id="previewCloseX" title="${t("preview_close_title")}">&times;</button>
+                <button class="preview-close-btn" id="previewCloseX" title="${tt("preview_close_title")}">&times;</button>
                 <div class="preview-header-buttons">
-                    <button id="modalOk" class="btn-primary" type="button">${t("preview_btn_apply")}</button>
+                    <button id="modalOk" class="btn-primary" type="button">${tt("preview_btn_apply")}</button>
                 </div>
             </div>
         </div>
         <div class="button-group" style="margin-top:8px; justify-content: flex-start;">
-            <button id="pBtnDiff" class="mini-btn ${state.preview.mode === "diff" ? "active" : ""}">${t("preview_btn_diff")}</button>
-            <button id="pBtnSide" class="mini-btn ${state.preview.mode === "side" ? "active" : ""}">${t("preview_btn_side")}</button>
-            <button id="pBtnPlain" class="mini-btn ${state.preview.mode === "plain" ? "active" : ""}">${t("preview_btn_plain")}</button>
+            <button id="pBtnDiff" class="mini-btn ${state.preview.mode === "diff" ? "active" : ""}">${tt("preview_btn_diff")}</button>
+            <button id="pBtnSide" class="mini-btn ${state.preview.mode === "side" ? "active" : ""}">${tt("preview_btn_side")}</button>
+            <button id="pBtnPlain" class="mini-btn ${state.preview.mode === "plain" ? "active" : ""}">${tt("preview_btn_plain")}</button>
         </div>
       </div>
       <div id="previewHolder" class="preview-text-pane"></div>
-      
-      ${showLoadMore ? `<div style="margin-top:10px; text-align:center"><button id="previewLoadMoreBtn" class="mini-btn">${t("btn_load_more")}</button></div>` : ""}
-      
+
+      ${
+          showLoadMore
+              ? `<div style="margin-top:10px; text-align:center"><button id="previewLoadMoreBtn" class="mini-btn">${tt(
+                    "btn_load_more"
+                )}</button></div>`
+              : ""
+      }
+
       <div id="previewToast" class="preview-toast"></div>
     `;
 
@@ -216,10 +290,19 @@ export function renderPreviewMode() {
     if (mode === "diff" && interactiveDiff) {
         renderDiffAsync(holder, interactiveDiff, session);
     } else if (mode === "side") {
-        holder.innerHTML = renderSideBySideWithHighlights(original, converted);
+        // renderer returns HTML; sanitize before injecting
+        const html = renderSideBySideWithHighlights(original, converted);
+        holder.innerHTML = sanitizePreviewHtml(html);
     } else {
+        // plain mode: no HTML injection needed
+        clearEl(holder);
         const text = interactiveDiff ? interactiveDiff.buildResult() : converted;
-        holder.innerHTML = `<div class="preview-single-pane">${escapeHtml(text)}</div>`;
+
+        const pane = document.createElement("div");
+        pane.className = "preview-single-pane";
+        pane.textContent = text;
+
+        holder.appendChild(pane);
     }
 
     updateActiveButton("pBtnDiff", mode === "diff");
@@ -232,8 +315,8 @@ function updateActiveButton(id: string, active: boolean) {
     if (btn) {
         if (active) btn.classList.add("active");
         else btn.classList.remove("active");
-        btn.style.backgroundColor = active ? "var(--neutral-light)" : "var(--bg-color)";
-        btn.style.borderColor = active ? "var(--primary-color)" : "var(--border-color)";
+        (btn as HTMLElement).style.backgroundColor = active ? "var(--neutral-light)" : "var(--bg-color)";
+        (btn as HTMLElement).style.borderColor = active ? "var(--primary-color)" : "var(--border-color)";
     }
 }
 

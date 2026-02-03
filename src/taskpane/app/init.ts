@@ -24,7 +24,10 @@ function registerServiceWorker() {
     if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {
             navigator.serviceWorker
-                .register("./sw.js")
+                .register("./sw.js", {
+                    // ✅ Ensure SW updates are not blocked by HTTP cache
+                    updateViaCache: "none",
+                })
                 .catch((err) => console.log("SW registration failed: ", err));
         });
     }

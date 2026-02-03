@@ -38,23 +38,51 @@ function handleFatalError(raw: unknown) {
     overlay.style.zIndex = "99999";
     overlay.style.textAlign = "center";
 
-    overlay.innerHTML = `
-        <div style="font-size: 48px; margin-bottom: 16px;">😵</div>
-        <h2 style="margin-bottom: 8px;">Ups, nešto je pošlo po zlu.</h2>
-        <p style="opacity: 0.7; margin-bottom: 24px; max-width: 300px;">
-            Aplikacija je naišla na neočekivanu grešku. Podaci su sačuvani u logovima.
-        </p>
-        <button id="reloadBtn" class="primary-btn" style="padding: 10px 24px;">
-            Ponovo učitaj
-        </button>
-        <div style="margin-top: 20px; font-size: 10px; color: red; text-align: left; background: #eee; padding: 10px; border-radius: 4px; max-width: 100%; overflow: hidden;">
-            ${normalized.message}
-        </div>
-    `;
+    // Build UI safely (no innerHTML with untrusted content)
+    const emoji = document.createElement("div");
+    emoji.style.fontSize = "48px";
+    emoji.style.marginBottom = "16px";
+    emoji.textContent = "😵";
+
+    const title = document.createElement("h2");
+    title.style.marginBottom = "8px";
+    title.textContent = "Ups, nešto je pošlo po zlu.";
+
+    const p = document.createElement("p");
+    p.style.opacity = "0.7";
+    p.style.marginBottom = "24px";
+    p.style.maxWidth = "300px";
+    p.textContent = "Aplikacija je naišla na neočekivanu grešku. Podaci su sačuvani u logovima.";
+
+    const btn = document.createElement("button");
+    btn.id = "reloadBtn";
+    btn.className = "primary-btn";
+    btn.style.padding = "10px 24px";
+    btn.textContent = "Ponovo učitaj";
+
+    const details = document.createElement("div");
+    details.style.marginTop = "20px";
+    details.style.fontSize = "10px";
+    details.style.color = "red";
+    details.style.textAlign = "left";
+    details.style.background = "#eee";
+    details.style.padding = "10px";
+    details.style.borderRadius = "4px";
+    details.style.maxWidth = "100%";
+    details.style.overflow = "hidden";
+
+    // SECURITY: error message goes to textContent (never HTML)
+    details.textContent = normalized.message;
+
+    overlay.appendChild(emoji);
+    overlay.appendChild(title);
+    overlay.appendChild(p);
+    overlay.appendChild(btn);
+    overlay.appendChild(details);
 
     document.body.appendChild(overlay);
 
-    document.getElementById("reloadBtn")?.addEventListener("click", () => {
+    btn.addEventListener("click", () => {
         window.location.reload();
     });
 }

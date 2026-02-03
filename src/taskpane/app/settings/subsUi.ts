@@ -1,6 +1,5 @@
 // src/taskpane/app/settings/subsUi.ts
 
-import { escapeHtml } from "../../../shared/safeHtml";
 import { t } from "../../../shared/i18n";
 import { get } from "../utils/dom";
 
@@ -10,28 +9,52 @@ export function renderSubsList(area: HTMLTextAreaElement) {
     const raw = area.value.trim();
     const lines = raw ? raw.split("\n") : [];
 
-    container.innerHTML = "";
+    // Clear safely
+    container.replaceChildren();
 
     if (lines.length === 0) {
-        container.innerHTML = `<div class="subs-empty hint" data-i18n="subs_list_empty">${t("subs_list_empty")}</div>`;
+        const empty = document.createElement("div");
+        empty.className = "subs-empty hint";
+        empty.setAttribute("data-i18n", "subs_list_empty");
+        empty.textContent = t("subs_list_empty");
+        container.appendChild(empty);
         return;
     }
 
     lines.forEach((line) => {
         if (!line.includes("->")) return;
-        const [src, dest] = line.split("->").map((s) => s.trim());
+        const [srcRaw, destRaw] = line.split("->");
+        const src = (srcRaw ?? "").trim();
+        const dest = (destRaw ?? "").trim();
+        if (!src || !dest) return;
 
         const item = document.createElement("div");
         item.className = "sub-item";
-        item.innerHTML = `
-            <span class="sub-text"><b>${escapeHtml(src)}</b> &rarr; ${escapeHtml(dest)}</span>
-            <span class="sub-remove" title="${t("ui_tag_remove")}">&times;</span>
-        `;
 
-        item.querySelector(".sub-remove")!.addEventListener("click", () => {
+        // Build:
+        // <span class="sub-text"><b>{src}</b> → {dest}</span>
+        const textSpan = document.createElement("span");
+        textSpan.className = "sub-text";
+
+        const b = document.createElement("b");
+        b.textContent = src;
+
+        textSpan.appendChild(b);
+        textSpan.appendChild(document.createTextNode(" \u2192 ")); // " → "
+        textSpan.appendChild(document.createTextNode(dest));
+
+        // Remove button: <span class="sub-remove" title="...">&times;</span>
+        const removeBtn = document.createElement("span");
+        removeBtn.className = "sub-remove";
+        removeBtn.title = t("ui_tag_remove");
+        removeBtn.textContent = "\u00D7"; // ×
+
+        removeBtn.addEventListener("click", () => {
             removeSub(line, area);
         });
 
+        item.appendChild(textSpan);
+        item.appendChild(removeBtn);
         container.appendChild(item);
     });
 }
