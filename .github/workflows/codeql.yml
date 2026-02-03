@@ -33,7 +33,6 @@ jobs:
               uses: github/codeql-action/init@v4
               with:
                   languages: ${{ matrix.language }}
-                  packs: codeql/javascript-queries:AlertSuppression.ql
 
             - name: Setup Node.js
               uses: actions/setup-node@v6
@@ -55,7 +54,6 @@ jobs:
               run: npm run build
 
             - name: Perform CodeQL Analysis (generate SARIF, do not upload)
-              id: analyze
               uses: github/codeql-action/analyze@v4
               with:
                   category: "/language:${{ matrix.language }}"
@@ -73,14 +71,13 @@ jobs:
                   echo "Using SARIF: ${SARIF_FILE}"
                   echo "file=${SARIF_FILE}" >> "$GITHUB_OUTPUT"
 
-            - name: Filter SARIF (hard remove false positives for xmlParser)
+            - name: Filter SARIF (hard remove OOXML xmlParser false positives)
               shell: bash
               run: |
                   set -euo pipefail
                   node scripts/filter-codeql-sarif.cjs --in "${{ steps.sarif.outputs.file }}" --out "${{ steps.sarif.outputs.file }}"
 
             - name: Upload SARIF (filtered)
-              id: upload
               uses: github/codeql-action/upload-sarif@v4
               with:
                   sarif_file: ${{ steps.sarif.outputs.file }}

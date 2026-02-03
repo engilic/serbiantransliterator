@@ -1,6 +1,4 @@
 #!/usr/bin/env node
-// scripts/filter-codeql-sarif.cjs
-
 "use strict";
 
 const fs = require("fs");
@@ -23,8 +21,8 @@ const sarif = JSON.parse(fs.readFileSync(inFile, "utf8"));
 
 const ruleIds = new Set(["js/xss", "js/xml-bomb"]);
 
-// matchuje i relative i file:// URI varijante
-const targetFileRe = /(^|[\\/])src[\\/]shared[\\/]ooxml[\\/]xmlParser\.ts$/;
+// Match both relative and file:// URIs, and tolerate / or \.
+const targetFileRe = /src[\\/]+shared[\\/]+ooxml[\\/]+xmlParser\.ts$/;
 
 function resultTouchesTargetFile(res) {
     const locs = res?.locations || [];
@@ -36,23 +34,31 @@ function resultTouchesTargetFile(res) {
 }
 
 let removed = 0;
+let removedByRule = { "js/xss": 0, "js/xml-bomb": 0 };
 
 if (Array.isArray(sarif?.runs)) {
     for (const run of sarif.runs) {
         if (!Array.isArray(run.results)) continue;
 
         const before = run.results.length;
+
         run.results = run.results.filter((res) => {
             const id = res?.ruleId;
             if (!ruleIds.has(id)) return true;
             if (!resultTouchesTargetFile(res)) return true;
+
             removed++;
+            removedByRule[id] = (removedByRule[id] || 0) + 1;
             return false;
         });
+
         const after = run.results.length;
         console.log(`[sarif-filter] run: results ${before} -> ${after}`);
     }
 }
 
-console.log(`[sarif-filter] removed total=${removed}`);
+console.log(
+    `[sarif-filter] removed total=${removed} (js/xss=${removedByRule["js/xss"]}, js/xml-bomb=${removedByRule["js/xml-bomb"]})`
+);
+
 fs.writeFileSync(outFile, JSON.stringify(sarif, null, 2), "utf8");

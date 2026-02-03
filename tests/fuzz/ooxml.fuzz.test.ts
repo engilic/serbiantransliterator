@@ -26,10 +26,8 @@ const ooxmlNodeGen = fc.letrec((tie) => ({
     }),
 }));
 
-// Eksplicitni cast da TS zna da node vraća string
 const xmlArb = ooxmlNodeGen.node as fc.Arbitrary<string>;
 
-// XML-safe huge text (keeps the "huge node" property meaningful and non-flaky)
 const xmlSafeAlphabet =
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 " +
     ".,;:!?()[]{}-_+/=\\n\\t" +
@@ -37,7 +35,6 @@ const xmlSafeAlphabet =
     "абвгдђежзијклљмнњопрстћуфхцчџш" +
     "АБВГДЂЕЖЗИЈКЛЉМНЊОПРСТЋУФХЦЧЏШ";
 
-// fast-check lets string be built from a custom 'unit' generator
 const hugeTextArb = fc.string({
     unit: fc.constantFrom(...xmlSafeAlphabet),
     minLength: 10000,
@@ -49,34 +46,26 @@ describe("Fuzz Testing: convertOoxml", () => {
         fc.assert(
             fc.property(xmlArb, (randomXml: string) => {
                 try {
-                    // Wrap in valid root to simulate doc
                     const input = `<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${randomXml}</w:body></w:document>`;
-
                     const result = convertOoxml(input, { direction: "lat-to-cyr" });
 
-                    // Assertions:
                     expect(result).toBeTruthy();
                     expect(typeof result.xml).toBe("string");
                     expect(result.stats).toBeTruthy();
-
                     return true;
                 } catch (e) {
                     console.error("Fuzz Crash!", e);
                     console.error("Input was:", randomXml);
-                    return false; // Test fails if crash
+                    return false;
                 }
             }),
-            {
-                numRuns: 1000,
-                verbose: true,
-            }
+            { numRuns: 1000, verbose: true }
         );
     });
 
     it("should handle huge text nodes without stack overflow", () => {
         fc.assert(
             fc.property(hugeTextArb, (hugeText) => {
-                // Important: declare xmlns:w so w: prefix is valid XML
                 const input =
                     `<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">` +
                     `<w:body><w:p><w:r><w:t>${hugeText}</w:t></w:r></w:p></w:body>` +

@@ -309,13 +309,7 @@ const BUILD_TRIGGERS = [
     "src/static/_headers",
 ];
 
-const E2E_TRIGGERS = [
-    ...BUILD_TRIGGERS,
-    "tests-e2e/",
-    "src/taskpane/",
-    "src/commands/",
-    "src/static/",
-];
+const E2E_TRIGGERS = [...BUILD_TRIGGERS, "tests-e2e/", "src/taskpane/", "src/commands/", "src/static/"];
 
 // --------------------------
 // UI helpers
@@ -352,7 +346,12 @@ function printBanner(changedInfo) {
         if (changedInfo.unknown) {
             console.log(color(C.gray, `   diff: unknown (smart-skip disabled; running full pipeline)`));
         } else {
-            console.log(color(C.gray, `   diff: ${changedInfo.baseRef} -> HEAD (${changedInfo.files.length} files changed)`));
+            console.log(
+                color(
+                    C.gray,
+                    `   diff: ${changedInfo.baseRef} -> HEAD (${changedInfo.files.length} files changed)`
+                )
+            );
         }
     }
 
@@ -512,7 +511,7 @@ async function askYesNo(q) {
         function cleanup(result) {
             try {
                 process.stdin.setRawMode(false);
-            } catch { }
+            } catch {}
             process.stdin.pause();
             process.stdin.removeListener("data", listener);
             resolve(result);
@@ -585,35 +584,35 @@ function legendForStatus(xy) {
         x === " "
             ? "index clean"
             : x === "M"
-                ? "index modified (staged)"
-                : x === "A"
-                    ? "index added (staged)"
-                    : x === "D"
-                        ? "index deleted (staged)"
-                        : x === "R"
-                            ? "index renamed (staged)"
-                            : x === "C"
-                                ? "index copied (staged)"
-                                : x === "U"
-                                    ? "index unmerged"
-                                    : `index ${x}`;
+              ? "index modified (staged)"
+              : x === "A"
+                ? "index added (staged)"
+                : x === "D"
+                  ? "index deleted (staged)"
+                  : x === "R"
+                    ? "index renamed (staged)"
+                    : x === "C"
+                      ? "index copied (staged)"
+                      : x === "U"
+                        ? "index unmerged"
+                        : `index ${x}`;
 
     const yPart =
         y === " "
             ? "worktree clean"
             : y === "M"
-                ? "worktree modified (unstaged)"
-                : y === "A"
-                    ? "worktree added"
-                    : y === "D"
-                        ? "worktree deleted"
-                        : y === "R"
-                            ? "worktree renamed"
-                            : y === "C"
-                                ? "worktree copied"
-                                : y === "U"
-                                    ? "worktree unmerged"
-                                    : `worktree ${y}`;
+              ? "worktree modified (unstaged)"
+              : y === "A"
+                ? "worktree added"
+                : y === "D"
+                  ? "worktree deleted"
+                  : y === "R"
+                    ? "worktree renamed"
+                    : y === "C"
+                      ? "worktree copied"
+                      : y === "U"
+                        ? "worktree unmerged"
+                        : `worktree ${y}`;
 
     return `${xPart}, ${yPart}`;
 }
@@ -818,7 +817,9 @@ async function prettierGate() {
 
     const chk2 = runCmdCapture("npm", ["run", "format:check"], ROOT);
     if (chk2.status !== 0) {
-        throw new Error("Prettier still not clean after auto-fix. Run 'npm run format:check' to see details.");
+        throw new Error(
+            "Prettier still not clean after auto-fix. Run 'npm run format:check' to see details."
+        );
     }
 }
 
@@ -970,7 +971,11 @@ async function main() {
     // Strict-only audits
     if (IS_STRICT) {
         runStep("Audit (npm prod/high)", "npm", ["run", "audit:prod:high"]);
-        await runInlineStepCmd("Cargo audit (wasm-core)", "cargo audit --deny warnings", cargoAuditStrictGate);
+        await runInlineStepCmd(
+            "Cargo audit (wasm-core)",
+            "cargo audit --deny warnings",
+            cargoAuditStrictGate
+        );
     } else {
         SKIPPED.push("Audit (npm prod/high) (strict-only)");
         SKIPPED.push("Cargo audit (wasm-core) (strict-only)");
@@ -1079,7 +1084,9 @@ async function main() {
             });
 
             console.log(color(C.green, `\n✅ Uspešno! Otvori Pull Request ovde:`));
-            console.log(color(C.cyan, `https://github.com/engilic/serbiantransliterator/pull/new/${autoBranch}\n`));
+            console.log(
+                color(C.cyan, `https://github.com/engilic/serbiantransliterator/pull/new/${autoBranch}\n`)
+            );
         } else {
             console.log(color(C.blue, `🚀 Pushing ${currentBranch}...`));
             spawnSync("git", ["push", "-u", "origin", currentBranch], {
