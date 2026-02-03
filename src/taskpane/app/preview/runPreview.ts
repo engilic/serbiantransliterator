@@ -2,6 +2,7 @@
 
 import type { OoxmlOptions } from "../../../shared/ooxml/convertOoxml";
 import { convertOoxml } from "../../../shared/ooxml/convertOoxml";
+import { parseSafeOoxml } from "../../../shared/ooxml/xmlParser";
 import { state } from "../state";
 import { setStatus } from "../status";
 import { showModalInfo } from "../modal/modal";
@@ -13,14 +14,23 @@ import { getSettingsFromUi, getOoxmlOptionsFromUi } from "../settings/getters";
 import { PREVIEW_BATCH } from "./constants";
 import { convertTextForPreviewPlain } from "./convertPreviewPlain";
 import { t } from "../../../shared/i18n";
-// NEW: Import recovery
 import { errorRecovery } from "../error/errorRecovery";
 
-function extractTextFromWordOoxml(xml: string): string {
+/**
+ * Extract user-visible text from Word OOXML.
+ *
+ * SECURITY: uses parseSafeOoxml() which applies input validation and blocks DTD/ENTITY.
+ * IMPORTANT: parsed XML is treated as DATA ONLY and must never be inserted into live DOM.
+ */
+function extractTextFromWordOoxml(xml: string): string | null {
     const W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
-    const doc = new DOMParser().parseFromString(xml, "application/xml");
+
+    const doc = parseSafeOoxml(xml);
+    if (!doc) return null;
+
     const paras = Array.from(doc.getElementsByTagNameNS(W_NS, "p"));
 
+    // Fallback: if no paragraphs exist, just join all <w:t>
     if (paras.length === 0) {
         return Array.from(doc.getElementsByTagNameNS(W_NS, "t"))
             .map((n) => n.textContent ?? "")
@@ -31,9 +41,12 @@ function extractTextFromWordOoxml(xml: string): string {
         if (node.nodeType === Node.TEXT_NODE) return "";
         const el = node as Element;
         if (!el || !el.localName) return "";
+
+        // WordprocessingML nodes
         if (el.localName === "t") return el.textContent ?? "";
         if (el.localName === "tab") return "\t";
         if (el.localName === "br" || el.localName === "cr") return "\n";
+
         let out = "";
         for (const ch of Array.from(el.childNodes)) out += walk(ch);
         return out;
@@ -79,7 +92,14 @@ export async function runPreview() {
 
                 const originalOoxml = ooxml.value;
                 const opts: OoxmlOptions = getOoxmlOptionsFromUi();
+
                 const origText = extractTextFromWordOoxml(originalOoxml);
+                if (origText == null) {
+                    showModalInfo(t("modal_title_error"), unsafeHtml(t("msg_preview_empty")));
+                    setStatus(t("status_error_prefix", t("msg_preview_empty")), "error");
+                    return;
+                }
+
                 const converted = convertOoxml(originalOoxml, opts);
 
                 state.preview.convertedOoxml = converted.xml;
@@ -88,6 +108,12 @@ export async function runPreview() {
                 state.preview.cacheTimestamp = Date.now();
 
                 const convText = extractTextFromWordOoxml(converted.xml);
+                if (convText == null) {
+                    showModalInfo(t("modal_title_error"), unsafeHtml(t("msg_preview_empty")));
+                    setStatus(t("status_error_prefix", t("msg_preview_empty")), "error");
+                    return;
+                }
+
                 const a = normalizeNewlines(origText);
                 const b = normalizeNewlines(convText);
 
@@ -170,7 +196,6 @@ export async function runPreview() {
             setStatus(t("status_preview_shown", type), "success");
         });
     } catch (e) {
-        // CHANGED: Use centralized error recovery
         await errorRecovery.handle(e, { operation: "runPreview" });
     }
 }

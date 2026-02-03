@@ -170,7 +170,11 @@ export function initWebModeUi() {
         // [MAX3] Universal Smart Copy (sanitize HTML before exporting)
         copyBtn.onclick = async () => {
             try {
-                const sanitizedHtml = DOMPurify.sanitize(richInput.innerHTML);
+                const sanitizedHtml = DOMPurify.sanitize(richInput.innerHTML, {
+                    ALLOW_DATA_ATTR: true,
+                    ALLOWED_TAGS: ["b", "strong", "i", "em", "u", "br", "p", "div", "span", "ul", "ol", "li"],
+                    ALLOWED_ATTR: ["class", "data-*"],
+                });
                 const textContent = richInput.innerText || richInput.textContent || "";
 
                 const htmlBlob = new Blob([sanitizedHtml], { type: "text/html" });
