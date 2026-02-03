@@ -1,4 +1,4 @@
-# 🛡️ WORKFLOW v7.5 — GOD1 OPS EDITION (MAXIMUM SECURITY)
+# 🛡️ WORKFLOW v7.5 — MAX1 OPS EDITION (MAXIMUM SECURITY)
 
 **Project:** Serbian Transliterator (Hybrid: TypeScript + Rust/WASM)  
 **Environment:** VS Code 2026, PowerShell 7, Node 20.x, Rust (Stable)  

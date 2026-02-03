@@ -236,7 +236,7 @@ function stripRemotePrefix(remoteName, fullRef) {
 }
 
 // --------------------------
-// GOD1 POST-MERGE NUKE
+// MAX1 POST-MERGE NUKE
 // --------------------------
 async function postMergeNuke({ yes = false } = {}) {
     ensureGitRepo();

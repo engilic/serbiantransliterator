@@ -17,7 +17,7 @@ const ROOT = process.cwd();
 const WASM_DIR = path.join(ROOT, "src", "wasm-core");
 
 // ✅ Verify pipeline identity
-const VERIFY_TEST_NAME = "GOD1 VERIFY";
+const VERIFY_TEST_NAME = "VERIFY";
 
 // ✅ Global start timestamp for cumulative checkpoint time
 const RUN_START_TS = Date.now();
@@ -1069,7 +1069,7 @@ async function main() {
     }
 
     beep();
-    console.log(color(C.green + C.bold, "\n🏆 GOD1 VERIFY PASSED!\n"));
+    console.log(color(C.green + C.bold, "\n🏆 VERIFY PASSED!\n"));
 
     printFinalReport();
 

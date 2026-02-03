@@ -203,7 +203,7 @@ function scanFiles(dir, definedKeys, usedKeysSet, missingKeys, stats) {
 }
 
 // =====================
-// Safety checks via git grep (strict GOD1)
+// Safety checks via git grep (strict MAX1)
 // =====================
 function gitGrepLines(args) {
     const res = spawnSync("git", ["grep", ...args], {
@@ -312,7 +312,7 @@ function removeUnusedKeysFromLocale(keysToRemove) {
 // Main
 // =====================
 async function main() {
-    scan("🌍 I18n Integrity + Safe Bloat Cleanup (GOD1)...");
+    scan("🌍 I18n Integrity + Safe Bloat Cleanup ...");
 
     const { keys: definedKeys, duplicates } = loadLocaleKeysDetailed();
 

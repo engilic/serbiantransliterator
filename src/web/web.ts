@@ -1,4 +1,5 @@
 // src/web/web.ts
+
 import "./web.css";
 
 import pkg from "../../package.json";
@@ -68,7 +69,6 @@ function registerServiceWorker() {
     let refreshing = false;
 
     // Kada SW preuzme kontrolu (posle skipWaiting), osveži stranicu
-    // da bi se učitali novi assets (novi hash imena).
     navigator.serviceWorker.addEventListener("controllerchange", () => {
         if (!refreshing) {
             refreshing = true;
@@ -80,14 +80,12 @@ function registerServiceWorker() {
         try {
             const reg = await navigator.serviceWorker.register("./sw.js");
 
-            // Opciono: Logika ako želimo da prikažemo "Update available" toast
-            // Ali pošto radimo auto-reload na controllerchange, ovo je samo za debug.
             reg.addEventListener("updatefound", () => {
                 const newWorker = reg.installing;
                 if (newWorker) {
                     newWorker.addEventListener("statechange", () => {
                         if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
-                            // Novi sadržaj je spreman, sw.ts će uraditi skipWaiting()
+                            // Novi sadržaj je spreman
                             console.log("Nova verzija instalirana.");
                         }
                     });
@@ -108,7 +106,6 @@ async function main() {
     registerServiceWorker();
 
     // Init WASM for plain text mode (main thread)
-    // DOCX ide kroz worker.
     await initWasm();
 
     const drop = $("drop");
@@ -182,7 +179,10 @@ async function main() {
             const opts = readOoxmlOptionsFromUi();
 
             for (let i = 0; i < pickedFiles.length; i++) {
-                const f = pickedFiles[i]!;
+                // [FIX] Provera postojanja umesto "!"
+                const f = pickedFiles[i];
+                if (!f) continue;
+
                 setStatus(2, `Obrada (${i + 1}/${pickedFiles.length}): ${f.name}`);
 
                 const outBlob = await convertDocxFile(
@@ -220,7 +220,7 @@ async function main() {
             return;
         }
 
-        const opts = readOoxmlOptionsFromUi(); // re-use same UI opts subset
+        const opts = readOoxmlOptionsFromUi();
         const dir = (opts.direction ?? "auto") as Direction;
 
         const res = convertPlainText(input, dir, {
@@ -248,6 +248,5 @@ async function main() {
 }
 
 main().catch((e) => {
-    // eslint-disable-next-line no-console
     console.error(e);
 });
