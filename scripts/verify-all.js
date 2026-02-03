@@ -159,6 +159,23 @@ function getPwshVersion() {
 
 function getWindowsVerLine() {
     if (!isWin()) return null;
+
+    // Prefer CIM via PowerShell: it correctly reports Windows 11 (even when registry ProductName lies).
+    const out = runCaptureText(
+        "pwsh",
+        [
+            "-NoProfile",
+            "-Command",
+            "(Get-CimInstance Win32_OperatingSystem | Select-Object -ExpandProperty Caption) + ' ' + " +
+                "(Get-CimInstance Win32_OperatingSystem | Select-Object -ExpandProperty Version) + ' ' + " +
+                "(Get-CimInstance Win32_OperatingSystem | Select-Object -ExpandProperty BuildNumber)",
+        ],
+        ROOT
+    );
+
+    if (out) return out;
+
+    // Fallback to cmd.exe ver (less precise branding)
     const comspec = process.env.ComSpec || "cmd.exe";
     const res = spawnSync(comspec, ["/d", "/s", "/c", "ver"], {
         cwd: ROOT,
@@ -167,9 +184,9 @@ function getWindowsVerLine() {
         stdio: ["ignore", "pipe", "ignore"],
         env: { ...process.env, FORCE_COLOR: "1" },
     });
+
     if ((res.status ?? 1) !== 0) return null;
-    const out = String(res.stdout || "").trim();
-    return out || null;
+    return String(res.stdout || "").trim() || null;
 }
 
 function getCiLabel() {
