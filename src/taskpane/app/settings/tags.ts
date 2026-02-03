@@ -13,8 +13,10 @@ export type TagsCallbacks = {
 let cbRef: TagsCallbacks | null = null;
 
 function updateTagsButtonsState() {
-    (document.getElementById("clearCustomBtn") as HTMLButtonElement).disabled = state.customWordsSet.size === 0;
-    (document.getElementById("clearPresetBtn") as HTMLButtonElement).disabled = state.presetWordsSet.size === 0;
+    (document.getElementById("clearCustomBtn") as HTMLButtonElement).disabled =
+        state.customWordsSet.size === 0;
+    (document.getElementById("clearPresetBtn") as HTMLButtonElement).disabled =
+        state.presetWordsSet.size === 0;
     (document.getElementById("clearAllBtn") as HTMLButtonElement).disabled =
         state.customWordsSet.size === 0 && state.presetWordsSet.size === 0;
 }
@@ -45,12 +47,14 @@ export function renderTags() {
 
     customSorted.forEach((word) => {
         if (!word || typeof word !== "string") return;
-        if (!filter || word.toLowerCase().includes(filter)) container.appendChild(createTagEl(word, "custom"));
+        if (!filter || word.toLowerCase().includes(filter))
+            container.appendChild(createTagEl(word, "custom"));
     });
 
     presetSorted.forEach((word) => {
         if (!word || typeof word !== "string") return;
-        if (!filter || word.toLowerCase().includes(filter)) container.appendChild(createTagEl(word, "preset"));
+        if (!filter || word.toLowerCase().includes(filter))
+            container.appendChild(createTagEl(word, "preset"));
     });
 
     updateTagsButtonsState();

@@ -1,67 +1,67 @@
 name: test-build-validate
 
 on:
-  push:
-    branches: ["master"]
-  pull_request:
-    branches: ["master"]
-  workflow_dispatch:
+    push:
+        branches: ["master"]
+    pull_request:
+        branches: ["master"]
+    workflow_dispatch:
 
 concurrency:
-  group: test-build-validate-${{ github.ref }}
-  cancel-in-progress: true
+    group: test-build-validate-${{ github.ref }}
+    cancel-in-progress: true
 
 jobs:
-  test-build-validate:
-    runs-on: ubuntu-latest
-    timeout-minutes: 40
+    test-build-validate:
+        runs-on: ubuntu-latest
+        timeout-minutes: 40
 
-    env:
-      CI: "true"
-      HUSKY: "0"
+        env:
+            CI: "true"
+            HUSKY: "0"
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "20"
+                  cache: "npm"
 
-      - name: Setup Rust (stable + components + wasm target)
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
-          targets: wasm32-unknown-unknown
+            - name: Setup Rust (stable + components + wasm target)
+              uses: dtolnay/rust-toolchain@stable
+              with:
+                  components: rustfmt, clippy
+                  targets: wasm32-unknown-unknown
 
-      # Rust build cache (registry + git + target)
-      - name: Rust cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: |
-            src/wasm-core -> target
+            # Rust build cache (registry + git + target)
+            - name: Rust cache
+              uses: Swatinem/rust-cache@v2
+              with:
+                  workspaces: |
+                      src/wasm-core -> target
 
-      # Optional: cache cargo-installed tools (cargo-audit lives here)
-      - name: Cache cargo tools (~/.cargo/bin)
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/bin
-          key: cargo-tools-${{ runner.os }}-v1
+            # Optional: cache cargo-installed tools (cargo-audit lives here)
+            - name: Cache cargo tools (~/.cargo/bin)
+              uses: actions/cache@v4
+              with:
+                  path: ~/.cargo/bin
+                  key: cargo-tools-${{ runner.os }}-v1
 
-      - name: Ensure ~/.cargo/bin on PATH
-        run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+            - name: Ensure ~/.cargo/bin on PATH
+              run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
-      - name: Install cargo-audit (if missing)
-        run: |
-          if ! command -v cargo-audit >/dev/null 2>&1; then
-            cargo install cargo-audit --locked
-          else
-            echo "cargo-audit already present (cached)"
-          fi
+            - name: Install cargo-audit (if missing)
+              run: |
+                  if ! command -v cargo-audit >/dev/null 2>&1; then
+                    cargo install cargo-audit --locked
+                  else
+                    echo "cargo-audit already present (cached)"
+                  fi
 
-      - name: GOD1 verify (strict, fast, no-push)
-        run: npm run verify:all:strict -- --fast --no-push
+            - name: GOD1 verify (strict, fast, no-push)
+              run: npm run verify:all:strict -- --fast --no-push

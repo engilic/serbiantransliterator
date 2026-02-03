@@ -13,8 +13,7 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 const ICON_DOC_PATH_D =
     "M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z";
 
-const ICON_SEL_PATH_D =
-    "M2.5 4v3h2V5h15v2h2V4h-19zm19 16v-3h-2v2H4.5v-2h-2v3h19zM6 10h12v4H6v-4z";
+const ICON_SEL_PATH_D = "M2.5 4v3h2V5h15v2h2V4h-19zm19 16v-3h-2v2H4.5v-2h-2v3h19zM6 10h12v4H6v-4z";
 
 function buildSvgIcon(pathD: string): SVGSVGElement {
     const svg = document.createElementNS(SVG_NS, "svg");
@@ -135,9 +134,12 @@ function getTargetScriptInfo(): DetectionResult {
     const settings = getSettingsFromUi();
     const dir = settings.direction;
 
-    if (dir === "lat-to-cyr") return { label: t("live_target_cyr"), icon: "", asciiLevel: "safe", isAuto: false };
-    if (dir === "cyr-to-lat") return { label: t("live_target_lat"), icon: "", asciiLevel: "safe", isAuto: false };
-    if (dir === "to-ascii") return { label: t("live_target_ascii"), icon: "", asciiLevel: "safe", isAuto: false };
+    if (dir === "lat-to-cyr")
+        return { label: t("live_target_cyr"), icon: "", asciiLevel: "safe", isAuto: false };
+    if (dir === "cyr-to-lat")
+        return { label: t("live_target_lat"), icon: "", asciiLevel: "safe", isAuto: false };
+    if (dir === "to-ascii")
+        return { label: t("live_target_ascii"), icon: "", asciiLevel: "safe", isAuto: false };
 
     return { label: t("dir_auto"), icon: "", asciiLevel: "safe", isAuto: true };
 }
@@ -170,7 +172,8 @@ function detectDirectionInfo(text: string): DetectionResult {
     if (lat > 35) {
         const ratio = latSr / lat;
         if (ratio === 0) return { label: t("live_auto_to_cyr"), icon: "", asciiLevel: "red", isAuto: true };
-        if (ratio < 0.012) return { label: t("live_auto_to_cyr"), icon: "", asciiLevel: "yellow", isAuto: true };
+        if (ratio < 0.012)
+            return { label: t("live_auto_to_cyr"), icon: "", asciiLevel: "yellow", isAuto: true };
     }
 
     return { label: t("live_auto_to_cyr"), icon: "", asciiLevel: "safe", isAuto: true };
@@ -227,7 +230,9 @@ export async function checkSelectionAndUpdateButtons() {
 
                 const words = countWords(rawText);
                 const label =
-                    words >= 1 ? tPlural("word_count", words) : tPlural("char_count", countNonSpaceChars(rawText));
+                    words >= 1
+                        ? tPlural("word_count", words)
+                        : tPlural("char_count", countNonSpaceChars(rawText));
                 liveTextLeft.textContent = t("live_sel_words", label);
             } else {
                 setLiveIcon(liveIconLeft, "doc");

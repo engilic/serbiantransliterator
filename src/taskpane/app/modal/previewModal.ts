@@ -196,12 +196,13 @@ export function showPreviewModal() {
       </div>
       <div id="previewHolder" class="preview-text-pane"></div>
 
-      ${showLoadMore
-            ? `<div style="margin-top:10px; text-align:center"><button id="previewLoadMoreBtn" class="mini-btn">${tt(
-                "btn_load_more"
-            )}</button></div>`
-            : ""
-        }
+      ${
+          showLoadMore
+              ? `<div style="margin-top:10px; text-align:center"><button id="previewLoadMoreBtn" class="mini-btn">${tt(
+                    "btn_load_more"
+                )}</button></div>`
+              : ""
+      }
 
       <div id="previewToast" class="preview-toast"></div>
     `;

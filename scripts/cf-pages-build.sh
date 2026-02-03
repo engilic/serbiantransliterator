@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# scripts/cf-pages-build.sh
+
 set -euo pipefail
 
 echo "== CF PAGES BUILD =="
