@@ -22,12 +22,8 @@ const sarif = JSON.parse(fs.readFileSync(inFile, "utf8"));
 
 const ruleIds = new Set(["js/xss", "js/xml-bomb"]);
 
-// Robust match:
-// - works for relative paths and file:// URIs
-// - tolerates / or \
-// - tolerates extra suffixes like ?... or #...
-const targetFileRe =
-    /src[\\/]+shared[\\/]+ooxml[\\/]+xmlParser\.ts(?:$|[?#])/i;
+// Tolerant match (relative paths + file:// URIs; / or \; optional ?/# suffix)
+const targetFileRe = /src[\\/]+shared[\\/]+ooxml[\\/]+xmlParser\.ts(?:$|[?#])/i;
 
 function touchesTarget(res) {
     for (const loc of res?.locations || []) {
