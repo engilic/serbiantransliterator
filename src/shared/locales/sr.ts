@@ -122,6 +122,7 @@ export const SR_RS = {
     modal_title_error: "Greška",
     modal_title_info: "Nema izmena",
     modal_title_about: "O Aplikaciji",
+    modal_title_debug: "Dijagnostika (Debug)",
     btn_ok: "OK",
     btn_cancel: "Otkaži",
     btn_close: "Zatvori",

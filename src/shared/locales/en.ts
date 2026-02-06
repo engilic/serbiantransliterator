@@ -131,6 +131,7 @@ export const EN_US: Record<TranslationKey, string> = {
     modal_title_error: "Error",
     modal_title_info: "No changes",
     modal_title_about: "About App",
+    modal_title_debug: "Diagnostics (Debug)",
     btn_ok: "OK",
     btn_cancel: "Cancel",
     btn_close: "Close",

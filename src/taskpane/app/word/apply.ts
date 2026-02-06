@@ -136,10 +136,11 @@ export async function runSmart() {
                     debugInfo: e?.debugInfo,
                     stack: e?.stack,
                 };
+
                 const pretty = JSON.stringify(payload, null, 2);
 
                 showModalInfo(
-                    "DEBUG: Word/Office greška",
+                    t("modal_title_debug"),
                     unsafeHtml(
                         `<pre style="white-space:pre-wrap; font-size:12px;">${escapeHtml(pretty)}</pre>`
                     )
