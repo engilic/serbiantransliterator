@@ -1,7 +1,11 @@
 /* global Word */
 // src/taskpane/app/word/chunking.ts
 
-import { type OoxmlOptions, type ConvertStats } from "../../../shared/ooxml/convertOoxml";
+import {
+    convertOoxml,
+    type OoxmlOptions,
+    type ConvertStats,
+} from "../../../shared/ooxml/convertOoxml";
 import { setStatus, setProgress } from "../status";
 import { t } from "../../../shared/i18n";
 import { workerClient } from "../../worker/client";
@@ -83,6 +87,26 @@ function mergeStats(into: ConvertStats, from: ConvertStats) {
     }
 }
 
+function isInvalidArgumentError(e: unknown): boolean {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const anyE = e as any;
+    return anyE?.code === "InvalidArgument" || String(anyE?.message || "").includes("InvalidArgument");
+}
+
+type ConvertLike = { xml: string; stats: ConvertStats };
+
+function normalizeWorkerResult(raw: unknown, xmlIn: string, fallbackDir: ConvertStats["direction"]): ConvertLike {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const r = raw as any;
+
+    const xml = typeof r?.xml === "string" ? r.xml : "";
+    const stats: ConvertStats =
+        r?.stats && typeof r.stats === "object" ? (r.stats as ConvertStats) : emptyStats(fallbackDir);
+
+    // nikad ne vraćaj prazan xml (to nas je već ubadalo na insertOoxml)
+    return { xml: xml.length > 0 ? xml : xmlIn, stats };
+}
+
 export async function processDocumentInChunks(
     context: Word.RequestContext,
     opts: OoxmlOptions
@@ -97,9 +121,16 @@ export async function processDocumentInChunks(
     await context.sync();
 
     const totalParagraphs = paragraphs.items.length;
+
     let agg: ConvertStats | null = null;
     let i = 0;
     let batchSize = BATCH_SIZE_START;
+
+    let skipped = 0;
+
+    // Ako worker vraća no-op, uradićemo 1 “dokaz” lokalnim convertOoxml.
+    let checkedWorkerOnce = false;
+    let forceLocal = false;
 
     while (i < totalParagraphs) {
         if (state.activeAbortController?.signal.aborted) break;
@@ -108,45 +139,115 @@ export async function processDocumentInChunks(
         const batchItems = paragraphs.items.slice(i, i + batchSize);
         if (batchItems.length === 0) break;
 
-        const batchRange = batchItems[0]
-            .getRange("Whole")
-            .expandTo(batchItems[batchItems.length - 1].getRange("Whole"));
+        // Guard za expandTo (tvoja izmena) ✅
+        const first = batchItems[0].getRange("Whole");
+        const last = batchItems[batchItems.length - 1].getRange("Whole");
+        const batchRange = batchItems.length === 1 ? first : first.expandTo(last);
+
         const ooxmlRes = batchRange.getOoxml();
 
-        /**
-         * ARHITEKTONSKO OBRAZLOŽENJE: context.sync() unutar petlje je neophodan
-         * za "Adaptive Smart Chunking". On omogućava Word hostu da oslobodi UI nit
-         * i obradi OOXML u delovima, sprečavajući Out-of-Memory greške kod 1000+ strana.
-         */
         // eslint-disable-next-line office-addins/no-context-sync-in-loop
         await context.sync();
 
-        const result = await workerClient.convert(ooxmlRes.value, opts);
-
-        if (!agg) agg = emptyStats(result.stats.direction);
-        mergeStats(agg, result.stats);
-
-        if (result.xml !== ooxmlRes.value) {
-            batchRange.insertOoxml(result.xml, Word.InsertLocation.replace);
+        const xmlIn = String(ooxmlRes.value ?? "");
+        if (xmlIn.length === 0) {
+            i += batchItems.length;
+            continue;
         }
 
-        i += batchSize;
+        // 1) Konverzija: worker (default) ili local fallback
+        let used: ConvertLike;
+
+        if (forceLocal) {
+            const local = convertOoxml(xmlIn, opts);
+            used = { xml: local.xml, stats: local.stats };
+        } else {
+            const workerRaw = await workerClient.convert(xmlIn, opts);
+            const worker = normalizeWorkerResult(
+                workerRaw,
+                xmlIn,
+                (opts.direction as ConvertStats["direction"]) || "auto"
+            );
+
+            // Ako worker vraća identično, uradi jednu proveru lokalno.
+            if (!checkedWorkerOnce && worker.xml === xmlIn) {
+                checkedWorkerOnce = true;
+
+                const local = convertOoxml(xmlIn, opts);
+                if (local.xml !== xmlIn) {
+                    // Worker očigledno ne radi u document flow-u → prebacujemo ceo run na local.
+                    // eslint-disable-next-line no-console
+                    console.warn("[chunking] Worker returned NO-OP, but local convert changes XML. Switching to LOCAL fallback for the rest of the run.");
+                    forceLocal = true;
+                    used = { xml: local.xml, stats: local.stats };
+                } else {
+                    // local takođe nema promenu → realno nema šta da se menja u ovom chunk-u
+                    used = worker;
+                }
+            } else {
+                used = worker;
+            }
+        }
+
+        // Init agg direction iz prve realne statistike
+        if (!agg) agg = emptyStats(used.stats.direction);
+        mergeStats(agg, used.stats);
+
+        // 2) Apply (OOXML insert) – samo ako se stvarno razlikuje
+        try {
+            if (typeof used.xml === "string" && used.xml.length > 0 && used.xml !== xmlIn) {
+                batchRange.insertOoxml(used.xml, Word.InsertLocation.replace);
+
+                // ✅ odmah sync posle inserta (stabilizuje range/state)
+                // eslint-disable-next-line office-addins/no-context-sync-in-loop
+                await context.sync();
+            }
+        } catch (e) {
+            // Ako insert pukne, smanji batch da izoluje problem
+            if (isInvalidArgumentError(e) && batchItems.length > 1) {
+                const old = batchSize;
+                batchSize = Math.max(1, Math.floor(batchSize / 2));
+                skipped++;
+
+                // eslint-disable-next-line no-console
+                console.warn(`[chunking] insertOoxml InvalidArgument. Reducing batch ${old} -> ${batchSize}. i=${i}`);
+                continue; // retry same i with smaller batch
+            }
+
+            // Ako puca i na batch=1, preskoči taj paragraf
+            if (isInvalidArgumentError(e) && batchItems.length === 1) {
+                skipped++;
+
+                // eslint-disable-next-line no-console
+                console.warn(`[chunking] insertOoxml InvalidArgument for single paragraph at i=${i}. Skipping.`, e);
+
+                i += 1;
+                continue;
+            }
+
+            throw e;
+        }
+
+        // 3) Progress + adaptivni batch size
+        i += batchItems.length;
+
         const progress = Math.round((i / totalParagraphs) * 100);
         setProgress(progress);
-        setStatus(t("status_processing") + ` ${progress}%`, "info");
+
+        const extra = skipped > 0 ? ` | skipped=${skipped}` : "";
+        const mode = forceLocal ? " | local-fallback" : "";
+        setStatus(t("status_processing") + ` ${progress}%` + extra + mode, "info");
 
         await new Promise((r) => setTimeout(r, YIELD_DELAY_MS));
 
-        // Adaptive batching logic
         const dur = nowMs() - batchStart;
         perfMonitor.record("processChunk", batchItems.length, dur, { batchSize: batchItems.length });
 
-        const msPerPara = dur / batchItems.length;
-        const idealBatch = Math.floor(TARGET_TIME_MS / msPerPara);
+        const msPerPara = dur / Math.max(1, batchItems.length);
+        const idealBatch = Math.floor(TARGET_TIME_MS / Math.max(0.0001, msPerPara));
         batchSize = Math.max(MIN_BATCH, Math.min(MAX_BATCH, Math.floor((batchSize + idealBatch) / 2)));
     }
 
-    // Finalni sync nakon izmena
     // eslint-disable-next-line office-addins/no-context-sync-in-loop
     await context.sync();
 

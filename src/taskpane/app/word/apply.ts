@@ -105,10 +105,43 @@ export async function runSmart() {
             }
 
             state.lastStatsText = buildApplyStatsText(result, scope, extras);
-
             refreshStats();
         });
-    } catch (e) {
+    } catch (e: any) {
+        const escapeHtml = (s: string) =>
+            s
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+
+        console.error("[runSmart] raw error:", e);
+        console.error("[runSmart] code:", e?.code);
+        console.error("[runSmart] message:", e?.message);
+        console.error("[runSmart] debugInfo:", e?.debugInfo);
+        console.error("[runSmart] stack:", e?.stack);
+
+        try {
+            const payload = {
+                name: e?.name,
+                code: e?.code,
+                message: e?.message,
+                debugInfo: e?.debugInfo,
+                stack: e?.stack,
+            };
+
+            const pretty = JSON.stringify(payload, null, 2);
+            showModalInfo(
+                "DEBUG: Word/Office greška",
+                unsafeHtml(
+                    `<pre style="white-space:pre-wrap; font-size:12px;">${escapeHtml(pretty)}</pre>`
+                )
+            );
+        } catch {
+            // ignore
+        }
+
         await errorRecovery.handle(e, { operation: "runSmart" });
     }
 }
