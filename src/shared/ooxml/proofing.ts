@@ -7,17 +7,51 @@ import { extractLetterWordSpans, findAncestor, getDirectChild, ensureLangOnRPr }
 const RE_CYR = /[\u0400-\u052F]/u;
 const RE_LAT = /[A-Za-zČčĆćĐđŠšŽž]/u;
 
+const ELEMENT_NODE = 1;
+
+function localNameSafe(el: Element): string {
+    const anyEl = el as any;
+    const ln = anyEl?.localName;
+    if (typeof ln === "string" && ln.length > 0) return ln;
+
+    const nn = anyEl?.nodeName;
+    if (typeof nn === "string" && nn.length > 0) {
+        const parts = nn.split(":");
+        return parts[parts.length - 1] || nn;
+    }
+
+    return "";
+}
+
+function elementChildrenSafe(el: Element): Element[] {
+    const anyEl = el as any;
+
+    // Browser DOM
+    if (anyEl?.children && typeof anyEl.children.length === "number") {
+        return Array.from(anyEl.children) as Element[];
+    }
+
+    // xmldom / worker DOM
+    const cn = anyEl?.childNodes;
+    if (cn && typeof cn.length === "number") {
+        return (Array.from(cn) as any[]).filter((n) => n && n.nodeType === ELEMENT_NODE) as Element[];
+    }
+
+    return [];
+}
+
 function isSimpleRun(run: Element): boolean {
-    for (const el of Array.from(run.children)) {
-        if (el.localName !== "rPr" && el.localName !== "t") return false;
+    for (const el of elementChildrenSafe(run)) {
+        const ln = localNameSafe(el);
+        if (ln !== "rPr" && ln !== "t") return false;
     }
     return true;
 }
 
 function getRunTextFromTChildren(run: Element): string {
     let out = "";
-    for (const ch of Array.from(run.children)) {
-        if (ch.localName === "t") out += ch.textContent ?? "";
+    for (const ch of elementChildrenSafe(run)) {
+        if (localNameSafe(ch) === "t") out += ch.textContent ?? "";
     }
     return out;
 }
@@ -78,11 +112,13 @@ export function applyProofingLanguagePreserveUnchanged(
             skip("notSimpleRun");
             continue;
         }
+
         const orig = originalRunText.get(run);
         if (orig == null) {
             skip("missingOriginal");
             continue;
         }
+
         const fin = getRunTextFromTChildren(run);
         const origWords = extractLetterWordSpans(orig);
         const finWords = extractLetterWordSpans(fin);
@@ -146,6 +182,7 @@ export function applyProofingLanguagePreserveUnchanged(
         for (const seg of segs) {
             const newRun = doc.createElementNS(WORD_NS, "w:r");
             let newRPr: Element | null = null;
+
             if (baseRPr) {
                 newRPr = baseRPr.cloneNode(true) as Element;
                 newRun.appendChild(newRPr);
@@ -153,19 +190,24 @@ export function applyProofingLanguagePreserveUnchanged(
                 newRPr = doc.createElementNS(WORD_NS, "w:rPr");
                 newRun.appendChild(newRPr);
             }
+
             if (seg.changed && newRPr) {
                 ensureLangOnRPr(doc, newRPr, target);
             }
+
             const tEl = doc.createElementNS(WORD_NS, "w:t");
             if (needsXmlSpacePreserve(seg.text)) {
                 tEl.setAttributeNS(XML_NS, "xml:space", "preserve");
             }
             tEl.textContent = seg.text;
             newRun.appendChild(tEl);
+
             parent.insertBefore(newRun, run);
         }
+
         parent.removeChild(run);
         changedRuns++;
     }
+
     return { changedRuns, skippedRuns, skippedByReason };
 }
