@@ -107,9 +107,17 @@ export async function runSmart() {
             state.lastStatsText = buildApplyStatsText(result, scope, extras);
             refreshStats();
         });
-    } catch (e: any) {
+    } catch (e: unknown) {
         const debugEnabled =
             typeof localStorage !== "undefined" && localStorage.getItem("stDebugOfficeErrors") === "1";
+
+        const err = e as Partial<{
+            name: string;
+            code: string;
+            message: string;
+            debugInfo: unknown;
+            stack: string;
+        }>;
 
         const escapeHtml = (s: string) =>
             s
@@ -119,28 +127,26 @@ export async function runSmart() {
                 .replace(/"/g, "&quot;")
                 .replace(/'/g, "&#039;");
 
-        // Console (uvek)
         console.error("[runSmart] raw error:", e);
-        console.error("[runSmart] code:", e?.code);
-        console.error("[runSmart] message:", e?.message);
-        console.error("[runSmart] debugInfo:", e?.debugInfo);
-        console.error("[runSmart] stack:", e?.stack);
+        console.error("[runSmart] code:", err.code);
+        console.error("[runSmart] message:", err.message);
+        console.error("[runSmart] debugInfo:", err.debugInfo);
+        console.error("[runSmart] stack:", err.stack);
 
-        // Modal (samo kad je flag uključen)
         if (debugEnabled) {
             try {
                 const payload = {
-                    name: e?.name,
-                    code: e?.code,
-                    message: e?.message,
-                    debugInfo: e?.debugInfo,
-                    stack: e?.stack,
+                    name: err.name,
+                    code: err.code,
+                    message: err.message,
+                    debugInfo: err.debugInfo,
+                    stack: err.stack,
                 };
 
                 const pretty = JSON.stringify(payload, null, 2);
 
                 showModalInfo(
-                    t("modal_title_debug"),
+                    t("modal_title_error"),
                     unsafeHtml(
                         `<pre style="white-space:pre-wrap; font-size:12px;">${escapeHtml(pretty)}</pre>`
                     )

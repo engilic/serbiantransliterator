@@ -9,13 +9,21 @@ export { isSafeXml } from "./xmlSafety";
 
 const ELEMENT_NODE = 1;
 
-function localNameSafe(el: Element): string {
-    const anyEl = el as any;
-    const ln = anyEl?.localName;
-    if (typeof ln === "string" && ln.length > 0) return ln;
+type ArrayLike<T> = { length: number; [index: number]: T | null | undefined };
 
-    const nn = anyEl?.nodeName;
-    if (typeof nn === "string" && nn.length > 0) {
+function readStringField(obj: unknown, key: string): string | null {
+    if (!obj || typeof obj !== "object") return null;
+    const rec = obj as Record<string, unknown>;
+    const v = rec[key];
+    return typeof v === "string" && v.length > 0 ? v : null;
+}
+
+function localNameSafe(el: Element): string {
+    const ln = readStringField(el, "localName");
+    if (ln) return ln;
+
+    const nn = readStringField(el, "nodeName");
+    if (nn) {
         const parts = nn.split(":");
         return parts[parts.length - 1] || nn;
     }
@@ -23,31 +31,44 @@ function localNameSafe(el: Element): string {
     return "";
 }
 
-function elementChildrenSafe(el: Element): Element[] {
-    const anyEl = el as any;
+function arrayLikeToElements<T>(list: ArrayLike<T>): T[] {
+    const out: T[] = [];
+    for (let i = 0; i < list.length; i++) {
+        const v = list[i];
+        if (v != null) out.push(v);
+    }
+    return out;
+}
 
-    // Browser DOM: el.children
-    if (anyEl?.children && typeof anyEl.children.length === "number") {
-        return Array.from(anyEl.children) as Element[];
+function elementChildrenSafe(el: Element): Element[] {
+    const childrenUnknown = (el as unknown as { children?: unknown }).children;
+    if (childrenUnknown && typeof childrenUnknown === "object") {
+        const len = (childrenUnknown as { length?: unknown }).length;
+        if (typeof len === "number") {
+            return arrayLikeToElements(childrenUnknown as ArrayLike<Element>);
+        }
     }
 
-    // xmldom: childNodes
-    const cn = anyEl?.childNodes;
-    if (cn && typeof cn.length === "number") {
-        return (Array.from(cn) as any[]).filter((n) => n && n.nodeType === ELEMENT_NODE) as Element[];
+    const childNodesUnknown = (el as unknown as { childNodes?: unknown }).childNodes;
+    if (childNodesUnknown && typeof childNodesUnknown === "object") {
+        const len = (childNodesUnknown as { length?: unknown }).length;
+        if (typeof len === "number") {
+            const nodes = arrayLikeToElements(childNodesUnknown as ArrayLike<Node>);
+            return nodes.filter((n): n is Element => n.nodeType === ELEMENT_NODE) as Element[];
+        }
     }
 
     return [];
 }
 
 function parentElementSafe(el: Element): Element | null {
-    const anyEl = el as any;
+    const pe = (el as unknown as { parentElement?: Element | null }).parentElement;
+    if (pe) return pe;
 
-    if (anyEl?.parentElement) return anyEl.parentElement as Element;
-
-    // xmldom: parentNode umesto parentElement
-    let p = anyEl?.parentNode;
-    while (p && p.nodeType !== ELEMENT_NODE) p = p.parentNode;
+    let p = (el as unknown as { parentNode?: Node | null }).parentNode;
+    while (p && p.nodeType !== ELEMENT_NODE) {
+        p = (p as { parentNode?: Node | null }).parentNode ?? null;
+    }
     return p ? (p as Element) : null;
 }
 
@@ -61,13 +82,10 @@ export function removeProofingTags(doc: Document) {
 
 export function ensureLangOnRPr(doc: Document, rPr: Element, lang: string) {
     let langEl = elementChildrenSafe(rPr).find((c) => localNameSafe(c) === "lang") ?? null;
-
     if (!langEl) {
         langEl = doc.createElementNS(WORD_NS, "w:lang");
         rPr.appendChild(langEl);
     }
-
-    // Note: setAttributeNS(namespaceURI, qualifiedName, value)
     langEl.setAttributeNS(WORD_NS, "w:val", lang);
     langEl.setAttributeNS(WORD_NS, "w:eastAsia", lang);
     langEl.setAttributeNS(WORD_NS, "w:bidi", lang);
@@ -100,30 +118,25 @@ export function extractLetterWordSpans(text: string): WordSpan[] {
     const cps = Array.from(text.normalize("NFC"));
     const out: WordSpan[] = [];
     let i = 0;
-
     while (i < cps.length) {
         const cp = cps[i];
         if (!cp || !isTokenChar(cp)) {
             i++;
             continue;
         }
-
         const start = i;
         let hasLetter = false;
-
         while (i < cps.length) {
             const cp2 = cps[i];
             if (!cp2 || !isTokenChar(cp2)) break;
             if (/\p{L}/u.test(cp2)) hasLetter = true;
             i++;
         }
-
         const end = i;
         if (hasLetter) {
             out.push({ startCp: start, endCp: end, text: cps.slice(start, end).join("") });
         }
     }
-
     return out;
 }
 

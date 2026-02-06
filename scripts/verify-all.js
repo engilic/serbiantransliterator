@@ -34,13 +34,14 @@ function readJsonSafe(p) {
 }
 
 const APP_PKG = readJsonSafe(path.join(ROOT, "package.json"));
-const APP_VERSION = APP_PKG?.version ? String(APP_PKG.version) : "unknown";
 
 const ARGS = process.argv.slice(2);
-const IS_FAST_MODE = ARGS.includes("--fast");
-const NO_PUSH = ARGS.includes("--no-push");
+const IS_ULTRA_FAST = ARGS.includes("--ultra-fast"); // ✅ ultra fast option
+const IS_FAST_MODE = ARGS.includes("--fast") || IS_ULTRA_FAST;
+const NO_PUSH = ARGS.includes("--no-push") || IS_ULTRA_FAST; // ultra-fast never pushes
 const IS_STRICT = ARGS.includes("--strict");
 const NO_SKIP = ARGS.includes("--no-skip"); // force full run (no smart skipping)
+const NO_TIMINGS = ARGS.includes("--no-timings"); // optional: disable timings table
 
 const TIMINGS = [];
 const EXECUTED = [];
@@ -48,8 +49,7 @@ const SKIPPED = [];
 
 let FINAL_REPORT_PRINTED = false;
 let FAILED_STEP = null; // set when die(step) is called
-
-let STEP_NO = 0;
+let STEP_NO = 1;
 
 function nextStep(title) {
     const n = STEP_NO++;
@@ -160,7 +160,7 @@ function getPwshVersion() {
 function getWindowsVerLine() {
     if (!isWin()) return null;
 
-    // Prefer CIM via PowerShell: it correctly reports Windows 11 (even when registry ProductName lies).
+    // Prefer CIM via PowerShell: it correctly reports Windows 11.
     const out = runCaptureText(
         "pwsh",
         [
@@ -172,7 +172,6 @@ function getWindowsVerLine() {
         ],
         ROOT
     );
-
     if (out) return out;
 
     // Fallback to cmd.exe ver (less precise branding)
@@ -184,7 +183,6 @@ function getWindowsVerLine() {
         stdio: ["ignore", "pipe", "ignore"],
         env: { ...process.env, FORCE_COLOR: "1" },
     });
-
     if ((res.status ?? 1) !== 0) return null;
     return String(res.stdout || "").trim() || null;
 }
@@ -212,6 +210,10 @@ function toFileUrl(p) {
     } catch {
         return String(p);
     }
+}
+
+function hasNpmScript(name) {
+    return !!(APP_PKG && APP_PKG.scripts && Object.prototype.hasOwnProperty.call(APP_PKG.scripts, name));
 }
 
 // --------------------------
@@ -328,6 +330,23 @@ const BUILD_TRIGGERS = [
 
 const E2E_TRIGGERS = [...BUILD_TRIGGERS, "tests-e2e/", "src/taskpane/", "src/commands/", "src/static/"];
 
+function matchingFiles(changedInfo, rules, max = 8) {
+    if (!changedInfo || changedInfo.unknown) return [];
+    const hits = [];
+    for (const f of changedInfo.files) {
+        if (matchAny(f, rules)) {
+            hits.push(f);
+            if (hits.length >= max) break;
+        }
+    }
+    return hits;
+}
+
+function fmtHits(hits) {
+    if (!hits || hits.length === 0) return " (no match)";
+    return hits.map((h) => `\n       - ${h}`).join("");
+}
+
 // --------------------------
 // UI helpers
 // --------------------------
@@ -336,7 +355,32 @@ function beep() {
 }
 
 function printBanner(changedInfo) {
-    console.log(color(C.magenta + C.bold, `\n🛡️  ${VERIFY_TEST_NAME}  🛡️\n`));
+    const smartLabel = (() => {
+        if (NO_SKIP) return "No-skip";
+        if (changedInfo && changedInfo.unknown) return "Full (diff unknown)";
+        return "Smart";
+    })();
+
+    const smartColor = (() => {
+        if (NO_SKIP) return C.yellow + C.bold;
+        if (changedInfo && changedInfo.unknown) return C.red + C.bold;
+        return C.green + C.bold;
+    })();
+
+    const modeBits = [];
+    if (IS_STRICT) modeBits.push(color(C.yellow + C.bold, "Strict"));
+    if (IS_ULTRA_FAST) modeBits.push(color(C.yellow + C.bold, "Ultra-fast"));
+    else if (IS_FAST_MODE) modeBits.push(color(C.yellow + C.bold, "Fast"));
+    modeBits.push(color(smartColor, smartLabel));
+
+    const modeText = modeBits.join(color(C.gray, " | "));
+
+    console.log(
+        color(C.magenta + C.bold, `\n🛡️  ${VERIFY_TEST_NAME}`) +
+            color(C.gray, " - ") +
+            modeText +
+            color(C.magenta + C.bold, "  🛡️\n")
+    );
 
     const nodeVer = process.version;
     const npmVer = runCaptureText("npm", ["-v"], ROOT) || "unknown";
@@ -367,26 +411,54 @@ function printBanner(changedInfo) {
 
     if (winVer) console.log(color(C.gray, `os: ${winVer}`));
     if (pwshVer) console.log(color(C.gray, `pwsh: ${pwshVer}`));
-
     console.log("");
+}
 
-    if (IS_STRICT) console.log(color(C.yellow + C.bold, "   (STRICT MODE ENABLED)\n"));
-    if (IS_FAST_MODE) console.log(color(C.yellow + C.bold, "   (FAST MODE ENABLED)\n"));
-    if (NO_SKIP) console.log(color(C.yellow + C.bold, "   (NO-SKIP MODE ENABLED)\n"));
+function printSmartPlan(changedInfo) {
+    console.log(color(C.cyan, "📋 SMART PLAN (preflight):"));
+
+    if (!changedInfo || changedInfo.unknown) {
+        console.log(color(C.gray, "   • diff unknown => smart-skip disabled => running full pipeline\n"));
+        return;
+    }
+
+    if (NO_SKIP) {
+        console.log(color(C.yellow, "   • --no-skip enabled => running full pipeline\n"));
+        return;
+    }
+
+    const rust = anyChanged(changedInfo, RUST_TRIGGERS);
+    const build = IS_STRICT ? true : anyChanged(changedInfo, BUILD_TRIGGERS);
+    const e2e = anyChanged(changedInfo, E2E_TRIGGERS);
+
+    const rustHits = matchingFiles(changedInfo, RUST_TRIGGERS);
+    const buildHits = matchingFiles(changedInfo, BUILD_TRIGGERS);
+    const e2eHits = matchingFiles(changedInfo, E2E_TRIGGERS);
+
+    console.log(
+        `   • Rust gates : ${rust ? color(C.green, "RUN") : color(C.gray, "SKIP")}  | triggers:${fmtHits(rustHits)}`
+    );
+    console.log(
+        `   • Build      : ${build ? color(C.green, "RUN") : color(C.gray, "SKIP")}  | triggers:${fmtHits(buildHits)}`
+    );
+    console.log(
+        `   • E2E        : ${e2e ? color(C.green, "RUN") : color(C.gray, "SKIP")}  | triggers:${fmtHits(e2eHits)}`
+    );
+
+    if (IS_ULTRA_FAST) {
+        console.log(
+            color(C.gray, "\n   • note: ULTRA-FAST skips install/build/validate/tests/rust/audits\n")
+        );
+    } else if (IS_STRICT) {
+        console.log(color(C.gray, "\n   • note: STRICT forces Build + runs strict-only audits\n"));
+    } else {
+        console.log("");
+    }
 }
 
 function stepNo(step) {
     const m = String(step).match(/^(\d+)\./);
     return m ? m[1] : "?";
-}
-
-function die(step) {
-    FAILED_STEP = step;
-
-    beep();
-    console.error(`\n${color(C.bgRed, " ❌ FATAL ERROR: " + step + " ")}\n`);
-    printFinalReport();
-    process.exit(1);
 }
 
 // --------------------------
@@ -397,7 +469,6 @@ function run(step, cmd, args, cwd = ROOT, hooks = null) {
 
     const STEP_STYLE = "\x1b[1m\x1b[96m";
     console.log(color(STEP_STYLE, `\n>>> ${step}`));
-    // ✅ No "$" (copy/paste friendly)
     console.log(color(C.gray, `    ${cmdLineForDisplay(resolveCmd(cmd), args)}`));
 
     const start = Date.now();
@@ -414,7 +485,6 @@ function run(step, cmd, args, cwd = ROOT, hooks = null) {
     if (res.error) console.error(res.error);
     if (res.status !== 0) die(step);
 
-    // Hook: print extra info BEFORE the OK line (used for Coverage outputs)
     try {
         if (hooks && typeof hooks.beforeOk === "function") {
             hooks.beforeOk();
@@ -426,7 +496,8 @@ function run(step, cmd, args, cwd = ROOT, hooks = null) {
     }
 
     const cum = cumulativeSecondsStr();
-    console.log(color(C.green, `\n✅ [${stepNo(step)}] OK — ${step} : ${cum}s\n`));
+    console.log(""); // exactly one blank line before OK
+    console.log(color(C.green, `✅ [${stepNo(step)}] OK — ${step} : ${cum}s`));
 }
 
 async function runInline(step, fn, cmdLine /* string | null */) {
@@ -435,7 +506,6 @@ async function runInline(step, fn, cmdLine /* string | null */) {
     const STEP_STYLE = "\x1b[1m\x1b[96m";
     console.log(color(STEP_STYLE, `\n>>> ${step}`));
 
-    // ✅ No "$" (copy/paste friendly)
     const shown = cmdLine ? cmdLine : "internal";
     console.log(color(C.gray, `    ${shown}`));
 
@@ -453,7 +523,215 @@ async function runInline(step, fn, cmdLine /* string | null */) {
     TIMINGS.push({ step, time: stepElapsed });
 
     const cum = cumulativeSecondsStr();
-    console.log(color(C.green, `\n✅ [${stepNo(step)}] OK — ${step} : ${cum}s\n`));
+    console.log(""); // exactly one blank line before OK
+    console.log(color(C.green, `✅ [${stepNo(step)}] OK — ${step} : ${cum}s`));
+}
+
+// --------------------------
+// Final report (ALWAYS printed, even in FAST/ULTRA-FAST)
+// --------------------------
+function getRepoStatusPorcelain() {
+    const res = spawnSync("git", ["status", "--porcelain"], {
+        cwd: ROOT,
+        encoding: "utf8",
+        shell: false,
+        stdio: ["ignore", "pipe", "ignore"],
+    });
+
+    if (res.status && res.status !== 0) return "";
+    return String(res.stdout || "").replace(/\s+$/g, "");
+}
+
+function legendForStatus(xy) {
+    if (xy === "??") return "untracked (new file)";
+
+    const x = xy[0] || " ";
+    const y = xy[1] || " ";
+
+    const xPart =
+        x === " "
+            ? "index clean"
+            : x === "M"
+              ? "index modified (staged)"
+              : x === "A"
+                ? "index added (staged)"
+                : x === "D"
+                  ? "index deleted (staged)"
+                  : x === "R"
+                    ? "index renamed (staged)"
+                    : x === "C"
+                      ? "index copied (staged)"
+                      : x === "U"
+                        ? "index unmerged"
+                        : `index ${x}`;
+
+    const yPart =
+        y === " "
+            ? "worktree clean"
+            : y === "M"
+              ? "worktree modified (unstaged)"
+              : y === "A"
+                ? "worktree added"
+                : y === "D"
+                  ? "worktree deleted"
+                  : y === "R"
+                    ? "worktree renamed"
+                    : y === "C"
+                      ? "worktree copied"
+                      : y === "U"
+                        ? "worktree unmerged"
+                        : `worktree ${y}`;
+
+    return `${xPart}, ${yPart}`;
+}
+
+function printTimingsReport() {
+    if (NO_TIMINGS) return;
+
+    console.log(color(C.cyan, "\n⏱️  TIMINGS REPORT:"));
+
+    const hasError = !!FAILED_STEP;
+
+    if (TIMINGS.length === 0) {
+        console.log(color(C.gray, "   (no timings recorded)"));
+        return;
+    }
+
+    const rows = TIMINGS.map((t) => {
+        const m = String(t.step).match(/^(\d+)\.\s*(.*)$/);
+        const no = m ? m[1] : "";
+        const title = m ? m[2] : String(t.step);
+        const time = `${t.time}s`;
+        return { no, title, time, step: t.step };
+    });
+
+    const noW = Math.max(2, ...rows.map((r) => r.no.length));
+    const titleW = Math.max(...rows.map((r) => r.title.length));
+    const leftW = noW + 2 + titleW;
+
+    const totalTime =
+        rows.reduce((acc, r) => acc + (Number(String(r.time).replace("s", "")) || 0), 0).toFixed(2) + "s";
+
+    const timeW = Math.max(...rows.map((r) => r.time.length), totalTime.length);
+
+    let failIndex = -1;
+    if (hasError) {
+        failIndex = rows.findIndex((r) => r.step === FAILED_STEP);
+        if (failIndex < 0 && rows.length > 0) failIndex = rows.length - 1;
+    }
+
+    rows.forEach((r, idx) => {
+        const left = `${r.no.padStart(noW)}. ${r.title}`.padEnd(leftW);
+        const right = r.time.padStart(timeW);
+
+        const isFailRow = hasError && idx === failIndex;
+        const errTag = isFailRow ? " " + color(C.red + C.bold, "ERROR") : "";
+
+        console.log(`   • ${left} : ${right}${errTag}`);
+    });
+
+    const checkMark = hasError ? "✖" : "✔";
+    const totalLabel = " TOTAL";
+    const totalLeft = totalLabel.padEnd(leftW);
+    const totalLine = `   ${checkMark} ${totalLeft} : ${totalTime.padStart(timeW)}`;
+    console.log(color(hasError ? C.red + C.bold : C.green + C.bold, totalLine));
+}
+
+function printFinalReport() {
+    if (FINAL_REPORT_PRINTED) return;
+    FINAL_REPORT_PRINTED = true;
+
+    printTimingsReport();
+
+    console.log(color(C.cyan, "\n📎 EXECUTION REPORT:"));
+    console.log(`   • strict: ${IS_STRICT ? "YES" : "NO"}`);
+    console.log(`   • fast:   ${IS_FAST_MODE ? "YES" : "NO"}`);
+    console.log(`   • ultra:  ${IS_ULTRA_FAST ? "YES" : "NO"}`);
+    console.log(`   • skip:   ${NO_SKIP ? "DISABLED (--no-skip)" : "SMART (changed-files based)"}`);
+    console.log(`   • push:   ${NO_PUSH ? "DISABLED" : "PROMPT (enabled)"}`);
+
+    console.log(color(C.yellow, "\n   • skipped steps:"));
+    if (SKIPPED.length === 0) {
+        console.log(color(C.gray, "     (none)"));
+    } else {
+        SKIPPED.forEach((s) => console.log(`     - ${s}`));
+    }
+
+    console.log(color(C.cyan, "\n📎 REPO STATUS:"));
+    const st = getRepoStatusPorcelain();
+    const isDirty = !!st;
+
+    if (!isDirty) {
+        console.log(color(C.green + C.bold, "   ✔ OK — clean (no uncommitted changes)"));
+    } else {
+        // Promenjeno iz C.red + C.bold u C.yellow + C.bold i "WARNING"
+        console.log(color(C.yellow + C.bold, "   ⚠  WARNING — repo is dirty (uncommitted changes detected):"));
+
+        const lines = st.split(/\r?\n/).filter(Boolean);
+        const seen = new Set();
+
+        for (const l of lines.slice(0, 300)) {
+            const xy = l.startsWith("??") ? "??" : l.slice(0, 2);
+            const rest = l.slice(3);
+            seen.add(xy);
+            console.log(`     ${xy}  ${rest}`);
+        }
+
+        if (lines.length > 300) console.log(color(C.gray, `     ...and ${lines.length - 300} more`));
+
+        console.log(color(C.gray, "\n     legend (XY = index/worktree):"));
+        const sorted = Array.from(seen).sort();
+        for (const xy of sorted) {
+            console.log(color(C.gray, `     ${xy}  ${legendForStatus(xy)}`));
+        }
+    }
+
+    // Final two lines: RESULT then VERIFY (VERIFY is last, NO blank line between)
+    const dirty = !!getRepoStatusPorcelain();
+    const total = cumulativeSecondsStr();
+    const passed = !FAILED_STEP;
+
+    const outcome = passed ? color(C.green + C.bold, "✔ PASS") : color(C.red + C.bold, "✖ FAIL");
+    const dirtyText = dirty ? color(C.yellow + C.bold, "DIRTY") : color(C.green + C.bold, "CLEAN");
+
+    const stepText = FAILED_STEP ? color(C.red + C.bold, `@ ${FAILED_STEP}`) : color(C.gray, "(all steps)");
+    const execN = EXECUTED.length;
+    const skipN = SKIPPED.length;
+
+    console.log(
+        "\n" +
+            color(C.cyan + C.bold, "🏁 RESULT: ") +
+            outcome +
+            " " +
+            stepText +
+            color(C.gray, "  |  ") +
+            color(C.cyan + C.bold, "time: ") +
+            color(C.gray, `${total}s`) +
+            color(C.gray, "  |  ") +
+            color(C.cyan + C.bold, "steps: ") +
+            color(C.gray, `${execN} run, ${skipN} skipped`) +
+            color(C.gray, "  |  ") +
+            color(C.cyan + C.bold, "repo: ") +
+            dirtyText
+    );
+
+    console.log("");
+
+    console.log(
+        passed ? color(C.green + C.bold, "🏆 VERIFY PASSED!") : color(C.red + C.bold, "❌ VERIFY FAILED!")
+    );
+
+    // ✅ two blank lines after VERIFY
+    console.log("");
+    console.log("");
+}
+
+function die(step) {
+    FAILED_STEP = step;
+    beep();
+    console.error(`\n${color(C.bgRed, " ❌ FATAL ERROR: " + step + " ")}\n`);
+    printFinalReport();
+    process.exit(1);
 }
 
 // --------------------------
@@ -499,10 +777,7 @@ async function askYesNo(q) {
         process.stdin.setRawMode(true);
 
         const listener = (k) => {
-            if (k === "\u0003") {
-                cleanup(false);
-                process.exit(1);
-            }
+            if (k === "\u0003") process.exit(1);
 
             if (
                 k === "y" ||
@@ -566,166 +841,13 @@ function runCmdStatus(cmd, args, cwd) {
     return res.status ?? 1;
 }
 
-function getRepoStatusPorcelain() {
-    const res = spawnSync("git", ["status", "--porcelain"], {
-        cwd: ROOT,
-        encoding: "utf8",
-        shell: false,
-        stdio: ["ignore", "pipe", "ignore"],
-    });
-
-    if (res.status && res.status !== 0) return "";
-
-    // ✅ IMPORTANT: do NOT trim() - it breaks leading spaces in the FIRST line (e.g. " M file")
-    // Only remove trailing whitespace at the end of the whole output.
-    return String(res.stdout || "").replace(/\s+$/g, "");
-}
-
 function hashFileSha256(filePath) {
     const buf = fs.readFileSync(filePath);
     return crypto.createHash("sha256").update(buf).digest("hex");
 }
 
-// Legend for porcelain XY codes (only print what appears)
-function legendForStatus(xy) {
-    if (xy === "??") return "untracked (new file)";
-
-    const x = xy[0] || " ";
-    const y = xy[1] || " ";
-
-    const xPart =
-        x === " "
-            ? "index clean"
-            : x === "M"
-              ? "index modified (staged)"
-              : x === "A"
-                ? "index added (staged)"
-                : x === "D"
-                  ? "index deleted (staged)"
-                  : x === "R"
-                    ? "index renamed (staged)"
-                    : x === "C"
-                      ? "index copied (staged)"
-                      : x === "U"
-                        ? "index unmerged"
-                        : `index ${x}`;
-
-    const yPart =
-        y === " "
-            ? "worktree clean"
-            : y === "M"
-              ? "worktree modified (unstaged)"
-              : y === "A"
-                ? "worktree added"
-                : y === "D"
-                  ? "worktree deleted"
-                  : y === "R"
-                    ? "worktree renamed"
-                    : y === "C"
-                      ? "worktree copied"
-                      : y === "U"
-                        ? "worktree unmerged"
-                        : `worktree ${y}`;
-
-    return `${xPart}, ${yPart}`;
-}
-
-function printFinalReport() {
-    if (FINAL_REPORT_PRINTED) return;
-    FINAL_REPORT_PRINTED = true;
-
-    console.log(color(C.cyan, "\n⏱️  TIMINGS REPORT:"));
-
-    const hasError = !!FAILED_STEP;
-
-    if (TIMINGS.length === 0) {
-        console.log(color(C.gray, "   (no timings recorded)"));
-    } else {
-        const rows = TIMINGS.map((t) => {
-            const m = String(t.step).match(/^(\d+)\.\s*(.*)$/);
-            const no = m ? m[1] : "";
-            const title = m ? m[2] : String(t.step);
-            const time = `${t.time}s`;
-            return { no, title, time, step: t.step };
-        });
-
-        const noW = Math.max(2, ...rows.map((r) => r.no.length));
-        const titleW = Math.max(...rows.map((r) => r.title.length));
-        const leftW = noW + 2 + titleW;
-
-        const totalTime = TIMINGS.reduce((acc, t) => acc + (Number(t.time) || 0), 0).toFixed(2) + "s";
-        const timeW = Math.max(...rows.map((r) => r.time.length), totalTime.length);
-
-        // Find failing row by exact step string; if missing, mark the last printed row as ERROR.
-        let failIndex = -1;
-        if (hasError) {
-            failIndex = rows.findIndex((r) => r.step === FAILED_STEP);
-            if (failIndex < 0 && rows.length > 0) failIndex = rows.length - 1;
-        }
-
-        rows.forEach((r, idx) => {
-            const left = `${r.no.padStart(noW)}. ${r.title}`.padEnd(leftW);
-            const right = r.time.padStart(timeW);
-
-            const isFailRow = hasError && idx === failIndex;
-            const errTag = isFailRow ? " " + color(C.red + C.bold, "ERROR") : "";
-
-            console.log(`   • ${left} : ${right}${errTag}`);
-        });
-
-        // TOTAL line (stable alignment; +3 spaces before mark, 1 space after)
-        const totalPrefix = `${"   " + " ".repeat(3)}${hasError ? "✖" : "✔"}${" ".repeat(2)}`;
-        const totalLeftW = Math.max(0, leftW - (totalPrefix.length - "   • ".length));
-        const totalLeft = "TOTAL".padEnd(totalLeftW);
-        const totalLine = `${totalPrefix}${totalLeft} : ${totalTime.padStart(timeW)}`;
-
-        console.log(color(hasError ? C.red + C.bold : C.green + C.bold, totalLine));
-    }
-
-    console.log(color(C.cyan, "\n📎 EXECUTION REPORT:"));
-    console.log(`   • strict: ${IS_STRICT ? "YES" : "NO"}`);
-    console.log(`   • fast:   ${IS_FAST_MODE ? "YES" : "NO"}`);
-    console.log(`   • skip:   ${NO_SKIP ? "DISABLED (--no-skip)" : "SMART (changed-files based)"}`);
-    console.log(`   • push:   ${NO_PUSH ? "DISABLED (--no-push)" : "PROMPT (enabled)"}`);
-    console.log(color(C.yellow, "\n   • skipped steps:"));
-    if (SKIPPED.length === 0) {
-        console.log(color(C.gray, "     (none)"));
-    } else {
-        SKIPPED.forEach((s) => console.log(`     - ${s}`));
-    }
-
-    console.log(color(C.cyan, "\n📎 REPO STATUS:"));
-    const st = getRepoStatusPorcelain();
-    if (!st) {
-        console.log(color(C.green, "   ✔ clean (no uncommitted changes)"));
-    } else {
-        console.log(color(C.yellow, "   ⚠ dirty (changes detected):"));
-
-        const lines = st.split(/\r?\n/).filter(Boolean);
-        const seen = new Set();
-
-        for (const l of lines.slice(0, 300)) {
-            const xy = l.startsWith("??") ? "??" : l.slice(0, 2);
-            const rest = l.slice(3);
-            seen.add(xy);
-
-            console.log(`     ${xy}  ${rest}`);
-        }
-
-        if (lines.length > 300) console.log(color(C.gray, `     ...and ${lines.length - 300} more`));
-
-        console.log(color(C.gray, "\n     legend (XY = index/worktree):"));
-        const sorted = Array.from(seen).sort();
-        for (const xy of sorted) {
-            console.log(color(C.gray, `     ${xy}  ${legendForStatus(xy)}`));
-        }
-    }
-
-    console.log("");
-}
-
 // --------------------------
-// Sniffer & Secret Hunter (aligned numbers)
+// Sniffer & Secret Hunter
 // --------------------------
 async function runSniffer() {
     const filesOut = spawnSync("git", ["ls-files"], { shell: false, encoding: "utf8" }).stdout || "";
@@ -790,20 +912,6 @@ async function runSniffer() {
 
     console.log(color(C.cyan, "📎 Sniffer report:"));
 
-    const rows = [
-        ["scanned", scanned, ""],
-        ["skipped", skipped, " (scripts/ + test/spec)"],
-        ["secrets", secretHits, ""],
-        ["debugger", debuggerHits, ""],
-    ];
-
-    const keyW = Math.max(...rows.map(([k]) => k.length));
-    const valW = Math.max(...rows.map(([, v]) => String(v).length));
-
-    for (const [k, v, extra] of rows) {
-        console.log(`   • ${k.padEnd(keyW)}: ${String(v).padStart(valW)}${extra}`);
-    }
-
     if (samples.length) {
         console.log(color(C.yellow, "   • samples:"));
         for (const s of samples) console.log(`     - ${s}`);
@@ -817,12 +925,16 @@ async function runSniffer() {
 }
 
 // --------------------------
-// Prettier gate: ONE step only (quiet)
+// Prettier gate
 // --------------------------
 async function prettierGate() {
     const chk1 = runCmdCapture("npm", ["run", "format:check"], ROOT);
-    if (chk1.status === 0) return;
+    if (chk1.status === 0) {
+        console.log(color(C.green, "   • prettier: clean (no changes needed)"));
+        return;
+    }
 
+    // Ako chk1 nije 0, znači da treba fix
     const fix = runCmdCapture("npm", ["run", "format:fix"], ROOT);
     if (fix.status !== 0) {
         throw new Error("Prettier auto-fix failed. Run 'npm run format:fix' to see full output.");
@@ -834,17 +946,19 @@ async function prettierGate() {
             "Prettier still not clean after auto-fix. Run 'npm run format:check' to see details."
         );
     }
+
+    console.log(color(C.green, "   • prettier: auto-fixed formatting (success)"));
 }
 
 // --------------------------
-// Coverage outputs (printed BEFORE OK line for coverage step)
+// Coverage outputs
 // --------------------------
 function printCoverageLocations() {
     const vitestVer = tryGetNodeModuleVersion("vitest") || "unknown";
     const covDir = path.resolve(ROOT, "coverage");
 
-    const html1 = path.resolve(covDir, "index.html"); // Vitest default
-    const html2 = path.resolve(covDir, "lcov-report", "index.html"); // fallback
+    const html1 = path.resolve(covDir, "index.html");
+    const html2 = path.resolve(covDir, "lcov-report", "index.html");
     const htmlPath = fs.existsSync(html1) ? html1 : html2;
 
     const lcovPath = path.resolve(covDir, "lcov.info");
@@ -931,7 +1045,62 @@ async function cargoAuditStrictGate() {
 async function main() {
     const changedInfo = getChangedFilesSafe();
     printBanner(changedInfo);
+    printSmartPlan(changedInfo);
     checkEnv();
+
+    // Ultra-fast mode: minimal but high-signal gates.
+    if (IS_ULTRA_FAST) {
+        const ps = detectPowerShell();
+        if (!ps) {
+            console.error(color(C.red, "❌ PowerShell (pwsh/powershell) not found. Can't run header gate."));
+            process.exit(1);
+        }
+
+        runStep("Header Auto-Fix", ps, [
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            "scripts/add-headers.ps1",
+        ]);
+
+        runStep("Merge Conflict Markers", "node", ["scripts/checkConflicts.cjs"]);
+        runStep("Large Files Gate", "node", ["scripts/checkBigFiles.cjs", "--max-mb=5"]);
+
+        await runInlineStepCmd(
+            "Sniffer & Secret Hunter",
+            "internal: git ls-files -> scan tracked .ts/.js for secrets + 'debugger'",
+            runSniffer
+        );
+
+        runStep("I18n Keys Integrity", "node", ["scripts/checkI18nKeys.cjs"]);
+        runStep("No Hardcoded User Strings", "node", ["scripts/checkUserFacingStrings.cjs"]);
+        runStep("taskpane.html I18n", "node", ["scripts/checkTaskpaneHtmlI18n.cjs"]);
+
+        // Ultra-fast: still use the same prettier gate as normal, so it behaves the same as Smart.
+        await runInlineStepCmd(
+            "Format (prettier gate)",
+            "npm run format:check -> (if needed) npm run format:fix -> npm run format:check",
+            prettierGate
+        );
+
+        runStep("Lint (eslint)", "npm", ["run", "lint"]);
+        runStep("Typecheck", "npm", ["run", "typecheck"]);
+
+        SKIPPED.push("Install (npm ci) (ultra-fast)");
+        SKIPPED.push("Audit (strict-only) (ultra-fast)");
+        SKIPPED.push("Rust fmt/clippy/tests (ultra-fast)");
+        SKIPPED.push("Build + validate + dist gate (ultra-fast)");
+        SKIPPED.push("Unit Tests / E2E (ultra-fast)");
+        SKIPPED.push("Push (ultra-fast)");
+
+        beep();
+        FAILED_STEP = null;
+
+        // Always print full end-of-run report (incl. skipped list) in every mode
+        printFinalReport();
+        return;
+    }
 
     const ps = detectPowerShell();
     if (!ps) {
@@ -1012,9 +1181,7 @@ async function main() {
     }
 
     // Build
-    // In STRICT mode we must build, because Dist Artifacts Gate depends on dist/.
     const shouldRunBuild = IS_STRICT ? true : anyChanged(changedInfo, BUILD_TRIGGERS);
-
     if (shouldRunBuild) {
         const BUILD_STEP = nextStep("Build");
         run(BUILD_STEP, "npm", ["run", "build"]);
@@ -1026,11 +1193,8 @@ async function main() {
     runStep("Manifest validate (prod)", "npm", ["run", "validate:prod"]);
 
     // Dist artifacts gate
-    // - STRICT: always run (requires dist, and we forced build above)
-    // - non-STRICT: only run if dist exists (otherwise it's a guaranteed false fail)
     const distDir = path.join(ROOT, "dist");
     const distExists = fs.existsSync(distDir);
-
     if (IS_STRICT || distExists) {
         if (IS_STRICT) {
             runStep("Dist Artifacts Gate (strict)", "node", ["scripts/checkDistArtifacts.cjs", "--strict"]);
@@ -1041,6 +1205,8 @@ async function main() {
         SKIPPED.push("Dist Artifacts Gate (skipped: dist/ not present and build was skipped)");
     }
 
+    // Tests
+    // Tests
     // Tests
     if (!IS_FAST_MODE) {
         const COV_STEP = nextStep("Unit Tests (coverage)");
@@ -1065,63 +1231,10 @@ async function main() {
     }
 
     beep();
-    console.log(color(C.green + C.bold, "\n🏆 VERIFY PASSED!\n"));
+    FAILED_STEP = null;
 
+    // Always print full end-of-run report (incl. skipped list) in every mode
     printFinalReport();
-
-    if (NO_PUSH) return;
-
-    // Dirty repo gate
-    const dirty = getRepoStatusPorcelain();
-    if (dirty) {
-        console.error(color(C.red, "\n❌ Repo is dirty. Commit changes before pushing.\n"));
-        console.error(color(C.yellow, "git status --porcelain:\n"));
-        console.error(dirty);
-        process.exit(1);
-    }
-
-    // Smart push
-    const currentBranch = spawnSync("git", ["rev-parse", "--abbrev-ref", "HEAD"], {
-        shell: false,
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "ignore"],
-    }).stdout.trim();
-
-    const isProtected = currentBranch === "master" || currentBranch === "main";
-    const prompt = isProtected ? `Master je zaštićen. Auto-grana + Push?` : `Push na '${currentBranch}'?`;
-
-    const shouldPush = await askYesNo(prompt);
-
-    if (shouldPush) {
-        if (isProtected) {
-            const timestamp = new Date().getTime();
-            const autoBranch = `chore/verified-update-${timestamp}`;
-
-            console.log(color(C.yellow, `\n🛡️  Kreiram granu: ${autoBranch}`));
-            spawnSync("git", ["checkout", "-b", autoBranch], { shell: false, stdio: "inherit" });
-
-            console.log(color(C.blue, `🚀 Pushing ${autoBranch}...`));
-            spawnSync("git", ["push", "-u", "origin", autoBranch], {
-                shell: false,
-                stdio: "inherit",
-                env: { ...process.env, HUSKY: "0" },
-            });
-
-            console.log(color(C.green, `\n✅ Uspešno! Otvori Pull Request ovde:`));
-            console.log(
-                color(C.cyan, `https://github.com/engilic/serbiantransliterator/pull/new/${autoBranch}\n`)
-            );
-        } else {
-            console.log(color(C.blue, `🚀 Pushing ${currentBranch}...`));
-            spawnSync("git", ["push", "-u", "origin", currentBranch], {
-                shell: false,
-                stdio: "inherit",
-                env: { ...process.env, HUSKY: "0" },
-            });
-        }
-    } else {
-        console.log(color(C.gray, `\n⛔ Operacija završena bez push-a.`));
-    }
 }
 
 main();

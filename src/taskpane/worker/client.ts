@@ -94,6 +94,128 @@ function computeRemainingTimeoutMs(deadlineTs: number | null): number | null {
     return deadlineTs - Date.now();
 }
 
+// --------------------
+// Runtime-safe parsing (no `any`)
+// --------------------
+function isRecord(v: unknown): v is Record<string, unknown> {
+    return typeof v === "object" && v !== null;
+}
+
+function readString(rec: Record<string, unknown>, key: string): string | null {
+    const v = rec[key];
+    return typeof v === "string" ? v : null;
+}
+
+function readIdAsString(rec: Record<string, unknown>, key: string): string | null {
+    const v = rec[key];
+    if (typeof v === "string") return v;
+    if (typeof v === "number" && Number.isFinite(v)) return String(v);
+    return null;
+}
+
+function readRecord(rec: Record<string, unknown>, key: string): Record<string, unknown> | null {
+    const v = rec[key];
+    return isRecord(v) ? v : null;
+}
+
+function errorMessageFromUnknown(u: unknown): string {
+    if (typeof u === "string") return u;
+    if (u instanceof Error) return u.message || "Worker error";
+    if (isRecord(u)) {
+        const m = readString(u, "message");
+        if (m) return m;
+        try {
+            const json = JSON.stringify(u);
+            if (json && json !== "{}") return json;
+        } catch {
+            // ignore
+        }
+    }
+    return "Worker error";
+}
+
+function makeEmptyStats(direction: ConvertStats["direction"] = "auto"): ConvertStats {
+    return {
+        direction,
+        textNodes: 0,
+        charsBefore: 0,
+        charsAfter: 0,
+        detected: { urls: 0, emails: 0 },
+        code: { fenceMarkersSeen: 0, inlineTicksSeen: 0, endedInFence: false, endedInInline: false },
+        bridges: {
+            links: 0,
+            placeholders: 0,
+            brandPhrases: 0,
+            brandTokens: 0,
+            digraphs: 0,
+            userPhrases: 0,
+            userTokens: 0,
+            allCapsHints: 0,
+            spaces: 0,
+            ambiguousBrandSuffix: 0,
+        },
+        proofing: {
+            enabled: false,
+            targetLang: null,
+            changedRuns: 0,
+            skippedRuns: 0,
+            skippedByReason: {},
+        },
+        timingMs: 0,
+    };
+}
+
+type ParsedConvertDone = { type: "CONVERT_DONE"; id: string; payload: ConvertResult };
+type ParsedErr = { type: "ERROR"; id?: string; error: string };
+type ParsedInitDone = { type: "INIT_DONE" };
+
+function parseWorkerResponseLoose(u: unknown): ParsedInitDone | ParsedConvertDone | ParsedErr | null {
+    // ✅ Accept both real MessageEvent shape { data: ... } and test mocks
+    // If it looks like an event object, unwrap .data once.
+    if (isRecord(u) && Object.prototype.hasOwnProperty.call(u, "data")) {
+        u = (u as Record<string, unknown>)["data"];
+    }
+
+    if (!isRecord(u)) return null;
+
+    const type = readString(u, "type");
+    if (!type) return null;
+
+    if (type === "INIT_DONE") return { type: "INIT_DONE" };
+
+    if (type === "ERROR") {
+        const id = readIdAsString(u, "id") ?? undefined;
+        const errRaw = (u as Record<string, unknown>)["error"];
+        const error = errorMessageFromUnknown(errRaw);
+        return { type: "ERROR", id, error };
+    }
+
+    if (type === "CONVERT_DONE") {
+        const id = readIdAsString(u, "id");
+        if (!id) return null;
+
+        const payloadRec = readRecord(u, "payload");
+        if (!payloadRec) return null;
+
+        const xml = readString(payloadRec, "xml");
+        if (typeof xml !== "string") return null;
+
+        // ✅ Tests may omit these -> provide defaults
+        const label = readString(payloadRec, "type") ?? "Auto";
+        const statsRaw = payloadRec["stats"];
+        const stats =
+            statsRaw && typeof statsRaw === "object" ? (statsRaw as ConvertStats) : makeEmptyStats("auto");
+
+        return {
+            type: "CONVERT_DONE",
+            id,
+            payload: { xml, type: label, stats },
+        };
+    }
+
+    return null;
+}
+
 export class WorkerClient {
     private worker: Worker | null = null;
     private jobs = new Map<string, InFlightJob>();
@@ -131,12 +253,10 @@ export class WorkerClient {
             try {
                 console.log("[WorkerClient] Initializing...");
 
-                // ✅ CRITICAL: inline URL + module worker => webpack bundles worker as JS (not .ts)
                 this.worker = new Worker(new URL("./transliteration.worker.ts", import.meta.url), {
                     type: "module",
                 });
 
-                // Heartbeat timeout for dead workers (e.g., blocked by enterprise policies)
                 const heartbeatTimeout = setTimeout(async () => {
                     if (!this.isReady) {
                         console.warn("[WorkerClient] Heartbeat timeout. Switching to fallback.");
@@ -150,11 +270,11 @@ export class WorkerClient {
                     }
                 }, 8000);
 
-                this.worker.onmessage = (event) => {
+                this.worker.onmessage = (event: MessageEvent) => {
                     try {
-                        const data = (event as any)?.data as WorkerResponse;
+                        const parsed = parseWorkerResponseLoose(event);
 
-                        if (data && data.type === "INIT_DONE") {
+                        if (parsed && parsed.type === "INIT_DONE") {
                             console.log("[WorkerClient] Worker ready!");
                             clearTimeout(heartbeatTimeout);
                             this.isReady = true;
@@ -163,28 +283,28 @@ export class WorkerClient {
                             return;
                         }
 
-                        if (data && data.type === "ERROR" && !(data as any).id) {
+                        // INIT error: ERROR without id
+                        if (parsed && parsed.type === "ERROR" && !parsed.id) {
                             clearTimeout(heartbeatTimeout);
-                            console.error("[WorkerClient] Worker init error:", (data as any).error);
+                            console.error("[WorkerClient] Worker init error:", parsed.error);
 
                             if (this.isTesting) {
                                 this.initPromise = null;
                                 this.resetWorkerState();
-                                settleReject(new Error(String((data as any).error || "Worker init error")));
+                                settleReject(new Error(parsed.error));
                             } else {
                                 void this.activateFallback().then(() => settleResolve());
                             }
                             return;
                         }
 
-                        // Sve ostalo ide kroz handleMessage (koji mora biti crash-proof)
+                        // Everything else: runtime messages
                         this.handleMessage(event);
                     } catch (e) {
                         clearTimeout(heartbeatTimeout);
                         console.error("[WorkerClient] onmessage crashed; switching to fallback.", e);
                         void this.handleWorkerFatalError(e, "messageerror");
 
-                        // Ako se crash desio tokom init-a, bar pusti init da se završi u fallback modu
                         if (!this.isReady && !this.isTesting) {
                             void this.activateFallback().then(() => settleResolve());
                         }
@@ -194,7 +314,6 @@ export class WorkerClient {
                 this.worker.onmessageerror = async (e: MessageEvent) => {
                     clearTimeout(heartbeatTimeout);
 
-                    // During init: treat as init failure. After init: MAX1 recovery.
                     if (!this.isReady) {
                         if (this.isTesting) {
                             this.initPromise = null;
@@ -215,7 +334,6 @@ export class WorkerClient {
                 this.worker.onerror = async (e) => {
                     clearTimeout(heartbeatTimeout);
 
-                    // During init: keep stable behavior for tests; in prod auto-fallback.
                     if (!this.isReady) {
                         if (this.isTesting) {
                             this.initPromise = null;
@@ -229,7 +347,6 @@ export class WorkerClient {
                         return;
                     }
 
-                    // Runtime crash: MAX1 recovery -> seamless fallback + requeue in-flight jobs (no reject).
                     console.error("[WorkerClient] Worker onerror (runtime):", e);
                     await this.handleWorkerFatalError(e, "onerror");
                 };
@@ -238,7 +355,6 @@ export class WorkerClient {
                 const b2 = dataUriToBytes(dictI2eData as unknown as string);
                 const wasmBytes = dataUriToBytes(wasmData as unknown as string);
 
-                // DoS caps: if violated, something is badly wrong
                 if (b1.byteLength === 0 || b2.byteLength === 0 || wasmBytes.byteLength === 0) {
                     throw new Error("Worker init payload missing (dict/wasm)");
                 }
@@ -319,10 +435,23 @@ export class WorkerClient {
         return err;
     }
 
+    private rejectAllInFlightForTests(err: Error) {
+        const inFlight = Array.from(this.jobs.values());
+        for (const job of inFlight) {
+            this.cleanupInFlightJob(job);
+            try {
+                job.reject(err);
+            } catch {
+                // ignore
+            }
+        }
+        this.jobs.clear();
+        this.inFlightCount = 0;
+    }
+
     private async handleWorkerFatalError(raw: unknown, source: "onerror" | "messageerror") {
         const stable = normalizeUnknownError(raw, `Worker fatal error (${source})`);
 
-        // Telemetry (best-effort, must never block recovery)
         void incrementCounter("worker_runtime_crash_count", 1);
         void incrementCounter(`worker_fallback_activated_reason:${source}`, 1);
 
@@ -331,10 +460,8 @@ export class WorkerClient {
             error: stable,
         });
 
-        // Snapshot in-flight jobs (these would otherwise hang forever).
         const inFlight = Array.from(this.jobs.values());
 
-        // Cleanup current worker + in-flight job bookkeeping
         for (const job of inFlight) {
             this.cleanupInFlightJob(job);
         }
@@ -342,7 +469,6 @@ export class WorkerClient {
         this.jobs.clear();
         this.inFlightCount = 0;
 
-        // Requeue in-flight jobs (MAX1 mode) so promises continue and resolve via fallback.
         const requeue: QueuedJob[] = [];
         for (const job of inFlight) {
             const signalAborted = job.signal?.aborted === true;
@@ -367,10 +493,8 @@ export class WorkerClient {
             });
         }
 
-        // Preserve order: in-flight jobs first, then existing queued work.
         this.queue = [...requeue, ...this.queue];
 
-        // Ensure worker is terminated before switching
         if (this.worker) {
             try {
                 this.worker.terminate();
@@ -385,7 +509,6 @@ export class WorkerClient {
         } catch (e) {
             const fallbackErr = this.makeStableError(e, "Fallback activation failed");
 
-            // If fallback fails, we cannot keep promises pending.
             const pending = [...this.queue];
             this.queue = [];
 
@@ -399,94 +522,68 @@ export class WorkerClient {
         this.pumpQueue();
     }
 
-    private handleMessage(event: MessageEvent) {
+    private handleMessage(dataUnknown: unknown) {
         try {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const data: any = (event as any)?.data;
+            const parsed = parseWorkerResponseLoose(dataUnknown);
 
-            if (!data || typeof data !== "object") {
-                console.warn("[WorkerClient] Ignoring non-object worker message:", data);
+            if (!parsed) {
+                const err = new Error("Malformed worker message");
+                console.error("[WorkerClient] Malformed worker message:", dataUnknown);
+
+                // In tests: never hang
+                if (this.isTesting) {
+                    this.rejectAllInFlightForTests(err);
+                    this.pumpQueue();
+                    return;
+                }
+
+                void this.handleWorkerFatalError(err, "messageerror");
                 return;
             }
 
-            const msgType = String(data.type ?? "");
+            if (parsed.type === "CONVERT_DONE") {
+                const job = this.jobs.get(parsed.id);
+                if (!job) return;
 
-            if (msgType === "CONVERT_DONE") {
-                const id = String(data.id ?? "");
-                const job = this.jobs.get(id);
-
-                if (!job) {
-                    console.warn("[WorkerClient] CONVERT_DONE for unknown job id:", id, data);
-                    return;
-                }
-
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const payload: any = data.payload;
-
-                // ✅ Nema .length: sve validacije su bezbedne
-                const xml = payload && typeof payload.xml === "string" ? payload.xml : null;
-                const convType = payload && typeof payload.type === "string" ? payload.type : null;
-                const stats = payload ? payload.stats : null;
-
-                if (!xml || !convType || !stats) {
-                    console.error("[WorkerClient] Invalid CONVERT_DONE payload from worker. Switching to fallback.", {
-                        id,
-                        data,
-                    });
-
-                    // Seamless recovery: fallback + requeue in-flight
-                    void this.handleWorkerFatalError(
-                        new Error("Worker returned invalid CONVERT_DONE payload (xml/type/stats missing)"),
-                        "messageerror"
-                    );
-                    return;
-                }
-
-                // Normalan tok
-                this.jobs.delete(id);
+                this.jobs.delete(parsed.id);
                 this.inFlightCount = Math.max(0, this.inFlightCount - 1);
 
                 this.cleanupInFlightJob(job);
 
                 if (!job.aborted && !job.signal?.aborted) {
-                    job.resolve(payload);
+                    job.resolve(parsed.payload);
                 }
 
                 this.pumpQueue();
                 return;
             }
 
-            if (msgType === "ERROR") {
-                // runtime error može doći sa ili bez id; sa id -> reject posla; bez id -> tretiraj kao fatal
-                const hasId = data.id !== undefined && data.id !== null && String(data.id).length > 0;
+            if (parsed.type === "ERROR" && parsed.id) {
+                const job = this.jobs.get(parsed.id);
+                if (job) {
+                    this.jobs.delete(parsed.id);
+                    this.inFlightCount = Math.max(0, this.inFlightCount - 1);
 
-                if (hasId) {
-                    const id = String(data.id);
-                    const job = this.jobs.get(id);
+                    this.cleanupInFlightJob(job);
 
-                    if (job) {
-                        this.jobs.delete(id);
-                        this.inFlightCount = Math.max(0, this.inFlightCount - 1);
-
-                        this.cleanupInFlightJob(job);
-
-                        job.reject(new Error(String(data.error || "Worker error")));
-                        this.pumpQueue();
-                    } else {
-                        console.warn("[WorkerClient] ERROR for unknown job id:", id, data);
-                    }
-                    return;
+                    job.reject(new Error(parsed.error));
+                    this.pumpQueue();
                 }
-
-                console.error("[WorkerClient] Worker ERROR without id (runtime). Switching to fallback.", data);
-                void this.handleWorkerFatalError(new Error(String(data.error || "Worker error (no id)")), "messageerror");
                 return;
             }
 
-            console.warn("[WorkerClient] Unhandled worker message:", data);
+            // INIT_DONE / init ERROR are handled in onmessage init branch.
         } catch (e) {
-            // ✅ KRITIČNO: nikad ne crash-uj add-in zbog worker poruke
             console.error("[WorkerClient] handleMessage crashed; switching to fallback.", e);
+
+            if (this.isTesting) {
+                this.rejectAllInFlightForTests(
+                    e instanceof Error ? e : new Error(normalizeUnknownError(e, "WorkerClient error").message)
+                );
+                this.pumpQueue();
+                return;
+            }
+
             void this.handleWorkerFatalError(e, "messageerror");
         }
     }

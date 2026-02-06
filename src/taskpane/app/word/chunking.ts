@@ -1,11 +1,7 @@
 /* global Word */
 // src/taskpane/app/word/chunking.ts
 
-import {
-    convertOoxml,
-    type OoxmlOptions,
-    type ConvertStats,
-} from "../../../shared/ooxml/convertOoxml";
+import { convertOoxml, type OoxmlOptions, type ConvertStats } from "../../../shared/ooxml/convertOoxml";
 import { setStatus, setProgress } from "../status";
 import { t } from "../../../shared/i18n";
 import { workerClient } from "../../worker/client";
@@ -95,7 +91,11 @@ function isInvalidArgumentError(e: unknown): boolean {
 
 type ConvertLike = { xml: string; stats: ConvertStats };
 
-function normalizeWorkerResult(raw: unknown, xmlIn: string, fallbackDir: ConvertStats["direction"]): ConvertLike {
+function normalizeWorkerResult(
+    raw: unknown,
+    xmlIn: string,
+    fallbackDir: ConvertStats["direction"]
+): ConvertLike {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const r = raw as any;
 

@@ -1,4 +1,3 @@
-/* eslint-disable no-undef */
 // webpack.common.js
 
 const path = require("path");
@@ -30,29 +29,24 @@ module.exports = {
         },
     },
 
-    // Entry Points
     entry: {
         taskpane: ["./src/taskpane/taskpane.ts"],
         commands: ["./src/commands/commands.ts"],
-
-        // ❌ OBRISANO: sw: ["./src/sw.ts"],
-        // (Workbox sada sam uzima src/sw.ts i pravi sw.js)
-
         webapp: ["./src/web/web.ts"],
     },
 
-    // Output Configuration
     output: {
         path: path.resolve(__dirname, "dist"),
-
-        // ✅ POJEDNOSTAVLJENO: Svi fajlovi ovde dobijaju hash.
-        // sw.js se pravi odvojeno preko InjectManifest plugina i ne prolazi kroz ovo.
         filename: "[name].[contenthash:8].js",
-
         chunkFilename: "[name].[contenthash:8].js",
-
         globalObject: "self",
         clean: true,
+    },
+
+    optimization: {
+        // Fix za: No template for dependency: PureExpressionDependency
+        providedExports: true,
+        usedExports: "global",
     },
 
     resolve: {
