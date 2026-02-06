@@ -108,6 +108,9 @@ export async function runSmart() {
             refreshStats();
         });
     } catch (e: any) {
+        const debugEnabled =
+            typeof localStorage !== "undefined" && localStorage.getItem("stDebugOfficeErrors") === "1";
+
         const escapeHtml = (s: string) =>
             s
                 .replace(/&/g, "&amp;")
@@ -116,30 +119,34 @@ export async function runSmart() {
                 .replace(/"/g, "&quot;")
                 .replace(/'/g, "&#039;");
 
+        // Console (uvek)
         console.error("[runSmart] raw error:", e);
         console.error("[runSmart] code:", e?.code);
         console.error("[runSmart] message:", e?.message);
         console.error("[runSmart] debugInfo:", e?.debugInfo);
         console.error("[runSmart] stack:", e?.stack);
 
-        try {
-            const payload = {
-                name: e?.name,
-                code: e?.code,
-                message: e?.message,
-                debugInfo: e?.debugInfo,
-                stack: e?.stack,
-            };
+        // Modal (samo kad je flag uključen)
+        if (debugEnabled) {
+            try {
+                const payload = {
+                    name: e?.name,
+                    code: e?.code,
+                    message: e?.message,
+                    debugInfo: e?.debugInfo,
+                    stack: e?.stack,
+                };
+                const pretty = JSON.stringify(payload, null, 2);
 
-            const pretty = JSON.stringify(payload, null, 2);
-            showModalInfo(
-                "DEBUG: Word/Office greška",
-                unsafeHtml(
-                    `<pre style="white-space:pre-wrap; font-size:12px;">${escapeHtml(pretty)}</pre>`
-                )
-            );
-        } catch {
-            // ignore
+                showModalInfo(
+                    "DEBUG: Word/Office greška",
+                    unsafeHtml(
+                        `<pre style="white-space:pre-wrap; font-size:12px;">${escapeHtml(pretty)}</pre>`
+                    )
+                );
+            } catch {
+                // ignore
+            }
         }
 
         await errorRecovery.handle(e, { operation: "runSmart" });
