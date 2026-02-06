@@ -389,6 +389,24 @@ export class WorkerClient {
             const job = this.jobs.get(data.id);
             if (!job) return;
 
+            // ✅ Payload sanity: ako worker vrati nešto nevalidno, tretiramo kao “fatal”
+            // i prebacujemo se na fallback uz requeue in-flight poslova.
+            const payloadAny = (data as unknown as { payload?: unknown }).payload as any;
+            const xml = payloadAny?.xml;
+
+            if (typeof xml !== "string" || xml.length === 0) {
+                console.error("[WorkerClient] Worker returned invalid CONVERT_DONE payload. Switching to fallback.", {
+                    payload: payloadAny,
+                });
+
+                // Ne diramo jobs map ovde – fatal handler će snapshotovati i requeue-ovati sve in-flight poslove.
+                void this.handleWorkerFatalError(
+                    new Error("Worker returned invalid CONVERT_DONE payload (missing/empty xml)"),
+                    "messageerror"
+                );
+                return;
+            }
+
             this.jobs.delete(data.id);
             this.inFlightCount = Math.max(0, this.inFlightCount - 1);
 
@@ -399,6 +417,7 @@ export class WorkerClient {
             }
 
             this.pumpQueue();
+            return;
         }
 
         if (data.type === "ERROR" && data.id) {
@@ -414,6 +433,7 @@ export class WorkerClient {
 
                 this.pumpQueue();
             }
+            return;
         }
     }
 

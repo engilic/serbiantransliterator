@@ -1,9 +1,9 @@
-// src/taskpane/worker/transliteration.worker.ts
-
 /// <reference lib="webworker" />
 
 import "core-js/stable";
 import "regenerator-runtime/runtime";
+
+import { DOMParser as XmldomDOMParser, XMLSerializer as XmldomXMLSerializer } from "@xmldom/xmldom";
 
 import { convertOoxml, type OoxmlOptions } from "../../shared/ooxml/convertOoxml";
 import * as textCore from "../../core/textCore";
@@ -38,6 +38,29 @@ function validateInitPayload(payload: {
     return null;
 }
 
+function ensureWorkerXmlDomGlobals() {
+    const g = globalThis as any;
+
+    // Word/WebView2 worker često nema DOMParser/XMLSerializer.
+    // @xmldom/xmldom daje ponyfill implementaciju.
+    if (typeof g.DOMParser !== "function") g.DOMParser = XmldomDOMParser;
+    if (typeof g.XMLSerializer !== "function") g.XMLSerializer = XmldomXMLSerializer;
+
+    if (typeof g.DOMParser !== "function" || typeof g.XMLSerializer !== "function") {
+        throw new Error("Worker cannot provide DOMParser/XMLSerializer even with xmldom ponyfill");
+    }
+}
+
+function assertTransliterationWorks() {
+    // Minimalni self-test: "Test" -> "Тест"
+    const probe = (textCore as any).convertPlainText?.("Test", "lat-to-cyr", {});
+    const out = probe?.text;
+
+    if (typeof out !== "string" || out === "Test") {
+        throw new Error("Worker self-test failed: transliteration no-op (expected 'Тест' from 'Test').");
+    }
+}
+
 function initWasm(payload: { dictE2i: Uint8Array; dictI2e: Uint8Array; wasmModule: Uint8Array }) {
     try {
         const err = validateInitPayload(payload);
@@ -46,7 +69,10 @@ function initWasm(payload: { dictE2i: Uint8Array; dictI2e: Uint8Array; wasmModul
             return;
         }
 
-        const wasmModule = new WebAssembly.Module(payload.wasmModule as BufferSource);
+        // ✅ obezbedi XML DOM u workeru pre nego što convertOoxml pokuša XML parse/serialize
+        ensureWorkerXmlDomGlobals();
+
+        const wasmModule = new WebAssembly.Module(payload.wasmModule as unknown as BufferSource);
 
         const pkg = wasmPkg as unknown as { initSync: (m: WebAssembly.Module) => unknown };
 
@@ -64,8 +90,10 @@ function initWasm(payload: { dictE2i: Uint8Array; dictI2e: Uint8Array; wasmModul
 
         wrapper.load_dictionary_bin("e2i", payload.dictE2i);
         wrapper.load_dictionary_bin("i2e", payload.dictI2e);
-
         wrapper.init_replacer("{}");
+
+        // ✅ self-test da se ne desi “worker ready ali ne menja ništa”
+        assertTransliterationWorks();
 
         postReply({ type: "INIT_DONE" });
     } catch (e) {
@@ -85,6 +113,13 @@ function handleConvert(id: string, xml: string, options: OoxmlOptions) {
         }
 
         const res = convertOoxml(xml, options);
+
+        // Hard guard: empty XML nikad nije validan za Range.insertOoxml
+        if (typeof res.xml !== "string" || res.xml.length === 0) {
+            postReply({ type: "ERROR", id, error: "Worker convert produced empty OOXML" });
+            return;
+        }
+
         postReply({
             type: "CONVERT_DONE",
             id,
