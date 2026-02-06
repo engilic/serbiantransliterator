@@ -151,26 +151,43 @@ export class WorkerClient {
                 }, 8000);
 
                 this.worker.onmessage = (event) => {
-                    const data = event.data as WorkerResponse;
+                    try {
+                        const data = (event as any)?.data as WorkerResponse;
 
-                    if (data.type === "INIT_DONE") {
-                        console.log("[WorkerClient] Worker ready!");
+                        if (data && data.type === "INIT_DONE") {
+                            console.log("[WorkerClient] Worker ready!");
+                            clearTimeout(heartbeatTimeout);
+                            this.isReady = true;
+                            settleResolve();
+                            this.pumpQueue();
+                            return;
+                        }
+
+                        if (data && data.type === "ERROR" && !(data as any).id) {
+                            clearTimeout(heartbeatTimeout);
+                            console.error("[WorkerClient] Worker init error:", (data as any).error);
+
+                            if (this.isTesting) {
+                                this.initPromise = null;
+                                this.resetWorkerState();
+                                settleReject(new Error(String((data as any).error || "Worker init error")));
+                            } else {
+                                void this.activateFallback().then(() => settleResolve());
+                            }
+                            return;
+                        }
+
+                        // Sve ostalo ide kroz handleMessage (koji mora biti crash-proof)
+                        this.handleMessage(event);
+                    } catch (e) {
                         clearTimeout(heartbeatTimeout);
-                        this.isReady = true;
-                        settleResolve();
-                        this.pumpQueue();
-                    } else if (data.type === "ERROR" && !data.id) {
-                        clearTimeout(heartbeatTimeout);
-                        console.error("[WorkerClient] Worker init error:", data.error);
-                        if (this.isTesting) {
-                            this.initPromise = null;
-                            this.resetWorkerState();
-                            settleReject(new Error(data.error));
-                        } else {
+                        console.error("[WorkerClient] onmessage crashed; switching to fallback.", e);
+                        void this.handleWorkerFatalError(e, "messageerror");
+
+                        // Ako se crash desio tokom init-a, bar pusti init da se završi u fallback modu
+                        if (!this.isReady && !this.isTesting) {
                             void this.activateFallback().then(() => settleResolve());
                         }
-                    } else {
-                        this.handleMessage(event);
                     }
                 };
 
@@ -383,57 +400,94 @@ export class WorkerClient {
     }
 
     private handleMessage(event: MessageEvent) {
-        const data = event.data as WorkerResponse;
+        try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const data: any = (event as any)?.data;
 
-        if (data.type === "CONVERT_DONE") {
-            const job = this.jobs.get(data.id);
-            if (!job) return;
-
-            // ✅ Payload sanity: ako worker vrati nešto nevalidno, tretiramo kao “fatal”
-            // i prebacujemo se na fallback uz requeue in-flight poslova.
-            const payloadAny = (data as unknown as { payload?: unknown }).payload as any;
-            const xml = payloadAny?.xml;
-
-            if (typeof xml !== "string" || xml.length === 0) {
-                console.error("[WorkerClient] Worker returned invalid CONVERT_DONE payload. Switching to fallback.", {
-                    payload: payloadAny,
-                });
-
-                // Ne diramo jobs map ovde – fatal handler će snapshotovati i requeue-ovati sve in-flight poslove.
-                void this.handleWorkerFatalError(
-                    new Error("Worker returned invalid CONVERT_DONE payload (missing/empty xml)"),
-                    "messageerror"
-                );
+            if (!data || typeof data !== "object") {
+                console.warn("[WorkerClient] Ignoring non-object worker message:", data);
                 return;
             }
 
-            this.jobs.delete(data.id);
-            this.inFlightCount = Math.max(0, this.inFlightCount - 1);
+            const msgType = String(data.type ?? "");
 
-            this.cleanupInFlightJob(job);
+            if (msgType === "CONVERT_DONE") {
+                const id = String(data.id ?? "");
+                const job = this.jobs.get(id);
 
-            if (!job.aborted && !job.signal?.aborted) {
-                job.resolve(data.payload);
-            }
+                if (!job) {
+                    console.warn("[WorkerClient] CONVERT_DONE for unknown job id:", id, data);
+                    return;
+                }
 
-            this.pumpQueue();
-            return;
-        }
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const payload: any = data.payload;
 
-        if (data.type === "ERROR" && data.id) {
-            const job = this.jobs.get(data.id);
-            if (job) {
-                this.jobs.delete(data.id);
+                // ✅ Nema .length: sve validacije su bezbedne
+                const xml = payload && typeof payload.xml === "string" ? payload.xml : null;
+                const convType = payload && typeof payload.type === "string" ? payload.type : null;
+                const stats = payload ? payload.stats : null;
+
+                if (!xml || !convType || !stats) {
+                    console.error("[WorkerClient] Invalid CONVERT_DONE payload from worker. Switching to fallback.", {
+                        id,
+                        data,
+                    });
+
+                    // Seamless recovery: fallback + requeue in-flight
+                    void this.handleWorkerFatalError(
+                        new Error("Worker returned invalid CONVERT_DONE payload (xml/type/stats missing)"),
+                        "messageerror"
+                    );
+                    return;
+                }
+
+                // Normalan tok
+                this.jobs.delete(id);
                 this.inFlightCount = Math.max(0, this.inFlightCount - 1);
 
                 this.cleanupInFlightJob(job);
 
-                // Deterministic conversion error (not a crash) -> reject.
-                job.reject(new Error(data.error));
+                if (!job.aborted && !job.signal?.aborted) {
+                    job.resolve(payload);
+                }
 
                 this.pumpQueue();
+                return;
             }
-            return;
+
+            if (msgType === "ERROR") {
+                // runtime error može doći sa ili bez id; sa id -> reject posla; bez id -> tretiraj kao fatal
+                const hasId = data.id !== undefined && data.id !== null && String(data.id).length > 0;
+
+                if (hasId) {
+                    const id = String(data.id);
+                    const job = this.jobs.get(id);
+
+                    if (job) {
+                        this.jobs.delete(id);
+                        this.inFlightCount = Math.max(0, this.inFlightCount - 1);
+
+                        this.cleanupInFlightJob(job);
+
+                        job.reject(new Error(String(data.error || "Worker error")));
+                        this.pumpQueue();
+                    } else {
+                        console.warn("[WorkerClient] ERROR for unknown job id:", id, data);
+                    }
+                    return;
+                }
+
+                console.error("[WorkerClient] Worker ERROR without id (runtime). Switching to fallback.", data);
+                void this.handleWorkerFatalError(new Error(String(data.error || "Worker error (no id)")), "messageerror");
+                return;
+            }
+
+            console.warn("[WorkerClient] Unhandled worker message:", data);
+        } catch (e) {
+            // ✅ KRITIČNO: nikad ne crash-uj add-in zbog worker poruke
+            console.error("[WorkerClient] handleMessage crashed; switching to fallback.", e);
+            void this.handleWorkerFatalError(e, "messageerror");
         }
     }
 
