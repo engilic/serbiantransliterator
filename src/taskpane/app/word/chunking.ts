@@ -103,7 +103,7 @@ function normalizeWorkerResult(raw: unknown, xmlIn: string, fallbackDir: Convert
     const stats: ConvertStats =
         r?.stats && typeof r.stats === "object" ? (r.stats as ConvertStats) : emptyStats(fallbackDir);
 
-    // nikad ne vraćaj prazan xml (to nas je već ubadalo na insertOoxml)
+    // nikad ne vraćaj prazan xml (to može da ubije insertOoxml)
     return { xml: xml.length > 0 ? xml : xmlIn, stats };
 }
 
@@ -120,7 +120,11 @@ export async function processDocumentInChunks(
     // eslint-disable-next-line office-addins/no-context-sync-in-loop
     await context.sync();
 
-    const totalParagraphs = paragraphs.items.length;
+    // ✅ KRITIČNO: paragraphs.items može ponekad biti undefined → pravimo safe array
+    const loadedItems = (paragraphs as unknown as { items?: Word.Paragraph[] }).items;
+    const items: Word.Paragraph[] = Array.isArray(loadedItems) ? loadedItems : [];
+
+    const totalParagraphs = items.length;
 
     let agg: ConvertStats | null = null;
     let i = 0;
@@ -128,7 +132,7 @@ export async function processDocumentInChunks(
 
     let skipped = 0;
 
-    // Ako worker vraća no-op, uradićemo 1 “dokaz” lokalnim convertOoxml.
+    // Jedna “provera”: ako worker vrati no-op, proveri lokalno i pređi na local fallback
     let checkedWorkerOnce = false;
     let forceLocal = false;
 
@@ -136,7 +140,7 @@ export async function processDocumentInChunks(
         if (state.activeAbortController?.signal.aborted) break;
 
         const batchStart = nowMs();
-        const batchItems = paragraphs.items.slice(i, i + batchSize);
+        const batchItems = items.slice(i, i + batchSize);
         if (batchItems.length === 0) break;
 
         // Guard za expandTo (tvoja izmena) ✅
@@ -175,13 +179,12 @@ export async function processDocumentInChunks(
 
                 const local = convertOoxml(xmlIn, opts);
                 if (local.xml !== xmlIn) {
-                    // Worker očigledno ne radi u document flow-u → prebacujemo ceo run na local.
-                    // eslint-disable-next-line no-console
-                    console.warn("[chunking] Worker returned NO-OP, but local convert changes XML. Switching to LOCAL fallback for the rest of the run.");
+                    console.warn(
+                        "[chunking] Worker returned NO-OP, but local convert changes XML. Switching to LOCAL fallback for the rest of the run."
+                    );
                     forceLocal = true;
                     used = { xml: local.xml, stats: local.stats };
                 } else {
-                    // local takođe nema promenu → realno nema šta da se menja u ovom chunk-u
                     used = worker;
                 }
             } else {
@@ -189,7 +192,6 @@ export async function processDocumentInChunks(
             }
         }
 
-        // Init agg direction iz prve realne statistike
         if (!agg) agg = emptyStats(used.stats.direction);
         mergeStats(agg, used.stats);
 
@@ -198,29 +200,27 @@ export async function processDocumentInChunks(
             if (typeof used.xml === "string" && used.xml.length > 0 && used.xml !== xmlIn) {
                 batchRange.insertOoxml(used.xml, Word.InsertLocation.replace);
 
-                // ✅ odmah sync posle inserta (stabilizuje range/state)
+                // ✅ odmah sync posle inserta (stabilizuje state)
                 // eslint-disable-next-line office-addins/no-context-sync-in-loop
                 await context.sync();
             }
         } catch (e) {
-            // Ako insert pukne, smanji batch da izoluje problem
             if (isInvalidArgumentError(e) && batchItems.length > 1) {
                 const old = batchSize;
                 batchSize = Math.max(1, Math.floor(batchSize / 2));
                 skipped++;
-
-                // eslint-disable-next-line no-console
-                console.warn(`[chunking] insertOoxml InvalidArgument. Reducing batch ${old} -> ${batchSize}. i=${i}`);
-                continue; // retry same i with smaller batch
+                console.warn(
+                    `[chunking] insertOoxml InvalidArgument. Reducing batch ${old} -> ${batchSize}. i=${i}`
+                );
+                continue;
             }
 
-            // Ako puca i na batch=1, preskoči taj paragraf
             if (isInvalidArgumentError(e) && batchItems.length === 1) {
                 skipped++;
-
-                // eslint-disable-next-line no-console
-                console.warn(`[chunking] insertOoxml InvalidArgument for single paragraph at i=${i}. Skipping.`, e);
-
+                console.warn(
+                    `[chunking] insertOoxml InvalidArgument for single paragraph at i=${i}. Skipping.`,
+                    e
+                );
                 i += 1;
                 continue;
             }
