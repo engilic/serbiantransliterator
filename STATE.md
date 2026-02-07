@@ -53,9 +53,9 @@ This is the most critical logic layer (`src/shared/ooxml`), operating in multipl
 1. **Parsing:** Currently uses `@xmldom/xmldom` ponyfill for cross-environment compatibility between the main thread and Web Workers.
 
 2. **Bridging (Multi-Pass):**
-   - **Structural Pass:** Normalizes spaces and handles NBSP (`\u00A0`) across text nodes.
-   - **Lexical Pass:** Reconstructs split links, brands, and digraphs (e.g., `L` | `j` -> `Љ`).
-   - **Contextual Pass (NEW):** Handles ambiguous brand suffixes (e.g., protecting "Pro" or "Max" only when preceded by a known brand like "iPhone").
+    - **Structural Pass:** Normalizes spaces and handles NBSP (`\u00A0`) across text nodes.
+    - **Lexical Pass:** Reconstructs split links, brands, and digraphs (e.g., `L` | `j` -> `Љ`).
+    - **Contextual Pass (NEW):** Handles ambiguous brand suffixes (e.g., protecting "Pro" or "Max" only when preceded by a known brand like "iPhone").
 
 3. **Reconstruction:** Uses `XMLSerializer` to return valid, production-ready OOXML.
 
@@ -77,16 +77,16 @@ This is the most critical logic layer (`src/shared/ooxml`), operating in multipl
 ### Bundle Size
 
 - **Total Gzipped:** ~1.8 MB
-  - `taskpane.js`: ~150 KB
-  - `wasm_bg.wasm`: ~600 KB
-  - `dict_*.bin`: ~1.0 MB (Highly compressed FST)
+    - `taskpane.js`: ~150 KB
+    - `wasm_bg.wasm`: ~600 KB
+    - `dict_*.bin`: ~1.0 MB (Highly compressed FST)
 
 ### Memory Footprint
 
 - **Idle:** ~20 MB
 - **Active (Small Doc):** ~80 MB
 - **Active (Large Doc > 100MB XML):** Spikes to **500MB+** due to `DOMParser` tree creation.
-  - **Status:** Targeted for v1.1.0 via **Rust Streaming Parser**.
+    - **Status:** Targeted for v1.1.0 via **Rust Streaming Parser**.
 
 ---
 
@@ -106,7 +106,7 @@ This is the most critical logic layer (`src/shared/ooxml`), operating in multipl
 
 ## 5. 🧪 QUALITY ASSURANCE (MAX1 GUARDIAN)
 
-The **MAX1 Guardian** pipeline (`scripts/verify-all.js`) enforces a 12-check battery on every PR:
+The **MAX1 Guardian** pipeline (`pnpm run verify-all`) enforces a 12-check battery on every PR:
 
 1. **File Headers:** Correct relative paths in all source files.
 2. **Conflict Markers:** Zero `<<<<<<<` markers allowed.
@@ -114,6 +114,8 @@ The **MAX1 Guardian** pipeline (`scripts/verify-all.js`) enforces a 12-check bat
 4. **I18n Integrity:** All used keys must be defined in `sr.ts`.
 5. **Security Sniffer:** Scans for secrets and `innerHTML` sinks.
 6. **Coverage:** ~92% coverage threshold via Vitest.
+
+*(Note: The project has fully migrated from npm to **pnpm**; all CI and local verification steps are executed via pnpm scripts.)*
 
 ---
 
@@ -139,6 +141,7 @@ The **MAX1 Guardian** pipeline (`scripts/verify-all.js`) enforces a 12-check bat
 - Node.js: 22.x (LTS via Volta)
 - Rust: 1.75+ (Stable)
 - TypeScript: 5.4+
+- **Package Manager:** pnpm (workspace-aware, replaces npm across the toolchain)
 
 **Key Libs:**
 

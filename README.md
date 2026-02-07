@@ -18,7 +18,7 @@ Najbrži i najsigurniji način za preslovljavanje ćirilice i latinice u Microso
 ### 🛡️ Inteligentna Zaštita
 
 - **Brand Guard:** Automatska zaštita za hiljade tehnoloških brendova (Windows, iPhone, Microsoft...).
-- **Context Aware:** Prepoznaje razliku između brenda i obične reči (npr. *iPhone Pro* vs *prosečan*).
+- **Context Aware:** Prepoznaje razliku između brenda i obične reči (npr. _iPhone Pro_ vs _prosečan_).
 - **Code Protection:** Tekst unutar Markdown koda (backticks) ili specifičnih Word stilova se ne dira.
 - **URI & Paths:** URL-ovi, e-mail adrese i Windows/Unix putanje ostaju netaknute.
 
@@ -41,35 +41,28 @@ Aplikacija radi kao samostalni batch processor u browseru:
 
 - **Runtime:** Node.js 22.x (LTS)
 - **Engine:** Rust (Stable) + wasm-pack
+- **Package Manager:** pnpm
 - **Shell:** PowerShell 7 (preporučeno)
 
 ### Početak rada
 
 1. Instalirajte zavisnosti:
 
-~~~bash
-npm ci
-~~~
+    pnpm install
 
 2. Izgradite WASM jezgro:
 
-~~~bash
-npm run build:wasm
-~~~
+    pnpm run build:wasm
 
 3. Pokrenite lokalni dev server:
 
-~~~bash
-npm start
-~~~
+    pnpm start
 
 ### MAX1 Guardian (Kvalitet koda)
 
 Pre svakog commit-a, obavezno pokrenite verifikaciju:
 
-~~~bash
-npm run verify:all
-~~~
+    pnpm run verify:all
 
 ---
 

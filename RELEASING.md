@@ -25,10 +25,8 @@ Koristimo dualni sistem verzija: **SemVer** za NPM/kod i **4-part** verziju za O
 
 Umesto ručnog editovanja verzija u više fajlova, koristi ugrađeni **MAX1 Release Commander**. Ova skripta sinhronizuje verzije u `package.json`, `src/wasm-core/Cargo.toml` i oba manifesta:
 
-~~~powershell
-# Pokretanje interaktivnog release procesa
-npm run release
-~~~
+    # Pokretanje interaktivnog release procesa
+    pnpm run release
 
 Skripta će ponuditi izbor (Patch/Minor/Major), ažurirati `CHANGELOG.md`, komitovati izmene i kreirati Git tag.
 
@@ -38,10 +36,8 @@ Skripta će ponuditi izbor (Patch/Minor/Major), ažurirati `CHANGELOG.md`, komit
 
 Pre nego što se verzija pusti u produkciju, MAX1 Guardian mora dati zeleno svetlo u striktnom modu. Pokreni proveru lokalno:
 
-~~~powershell
-# Pokretanje pune baterije testova i provera
-npm run verify:all:strict -- --no-push
-~~~
+    # Pokretanje pune baterije testova i provera
+    pnpm run verify:all:strict -- --no-push
 
 Ova komanda osigurava:
 
@@ -59,10 +55,8 @@ Nakon što su sve provere prošle i verzija je bump-ovana:
 
 ### Push promene na master:
 
-~~~powershell
-# --follow-tags osigurava da i novokreirani vX.X.X tag ode na server
-git push origin master --follow-tags
-~~~
+    # --follow-tags osigurava da i novokreirani vX.X.X tag ode na server
+    git push origin master --follow-tags
 
 ### Cloudflare Pages CI/CD:
 
@@ -80,7 +74,7 @@ Otvori Word i proveri verziju u footeru taskpane-a. Ako i dalje vidiš staru ver
 Ako nakon release-a aplikacija puca sa "WASM module not found", proveri da li je `src/wasm-core/pkg` ispravno generisan pre Webpack faze.
 
 **Manifest Validation:**
-Ako Word odbije da učita manifest, pokreni `npm run validate:prod` da proveriš validnost XML-a prema Office šemi.
+Ako Word odbije da učita manifest, pokreni `pnpm run validate:prod` da proveriš validnost XML-a prema Office šemi.
 
 **Node Version:**
 Release proces zahteva Node 22. Proveri verziju sa `node -v`.

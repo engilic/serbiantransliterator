@@ -4,6 +4,8 @@ Hvala što doprinosiš projektu.
 
 Ovaj repo je Word Office.js taskpane add-in (TypeScript + Webpack), hostovan na Cloudflare Pages. Core engine je Rust/WASM.
 
+**Package manager:** projekat koristi **pnpm** (ne npm).
+
 ---
 
 ## Communication & Scope
@@ -21,31 +23,23 @@ Ovaj repo je Word Office.js taskpane add-in (TypeScript + Webpack), hostovan na 
 
 ### 1) Start from latest master
 
-~~~sh
-git checkout master
-git pull --ff-only
-git checkout -b feat/your-task-name
-~~~
+    git checkout master
+    git pull --ff-only
+    git checkout -b feat/your-task-name
 
 ### 2) Make changes and verify
 
-~~~sh
-# Run full verification before committing
-npm run verify:all -- --no-push
-~~~
+    # Run full verification before committing
+    pnpm run verify:all -- --no-push
 
 ### 3) Commit with conventional format
 
-~~~sh
-git add .
-git commit -m "feat: add new feature description"
-~~~
+    git add .
+    git commit -m "feat: add new feature description"
 
 ### 4) Push and create PR
 
-~~~sh
-git push -u origin feat/your-task-name
-~~~
+    git push -u origin feat/your-task-name
 
 ---
 
@@ -72,16 +66,14 @@ Koristimo Conventional Commits format:
 
 ## Running Tests
 
-~~~sh
-# Unit tests with coverage
-npm run test
+    # Unit tests with coverage
+    pnpm run test
 
-# E2E tests
-npm run test:e2e
+    # E2E tests
+    pnpm run test:e2e
 
-# Full verification pipeline
-npm run verify:all -- --no-push
-~~~
+    # Full verification pipeline
+    pnpm run verify:all -- --no-push
 
 ---
 

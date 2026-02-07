@@ -72,9 +72,10 @@ function runInlineStepCmd(title, cmdLine, fn) {
 // Small helpers
 // --------------------------
 function resolveCmd(cmd) {
-    // On Windows, npm/npx are .cmd
+    // On Windows, npm/pnpm are .cmd
     if (process.platform === "win32") {
         if (cmd === "npm") return "npm.cmd";
+        if (cmd === "pnpm") return "pnpm.cmd";
         if (cmd === "npx") return "npx.cmd";
     }
     return cmd;
@@ -83,16 +84,16 @@ function resolveCmd(cmd) {
 /**
  * Cross-platform spawn:
  * - keep shell:false (safer)
- * - BUT on Windows, npm/npx are .cmd shims and often fail with shell:false
+ * - BUT on Windows, npm/pnpm/npx are .cmd shims and often fail with shell:false
  *   so we run them via cmd.exe /c (still shell:false).
  */
 function spawnCross(cmd, args, opts) {
     const isWin = process.platform === "win32";
     const c = String(cmd);
 
-    // npm/npx on Windows are .cmd shims -> run via cmd.exe
-    if (isWin && /^(npm|npx)(\.cmd)?$/i.test(c)) {
-        const base = c.replace(/\.cmd$/i, ""); // npm.cmd -> npm
+    // npm/pnpm/npx on Windows are .cmd shims -> run via cmd.exe
+    if (isWin && /^(npm|pnpm|npx)(\.cmd)?$/i.test(c)) {
+        const base = c.replace(/\.cmd$/i, ""); // pnpm.cmd -> pnpm
         const comspec = process.env.ComSpec || "cmd.exe";
         return spawnSync(comspec, ["/d", "/s", "/c", base, ...(args || [])], {
             ...opts,
@@ -167,8 +168,8 @@ function getWindowsVerLine() {
             "-NoProfile",
             "-Command",
             "(Get-CimInstance Win32_OperatingSystem | Select-Object -ExpandProperty Caption) + ' ' + " +
-                "(Get-CimInstance Win32_OperatingSystem | Select-Object -ExpandProperty Version) + ' ' + " +
-                "(Get-CimInstance Win32_OperatingSystem | Select-Object -ExpandProperty BuildNumber)",
+            "(Get-CimInstance Win32_OperatingSystem | Select-Object -ExpandProperty Version) + ' ' + " +
+            "(Get-CimInstance Win32_OperatingSystem | Select-Object -ExpandProperty BuildNumber)",
         ],
         ROOT
     );
@@ -320,7 +321,7 @@ const BUILD_TRIGGERS = [
     "manifest.xml",
     "manifest.prod.xml",
     "package.json",
-    "package-lock.json",
+    "pnpm-lock.yaml",
     "tsconfig.json",
     "tsconfig.node.json",
     "vitest.config.ts",
@@ -377,13 +378,13 @@ function printBanner(changedInfo) {
 
     console.log(
         color(C.magenta + C.bold, `\n🛡️  ${VERIFY_TEST_NAME}`) +
-            color(C.gray, " - ") +
-            modeText +
-            color(C.magenta + C.bold, "  🛡️\n")
+        color(C.gray, " - ") +
+        modeText +
+        color(C.magenta + C.bold, "  🛡️\n")
     );
 
     const nodeVer = process.version;
-    const npmVer = runCaptureText("npm", ["-v"], ROOT) || "unknown";
+    const pnpmVer = runCaptureText("pnpm", ["-v"], ROOT) || "unknown";
     const ci = getCiLabel();
     const wt = process.env.WT_SESSION ? "WT:yes" : "WT:no";
     const gitBranch = getGitBranch();
@@ -392,7 +393,7 @@ function printBanner(changedInfo) {
     const winVer = getWindowsVerLine();
 
     console.log(
-        color(C.gray, `env: node ${nodeVer} | npm ${npmVer} | ${process.platform} | ci:${ci} | ${wt}`)
+        color(C.gray, `env: node ${nodeVer} | pnpm ${pnpmVer} | ${process.platform} | ci:${ci} | ${wt}`)
     );
     console.log(color(C.gray, `git: ${gitBranch} @ ${gitCommit}`));
 
@@ -552,35 +553,35 @@ function legendForStatus(xy) {
         x === " "
             ? "index clean"
             : x === "M"
-              ? "index modified (staged)"
-              : x === "A"
-                ? "index added (staged)"
-                : x === "D"
-                  ? "index deleted (staged)"
-                  : x === "R"
-                    ? "index renamed (staged)"
-                    : x === "C"
-                      ? "index copied (staged)"
-                      : x === "U"
-                        ? "index unmerged"
-                        : `index ${x}`;
+                ? "index modified (staged)"
+                : x === "A"
+                    ? "index added (staged)"
+                    : x === "D"
+                        ? "index deleted (staged)"
+                        : x === "R"
+                            ? "index renamed (staged)"
+                            : x === "C"
+                                ? "index copied (staged)"
+                                : x === "U"
+                                    ? "index unmerged"
+                                    : `index ${x}`;
 
     const yPart =
         y === " "
             ? "worktree clean"
             : y === "M"
-              ? "worktree modified (unstaged)"
-              : y === "A"
-                ? "worktree added"
-                : y === "D"
-                  ? "worktree deleted"
-                  : y === "R"
-                    ? "worktree renamed"
-                    : y === "C"
-                      ? "worktree copied"
-                      : y === "U"
-                        ? "worktree unmerged"
-                        : `worktree ${y}`;
+                ? "worktree modified (unstaged)"
+                : y === "A"
+                    ? "worktree added"
+                    : y === "D"
+                        ? "worktree deleted"
+                        : y === "R"
+                            ? "worktree renamed"
+                            : y === "C"
+                                ? "worktree copied"
+                                : y === "U"
+                                    ? "worktree unmerged"
+                                    : `worktree ${y}`;
 
     return `${xPart}, ${yPart}`;
 }
@@ -665,7 +666,9 @@ function printFinalReport() {
         console.log(color(C.green + C.bold, "   ✔ OK — clean (no uncommitted changes)"));
     } else {
         // Promenjeno iz C.red + C.bold u C.yellow + C.bold i "WARNING"
-        console.log(color(C.yellow + C.bold, "   ⚠  WARNING — repo is dirty (uncommitted changes detected):"));
+        console.log(
+            color(C.yellow + C.bold, "   ⚠  WARNING — repo is dirty (uncommitted changes detected):")
+        );
 
         const lines = st.split(/\r?\n/).filter(Boolean);
         const seen = new Set();
@@ -700,19 +703,19 @@ function printFinalReport() {
 
     console.log(
         "\n" +
-            color(C.cyan + C.bold, "🏁 RESULT: ") +
-            outcome +
-            " " +
-            stepText +
-            color(C.gray, "  |  ") +
-            color(C.cyan + C.bold, "time: ") +
-            color(C.gray, `${total}s`) +
-            color(C.gray, "  |  ") +
-            color(C.cyan + C.bold, "steps: ") +
-            color(C.gray, `${execN} run, ${skipN} skipped`) +
-            color(C.gray, "  |  ") +
-            color(C.cyan + C.bold, "repo: ") +
-            dirtyText
+        color(C.cyan + C.bold, "🏁 RESULT: ") +
+        outcome +
+        " " +
+        stepText +
+        color(C.gray, "  |  ") +
+        color(C.cyan + C.bold, "time: ") +
+        color(C.gray, `${total}s`) +
+        color(C.gray, "  |  ") +
+        color(C.cyan + C.bold, "steps: ") +
+        color(C.gray, `${execN} run, ${skipN} skipped`) +
+        color(C.gray, "  |  ") +
+        color(C.cyan + C.bold, "repo: ") +
+        dirtyText
     );
 
     console.log("");
@@ -799,7 +802,7 @@ async function askYesNo(q) {
         function cleanup(result) {
             try {
                 process.stdin.setRawMode(false);
-            } catch {}
+            } catch { }
             process.stdin.pause();
             process.stdin.removeListener("data", listener);
             resolve(result);
@@ -928,22 +931,22 @@ async function runSniffer() {
 // Prettier gate
 // --------------------------
 async function prettierGate() {
-    const chk1 = runCmdCapture("npm", ["run", "format:check"], ROOT);
+    const chk1 = runCmdCapture("pnpm", ["run", "format:check"], ROOT);
     if (chk1.status === 0) {
         console.log(color(C.green, "   • prettier: clean (no changes needed)"));
         return;
     }
 
     // Ako chk1 nije 0, znači da treba fix
-    const fix = runCmdCapture("npm", ["run", "format:fix"], ROOT);
+    const fix = runCmdCapture("pnpm", ["run", "format:fix"], ROOT);
     if (fix.status !== 0) {
-        throw new Error("Prettier auto-fix failed. Run 'npm run format:fix' to see full output.");
+        throw new Error("Prettier auto-fix failed. Run 'pnpm run format:fix' to see full output.");
     }
 
-    const chk2 = runCmdCapture("npm", ["run", "format:check"], ROOT);
+    const chk2 = runCmdCapture("pnpm", ["run", "format:check"], ROOT);
     if (chk2.status !== 0) {
         throw new Error(
-            "Prettier still not clean after auto-fix. Run 'npm run format:check' to see details."
+            "Prettier still not clean after auto-fix. Run 'pnpm run format:check' to see details."
         );
     }
 
@@ -1018,7 +1021,7 @@ function ensureCargoAuditAvailable() {
         "cargo-audit is not installed.\n" +
         "Install it with:\n" +
         "  cargo install cargo-audit --locked\n" +
-        "Then re-run: npm run verify:all:strict";
+        "Then re-run: pnpm run verify:all:strict";
     throw new Error(msg);
 }
 
@@ -1080,14 +1083,14 @@ async function main() {
         // Ultra-fast: still use the same prettier gate as normal, so it behaves the same as Smart.
         await runInlineStepCmd(
             "Format (prettier gate)",
-            "npm run format:check -> (if needed) npm run format:fix -> npm run format:check",
+            "pnpm run format:check -> (if needed) pnpm run format:fix -> pnpm run format:check",
             prettierGate
         );
 
-        runStep("Lint (eslint)", "npm", ["run", "lint"]);
-        runStep("Typecheck", "npm", ["run", "typecheck"]);
+        runStep("Lint (eslint)", "pnpm", ["run", "lint"]);
+        runStep("Typecheck", "pnpm", ["run", "typecheck"]);
 
-        SKIPPED.push("Install (npm ci) (ultra-fast)");
+        SKIPPED.push("Install (pnpm install --frozen-lockfile) (ultra-fast)");
         SKIPPED.push("Audit (strict-only) (ultra-fast)");
         SKIPPED.push("Rust fmt/clippy/tests (ultra-fast)");
         SKIPPED.push("Build + validate + dist gate (ultra-fast)");
@@ -1129,12 +1132,12 @@ async function main() {
     runStep("No Hardcoded User Strings", "node", ["scripts/checkUserFacingStrings.cjs"]);
     runStep("taskpane.html I18n", "node", ["scripts/checkTaskpaneHtmlI18n.cjs"]);
 
-    // Lockfile integrity around npm ci
-    const lockPath = path.join(ROOT, "package-lock.json");
+    // Lockfile integrity around pnpm install
+    const lockPath = path.join(ROOT, "pnpm-lock.yaml");
     const lockHashBefore = fs.existsSync(lockPath) ? hashFileSha256(lockPath) : null;
 
-    const INSTALL_STEP = nextStep("Install (npm ci)");
-    run(INSTALL_STEP, "npm", ["ci"]);
+    const INSTALL_STEP = nextStep("Install (pnpm install --frozen-lockfile)");
+    run(INSTALL_STEP, "pnpm", ["install", "--frozen-lockfile"]);
 
     const lockHashAfter = fs.existsSync(lockPath) ? hashFileSha256(lockPath) : null;
     if (lockHashBefore && lockHashAfter && lockHashBefore !== lockHashAfter) {
@@ -1143,23 +1146,23 @@ async function main() {
 
     await runInlineStepCmd(
         "Format (prettier gate)",
-        "npm run format:check -> (if needed) npm run format:fix -> npm run format:check",
+        "pnpm run format:check -> (if needed) pnpm run format:fix -> pnpm run format:check",
         prettierGate
     );
 
-    runStep("Lint (eslint)", "npm", ["run", "lint"]);
-    runStep("Typecheck", "npm", ["run", "typecheck"]);
+    runStep("Lint (eslint)", "pnpm", ["run", "lint"]);
+    runStep("Typecheck", "pnpm", ["run", "typecheck"]);
 
     // Strict-only audits
     if (IS_STRICT) {
-        runStep("Audit (npm prod/high)", "npm", ["run", "audit:prod:high"]);
+        runStep("Audit (pnpm prod/high)", "pnpm", ["run", "audit:prod:high"]);
         await runInlineStepCmd(
             "Cargo audit (wasm-core)",
             "cargo audit --deny warnings",
             cargoAuditStrictGate
         );
     } else {
-        SKIPPED.push("Audit (npm prod/high) (strict-only)");
+        SKIPPED.push("Audit (pnpm prod/high) (strict-only)");
         SKIPPED.push("Cargo audit (wasm-core) (strict-only)");
     }
 
@@ -1184,13 +1187,13 @@ async function main() {
     const shouldRunBuild = IS_STRICT ? true : anyChanged(changedInfo, BUILD_TRIGGERS);
     if (shouldRunBuild) {
         const BUILD_STEP = nextStep("Build");
-        run(BUILD_STEP, "npm", ["run", "build"]);
+        run(BUILD_STEP, "pnpm", ["run", "build"]);
     } else {
         SKIPPED.push("Build (no relevant changes)");
     }
 
-    runStep("Manifest validate (dev)", "npm", ["run", "validate"]);
-    runStep("Manifest validate (prod)", "npm", ["run", "validate:prod"]);
+    runStep("Manifest validate (dev)", "pnpm", ["run", "validate"]);
+    runStep("Manifest validate (prod)", "pnpm", ["run", "validate:prod"]);
 
     // Dist artifacts gate
     const distDir = path.join(ROOT, "dist");
@@ -1206,15 +1209,13 @@ async function main() {
     }
 
     // Tests
-    // Tests
-    // Tests
     if (!IS_FAST_MODE) {
         const COV_STEP = nextStep("Unit Tests (coverage)");
-        run(COV_STEP, "npm", ["run", "test:coverage"], ROOT, { beforeOk: printCoverageLocations });
+        run(COV_STEP, "pnpm", ["run", "test:coverage"], ROOT, { beforeOk: printCoverageLocations });
 
         const shouldRunE2E = anyChanged(changedInfo, E2E_TRIGGERS);
         if (shouldRunE2E) {
-            runStep("E2E Tests (trace on failure)", "npm", [
+            runStep("E2E Tests (trace on failure)", "pnpm", [
                 "run",
                 "test:e2e",
                 "--",

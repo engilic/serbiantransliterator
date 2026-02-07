@@ -5,7 +5,14 @@ set -euo pipefail
 
 echo "== CF PAGES BUILD =="
 node -v
-npm -v
+
+# Install pnpm
+if ! command -v pnpm >/dev/null 2>&1; then
+  echo "Installing pnpm..."
+  npm install -g pnpm
+fi
+
+pnpm -v
 
 # Ensure curl exists
 if ! command -v curl >/dev/null 2>&1; then
@@ -42,7 +49,12 @@ cargo -V
 rustup -V
 wasm-pack -V
 
+# Install dependencies (frozen-lockfile is safer for CI)
+echo "Installing dependencies..."
+pnpm install --frozen-lockfile
+
 # Build (this runs prebuild -> clean + update:version)
-npm run build
+echo "Building..."
+pnpm run build
 
 echo "== CF PAGES BUILD DONE =="

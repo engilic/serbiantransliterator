@@ -20,10 +20,12 @@ If you believe you have found a security vulnerability, please **do not** open a
 Report it privately using one of the following channels:
 
 **1. Email (preferred):** iddj27510@gmail.com
-   - Subject: `Serbian Transliterator - Security report`
+
+- Subject: `Serbian Transliterator - Security report`
 
 **2. GitHub Security Advisories:**
-   - Use GitHub's "Report a vulnerability" flow (creates a private advisory thread)
+
+- Use GitHub's "Report a vulnerability" flow (creates a private advisory thread)
 
 ### Please include:
 
@@ -42,7 +44,7 @@ As of **v1.0.0 (Phase 2 Hardening)**, the following security measures are enforc
 - **Pre-parse XML Validation:** All OOXML is validated for XXE (External Entity) and Billion Laughs signatures before entering the DOM parser.
 - **Worker Isolation:** 100% of text processing occurs in a isolated Web Worker context.
 - **WASM Memory Safety:** The core engine is built in Rust, providing memory safety guarantees that prevent buffer overflows in text manipulation.
-- **MAX1 Sniffer:** Our automated pipeline (`verify-all.js`) scans every commit for secrets, hardcoded keys, and the use of unsafe HTML sinks (`innerHTML`).
+- **MAX1 Sniffer:** Our automated pipeline (`pnpm run verify-all`) scans every commit for secrets, hardcoded keys, and the use of unsafe HTML sinks (`innerHTML`).
 - **DOMPurify:** Mandatory sanitization for all clipboard and UI rendering operations.
 
 ---
@@ -69,7 +71,7 @@ As of **v1.0.0 (Phase 2 Hardening)**, the following security measures are enforc
 
 - **Execution:** This add-in processes document text **locally** (client-side only).
 - **Network:** After initial load from Cloudflare Pages, the app operates in an **Air-Gap standard** mode (no data leaves the device).
-- **Automated Audits:** The project uses `MAX1 Guardian` (npm audit high + cargo audit strict + custom security sniffer) on every PR.
+- **Automated Audits:** The project uses `MAX1 Guardian` (pnpm audit high + cargo audit strict + custom security sniffer) on every PR.
 - **No Persistence:** Document content is never stored permanently; it exists only in memory during processing.
 
 ---
