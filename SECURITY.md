@@ -2,12 +2,12 @@
 
 ## Supported Versions
 
-This project is actively maintained on the `master` branch.
+This project is actively maintained on the `master` branch. Security updates are prioritized for the hybrid Rust/WASM core and the OOXML processing bridge.
 
-Security fixes are provided for:
+**Version Support:**
 
-- The latest released version (current stable), and
-- `master` (source of truth)
+- 1.0.x — ✅ Yes (Stable)
+- < 1.0.0 — ❌ No
 
 If you are running an older release, please upgrade to the latest version and re-test before reporting.
 
@@ -19,73 +19,59 @@ If you believe you have found a security vulnerability, please **do not** open a
 
 Report it privately using one of the following channels:
 
-1. **Email (preferred):** iddj27510@gmail.com
-    - Subject: `Serbian Transliterator - Security report`
+**1. Email (preferred):** iddj27510@gmail.com
+   - Subject: `Serbian Transliterator - Security report`
 
-2. **GitHub Security Advisories (preferred if available):**
-    - Use GitHub’s “Report a vulnerability” flow (creates a private advisory thread)
+**2. GitHub Security Advisories:**
+   - Use GitHub's "Report a vulnerability" flow (creates a private advisory thread)
 
-Please include:
+### Please include:
 
-- A clear description of the issue and its impact
-- Steps to reproduce (PoC if possible)
-- Affected versions/commit hash (if known)
-- Environment details (Word version, OS, browser/WebView2 version, add-in version)
-- Any relevant logs/screenshots (sanitize sensitive document content)
-
-Important:
-
-- Please avoid sending real customer documents or private data. If a document is required, provide a minimized, redacted test file.
+- A clear description of the issue and its impact.
+- Steps to reproduce (PoC if possible).
+- Affected versions/commit hash.
+- Environment details (Word version, OS, browser/WebView2 version).
+- Any relevant logs (sanitize sensitive document content before sending).
 
 ---
 
-## Response Expectations
+## Mitigations & Defense-in-Depth
 
-We aim to:
+As of **v1.0.0 (Phase 2 Hardening)**, the following security measures are enforced:
 
-- Acknowledge receipt within a reasonable time
-- Investigate and validate the report
-- Provide a remediation plan or fix
-- Coordinate responsible disclosure if needed
-
-Typical timeline targets (best-effort):
-
-- Acknowledgement: within a few business days
-- Triage/initial assessment: within ~1 week
-- Fix/mitigation plan: depends on severity and complexity
-
----
-
-## Responsible Disclosure
-
-- Please give us a reasonable window to investigate and ship a fix before public disclosure.
-- If you plan to publish details, coordinate timing with the maintainers so users can update safely.
+- **Pre-parse XML Validation:** All OOXML is validated for XXE (External Entity) and Billion Laughs signatures before entering the DOM parser.
+- **Worker Isolation:** 100% of text processing occurs in a isolated Web Worker context.
+- **WASM Memory Safety:** The core engine is built in Rust, providing memory safety guarantees that prevent buffer overflows in text manipulation.
+- **MAX1 Sniffer:** Our automated pipeline (`verify-all.js`) scans every commit for secrets, hardcoded keys, and the use of unsafe HTML sinks (`innerHTML`).
+- **DOMPurify:** Mandatory sanitization for all clipboard and UI rendering operations.
 
 ---
 
 ## Scope Notes
 
-In scope:
+### In scope:
 
-- Anything that could compromise user privacy, integrity of document content, or execution safety
-- OOXML parsing/conversion logic (including XXE-style issues)
-- Worker/WASM initialization and message passing
-- UI surfaces that could enable injection (XSS) or unsafe HTML rendering
-- Build/release pipeline issues that could result in compromised artifacts
+- Anything that could compromise user privacy (e.g., unexpected network calls).
+- Integrity of document content (e.g., vulnerabilities that could corrupt OOXML).
+- Execution safety (Worker/WASM escape).
+- XSS in UI surfaces (Taskpane/Web mode).
+- Vulnerabilities in the build/release pipeline (compromised artifacts).
 
-Out of scope (generally):
+### Out of scope:
 
-- Issues requiring a fully compromised OS or a malicious browser extension to exploit
-- Social engineering attacks not involving a technical vulnerability in this codebase
-- Denial-of-service reports that rely on unrealistic inputs (unless they represent common real-world documents)
+- Issues requiring a fully compromised OS or a malicious browser extension to exploit.
+- Social engineering attacks.
+- Denial-of-service reports that rely on unrealistic inputs (unless they represent common real-world documents).
 
 ---
 
 ## System Context (for reporters)
 
-- This add-in processes document text locally (in the Word host/browser).
-- Hosting is static (Cloudflare Pages).
-- CI uses automated security checks (Dependabot + CodeQL + npm audit gate where enabled).
-- Core conversion uses Rust/WASM; browser Worker isolation is used where available.
+- **Execution:** This add-in processes document text **locally** (client-side only).
+- **Network:** After initial load from Cloudflare Pages, the app operates in an **Air-Gap standard** mode (no data leaves the device).
+- **Automated Audits:** The project uses `MAX1 Guardian` (npm audit high + cargo audit strict + custom security sniffer) on every PR.
+- **No Persistence:** Document content is never stored permanently; it exists only in memory during processing.
 
 ---
+
+© 2026 Serbian Transliterator Project.
