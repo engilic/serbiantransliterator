@@ -115,7 +115,7 @@ The **MAX1 Guardian** pipeline (`pnpm run verify-all`) enforces a 12-check batte
 5. **Security Sniffer:** Scans for secrets and `innerHTML` sinks.
 6. **Coverage:** ~92% coverage threshold via Vitest.
 
-*(Note: The project has fully migrated from npm to **pnpm**; all CI and local verification steps are executed via pnpm scripts.)*
+_(Note: The project has fully migrated from npm to **pnpm**; all CI and local verification steps are executed via pnpm scripts.)_
 
 ---
 

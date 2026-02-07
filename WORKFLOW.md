@@ -309,5 +309,5 @@ cargo install wasm-pack
 - Node: 22.x
 - pnpm: 9.x
 - Rust: Stable
- -wasm-pack: Manual
+  -wasm-pack: Manual
 - Trigger: pnpm start, verify:all

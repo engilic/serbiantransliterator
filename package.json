@@ -28,6 +28,7 @@
         "test": "cross-env VITE_CJS_IGNORE_WARNING=1 vitest run",
         "test:coverage": "cross-env VITE_CJS_IGNORE_WARNING=1 vitest run --coverage",
         "test:e2e": "playwright test",
+        "test:e2e:trace": "playwright test --trace=retain-on-failure",
         "lint": "eslint src/**/*.ts --max-warnings 0",
         "lint:fix": "eslint src/**/*.ts --fix",
         "typecheck": "tsc --noEmit",

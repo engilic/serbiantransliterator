@@ -168,8 +168,8 @@ function getWindowsVerLine() {
             "-NoProfile",
             "-Command",
             "(Get-CimInstance Win32_OperatingSystem | Select-Object -ExpandProperty Caption) + ' ' + " +
-            "(Get-CimInstance Win32_OperatingSystem | Select-Object -ExpandProperty Version) + ' ' + " +
-            "(Get-CimInstance Win32_OperatingSystem | Select-Object -ExpandProperty BuildNumber)",
+                "(Get-CimInstance Win32_OperatingSystem | Select-Object -ExpandProperty Version) + ' ' + " +
+                "(Get-CimInstance Win32_OperatingSystem | Select-Object -ExpandProperty BuildNumber)",
         ],
         ROOT
     );
@@ -378,9 +378,9 @@ function printBanner(changedInfo) {
 
     console.log(
         color(C.magenta + C.bold, `\n🛡️  ${VERIFY_TEST_NAME}`) +
-        color(C.gray, " - ") +
-        modeText +
-        color(C.magenta + C.bold, "  🛡️\n")
+            color(C.gray, " - ") +
+            modeText +
+            color(C.magenta + C.bold, "  🛡️\n")
     );
 
     const nodeVer = process.version;
@@ -553,35 +553,35 @@ function legendForStatus(xy) {
         x === " "
             ? "index clean"
             : x === "M"
-                ? "index modified (staged)"
-                : x === "A"
-                    ? "index added (staged)"
-                    : x === "D"
-                        ? "index deleted (staged)"
-                        : x === "R"
-                            ? "index renamed (staged)"
-                            : x === "C"
-                                ? "index copied (staged)"
-                                : x === "U"
-                                    ? "index unmerged"
-                                    : `index ${x}`;
+              ? "index modified (staged)"
+              : x === "A"
+                ? "index added (staged)"
+                : x === "D"
+                  ? "index deleted (staged)"
+                  : x === "R"
+                    ? "index renamed (staged)"
+                    : x === "C"
+                      ? "index copied (staged)"
+                      : x === "U"
+                        ? "index unmerged"
+                        : `index ${x}`;
 
     const yPart =
         y === " "
             ? "worktree clean"
             : y === "M"
-                ? "worktree modified (unstaged)"
-                : y === "A"
-                    ? "worktree added"
-                    : y === "D"
-                        ? "worktree deleted"
-                        : y === "R"
-                            ? "worktree renamed"
-                            : y === "C"
-                                ? "worktree copied"
-                                : y === "U"
-                                    ? "worktree unmerged"
-                                    : `worktree ${y}`;
+              ? "worktree modified (unstaged)"
+              : y === "A"
+                ? "worktree added"
+                : y === "D"
+                  ? "worktree deleted"
+                  : y === "R"
+                    ? "worktree renamed"
+                    : y === "C"
+                      ? "worktree copied"
+                      : y === "U"
+                        ? "worktree unmerged"
+                        : `worktree ${y}`;
 
     return `${xPart}, ${yPart}`;
 }
@@ -703,19 +703,19 @@ function printFinalReport() {
 
     console.log(
         "\n" +
-        color(C.cyan + C.bold, "🏁 RESULT: ") +
-        outcome +
-        " " +
-        stepText +
-        color(C.gray, "  |  ") +
-        color(C.cyan + C.bold, "time: ") +
-        color(C.gray, `${total}s`) +
-        color(C.gray, "  |  ") +
-        color(C.cyan + C.bold, "steps: ") +
-        color(C.gray, `${execN} run, ${skipN} skipped`) +
-        color(C.gray, "  |  ") +
-        color(C.cyan + C.bold, "repo: ") +
-        dirtyText
+            color(C.cyan + C.bold, "🏁 RESULT: ") +
+            outcome +
+            " " +
+            stepText +
+            color(C.gray, "  |  ") +
+            color(C.cyan + C.bold, "time: ") +
+            color(C.gray, `${total}s`) +
+            color(C.gray, "  |  ") +
+            color(C.cyan + C.bold, "steps: ") +
+            color(C.gray, `${execN} run, ${skipN} skipped`) +
+            color(C.gray, "  |  ") +
+            color(C.cyan + C.bold, "repo: ") +
+            dirtyText
     );
 
     console.log("");
@@ -802,7 +802,7 @@ async function askYesNo(q) {
         function cleanup(result) {
             try {
                 process.stdin.setRawMode(false);
-            } catch { }
+            } catch {}
             process.stdin.pause();
             process.stdin.removeListener("data", listener);
             resolve(result);
@@ -1215,13 +1215,7 @@ async function main() {
 
         const shouldRunE2E = anyChanged(changedInfo, E2E_TRIGGERS);
         if (shouldRunE2E) {
-            runStep("E2E Tests (trace on failure)", "pnpm", [
-                "run",
-                "test:e2e",
-                "--",
-                "--trace",
-                "retain-on-failure",
-            ]);
+            runStep("E2E Tests (trace on failure)", "pnpm", ["run", "test:e2e:trace"]);
         } else {
             SKIPPED.push("E2E Tests (no relevant changes)");
         }

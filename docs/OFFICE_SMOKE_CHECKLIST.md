@@ -99,7 +99,7 @@ ali padne u Office hostu zbog CSP/headers, cache-a, ili Office runtime razlika.
     - proveri da kopira i HTML i plain text
 4. Drop .docx:
     - mali docx (npr. 200KB)
-    - proveri da generiše “PRESLOVLJENO_*.docx”
+    - proveri da generiše “PRESLOVLJENO\_\*.docx”
 5. Test: limit:
     - pokušaj ogroman .docx (npr. >5MB) -> očekuješ “Document too large (5MB limit)” ili sličnu poruku
 
