@@ -30,10 +30,17 @@ rustup default stable
 # Needed for wasm builds
 rustup target add wasm32-unknown-unknown
 
+# ✅ Install wasm-pack if missing
+if ! command -v wasm-pack >/dev/null 2>&1; then
+  echo "Installing wasm-pack..."
+  curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+fi
+
 echo "Rust toolchain:"
 rustc -V
 cargo -V
 rustup -V
+wasm-pack -V
 
 # Build (this runs prebuild -> clean + update:version)
 npm run build
