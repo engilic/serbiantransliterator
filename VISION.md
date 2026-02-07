@@ -1,199 +1,128 @@
 # 🚀 VISION 2026: THE NEURAL FRONTIER — THE ULTIMATE STRATEGIC BLUEPRINT
 
-**Project:** Serbian Transliterator (Universal Engine)  
-**Architectural Level:** MAX Mode (v1.1.0 Hardening → v2.0.0 Intelligent)  
+**Projekat:** Serbian Transliterator (Universal Engine)  
+**Arhitektonski Nivo:** MAX Mode (v7.6)  
+**Operativni Status:** Phase 2: Architectural Hardening  
 **Motto:** "Absolute Privacy. Infinite Performance. Universal Reach."
 
 ---
 
 ## 1) STRATEŠKA FILOZOFIJA: "GALAXY MODE" IMPERATIVI
 
-Cilj nije “još jedan konverter”. Cilj je univerzalni standard za procesiranje
-srpskog jezika. Svaki red koda prati 4 stuba:
+Sistem ne gradimo kao "plugin", već kao **suvereni sloj za procesiranje jezika**. Svaki red koda mora biti u skladu sa četiri stuba MAX arhitekture:
 
 ### I. Arhitektura nulte latencije (The 16ms Rule)
 
-- Cilj: prosečna operacija po “stranici teksta” < 16ms
-- Rust/WASM dominacija: eliminacija GC iz kritičnih putanja
-- SIMD: paralelizam na nivou instrukcija za simultano procesiranje karaktera
+**Problem:** JavaScript nit (Main Thread) je zagušena renderovanjem Word UI-ja. Svaki blokirajući poziv duži od 16ms uzrokuje "stutter".
+
+**Rešenje:**
+
+- **Worker-First:** 100% compute operacija se vrši u Web Worker-ima.
+- **Zero-Lock Caching:** Implementacija `thread_local!` keša u Rustu eliminiše overhead atomskih operacija. Svaka instanca WASM-a ima svoj izolovan memorijski prostor za rečnike.
+- **WASM SIMD:** Korišćenje `v128` instrukcija za paralelnu obradu karaktera. Skeniranje stringova za specijalne karaktere (linkovi, tagovi) vrši se na nivou procesorskih registara.
 
 ### II. Privatnost kao ontološki status (Privacy by Design)
 
-- Air-gap standard: funkcionalno bez ijednog eksternog bajta (nakon prvog load-a)
-- Lokalna telemetrija: IndexedDB, korisnik jedini ima pristup export-u
+- **Air-gap Standard:** Softver ne poseduje `fetch` ili `XMLHttpRequest` pozive ka spoljnim API-jima nakon inicijalizacije.
+- **Local Persistence:** Koristi se isključivo `localStorage` i `IndexedDB` za čuvanje korisničkih podešavanja i telemetrije performansi.
+- **No Cloud AI:** Svaka buduća inteligencija mora biti upakovana u WASM ili ONNX runtime koji se izvršava na klijentu.
 
 ### III. Strukturalni integritet (Preservation of Intent)
 
-- Ne sme da se uništi formatiranje, metapodaci, kod
-- Sistem razume razliku između rečenice i regex-a, brenda i imenice
+- **Lexical Intelligence:** Sistem ne vidi samo "tekst", on vidi "strukturu". Razlikuje `w:t` (tekst) unutar `w:hyperlink` od običnog teksta.
+- **Atomic Bridging:** Reči koje su nasumično razbijene stilovima (npr. `<b>i</b>Phone`) moraju biti rekonstruisane u memoriji, zaštićene, i vraćene u originalne XML čvorove bez gubitka stilova.
 
 ---
 
 ## 2) DETALJNA TEHNIČKA MAPA PUTA (2026–2028)
 
-### FAZA 1: ZLATNI TEMELJI (Completed — Q1 2026)
+### FAZA 1: ZLATNI TEMELJI (Završeno — Q1 2026)
 
-- Migracija na Rust Core v1.0
-- FST: lookup kroz 100k reči u mikrosekundama uz memorijski otisak <2MB
-- Status: Gold Master v1.0.0 u produkciji
+- **Rust Core 1.0:** Prelazak sa Regex-based konverzije na FST (Finite State Transducers).
+- **Gzipped Rečnici:** Smanjenje footprint-a rečnika sa 15MB na 1.8MB uz zadržavanje O(k) brzine pretrage.
+- **Status:** Gold Master v1.0.0 u produkciji.
 
-### FAZA 2: ARHITEKTONSKO OJAČAVANJE (Current — Q2 2026)
+### FAZA 2: ARHITEKTONSKO OJAČAVANJE (Trenutni Sprint — Q2 2026)
 
-- Cilj: rušenje “Memory Wall”
-- Problem: JS DOMParser je eager (učitava sve odjednom)
-- Rešenje: Rust streaming engine (quick-xml)
-    - Pull-parser u Rust-u: JS šalje Uint8Array buffer, Rust parsira bajt‑po‑bajt
-    - Memorijski cilj: O(1) memory usage; target <60MB RAM
-- Self-healing workers:
-    - supervisor pattern
-    - restart <10ms + re-init + nastavak pipeline-a
+**Rušenje "Memorijskog Zida":**
 
-### FAZA 3: UNIVERZALNI DOMAĆIN (Q3–Q4 2026)
+- **Problem:** `DOMParser` kreira celo stablo objekata u RAM-u. Dokument od 100MB XML-a pojede 800MB RAM-a.
+- **Rešenje:** Rust Streaming Engine (`quick-xml`). Implementacija Pull-parsera unutar WASM-a. JS šalje `Uint8Array` stream, Rust ga procesira u letu i vraća modifikovane bajtove. Memorijska kompleksnost: **O(1)** (fiksno na ~50MB bez obzira na veličinu dokumenta).
 
-- Decoupling od Office.js
-- Proizvodi:
-    1. Browser extension (Chrome/Edge/Firefox)
-    2. Tauri desktop app (batch processing)
-    3. CLI za automatizaciju
+**Adaptive Chunking 2.0:** Dinamičko merenje "vremena povratka" iz Workera. Ako procesor korisnika uspori, batch size se smanjuje u realnom vremenu.
+
+### FAZA 3: EKOSISTEM OMNIPRESENCE (Q3–Q4 2026)
+
+**Decoupling:** Potpuno razdvajanje core logike od Office.js specifičnosti.
+
+**Novi Proizvodi:**
+
+1. **Browser Extension 2.0:** Koristi `MutationObserver` da preslovljava Twitter/LinkedIn feed u realnom vremenu dok korisnik skroluje.
+2. **Tauri Desktop Hub:** Aplikacija za masovnu konverziju lokalnih foldera sa DOCX, PDF i JSON fajlovima.
+3. **MAX CLI:** Binarni alat pisan u Rustu za integraciju u serverske pipeline-ove.
 
 ### FAZA 4: LOKALNA INTELIGENCIJA (2027+)
 
-- ONNX runtime + quantized modeli
-- Mini NER (~15MB) za zaštitu brendova/imenovanih entiteta bez clouda
-- Morfološka analiza: ijekavica/ekavica uz razumevanje padeža i vremena
+- **Quantized NER (Named Entity Recognition):** Integracija minijaturnog jezičkog modela (~15MB) za automatsko prepoznavanje imena ljudi, stranih kompanija i tehničkih termina bez potrebe za ručnim listama.
+- **Contextual Dialect Switching:** Rešavanje problema homonima (npr. "kosa" - glava vs. alat) korišćenjem HMM (Hidden Markov Models) za izbor ispravnog oblika pri ijekavizaciji.
 
 ---
 
 ## 3) LINGVISTIČKI I LOGIČKI IMPERATIVI
 
-- Advanced bridging: reči razbijene kroz w:r / w:t moraju ostati logički celovite
-- Slojevita zaštita:
-    - sloj 1: rigidne liste (ALWAYS_LATIN)
-    - sloj 2: heuristike (MixedCase, CamelCase, underscore)
-    - sloj 3: sintaksna svesnost (kod, URL, email)
-    - sloj 4: lokalni AI (budućnost)
+Sistem zaštite (Protection Layer) operiše u četiri nivoa dubine:
+
+1. **Rigidni nivo:** `ALWAYS_LATIN` liste (Microsoft, Windows, iPhone).
+2. **Sintaksni nivo:** Automatska detekcija koda, URL-ova, Email adresa i putanja do fajlova (`C:\...`).
+3. **Heuristički nivo:** Prepoznavanje `MixedCase`, `CamelCase` i reči sa brojevima (`word1`).
+4. **Kontekstualni nivo:** Bridging ambiguous sufiksa (npr. "Pro" je zaštićen samo ako mu prethodi brend iz liste).
 
 ---
 
-## 4) DEVOPS & KVALITET: "GUARDIAN" STANDARD
+## 4) DEVOPS & KVALITET: "MAX1 GUARDIAN" STANDARD
 
-- Guardian pipeline: svaki PR mora proći verify-all
-- Fuzz testing: random input da nikad ne dođe do crash/panic/segfault
-- Binary size watchdog: WASM target <5MB; optimizacije kompresije rečnika
+Nijedna promena ne ulazi u master bez prolaska kroz **MAX1** pipeline:
 
----
-
-## 5) KRAJNJI UTICAJ (Impact)
-
-Do kraja 2026:
-
-- Najbrži: 1,000,000 karaktera u <50ms
-- Najlakši: <4MB ukupno sa rečnicima
-- Najsigurniji: bez eksternog saobraćaja
-- Najpametniji: offline jezička svesnost
+- **I18n Guard:** Automatska provera da li su svi novi stringovi u kodu prisutni u `sr.ts` i `en.ts`.
+- **Security Sniffer:** Skeniranje koda za tajne ključeve i nebezbedne HTML sink-ove (`innerHTML`).
+- **Binary Size Watchdog:** Provera da li je WASM binar prešao granicu od 5MB.
+- **E2E Fuzzing:** Playwright testovi koji simuliraju nasumične akcije korisnika brzinom od 10 klikova u sekundi.
 
 ---
 
-## 6) OPERATIVNI ZAKLJUČAK
+## 5) OPERATIVNI ZAKLJUČAK: TRANSLITERATOR KAO INFRASTRUKTURA
 
-Ne pišemo skripte — gradimo precizan inženjerski instrument:
+Mi ne pravimo alat za promenu pisma. Mi gradimo **most**.
 
-- izbegni heap alokacije gde možeš
-- koristi match umesto if kad je smisleno
-- privatnost: pretpostavi da je sve osetljivo i drži lokalno
+- Spajamo digitalnu sadašnjost (latinica/kod) sa kulturnim nasleđem (ćirilica).
+- Omogućavamo korporacijama prelazak na ćirilicu bez rizika po tehničku dokumentaciju.
+- Garantujemo brzinu koja je brža od ljudske percepcije.
 
-# 🛰️ VISION 2027: THE SOVEREIGN LINGUISTIC CORE (OMNIPRESENCE)
-
-Dok je 2026. godina bila fokusirana na performanse i "sirovu snagu" streaming
-engine-a, 2027. predstavlja godinu **Lokalne Inteligencije** i **Potpune
-Dekaplacije (Decoupling)**.
-
-U ovoj fazi, Serbian Transliterator prestaje da bude Word Add-in i postaje
-univerzalna binarna biblioteka koja "živi" na nivou operativnog sistema ili
-pretraživača.
+**Ovo je MAX MODE. Ovo je Neural Frontier.**
 
 ---
 
-## 1. NEURALNA INTEGRACIJA (ON-DEVICE AI)
+# 🛰️ VISION 2027: THE SOVEREIGN LINGUISTIC CORE
 
-U 2027. godini napuštamo oslanjanje isključivo na statičke liste zaštićenih reči
-(ALWAYS_LATIN).
+U 2027. godini, Serbian Transliterator prestaje da bude "program" i postaje "infrastruktura".
 
-- **Quantized NER (Named Entity Recognition):** Integracija minijaturnog jezičkog
-  modela (npr. DistilBERT ili TinyLLM kvantizovan na 4-bita) unutar WASM-a.
-    - **Cilj:** Model automatski prepoznaje imena ljudi, stranih kompanija, ulica i
-      tehničkih termina sa preciznošću od 99.8%, bez potrebe da korisnik ručno
-      unosi "Microsoft" ili "Apple" u listu zaštićenih reči.
-- **WASM SIMD Inference:** Korišćenje paralelizma procesorskih instrukcija za
-  pokretanje AI modela lokalno u browser-u ili Word-u, sa latencijom manjom od
-  50ms po pasusu.
-- **Privacy-First Training:** Svi modeli su "frozen" i isporučuju se kao binarni
-  resursi. Nema učenja na podacima korisnika; privatnost ostaje ontološki
-  imperativ.
+### 1. DUBOKA LINGVISTIČKA SOVERENOST
 
----
+- **Morphological Analyzer u Rustu:** Jezgro dobija sposobnost da prepozna koren reči i njene gramatičke oblike (lematizacija).
+- **Context-Aware Dialect Switching:** Rešavanje problema homonima korišćenjem statističkih modela verovatnoće.
 
-## 2. EKOSISTEM OMNIPRESENCE (POTPUNA DOSTUPNOST)
+### 2. API ZA TREĆA LICA (SDK)
 
-Transliterator postaje standardni "layer" kroz koji prolazi digitalni tekst na
-Balkanu.
+- **JS/TS Wrapper:** NPM paket koji developeri mogu uvesti u svoje projekte.
+- **Rust Crate:** Dostupnost jezgra na `crates.io`.
 
-- **Sovereign CLI (Command Line Interface):** Rust binarna aplikacija za servere
-  i CI/CD pipeline. Omogućava kompanijama da automatski preslovljavaju hiljade
-  dokumenata ili baze podataka u realnom vremenu kao deo build procesa.
-- **Browser Extension 2.0 (The Living Web):** Ekstenzija koja ne zahteva klik.
-  Ona koristi `MutationObserver` i WASM jezgro da u realnom vremenu, dok
-  skrolujete, preslovljava Twitter, LinkedIn, Facebook ili vesti, čuvajući pritom
-  kod, linkove i tagove netaknutim.
-- **Desktop Hub (Tauri Framework):** Standalone aplikacija izgrađena u Rust/Tauri
-  koja služi kao "batch processor". Podrška za:
-    - Masovnu konverziju `.docx`, `.pdf` (text layer), `.json`, `.md` i `.html`
-      fajlova.
-    - Drag-and-drop foldera sa hiljadama dokumenata.
+### 3. BINARNA OPTIMIZACIJA (THE 2MB LIMIT)
+
+Uprkos dodavanju inteligencije, ciljamo:
+
+- **Dictionary Sharding:** Dinamičko učitavanje specijalizovanih rečnika (npr. samo medicinski termini) na zahtev korisnika.
+- **LTO (Link Time Optimization):** Agresivna eliminacija mrtvog koda za WASM binar.
 
 ---
 
-## 3. DUBOKA LINGVISTIČKA SOVERENOST (MORPHOLOGICAL ANALYZER)
-
-Transliteracija evoluira u razumevanje jezika.
-
-- **Lematizacija i Stemming u Rustu:** Jezgro dobija sposobnost da prepozna koren
-  reči i njene gramatičke oblike.
-    - **Primer:** Prepoznavanje da su "vremena", "vremenu" i "vremenom" oblici reči
-      "vreme", što drastično poboljšava preciznost konverzije ijekavica <-> ekavica.
-- **Context-Aware Dialect Switching:** Rešavanje problema homonima. Sistem će
-  razumeti da li je "kosa" u rečenici imenica (dlaka na glavi) ili pridjev
-  (nagnuta), i na osnovu toga primeniti ispravna pravila za ijekavizaciju ako je
-  potrebno.
-- **Semantic Protected Buffers:** Automatska detekcija programskog koda unutar
-  običnog teksta (npr. `System.out.println`) bez potrebe za Markdown
-  backtick-ovima, štiteći tehničku semantiku.
-
----
-
-## 4. BINARNA OPTIMIZACIJA (THE 2MB LIMIT)
-
-Uprkos dodavanju AI modela, postavljamo rigorozne ciljeve za veličinu:
-
-- **Dictionary Sharding:** Dinamičko učitavanje delova rečnika samo kada su
-  potrebni (npr. medicinski ili pravni termini se učitavaju samo ako model
-  detektuje taj domen).
-- **WASM Stripping:** Napredna eliminacija mrtvog koda (LTO) kako bi osnovni
-  engine ostao ispod 2MB, omogućavajući učitavanje u milisekundama na bilo kojoj
-  vezi.
-
----
-
-## 5. API ZA TREĆA LICA (THE TRANSLITERATOR SDK)
-
-Omogućavamo drugim programerima da ugrade našu "MAX Mode" stabilnost u svoje
-projekte.
-
-- **JS/TS Wrapper:** NPM paket koji jednostavno uvozi naše WASM jezgro.
-- **Rust Crate:** Dostupnost jezgra na `crates.io` za Rust zajednicu.
-
----
-
-**Vision 2027 zaključak:** Naš softver više nije alat, on je **infrastruktura**.
-Mi gradimo mostove preko pisama, spajajući ljude, digitalne sisteme i istorijske
-zapise srpskog jezika u jednu koherentnu, visoko-performansnu celinu.
+**Februar 2026. Rezime:** Fokus je na **Phase 2 Hardening**. Rušimo memorijski zid i uvodimo MAX1 Guardian kao standard nepobedivosti koda.
