@@ -1,8 +1,8 @@
 # 🚀 VISION 2026: THE NEURAL FRONTIER — THE ULTIMATE STRATEGIC BLUEPRINT
 
-**Projekat:** Serbian Transliterator (Universal Engine)  
-**Arhitektonski Nivo:** MAX Mode (v7.6)  
-**Operativni Status:** Phase 2: Architectural Hardening  
+**Projekat:** Serbian Transliterator (Universal Engine)
+**Arhitektonski Nivo:** MAX Mode (v7.6)
+**Operativni Status:** Phase 2: Architectural Hardening
 **Motto:** "Absolute Privacy. Infinite Performance. Universal Reach."
 
 ---

@@ -1,17 +1,17 @@
-# 🛡️ WORKFLOW v7.6 — MAX MODE OPS EDITION (MAXIMUM SECURITY)
+# 🛡️ WORKFLOW v8.0 — PNPM OPS EDITION (MAXIMUM SECURITY)
 
-**Project:** Serbian Transliterator (Hybrid: TypeScript + Rust/WASM)  
-**Environment:** VS Code 2026, PowerShell 7, Node 22.x (LTS via Volta), Rust (Stable)  
-**Ops Level:** ZERO TOLERANCE for errors.  
-**Core Principle:** "Local Verification is the only Source of Truth."  
-**Labeling:** MAX1 Guardian  
+**Project:** Serbian Transliterator (Hybrid: TypeScript + Rust/WASM)
+**Environment:** VS Code 2026, PowerShell 7, Node 22.x, pnpm 9.x (Managed via Volta), Rust (Stable)
+**Ops Level:** ZERO TOLERANCE for errors.
+**Core Principle:** "Local Verification is the only Source of Truth."
+**Labeling:** MAX1 Guardian
 **Default branch:** `master`
 
 ---
 
 ## 0. ☢️ DAILY SANITY & CLEAN SLATE
 
-Pre pisanja ijedne linije koda, osiguraj da je tvoje okruženje sterilno.  
+Pre pisanja ijedne linije koda, osiguraj da je tvoje okruženje sterilno.
 Stari artefakti i stale keš su neprijatelji stabilnosti.
 
 ### Standard Start
@@ -19,15 +19,15 @@ Stari artefakti i stale keš su neprijatelji stabilnosti.
 Koristi ovo svakodnevno za sinhronizaciju i čišćenje osnovnih build artefakata.
 
 1. Idi na `master` i povuci najnovije promene.
-2. Sinhronizuj zavisnosti sa lockfajlom.
+2. Sinhronizuj zavisnosti (pnpm je ekstremno brz ovde).
 3. Obriši privremene build artefakte (dist, coverage, pkg).
 
-~~~powershell
+```powershell
 git switch master
 git pull --ff-only
-npm ci
-npm run clean
-~~~
+pnpm install
+pnpm run clean
+```
 
 ### The "Nuclear Option" (Emergency Only)
 
@@ -35,15 +35,16 @@ Koristi ovo ako naiđeš na čudne greške pri kompajliranju, "module not found"
 
 > ⚠️ **PAŽNJA:** Ovo briše sve fajlove koji nisu pod git kontrolom i ignorisane foldere!
 
-~~~powershell
+```powershell
 git clean -fdX
 Remove-Item -Recurse -Force node_modules -ErrorAction SilentlyContinue
-npm ci
+pnpm store prune
+pnpm install
 cd src/wasm-core
 cargo clean
 cd ../..
-npm run build:wasm
-~~~
+pnpm run build:wasm
+```
 
 ---
 
@@ -56,15 +57,16 @@ Direktni commit-ovi na `master` su **ZABRANJENI** (osim release commit-ova gener
 **Format:** `tip/kebab-case-opis`
 
 **Types:**
+
 - `feat/` — Nove funkcionalnosti (npr. `feat/streaming-parser`)
 - `fix/` — Ispravke bagova (npr. `fix/memory-leak`)
 - `refactor/` — Izmena koda bez promene ponašanja (npr. `refactor/cleanup-utils`)
 - `chore/` — Konfiguracija, skripte, zavisnosti (npr. `chore/update-deps`)
 - `docs/` — Dokumentacija (npr. `docs/api-reference`)
 
-~~~powershell
+```powershell
 git switch -c feat/my-new-feature
-~~~
+```
 
 ---
 
@@ -74,11 +76,11 @@ git switch -c feat/my-new-feature
 
 Svaki izvorni fajl (`.ts`, `.rs`, `.js`, `.ps1`) **MORA** početi sa komentarom relativne putanje.
 
-*Auto-fix:*
+_Auto-fix:_
 
-~~~powershell
+```powershell
 pwsh ./scripts/add-headers.ps1
-~~~
+```
 
 #### 2. No `console.log`
 
@@ -109,27 +111,31 @@ Guardian (`scripts/verify-all.js`) je vrhovni autoritet. **Ako on padne, tvoj ko
 
 **LEVEL 0: Ultra-Fast Verify (Quick Sanity)**  
 Samo linting, format i typecheck. Preskače install, build i testove. Najbrži fidbek.
-~~~powershell
-npm run verify:all -- --ultra-fast --no-push
-~~~
+
+```powershell
+pnpm verify:all --ultra-fast --no-push
+```
 
 **LEVEL 1: Fast Verify (During Dev)**  
 Sve iz nivoa 0 + manifest provera + Rust gates. Skipa Unit/E2E testove.
-~~~powershell
-npm run verify:all -- --fast --no-push
-~~~
+
+```powershell
+pnpm verify:all --fast --no-push
+```
 
 **LEVEL 2: Full Verify (Pre-Commit)**  
 Kompletna baterija testova uključujući Unit testove sa coverage izveštajem.
-~~~powershell
-npm run verify:all -- --no-push
-~~~
+
+```powershell
+pnpm verify:all --no-push
+```
 
 **LEVEL 3: Strict Verify (Pre-Push / CI / Release)**  
 Maksimalna sigurnost. Build provera + strict audit. Ovo pokreće GitHub Actions.
-~~~powershell
-npm run verify:all:strict -- --no-push
-~~~
+
+```powershell
+pnpm verify:all:strict --no-push
+```
 
 ### Checklist koji Guardian izvršava:
 
@@ -151,9 +157,9 @@ Pošto je ovo hibridni projekat, Rust zahteva specifičnu pažnju.
 
 ### Manualna kompilacija
 
-~~~powershell
-npm run build:wasm
-~~~
+```powershell
+pnpm run build:wasm
+```
 
 > Generiše `src/wasm-core/pkg` neophodan za TS
 
@@ -161,18 +167,18 @@ npm run build:wasm
 
 Ako menjaš `.json` fajlove u `src/static/assets/`:
 
-~~~powershell
-npm run compile:dicts
-~~~
+```powershell
+pnpm run compile:dicts
+```
 
 > Kreira `.bin` fajlove optimizovane za FST engine
 
 ### Rust Testovi
 
-~~~powershell
+```powershell
 cd src/wasm-core
 cargo test
-~~~
+```
 
 ---
 
@@ -188,9 +194,9 @@ Conventional Commits (neophodno za auto-changelog):
 
 ### Push Sequence
 
-~~~powershell
+```powershell
 # 1. Finalna provera
-npm run verify:all -- --no-push
+pnpm verify:all --no-push
 
 # 2. Stage & Commit
 git add .
@@ -198,25 +204,25 @@ git commit -m "feat: implement ..."
 
 # 3. Push
 git push -u origin tip/opis
-~~~
+```
 
 ---
 
 ## 5. 📦 RELEASE PROCEDURE (Maintainers Only)
 
-~~~powershell
+```powershell
 # 1. Sync with master
 git pull origin master
 
 # 2. Full strict verification
-npm run verify:all:strict -- --no-push
+pnpm verify:all:strict --no-push
 
 # 3. Auto version bump, changelog, and tag
-npm run release
+pnpm run release
 
 # 4. Push (triggers Cloudflare Pages deploy)
 git push --follow-tags
-~~~
+```
 
 ---
 
@@ -226,36 +232,37 @@ git push --follow-tags
 
 Verovatno si očistio projekat, ali nisi re-buildovao WASM.
 
-~~~powershell
-npm run build:wasm
-~~~
+```powershell
+pnpm run build:wasm
+```
 
 ### B) Webpack "PureExpressionDependency" greška (Dev Mode)
 
 Regresija u Webpack 5.104+. Osiguraj da `webpack.dev.js` ima:
 
-~~~javascript
+```javascript
 optimization: {
     concatenateModules: false,
     providedExports: false,
     usedExports: false,
     sideEffects: false,
 }
-~~~
+```
 
-### C) Node verzija mismatch
+### C) Node/pnpm verzija mismatch
 
 Projekat zahteva Node 22. Proveri sa:
 
-~~~powershell
+```powershell
 node -v
-~~~
+pnpm -v
+```
 
 Koristi Volta za fiksiranje:
 
-~~~powershell
+```powershell
 volta install node@22
-~~~
+```
 
 ### D) CodeQL "flapping" (nasumični fail/pass)
 
@@ -263,9 +270,9 @@ To znači da više workflow-a uploaduje SARIF rezultate.
 
 **Fast local check:**
 
-~~~powershell
+```powershell
 git grep "codeql-action" .github/workflows
-~~~
+```
 
 > Samo jedan fajl (obično `codeql.yml`) sme da sadrži upload korake.
 
@@ -273,28 +280,34 @@ git grep "codeql-action" .github/workflows
 
 Instaliraj globalno:
 
-~~~powershell
+```powershell
 cargo install wasm-pack
-~~~
+```
 
 ---
 
 ## 📊 CI/CD INFRASTRUCTURE
 
 **GitHub Actions**
+
 - Node: 22.x
+- pnpm: 9.x (via action-setup)
 - Rust: Stable
 - wasm-pack: Auto
 - Trigger: Push/PR
 
 **Cloudflare Pages**
+
 - Node: 22.x
+- pnpm: 9.x (Auto-install script)
 - Rust: Stable
 - wasm-pack: Auto
 - Trigger: Push to master
 
 **Local (Volta)**
-- Node: 22.22.0
+
+- Node: 22.x
+- pnpm: 9.x
 - Rust: Stable
-- wasm-pack: Manual
-- Trigger: `npm start`, `verify:all`
+  -wasm-pack: Manual
+- Trigger: pnpm start, verify:all

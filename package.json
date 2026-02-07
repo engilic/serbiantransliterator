@@ -4,10 +4,10 @@
     "description": "Offline-first Word add-in for Serbian transliteration (Lat <-> Cyr) powered by Rust/WASM.",
     "license": "MIT",
     "engines": {
-        "node": ">=18.0.0",
-        "npm": ">=8.0.0"
+        "node": ">=20.0.0",
+        "pnpm": ">=9.0.0"
     },
-    "packageManager": "npm@10.9.4",
+    "packageManager": "pnpm@9.1.0",
     "scripts": {
         "git:reset": "node scripts/git-cleanup.js",
         "git:cleanup": "node scripts/git-cleanup.js",
@@ -17,17 +17,18 @@
         "clean": "rimraf dist coverage playwright-report test-results pkg src/wasm-core/pkg",
         "build:wasm": "cd src/wasm-core && wasm-pack build --target web --out-name index",
         "compile:dicts": "cd src/wasm-core && cargo run --bin compiler && cd ../..",
-        "prebuild": "npm run clean && npm run update:version",
-        "build": "npm run build:wasm && npm run compile:dicts && webpack --mode production",
-        "dev-server": "npm run build:wasm && npm run compile:dicts && webpack serve --mode development",
-        "start": "npm run dev-server",
+        "prebuild": "pnpm run clean && pnpm run update:version",
+        "build": "pnpm run build:wasm && pnpm run compile:dicts && webpack --mode production",
+        "dev-server": "pnpm run build:wasm && pnpm run compile:dicts && webpack serve --mode development",
+        "start": "pnpm run dev-server",
         "sideload:word": "office-addin-dev-settings sideload manifest.xml --app word",
-        "dev": "concurrently --kill-others \"npm run start\" \"wait-on https://localhost:3000/taskpane.html && npm run sideload:word\"",
+        "dev": "concurrently --kill-others \"pnpm run start\" \"wait-on https://localhost:3000/taskpane.html && pnpm run sideload:word\"",
         "validate": "office-addin-manifest validate manifest.xml",
         "validate:prod": "office-addin-manifest validate manifest.prod.xml",
         "test": "cross-env VITE_CJS_IGNORE_WARNING=1 vitest run",
         "test:coverage": "cross-env VITE_CJS_IGNORE_WARNING=1 vitest run --coverage",
         "test:e2e": "playwright test",
+        "test:e2e:trace": "playwright test --trace=retain-on-failure",
         "lint": "eslint src/**/*.ts --max-warnings 0",
         "lint:fix": "eslint src/**/*.ts --fix",
         "typecheck": "tsc --noEmit",
@@ -36,8 +37,8 @@
         "check:i18n": "node scripts/checkI18nKeys.cjs && node scripts/checkUserFacingStrings.cjs && node scripts/checkTaskpaneHtmlI18n.cjs",
         "format:check": "prettier --check .",
         "format:fix": "prettier --write .",
-        "audit:high": "npm audit --audit-level=high",
-        "audit:prod:high": "npm audit --omit=dev --audit-level=high",
+        "audit:high": "pnpm audit --audit-level=high",
+        "audit:prod:high": "pnpm audit --prod --audit-level=high",
         "release": "node scripts/release.js"
     },
     "dependencies": {
@@ -56,8 +57,7 @@
         "@commitlint/cli": "^20.4.0",
         "@commitlint/config-conventional": "^20.4.1",
         "@playwright/test": "^1.58.1",
-        "@types/dompurify": "^3.2.0",
-        "@types/node": "^25.2.0",
+        "@types/node": "^22.0.0",
         "@types/office-js": "^1.0.568",
         "@vitest/coverage-v8": "^4.0.17",
         "@wasm-tool/wasm-pack-plugin": "^1.7.0",
@@ -109,7 +109,7 @@
         "playwright-core": "$@playwright/test"
     },
     "volta": {
-        "node": "22.22.0",
-        "npm": "10.9.4"
+        "node": "22.12.0",
+        "pnpm": "9.1.0"
     }
 }

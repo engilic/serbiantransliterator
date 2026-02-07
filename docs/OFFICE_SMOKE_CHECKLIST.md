@@ -10,11 +10,11 @@ ali padne u Office hostu zbog CSP/headers, cache-a, ili Office runtime razlika.
 ## A) Pre-check (pre testiranja)
 
 1. Uveri se da radiš na čistom build-u:
-    - `npm run verify:all`
+    - `pnpm run verify:all`
     - ili bar:
-        - `npm run build`
-        - `npm run test:coverage`
-        - `npm run test:e2e`
+        - `pnpm run build`
+        - `pnpm run test:coverage`
+        - `pnpm run test:e2e`
 
 2. Proveri hosting (prod):
     - `manifest.prod.xml` koristi HTTPS URL-ove na `https://serbiantransliterator.pages.dev/...`
@@ -32,7 +32,7 @@ ali padne u Office hostu zbog CSP/headers, cache-a, ili Office runtime razlika.
 ### Setup
 
 1. Pokreni dev:
-    - `npm run dev`
+    - `pnpm run dev`
       (ovo radi webpack dev-server + sideload u Word)
 
 ### Smoke scenariji
@@ -127,7 +127,9 @@ ali padne u Office hostu zbog CSP/headers, cache-a, ili Office runtime razlika.
 Symptom:
 
 - greške tipa “WebAssembly compilation blocked by CSP”
-  Akcija:
+
+Akcija:
+
 - u `_headers` privremeno promeni `script-src` da uključi `'unsafe-eval'` (samo ako mora)
 - retest u Word Web + Desktop
 

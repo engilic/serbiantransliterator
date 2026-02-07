@@ -9,8 +9,8 @@ Sve značajne promene u projektu će biti dokumentovane u ovom fajlu.
 ### 🧪 DevOps / Tooling
 
 - **Guardian Verify Pipeline (MAX1):** Uveden `verify:all` i `verify:all:strict` (format, lint, typecheck, manifests validate, Rust gates, build, tests).
-- **Coverage as default in verify:** `verify:all` pokreće unit testove sa coverage (`npm run test:coverage`) kada nije `--fast`.
-- **Windows reliability:** Pokretanje `npm` komandi iz verify skripte je stabilizovano (cmd.exe shim, bez `shell:true`).
+- **Coverage as default in verify:** `verify:all` pokreće unit testove sa coverage (`pnpm run test:coverage`) kada nije `--fast`.
+- **Windows reliability:** Pokretanje `pnpm` komandi iz verify skripte je stabilizovano (cmd.exe shim, bez `shell:true`).
 - **Output polish:** Poravnati reportovi (Prettier stats, Sniffer stats, Timings), stabilno numerisanje koraka (jedan brojač).
 - **Git cleanup hardening:** NUKE grane koristi `git push --no-verify --delete` za remote delete (sprečava Husky hook loop i dupliranje teških provera tokom masovnog brisanja).
 

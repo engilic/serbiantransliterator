@@ -44,3 +44,12 @@ audit*.json
 # ===== Rust / WASM =====
 src/wasm-core/target/
 src/wasm-core/pkg/
+
+# Lock files
+package-lock.json
+npm-debug.log*
+yarn.lock
+# pnpm-lock.yaml should be committed (do NOT ignore it)
+
+# pnpm
+.pnpm-debug.log*

@@ -26,11 +26,21 @@ jobs:
               with:
                   fetch-depth: 0
 
+            # ✅ DODATO: Instalacija pnpm-a
+            - name: Install pnpm
+              uses: pnpm/action-setup@v3
+              with:
+                  version: 9
+
             - name: Setup Node.js
               uses: actions/setup-node@v4
               with:
-                  node-version: "22"  # ✅ Ažurirano sa 20 na 22 (konzistentno sa Volta)
-                  cache: "npm"
+                  node-version: "22"
+                  cache: "pnpm" # ✅ Promenjeno na pnpm
+
+            # ✅ DODATO: Instalacija zavisnosti (ekvivalent npm ci)
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
 
             - name: Setup Rust (stable + components + wasm target)
               uses: dtolnay/rust-toolchain@stable
@@ -50,7 +60,7 @@ jobs:
               uses: actions/cache@v4
               with:
                   path: ~/.cargo/bin
-                  key: cargo-tools-${{ runner.os }}-v2  # ✅ Bump v1 -> v2 (wasm-pack included)
+                  key: cargo-tools-${{ runner.os }}-v2
 
             - name: Ensure ~/.cargo/bin on PATH
               run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
@@ -63,7 +73,7 @@ jobs:
                     echo "cargo-audit already present (cached)"
                   fi
 
-            # ✅ DODATO: Install wasm-pack
+            # Install wasm-pack
             - name: Install wasm-pack (if missing)
               run: |
                   if ! command -v wasm-pack >/dev/null 2>&1; then
@@ -73,5 +83,5 @@ jobs:
                     echo "wasm-pack already present (cached)"
                   fi
 
-            - name: MAX verify (strict, fast, no-push)  # ✅ GOD1 -> MAX
-              run: npm run verify:all:strict -- --fast --no-push
+            - name: MAX verify (strict, fast, no-push)
+              run: pnpm run verify:all:strict -- --fast --no-push # ✅ Promenjeno u pnpm
