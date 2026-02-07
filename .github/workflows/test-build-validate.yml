@@ -29,7 +29,7 @@ jobs:
             - name: Setup Node.js
               uses: actions/setup-node@v4
               with:
-                  node-version: "20"
+                  node-version: "22"  # ✅ Ažurirano sa 20 na 22 (konzistentno sa Volta)
                   cache: "npm"
 
             - name: Setup Rust (stable + components + wasm target)
@@ -50,7 +50,7 @@ jobs:
               uses: actions/cache@v4
               with:
                   path: ~/.cargo/bin
-                  key: cargo-tools-${{ runner.os }}-v1
+                  key: cargo-tools-${{ runner.os }}-v2  # ✅ Bump v1 -> v2 (wasm-pack included)
 
             - name: Ensure ~/.cargo/bin on PATH
               run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
@@ -63,5 +63,15 @@ jobs:
                     echo "cargo-audit already present (cached)"
                   fi
 
-            - name: GOD1 verify (strict, fast, no-push)
+            # ✅ DODATO: Install wasm-pack
+            - name: Install wasm-pack (if missing)
+              run: |
+                  if ! command -v wasm-pack >/dev/null 2>&1; then
+                    echo "Installing wasm-pack..."
+                    curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+                  else
+                    echo "wasm-pack already present (cached)"
+                  fi
+
+            - name: MAX verify (strict, fast, no-push)  # ✅ GOD1 -> MAX
               run: npm run verify:all:strict -- --fast --no-push

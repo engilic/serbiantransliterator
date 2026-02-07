@@ -105,10 +105,57 @@ export async function runSmart() {
             }
 
             state.lastStatsText = buildApplyStatsText(result, scope, extras);
-
             refreshStats();
         });
-    } catch (e) {
+    } catch (e: unknown) {
+        const debugEnabled =
+            typeof localStorage !== "undefined" && localStorage.getItem("stDebugOfficeErrors") === "1";
+
+        const err = e as Partial<{
+            name: string;
+            code: string;
+            message: string;
+            debugInfo: unknown;
+            stack: string;
+        }>;
+
+        const escapeHtml = (s: string) =>
+            s
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+
+        console.error("[runSmart] raw error:", e);
+        console.error("[runSmart] code:", err.code);
+        console.error("[runSmart] message:", err.message);
+        console.error("[runSmart] debugInfo:", err.debugInfo);
+        console.error("[runSmart] stack:", err.stack);
+
+        if (debugEnabled) {
+            try {
+                const payload = {
+                    name: err.name,
+                    code: err.code,
+                    message: err.message,
+                    debugInfo: err.debugInfo,
+                    stack: err.stack,
+                };
+
+                const pretty = JSON.stringify(payload, null, 2);
+
+                showModalInfo(
+                    t("modal_title_error"),
+                    unsafeHtml(
+                        `<pre style="white-space:pre-wrap; font-size:12px;">${escapeHtml(pretty)}</pre>`
+                    )
+                );
+            } catch {
+                // ignore
+            }
+        }
+
         await errorRecovery.handle(e, { operation: "runSmart" });
     }
 }

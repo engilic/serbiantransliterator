@@ -1,12 +1,13 @@
-// src/taskpane/worker/transliteration.worker.ts
-
 /// <reference lib="webworker" />
+// src/taskpane/worker/transliteration.worker.ts
 
 import "core-js/stable";
 import "regenerator-runtime/runtime";
 
+import { DOMParser as XmldomDOMParser, XMLSerializer as XmldomXMLSerializer } from "@xmldom/xmldom";
+
 import { convertOoxml, type OoxmlOptions } from "../../shared/ooxml/convertOoxml";
-import * as textCore from "../../core/textCore";
+import { convertPlainText, setWasmModule, type CoreOptions } from "../../core/textCore";
 import type { WorkerMessage, WorkerResponse } from "./types";
 import * as wasmPkg from "../../wasm-core/pkg";
 
@@ -38,6 +39,24 @@ function validateInitPayload(payload: {
     return null;
 }
 
+function ensureWorkerXmlDomGlobals() {
+    const g = globalThis as unknown as { DOMParser?: unknown; XMLSerializer?: unknown };
+
+    if (typeof g.DOMParser !== "function") g.DOMParser = XmldomDOMParser;
+    if (typeof g.XMLSerializer !== "function") g.XMLSerializer = XmldomXMLSerializer;
+
+    if (typeof g.DOMParser !== "function" || typeof g.XMLSerializer !== "function") {
+        throw new Error("Worker cannot provide DOMParser/XMLSerializer even with xmldom ponyfill");
+    }
+}
+
+function assertTransliterationWorks() {
+    const res = convertPlainText("Test", "lat-to-cyr", {} as CoreOptions);
+    if (!res || typeof res.text !== "string" || res.text === "Test") {
+        throw new Error("Worker self-test failed: transliteration no-op (expected 'Тест' from 'Test').");
+    }
+}
+
 function initWasm(payload: { dictE2i: Uint8Array; dictI2e: Uint8Array; wasmModule: Uint8Array }) {
     try {
         const err = validateInitPayload(payload);
@@ -46,17 +65,15 @@ function initWasm(payload: { dictE2i: Uint8Array; dictI2e: Uint8Array; wasmModul
             return;
         }
 
-        const wasmModule = new WebAssembly.Module(payload.wasmModule as BufferSource);
+        ensureWorkerXmlDomGlobals();
+
+        const wasmModule = new WebAssembly.Module(payload.wasmModule as unknown as BufferSource);
 
         const pkg = wasmPkg as unknown as { initSync: (m: WebAssembly.Module) => unknown };
-
-        // 1) init wasm-bindgen module state
         pkg.initSync(wasmModule);
 
-        // 2) Provide full pkg wrappers to textCore
-        textCore.setWasmModule(wasmPkg);
+        setWasmModule(wasmPkg);
 
-        // 3) Load dictionaries via exported wrappers
         const wrapper = wasmPkg as unknown as {
             load_dictionary_bin: (m: string, d: Uint8Array) => void;
             init_replacer: (j: string) => void;
@@ -64,8 +81,9 @@ function initWasm(payload: { dictE2i: Uint8Array; dictI2e: Uint8Array; wasmModul
 
         wrapper.load_dictionary_bin("e2i", payload.dictE2i);
         wrapper.load_dictionary_bin("i2e", payload.dictI2e);
-
         wrapper.init_replacer("{}");
+
+        assertTransliterationWorks();
 
         postReply({ type: "INIT_DONE" });
     } catch (e) {
@@ -85,6 +103,12 @@ function handleConvert(id: string, xml: string, options: OoxmlOptions) {
         }
 
         const res = convertOoxml(xml, options);
+
+        if (typeof res.xml !== "string" || res.xml.length === 0) {
+            postReply({ type: "ERROR", id, error: "Worker convert produced empty OOXML" });
+            return;
+        }
+
         postReply({
             type: "CONVERT_DONE",
             id,
@@ -95,7 +119,7 @@ function handleConvert(id: string, xml: string, options: OoxmlOptions) {
     }
 }
 
-ctx.addEventListener("message", (event) => {
+ctx.addEventListener("message", (event: MessageEvent) => {
     const msg = event.data as WorkerMessage;
     switch (msg.type) {
         case "INIT":

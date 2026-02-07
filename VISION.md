@@ -1,7 +1,7 @@
 # 🚀 VISION 2026: THE NEURAL FRONTIER — THE ULTIMATE STRATEGIC BLUEPRINT
 
 **Project:** Serbian Transliterator (Universal Engine)  
-**Architectural Level:** God Mode (v1.1.0 Hardening → v2.0.0 Intelligent)  
+**Architectural Level:** MAX Mode (v1.1.0 Hardening → v2.0.0 Intelligent)  
 **Motto:** "Absolute Privacy. Infinite Performance. Universal Reach."
 
 ---
@@ -186,7 +186,7 @@ Uprkos dodavanju AI modela, postavljamo rigorozne ciljeve za veličinu:
 
 ## 5. API ZA TREĆA LICA (THE TRANSLITERATOR SDK)
 
-Omogućavamo drugim programerima da ugrade našu "God Mode" stabilnost u svoje
+Omogućavamo drugim programerima da ugrade našu "MAX Mode" stabilnost u svoje
 projekte.
 
 - **JS/TS Wrapper:** NPM paket koji jednostavno uvozi naše WASM jezgro.

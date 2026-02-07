@@ -341,7 +341,7 @@ async function main() {
     }
 
     // Summary (aligned)
-    console.log(color(C.gray, "---------------------------------------------------"));
+    console.log("");
     console.log(color(C.cyan, "📎 Summary:"));
 
     const rows = [

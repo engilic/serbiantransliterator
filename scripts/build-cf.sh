@@ -21,7 +21,7 @@ fail()     { echo -e "${RED}✖${NC} $1"; }
 
 trap 'fail "FATAL ERROR on line $LINENO! Build aborted."; exit 1' ERR
 
-echo -e "${BLUE}${BOLD}🚀 CLOUDFLARE PRODUCTION BUILDER • GOD MODE${NC}"
+echo -e "${BLUE}${BOLD}🚀 CLOUDFLARE PRODUCTION BUILDER • MAX MODE${NC}"
 echo -e "${GRAY}---------------------------------------------------${NC}"
 
 log_step "🔍 [1/5] System Diagnostics"

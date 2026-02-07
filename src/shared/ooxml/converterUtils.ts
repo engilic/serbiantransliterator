@@ -7,6 +7,71 @@ import { isTokenChar } from "./common";
 // Single source of truth (avoid drift)
 export { isSafeXml } from "./xmlSafety";
 
+const ELEMENT_NODE = 1;
+
+type ArrayLike<T> = { length: number; [index: number]: T | null | undefined };
+
+function readStringField(obj: unknown, key: string): string | null {
+    if (!obj || typeof obj !== "object") return null;
+    const rec = obj as Record<string, unknown>;
+    const v = rec[key];
+    return typeof v === "string" && v.length > 0 ? v : null;
+}
+
+function localNameSafe(el: Element): string {
+    const ln = readStringField(el, "localName");
+    if (ln) return ln;
+
+    const nn = readStringField(el, "nodeName");
+    if (nn) {
+        const parts = nn.split(":");
+        return parts[parts.length - 1] || nn;
+    }
+
+    return "";
+}
+
+function arrayLikeToElements<T>(list: ArrayLike<T>): T[] {
+    const out: T[] = [];
+    for (let i = 0; i < list.length; i++) {
+        const v = list[i];
+        if (v != null) out.push(v);
+    }
+    return out;
+}
+
+function elementChildrenSafe(el: Element): Element[] {
+    const childrenUnknown = (el as unknown as { children?: unknown }).children;
+    if (childrenUnknown && typeof childrenUnknown === "object") {
+        const len = (childrenUnknown as { length?: unknown }).length;
+        if (typeof len === "number") {
+            return arrayLikeToElements(childrenUnknown as ArrayLike<Element>);
+        }
+    }
+
+    const childNodesUnknown = (el as unknown as { childNodes?: unknown }).childNodes;
+    if (childNodesUnknown && typeof childNodesUnknown === "object") {
+        const len = (childNodesUnknown as { length?: unknown }).length;
+        if (typeof len === "number") {
+            const nodes = arrayLikeToElements(childNodesUnknown as ArrayLike<Node>);
+            return nodes.filter((n): n is Element => n.nodeType === ELEMENT_NODE) as Element[];
+        }
+    }
+
+    return [];
+}
+
+function parentElementSafe(el: Element): Element | null {
+    const pe = (el as unknown as { parentElement?: Element | null }).parentElement;
+    if (pe) return pe;
+
+    let p = (el as unknown as { parentNode?: Node | null }).parentNode;
+    while (p && p.nodeType !== ELEMENT_NODE) {
+        p = (p as { parentNode?: Node | null }).parentNode ?? null;
+    }
+    return p ? (p as Element) : null;
+}
+
 // --- DOM Helpers ---
 export function removeProofingTags(doc: Document) {
     const errs = Array.from(doc.getElementsByTagNameNS(WORD_NS, "proofErr"));
@@ -16,7 +81,7 @@ export function removeProofingTags(doc: Document) {
 }
 
 export function ensureLangOnRPr(doc: Document, rPr: Element, lang: string) {
-    let langEl = Array.from(rPr.children).find((c) => c.localName === "lang");
+    let langEl = elementChildrenSafe(rPr).find((c) => localNameSafe(c) === "lang") ?? null;
     if (!langEl) {
         langEl = doc.createElementNS(WORD_NS, "w:lang");
         rPr.appendChild(langEl);
@@ -27,19 +92,21 @@ export function ensureLangOnRPr(doc: Document, rPr: Element, lang: string) {
 }
 
 export function getDirectChild(run: Element, localName: string): Element | null {
-    const el = Array.from(run.children).find((c) => c.localName === "rPr");
+    const el = elementChildrenSafe(run).find((c) => localNameSafe(c) === "rPr") ?? null;
+
     if (localName !== "rPr") {
-        const other = Array.from(run.children).find((c) => c.localName === localName);
-        return other ?? null;
+        const other = elementChildrenSafe(run).find((c) => localNameSafe(c) === localName) ?? null;
+        return other;
     }
-    return el ?? null;
+
+    return el;
 }
 
 export function findAncestor(el: Element, localName: string): Element | null {
     let cur: Element | null = el;
     while (cur) {
-        if (cur.localName === localName) return cur;
-        cur = cur.parentElement;
+        if (localNameSafe(cur) === localName) return cur;
+        cur = parentElementSafe(cur);
     }
     return null;
 }

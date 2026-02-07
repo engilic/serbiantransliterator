@@ -41,6 +41,7 @@
         "release": "node scripts/release.js"
     },
     "dependencies": {
+        "@xmldom/xmldom": "^0.8.11",
         "core-js": "^3.37.1",
         "dompurify": "^3.3.1",
         "idb": "^8.0.3",
@@ -89,7 +90,6 @@
         "typescript": "^5.9.3",
         "vitest": "^4.0.17",
         "wait-on": "^9.0.3",
-        "wasm-pack": "0.13.1",
         "webpack": "^5.91.0",
         "webpack-cli": "^5.1.4",
         "webpack-dev-server": "^5.2.3",
@@ -109,7 +109,7 @@
         "playwright-core": "$@playwright/test"
     },
     "volta": {
-        "node": "20.20.0",
+        "node": "22.22.0",
         "npm": "10.9.4"
     }
 }

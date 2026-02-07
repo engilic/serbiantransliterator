@@ -12,9 +12,33 @@ import { analyzeSelectionText } from "./selectionText";
 import { t } from "../../../shared/i18n";
 import { processDocumentInChunks } from "./chunking";
 
+// ✅ koristimo isti detectScript kao convertOoxml da bude 100% konzistentno
+import { detectScript } from "../../../core/textCore";
+
 const MAX_SELECTION_OOXML_SIZE = 5 * 1024 * 1024;
 
 export type OoxmlConvertResult = ReturnType<typeof convertOoxml>;
+
+async function resolveAutoDirectionForWholeDocument(
+    context: Word.RequestContext,
+    opts: OoxmlOptions
+): Promise<OoxmlOptions> {
+    const dir = opts.direction ?? "auto";
+
+    // ako je korisnik eksplicitno izabrao smer (ili to-ascii), ne diramo
+    if (dir !== "auto") return opts;
+
+    // Ako je auto: uzmi tekst dokumenta i odluči smer jednom, pa prosledi worker-u.
+    const body = context.document.body;
+    body.load("text");
+    await context.sync();
+
+    const text = body.text ?? "";
+    const script = detectScript(text);
+    const resolved = script === "latin" ? "lat-to-cyr" : "cyr-to-lat";
+
+    return { ...opts, direction: resolved };
+}
 
 async function applyRangeWithOoxmlConversion(
     context: Word.RequestContext,
@@ -74,9 +98,12 @@ export async function applyPipeline(
     }
 
     // DOCUMENT scope
-    const extras = await applyExtrasIfEnabled(context, ui, opts);
+    // ✅ KLJUČNO: "auto" razreši unapred (worker chunking često ne radi ništa sa auto)
+    const effectiveOpts = await resolveAutoDirectionForWholeDocument(context, opts);
 
-    const chunk = await processDocumentInChunks(context, opts);
+    const extras = await applyExtrasIfEnabled(context, ui, effectiveOpts);
+
+    const chunk = await processDocumentInChunks(context, effectiveOpts);
 
     const result: OoxmlConvertResult = {
         xml: "", // not relevant for whole doc (we apply by chunks)
