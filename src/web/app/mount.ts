@@ -8,7 +8,13 @@ import { installShortcuts } from "./shortcuts";
 import { installNetworkStatus } from "./network";
 import { installCommandPalette } from "./commandPalette";
 
-export function mountWebApp(root: HTMLElement, meta: { version: string }) {
+export function mountWebApp(
+    root: HTMLElement,
+    meta: { version: string }
+): {
+    store: Store<AppState>;
+    actions: Actions;
+} {
     const store: Store<AppState> = createStore(createInitialState(meta));
     const actions: Actions = createActions(store);
 
@@ -24,4 +30,6 @@ export function mountWebApp(root: HTMLElement, meta: { version: string }) {
 
     // Keyboard shortcuts
     installShortcuts(store, actions, palette);
+
+    return { store, actions };
 }

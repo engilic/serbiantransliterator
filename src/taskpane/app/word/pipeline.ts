@@ -19,6 +19,11 @@ const MAX_SELECTION_OOXML_SIZE = 5 * 1024 * 1024;
 
 export type OoxmlConvertResult = ReturnType<typeof convertOoxml>;
 
+function safeSelect(range: Word.Range) {
+    const sel = (range as unknown as { select?: () => void }).select;
+    if (typeof sel === "function") sel.call(range);
+}
+
 async function resolveAutoDirectionForWholeDocument(
     context: Word.RequestContext,
     opts: OoxmlOptions
@@ -50,6 +55,8 @@ async function applyRangeWithOoxmlConversion(
     const ooxml = range.getOoxml();
     await context.sync();
 
+    // ClientResult.value is available after sync; lint rule can false-positive here.
+    // eslint-disable-next-line office-addins/load-object-before-read
     const rawXml = ooxml.value ?? "";
 
     if (rawXml.length > MAX_SELECTION_OOXML_SIZE) {
@@ -63,8 +70,8 @@ async function applyRangeWithOoxmlConversion(
 
     range.insertOoxml(result.xml, Word.InsertLocation.replace);
 
-    // PR1: preserve selection UX (same as previous runSmart selection flow)
-    range.select();
+    // PR1: preserve selection UX (safe for tests/mocks too)
+    safeSelect(range);
 
     await context.sync();
 

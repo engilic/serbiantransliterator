@@ -12,7 +12,7 @@ import { normalizeForSelectionHash, sha256Hex } from "../selection";
 import { getSettingsFromUi, getOoxmlOptionsFromUi } from "../settings/getters";
 import { applyPipeline } from "./pipeline";
 import { analyzeSelectionText } from "./selectionText";
-import { buildApplyStatsText, buildPreviewAppliedStats } from "./statsText"; // REMOVED buildApplyStatsTitle
+import { buildApplyStatsText, buildPreviewAppliedStats } from "./statsText";
 import { decidePreviewCacheReuse, type PreviewCacheDecisionReason } from "./previewCacheDecision";
 import type { UiSettings, ExtrasSummary } from "../types";
 import { errorRecovery } from "../error/errorRecovery";
@@ -161,33 +161,49 @@ export async function runSmart() {
 }
 
 export async function applyFromPreview(scope: "selection" | "document") {
+    const safeSelect = (range: Word.Range) => {
+        const sel = (range as unknown as { select?: () => void }).select;
+        if (typeof sel === "function") sel.call(range);
+    };
+
     try {
-        await Word.run(async (context) => {
-            const ui = getSettingsFromUi();
-            const opts: OoxmlOptions = getOoxmlOptionsFromUi();
+        const ui = getSettingsFromUi();
+        const opts: OoxmlOptions = getOoxmlOptionsFromUi();
 
-            const interactive = state.preview.interactiveDiff;
-            const hasManualChanges = interactive && interactive.hasRejections();
+        const interactive = state.preview.interactiveDiff;
+        const hasManualChanges = interactive?.hasRejections() === true;
 
-            if (scope === "selection") {
-                const range = context.document.getSelection();
+        // -----------------------
+        // SELECTION scope
+        // -----------------------
+        if (scope === "selection") {
+            // 1) Manual diff overrides => apply plain text
+            if (hasManualChanges) {
+                const finalCustomText = interactive!.buildResult();
+                setStatus(t("status_applying_preview"), "info");
 
-                if (hasManualChanges) {
-                    const finalCustomText = interactive!.buildResult();
-                    setStatus(t("status_applying_preview"), "info");
-                    range.insertText(finalCustomText, Word.InsertLocation.replace);
+                await Word.run(async (context) => {
+                    const range = context.document.getSelection();
+                    range.insertText(String(finalCustomText ?? ""), Word.InsertLocation.replace);
+                    safeSelect(range);
                     await context.sync();
-                    setStatus(t("status_preview_applied") + " (Plain Text)", "success");
-                    state.lastStatsText = "Primenjene ručne izmene.";
-                    refreshStats();
-                    return;
-                }
+                });
 
-                const ooxml = range.getOoxml();
+                setStatus(t("status_preview_applied"), "success");
+                state.lastStatsText = "Primenjene ručne izmene.";
+                refreshStats();
+                return;
+            }
+
+            // 2) Cache routing + fallback to applyPipeline (single Word.run)
+            await Word.run(async (context) => {
+                const range = context.document.getSelection();
                 range.load("text");
+                const ooxml = range.getOoxml();
                 await context.sync();
 
-                const info = analyzeSelectionText(range.text);
+                const selectionText = String(range.text ?? "");
+                const info = analyzeSelectionText(selectionText);
 
                 if (!info.hasText) {
                     showModalInfo(t("modal_title_error"), unsafeHtml(t("msg_no_selection")));
@@ -199,10 +215,12 @@ export async function applyFromPreview(scope: "selection" | "document") {
                 }
 
                 const normApply = normalizeForSelectionHash(info.raw);
-                const currentSelectionHash = await sha256Hex(normApply);
-                const currentOoxml = ooxml.value ?? "";
-                const currentOoxmlHash = await sha256Hex(currentOoxml.normalize("NFC"));
-                const currentJson = JSON.stringify(opts);
+                const currentSelectionTextHash = await sha256Hex(normApply);
+
+                // eslint-disable-next-line office-addins/load-object-before-read
+                const currentOoxml = String(ooxml.value ?? "");
+                const currentSelectionOoxmlHash = await sha256Hex(currentOoxml.normalize("NFC"));
+                const currentOptsJson = JSON.stringify(opts);
 
                 const decision = decidePreviewCacheReuse({
                     snapshot: {
@@ -213,9 +231,9 @@ export async function applyFromPreview(scope: "selection" | "document") {
                         cacheTimestamp: state.preview.cacheTimestamp,
                     },
                     current: {
-                        currentOptsJson: currentJson,
-                        currentSelectionTextHash: currentSelectionHash,
-                        currentSelectionOoxmlHash: currentOoxmlHash,
+                        currentOptsJson,
+                        currentSelectionTextHash,
+                        currentSelectionOoxmlHash,
                     },
                     nowMs: Date.now(),
                     ttlMs: PREVIEW_CACHE_TTL_MS,
@@ -223,8 +241,14 @@ export async function applyFromPreview(scope: "selection" | "document") {
 
                 if (decision.ok) {
                     setStatus(t("status_applying_preview"), "info");
-                    range.insertOoxml(state.preview.convertedOoxml!, Word.InsertLocation.replace);
+
+                    range.insertOoxml(
+                        String(state.preview.convertedOoxml ?? ""),
+                        Word.InsertLocation.replace
+                    );
+                    safeSelect(range);
                     await context.sync();
+
                     setStatus(t("status_preview_applied"), "success");
                     const s = buildPreviewAppliedStats();
                     state.lastStatsText = s.text;
@@ -237,24 +261,29 @@ export async function applyFromPreview(scope: "selection" | "document") {
                     setStatus(t("status_preview_cache_invalid", reasonToSerbian(decision.reason)), "info");
                 }
 
-                const { result } = await applyPipeline(context, "selection", ui, opts);
+                setStatus(t("status_processing"), "info");
+
+                const { result, extras } = await applyPipeline(context, "selection", ui, opts);
 
                 if (!result) {
                     setStatus(t("status_no_text_found"), "neutral");
                     return;
                 }
 
-                if (result.stats.proofing?.skippedByReason) {
-                    logTelemetrySkippedRuns(result.stats.proofing.skippedByReason);
-                }
-
-                const time = result.stats.timingMs.toFixed(0);
+                const time = (result.stats.timingMs ?? 0).toFixed(0);
                 setStatus(t("status_done_selection", result.type, time), "success");
-                state.lastStatsText = buildApplyStatsText(result, "selection");
-                refreshStats();
-                return;
-            }
 
+                state.lastStatsText = buildApplyStatsText(result, "selection", extras);
+                refreshStats();
+            });
+
+            return;
+        }
+
+        // -----------------------
+        // DOCUMENT scope
+        // -----------------------
+        await Word.run(async (context) => {
             const { result, extras } = await applyPipeline(context, "document", ui, opts);
 
             if (!result) {

@@ -12,6 +12,48 @@ import { t } from "../../shared/i18n";
 
 let lastSettingsOpen = false;
 
+type NavigatorUADataLike = { platform?: string };
+type NavigatorWithUAData = Navigator & { userAgentData?: NavigatorUADataLike };
+
+function isMac(): boolean {
+    const nav = navigator as NavigatorWithUAData;
+    const p = String(nav.userAgentData?.platform || "").toLowerCase();
+    if (p) return p.includes("mac");
+
+    const ua = String(navigator.userAgent || "").toLowerCase();
+    return ua.includes("macintosh") || ua.includes("mac os x");
+}
+
+/**
+ * Convert "Ctrl+K" hints to "Cmd+K" on macOS.
+ * Input is already a display string (already translated / chosen).
+ */
+function hintKey(hint: string): string {
+    const h = String(hint || "");
+    if (!isMac()) return h;
+
+    // Replace only the leading Ctrl prefix patterns
+    return h.replace(/^Ctrl\+/i, "Cmd+").replace(/^Ctrl,/i, "Cmd,");
+}
+
+function setLivePreviewNow(store: Store<AppState>, actions: Actions, next: boolean) {
+    const prevStatus = store.get().statusText;
+
+    actions.updateSettings({ livePreview: next });
+
+    // persist immediately (without Save)
+    saveWebSettings(store.get().settings);
+
+    const msg = next ? t("web_status_live_on") : t("web_status_live_off");
+    store.update((st) => ({ ...st, statusText: msg }));
+
+    setTimeout(() => {
+        if (store.get().statusText === msg) {
+            store.update((st) => ({ ...st, statusText: prevStatus }));
+        }
+    }, 1200);
+}
+
 function el<K extends keyof HTMLElementTagNameMap>(
     tag: K,
     attrs?: Record<string, string>,
@@ -153,9 +195,32 @@ function renderTop(store: Store<AppState>, actions: Actions) {
     const cancelBtn = button(t("btn_cancel"), () => actions.cancel(), "btn ghost");
     (cancelBtn as HTMLButtonElement).disabled = !s.activeAbort;
 
+    // ✅ Compute net badge BEFORE return
+    const offline = (() => {
+        try {
+            return navigator.onLine === false;
+        } catch {
+            return false;
+        }
+    })();
+
+    const offlineReady = (() => {
+        try {
+            return !!(navigator.serviceWorker && navigator.serviceWorker.controller);
+        } catch {
+            return false;
+        }
+    })();
+
+    const netBadge = offline
+        ? el("span", { class: "badge warn" }, [textNode(t("web_badge_offline"))])
+        : offlineReady
+          ? el("span", { class: "badge good" }, [textNode(t("web_badge_offline_ready"))])
+          : null;
+
     return el("div", { class: "card app-top" }, [
         el("div", { class: "row" }, [el("div", { class: "segment" }, [modeFiles, modeText]), dir]),
-        el("div", { class: "row" }, [settingsBtn, primary, cancelBtn]),
+        el("div", { class: "row" }, [settingsBtn, ...(netBadge ? [netBadge] : []), primary, cancelBtn]),
     ]);
 }
 
@@ -278,12 +343,41 @@ function renderJobsTable(store: Store<AppState>, actions: Actions) {
 function renderTextPanel(store: Store<AppState>, actions: Actions) {
     const s = store.get();
 
+    const toggleLive = () => setLivePreviewNow(store, actions, !store.get().settings.livePreview);
+
+    const liveBadgeText = s.settings.livePreview ? t("web_ui_live_badge_on") : t("web_ui_live_badge_off");
+    const liveBadgeBtn = el(
+        "button",
+        {
+            class: "badge clickable",
+            type: "button",
+            title: t("web_ui_live_shortcut_hint"),
+            "aria-pressed": s.settings.livePreview ? "true" : "false",
+        } as Record<string, string>,
+        [textNode(liveBadgeText)]
+    ) as HTMLButtonElement;
+
+    liveBadgeBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        toggleLive();
+    });
+
+    // ✅ NEW: kbd-chip is clickable toggle
+    const liveKbdBtn = button(
+        t("web_hint_alt_l"),
+        () => toggleLive(),
+        "kbd-chip" + (s.settings.livePreview ? "" : " off"),
+        { title: t("web_ui_live_shortcut_hint") }
+    );
+
     const head = el("div", { class: "panel-head" }, [
         el("div", {}, [
             el("h2", { class: "panel-title" }, [textNode(t("web_ui_text_title"))]),
             el("p", { class: "panel-sub" }, [textNode(t("web_ui_text_desc"))]),
         ]),
         el("div", { class: "row" }, [
+            liveBadgeBtn,
+            liveKbdBtn,
             button(t("web_ui_btn_copy_result"), () => void actions.copyPlain(), "btn", {
                 title: t("web_ui_btn_copy_result_title"),
             }),
@@ -297,7 +391,9 @@ function renderTextPanel(store: Store<AppState>, actions: Actions) {
     return el("section", { class: "card" }, [
         head,
         el("div", { class: "field" }, [el("label", {}, [textNode(t("web_ui_label_input"))]), inArea]),
-        el("div", { class: "muted" }, [textNode(t("web_ui_text_hint"))]),
+        el("div", { class: "muted" }, [
+            textNode(t("web_ui_text_hint") + " • " + t("web_ui_live_shortcut_hint")),
+        ]),
     ]);
 }
 
@@ -473,9 +569,27 @@ function renderDrawer(store: Store<AppState>, actions: Actions) {
         id: "webSettingsCloseBtn",
     });
 
+    const notesBtn = button(
+        t("web_update_release_notes"),
+        () => window.open("./changelog.html", "_blank", "noopener,noreferrer"),
+        "btn ghost",
+        { title: t("web_update_release_notes") }
+    );
+
+    const chipPalette = el("span", { class: "kbd-chip", title: t("web_ui_shortcut_palette") }, [
+        textNode(hintKey(t("web_hint_ctrl_k"))),
+    ]);
+
+    const chipLive = el("span", { class: "kbd-chip", title: t("web_ui_shortcut_live") }, [
+        textNode(t("web_hint_alt_l")),
+    ]);
+
     const head = el("div", { class: "drawer-head" }, [
-        el("strong", {}, [textNode(t("web_ui_drawer_title"))]),
-        closeBtn,
+        el("div", { class: "drawer-head-left" }, [
+            el("strong", {}, [textNode(t("web_ui_drawer_title"))]),
+            el("div", { class: "row" }, [chipPalette, chipLive]),
+        ]),
+        el("div", { class: "row" }, [notesBtn, closeBtn]),
     ]);
 
     // UI prefs
@@ -517,6 +631,10 @@ function renderDrawer(store: Store<AppState>, actions: Actions) {
     const autoDl = checkboxRow(t("web_ui_setting_autodl"), s.settings.autoDownload, (v) => {
         actions.updateSettings({ autoDownload: v });
     });
+
+    const livePreview = checkboxRow(t("web_ui_setting_live_preview"), s.settings.livePreview, (v) =>
+        setLivePreviewNow(store, actions, v)
+    );
 
     const curly = el("select") as HTMLSelectElement;
     curly.append(
@@ -564,6 +682,7 @@ function renderDrawer(store: Store<AppState>, actions: Actions) {
         code,
         romans,
         autoDl,
+        livePreview,
 
         el("hr", { class: "hr" }),
 

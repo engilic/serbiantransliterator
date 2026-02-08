@@ -1,94 +1,123 @@
+/// <reference lib="webworker" />
 // src/sw.ts
 
-/// <reference lib="webworker" />
-
-import { cleanupOutdatedCaches, precacheAndRoute } from "workbox-precaching";
-import { registerRoute, NavigationRoute } from "workbox-routing";
+import { cleanupOutdatedCaches, precacheAndRoute, matchPrecache } from "workbox-precaching";
+import { registerRoute, NavigationRoute, setCatchHandler } from "workbox-routing";
 import { NetworkFirst, StaleWhileRevalidate, CacheFirst } from "workbox-strategies";
 import { CacheableResponsePlugin } from "workbox-cacheable-response";
 import { ExpirationPlugin } from "workbox-expiration";
 
-declare const self: ServiceWorkerGlobalScope;
+declare const self: ServiceWorkerGlobalScope & {
+    __WB_MANIFEST: Array<{ url: string; revision?: string | null }>;
+};
 
-// 1. Force immediate update (opciono, ali dobro za brze fixeve)
-self.addEventListener("install", () => {
-    self.skipWaiting();
+declare const __APP_VERSION__: string;
+const SW_APP_VERSION = typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "unknown";
+
+// UI-triggered activation for updates
+self.addEventListener("message", (event) => {
+    const data = event.data as { type?: string } | null;
+
+    // ✅ NEW: respond to GET_VERSION via MessageChannel port
+    if (data?.type === "GET_VERSION") {
+        const port = (event as unknown as { ports?: MessagePort[] }).ports?.[0];
+        if (port) {
+            port.postMessage({ type: "VERSION", version: SW_APP_VERSION });
+        }
+        return;
+    }
+
+    // Existing: activate update on demand
+    if (data?.type === "SKIP_WAITING") {
+        void self.skipWaiting();
+    }
 });
 
-self.addEventListener("activate", () => {
-    self.clients.claim();
+self.addEventListener("activate", (event) => {
+    event.waitUntil(
+        (async () => {
+            await self.clients.claim();
+
+            // navigationPreload typing differs across TS libs -> narrow safely without `any`
+            const reg = self.registration as unknown as {
+                navigationPreload?: { enable?: () => Promise<void> };
+            };
+
+            if (typeof reg.navigationPreload?.enable === "function") {
+                try {
+                    await reg.navigationPreload.enable();
+                } catch {
+                    // ignore
+                }
+            }
+        })()
+    );
 });
 
-// 2. Očisti stare verzije keša (automatski briše stare hash fajlove)
 cleanupOutdatedCaches();
-
-// 3. Precache - Ovde Webpack ubacuje listu svih fajlova!
-// (JS, CSS, HTML, Icons, WASM - sve što je Webpack napravio)
 precacheAndRoute(self.__WB_MANIFEST);
 
-// 4. Runtime Caching Strategies
-
-// A. Navigacija (HTML) -> Network First, fallback to Offline Cache
-// Ako server ima noviju verziju, uzmi nju. Ako nema neta, uzmi keš.
+// Navigations -> NetworkFirst, but ignore "file-like" urls (/x.ext)
 const navigationRoute = new NavigationRoute(
     new NetworkFirst({
         cacheName: "pages-cache",
         plugins: [
-            new CacheableResponsePlugin({
-                statuses: [0, 200],
-            }),
+            new CacheableResponsePlugin({ statuses: [0, 200] }),
+            new ExpirationPlugin({ maxEntries: 30, maxAgeSeconds: 7 * 24 * 60 * 60 }),
         ],
-    })
+    }),
+    { denylist: [/\/[^/?]+\.[^/]+$/] }
 );
 registerRoute(navigationRoute);
 
-// B. Google Fonts (ako koristiš) ili eksterni CDN
+// Google Fonts
 registerRoute(
     ({ url }) => url.origin === "https://fonts.googleapis.com" || url.origin === "https://fonts.gstatic.com",
     new StaleWhileRevalidate({
         cacheName: "google-fonts",
-        plugins: [new ExpirationPlugin({ maxEntries: 20 })],
+        plugins: [new ExpirationPlugin({ maxEntries: 20, maxAgeSeconds: 30 * 24 * 60 * 60 })],
     })
 );
 
-// C. Slike koje nisu u Webpacku (ako ih ima)
+// Images
 registerRoute(
     ({ request }) => request.destination === "image",
     new CacheFirst({
         cacheName: "images-cache",
         plugins: [
-            new ExpirationPlugin({
-                maxEntries: 50,
-                maxAgeSeconds: 30 * 24 * 60 * 60, // 30 dana
-            }),
+            new CacheableResponsePlugin({ statuses: [0, 200] }),
+            new ExpirationPlugin({ maxEntries: 50, maxAgeSeconds: 30 * 24 * 60 * 60 }),
         ],
     })
 );
 
-// 5. Fallback za offline ako navigacija pukne skroz
-// (Workbox precache obično ovo rešava, ali za svaki slučaj)
-self.addEventListener("fetch", (event) => {
-    if (event.request.mode === "navigate") {
-        event.respondWith(
-            (async () => {
-                try {
-                    // Probaj mrežu ili keširanu navigaciju
-                    const preloadResponse = await event.preloadResponse;
-                    if (preloadResponse) {
-                        return preloadResponse;
-                    }
-                    return await fetch(event.request);
-                } catch (error) {
-                    // Ako nema neta, vrati keširani index.html ili web.html
-                    // Workbox precache je već to keširao pod ključem koji se poklapa sa URL-om
-                    const cache = await caches.open(self.registration.scope);
-                    // Pokušaj da nađeš tačan URL ili fallback
-                    const cachedResponse = await cache.match(event.request.url);
-                    if (cachedResponse) return cachedResponse;
+// Static assets
+registerRoute(
+    ({ request, url }) =>
+        request.destination === "script" ||
+        request.destination === "style" ||
+        request.destination === "worker" ||
+        url.pathname.endsWith(".wasm") ||
+        url.pathname.endsWith(".bin") ||
+        url.pathname.endsWith(".json") ||
+        url.pathname.endsWith(".md"),
+    new StaleWhileRevalidate({
+        cacheName: "static-assets",
+        plugins: [new ExpirationPlugin({ maxEntries: 250 })],
+    })
+);
 
-                    return (await cache.match("/web.html")) || (await cache.match("./web.html"));
-                }
-            })()
+// Offline fallback for navigations
+setCatchHandler(async ({ event }) => {
+    const req = (event as unknown as FetchEvent).request;
+    if (req && req.mode === "navigate") {
+        return (
+            (await matchPrecache("/web.html")) ||
+            (await matchPrecache("web.html")) ||
+            (await matchPrecache("/index.html")) ||
+            (await matchPrecache("index.html")) ||
+            Response.error()
         );
     }
+    return Response.error();
 });

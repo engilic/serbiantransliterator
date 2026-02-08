@@ -40,6 +40,11 @@ Ovaj dokument služi kao primarni registar svih identifikovanih sistemskih ogran
 - **Zadatak:** Implementacija **Rust Streaming Pull-Parsera** koristeći `quick-xml`.
 - **Cilj:** O(1) memory complexity; potrošnja <50MB RAM bez obzira na veličinu fajla.
 
+**Napomene / rizici:**
+
+- Potrebno je očuvati kompatibilnost sa WordprocessingML (`w:p`, `w:r`, `w:t`, `w:tab`, `w:br`, `w:cr`) i postojećim “bridge” mehanizmima.
+- Uvesti “safety rails”: limit na dubinu XML-a i limit na veličinu token buffer-a da se izbegne DoS kroz ekstremno ugnježdene strukture.
+
 ---
 
 ## 🟡 HIGH PRIORITY: UX & INTEGRATION (Priority: P1)
@@ -49,10 +54,18 @@ Ovaj dokument služi kao primarni registar svih identifikovanih sistemskih ogran
 - **Opis:** Promena sistemske teme (Light/Dark) se ne propagira u Taskpane u realnom vremenu na Windows Desktopu.
 - **Zadatak:** Uvesti polling mehanizam (svaka 2s) nad `Office.context.officeTheme` ili osvežavanje na `window.focus`.
 
+**Napomena:**
+
+- Rešenje treba da bude “low-impact”: polling samo dok je taskpane u fokusu ili dok je vidljiv.
+
 ### 7) State Persistence (Recovery after Close)
 
 - **Opis:** Zatvaranje Taskpane-a briše trenutnu statistiku i izabrane filtere u "Zaštićeno" sekciji.
 - **Zadatak:** Implementirati `sessionStorage` sinhronizaciju za `AppState` (AppState Rehydration).
+
+**Napomena:**
+
+- Ne upisivati velike payload-e (npr. cele dokumente). Fokus na “UI state” + poslednje odabrane opcije.
 
 ---
 
@@ -62,6 +75,10 @@ Ovaj dokument služi kao primarni registar svih identifikovanih sistemskih ogran
 
 - **Problem:** Postoji značajan broj neiskorišćenih ključeva u `sr.ts` i `en.ts`.
 - **Zadatak:** Integrisati `scripts/checkI18nKeys.cjs` u `verify-all.js` pipeline i obrisati "orphan" ključeve.
+
+**Napomena:**
+
+- Gate treba da razlikuje “dead keys” od ključeva korišćenih u HTML template-ovima i runtime string formatima.
 
 ### 9) Custom Subs Separator Validation
 
@@ -84,6 +101,7 @@ Ovaj dokument služi kao primarni registar svih identifikovanih sistemskih ogran
 - [ ] **Theme Polling:** Rešavanje Dark Mode laga (P1)
 - [ ] **Persistence:** Rehidratacija stanja iz `sessionStorage` (P1)
 - [ ] **I18n Cleanup:** Uklanjanje mrtvog koda iz lokalizacije (P2)
+- [ ] **Office.js hardening:** Standardizovati “select is best-effort” (ne sme da ruši testove/mokove) i dokumentovati razliku između `ClientResult.value` i `load(...)` objekata (P2)
 
 ---
 

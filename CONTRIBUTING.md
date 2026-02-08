@@ -60,7 +60,8 @@ Koristimo Conventional Commits format:
 - Svaki izvorni fajl mora imati header sa relativnom putanjom.
 - Koristi `logger.info()` / `logger.warn()` / `logger.error()` umesto `console.log`.
 - `any` tip je zabranjen — koristi `unknown` + type guards.
-- Nikada ne gutaj greške (never swallow errors).
+- Nikada ne gutaj greške (never swallow errors).  
+  **Izuzetak:** “best-effort” UX pozivi koji ne utiču na korektnost (npr. `range.select()` radi UX-a) mogu biti u `try/catch` uz komentar, ali bez maskiranja realnih grešaka u obradi podataka.
 
 ---
 
@@ -74,6 +75,15 @@ Koristimo Conventional Commits format:
 
     # Full verification pipeline
     pnpm run verify:all -- --no-push
+
+---
+
+## Tooling & Gates (must pass)
+
+- ESLint je podešen tako da **0 warnings** prolazi (max-warnings = 0).
+- Typecheck mora biti čist.
+- Prettier gate mora biti čist (auto-fix je dozvoljen).
+- Header gate mora proći (header sa relativnom putanjom u svakom source fajlu).
 
 ---
 

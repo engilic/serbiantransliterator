@@ -701,3 +701,123 @@ textarea[readonly] {
     font-family: var(--mono);
     padding: 2px 4px;
 }
+
+/* --- Update banner (Service Worker update available) --- */
+.st-update-banner {
+    position: fixed;
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 12px;
+    border-radius: 16px;
+    border: 1px solid var(--stroke);
+    background: linear-gradient(180deg, var(--card), var(--card2));
+    box-shadow: 0 18px 50px var(--shadow);
+    backdrop-filter: blur(10px);
+}
+
+.st-update-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.st-update-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--brand), var(--brand2));
+    box-shadow: 0 0 0 3px rgba(106, 169, 255, 0.15);
+    flex: 0 0 auto;
+}
+
+.st-update-msg {
+    font-weight: 800;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.st-update-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex: 0 0 auto;
+}
+
+.st-update-x {
+    border-radius: 12px;
+    padding: 8px 10px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-weight: 900;
+    line-height: 1;
+}
+
+.st-update-x:hover {
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.18);
+}
+
+@media (max-width: 560px) {
+    .st-update-msg {
+        white-space: normal;
+    }
+}
+
+/* --- KBD chips (shortcuts hints) --- */
+.kbd-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1;
+}
+
+.kbd-chip.off {
+    opacity: 0.7;
+    border-style: dashed;
+}
+
+button.kbd-chip {
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+button.kbd-chip:focus-visible {
+    outline: 2px solid rgba(106, 169, 255, 0.55);
+    outline-offset: 2px;
+}
+
+button.badge {
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+/* Drawer head: allow 2-line left side (title + chips) */
+.drawer-head-left {
+    display: grid;
+    gap: 6px;
+}
+
+.badge.warn {
+    border-color: rgba(255, 159, 10, 0.35);
+    color: rgba(255, 159, 10, 0.95);
+}

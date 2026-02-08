@@ -1,0 +1,339 @@
+<!-- src/static/changelog.html -->
+
+<!doctype html>
+<html lang="sr">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>Changelog</title>
+        <style>
+            :root {
+                --bg: #0f1a33;
+                --text: rgba(255, 255, 255, 0.92);
+                --muted: rgba(255, 255, 255, 0.68);
+                --stroke: rgba(255, 255, 255, 0.14);
+                --card: rgba(255, 255, 255, 0.06);
+                --card2: rgba(255, 255, 255, 0.04);
+                --shadow: rgba(0, 0, 0, 0.35);
+                --brand: #6aa9ff;
+                --brand2: #8be9ff;
+                --mono:
+                    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
+                    monospace;
+                --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+            }
+
+            body {
+                margin: 0;
+                background:
+                    radial-gradient(1200px 700px at 20% 10%, rgba(106, 169, 255, 0.22), transparent 55%),
+                    radial-gradient(900px 650px at 90% 20%, rgba(139, 233, 255, 0.14), transparent 60%),
+                    linear-gradient(180deg, #0b1020, var(--bg));
+                color: var(--text);
+                font-family: var(--sans);
+            }
+
+            header {
+                padding: 14px 16px;
+                border-bottom: 1px solid var(--stroke);
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                background: linear-gradient(180deg, var(--card), var(--card2));
+                backdrop-filter: blur(10px);
+            }
+
+            .left {
+                display: grid;
+                gap: 2px;
+            }
+
+            .title {
+                font-weight: 900;
+                letter-spacing: -0.02em;
+            }
+
+            .muted {
+                color: var(--muted);
+                font-size: 12px;
+            }
+
+            .actions {
+                display: flex;
+                gap: 8px;
+                align-items: center;
+                flex-wrap: wrap;
+            }
+
+            a,
+            button {
+                border: 1px solid var(--stroke);
+                padding: 8px 10px;
+                border-radius: 12px;
+                background: rgba(255, 255, 255, 0.04);
+                color: var(--text);
+                cursor: pointer;
+                font-weight: 800;
+                text-decoration: none;
+            }
+
+            a:hover,
+            button:hover {
+                border-color: rgba(255, 255, 255, 0.22);
+                background: rgba(255, 255, 255, 0.06);
+            }
+
+            button.primary {
+                border-color: rgba(106, 169, 255, 0.35);
+                background: linear-gradient(135deg, rgba(106, 169, 255, 0.35), rgba(139, 233, 255, 0.12));
+            }
+
+            main {
+                padding: 16px;
+                max-width: 980px;
+                margin: 0 auto;
+            }
+
+            pre {
+                white-space: pre-wrap;
+                word-break: break-word;
+                font-family: var(--mono);
+                font-size: 12px;
+                line-height: 1.55;
+                padding: 14px;
+                border: 1px solid var(--stroke);
+                border-radius: 14px;
+                background: rgba(255, 255, 255, 0.03);
+            }
+
+            #toast {
+                position: fixed;
+                left: 16px;
+                right: 16px;
+                bottom: 16px;
+                max-width: 520px;
+                margin: 0 auto;
+                display: none;
+                padding: 10px 12px;
+                border-radius: 14px;
+                border: 1px solid var(--stroke);
+                background: linear-gradient(180deg, var(--card), var(--card2));
+                box-shadow: 0 18px 50px var(--shadow);
+                backdrop-filter: blur(10px);
+                font-family: var(--mono);
+                font-size: 12px;
+                color: var(--muted);
+            }
+
+            #toast.show {
+                display: block;
+            }
+
+            #q {
+                width: min(320px, 42vw);
+                border-radius: 12px;
+                border: 1px solid var(--stroke);
+                background: rgba(255, 255, 255, 0.04);
+                color: var(--text);
+                padding: 8px 10px;
+                outline: none;
+                font-family: var(--sans);
+                font-weight: 700;
+            }
+
+            #q:focus {
+                border-color: rgba(106, 169, 255, 0.45);
+            }
+        </style>
+    </head>
+
+    <body>
+        <header>
+            <div class="left">
+                <div class="title">CHANGELOG</div>
+                <div id="msg" class="muted">Loading…</div>
+            </div>
+
+            <div class="actions">
+                <a href="./web.html" id="backLink">Back</a>
+
+                <input id="q" />
+
+                <button id="btnNext" type="button">Next</button>
+                <button id="btnCopy" class="primary" type="button">Copy</button>
+            </div>
+        </header>
+
+        <main>
+            <pre id="out"></pre>
+        </main>
+
+        <div id="toast"></div>
+
+        <script>
+            const isSr = String(navigator.language || "")
+                .toLowerCase()
+                .startsWith("sr");
+            const S = isSr
+                ? {
+                      loading: "Učitavanje…",
+                      back: "Nazad",
+                      copy: "Kopiraj",
+                      copied: "Kopirano",
+                      copyFail: "Ne mogu da kopiram",
+                      loadFail: "Ne mogu da učitam CHANGELOG.md (da li je u dist-u i precache-ovan?)",
+                      search: "Pretraga…",
+                      next: "Sledeće",
+                      noMatch: "Nema rezultata",
+                  }
+                : {
+                      loading: "Loading…",
+                      back: "Back",
+                      copy: "Copy",
+                      copied: "Copied",
+                      copyFail: "Cannot copy",
+                      loadFail: "Failed to load CHANGELOG.md (is it in dist + precached?)",
+                      search: "Search…",
+                      next: "Next",
+                      noMatch: "No match",
+                  };
+
+            const msg = document.getElementById("msg");
+            const out = document.getElementById("out");
+            const btnCopy = document.getElementById("btnCopy");
+            const backLink = document.getElementById("backLink");
+            const toast = document.getElementById("toast");
+            const q = document.getElementById("q");
+            const btnNext = document.getElementById("btnNext");
+
+            msg.textContent = S.loading;
+            backLink.textContent = S.back;
+            btnCopy.textContent = S.copy;
+            q.placeholder = S.search;
+            btnNext.textContent = S.next;
+
+            let loadedText = "";
+            btnNext.disabled = true;
+            btnCopy.disabled = true;
+
+            function showToast(text) {
+                toast.textContent = String(text || "");
+                toast.classList.add("show");
+                setTimeout(() => toast.classList.remove("show"), 1400);
+            }
+
+            let lastIndex = -1;
+
+            function getOutTextNode() {
+                // ensure <pre> has exactly one Text node (we set out.textContent, so this should hold)
+                const n = out.firstChild;
+                return n && n.nodeType === Node.TEXT_NODE ? n : null;
+            }
+
+            function scrollToMatch(textNode, start, length) {
+                try {
+                    const range = document.createRange();
+                    range.setStart(textNode, start);
+                    range.setEnd(textNode, Math.min(start + length, textNode.length));
+
+                    // Optional: show selection briefly (nice UX)
+                    const sel = window.getSelection();
+                    if (sel) {
+                        sel.removeAllRanges();
+                        sel.addRange(range);
+                        setTimeout(() => {
+                            try {
+                                sel.removeAllRanges();
+                            } catch {}
+                        }, 500);
+                    }
+
+                    const rect = range.getBoundingClientRect();
+                    const top = window.scrollY + rect.top - 140; // 140px offset to keep header visible
+                    window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+                } catch {
+                    // ignore
+                }
+            }
+
+            function findNext() {
+                const query = String(q.value || "").trim();
+                if (!query) return;
+
+                const hay = loadedText || out.textContent || "";
+                const needle = query.toLowerCase();
+                const hayLower = hay.toLowerCase();
+
+                // search from next char
+                const from = Math.max(0, lastIndex + 1);
+                let idx = hayLower.indexOf(needle, from);
+
+                // wrap around
+                if (idx < 0 && from > 0) idx = hayLower.indexOf(needle, 0);
+
+                if (idx < 0) {
+                    showToast(S.noMatch);
+                    return;
+                }
+
+                lastIndex = idx;
+
+                const tn = getOutTextNode();
+                if (!tn) return;
+
+                scrollToMatch(tn, idx, query.length);
+            }
+
+            btnNext.onclick = () => findNext();
+
+            q.addEventListener("keydown", (e) => {
+                if (e.key === "Enter") {
+                    e.preventDefault();
+                    findNext();
+                }
+            });
+
+            // (preporučeno) kad se query promeni, resetuj lastIndex da “Next” kreće od početka
+            q.addEventListener("input", () => {
+                lastIndex = -1;
+            });
+
+            async function copyText(text) {
+                const s = String(text || "");
+                if (!s) return false;
+                try {
+                    if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+                        await navigator.clipboard.writeText(s);
+                        return true;
+                    }
+                    return false;
+                } catch {
+                    return false;
+                }
+            }
+
+            btnCopy.onclick = async () => {
+                const ok = await copyText(loadedText || out.textContent || "");
+                if (ok) showToast(S.copied);
+                else showToast(S.copyFail);
+            };
+
+            (async () => {
+                try {
+                    const r = await fetch("./CHANGELOG.md", { cache: "no-store" });
+                    if (!r.ok) throw new Error("HTTP " + r.status);
+                    loadedText = await r.text();
+                    btnNext.disabled = false;
+                    btnCopy.disabled = false;
+                    out.textContent = loadedText;
+                    msg.textContent = "";
+                    lastIndex = -1;
+                } catch (e) {
+                    msg.textContent = S.loadFail;
+                    out.textContent = String(e && e.message ? e.message : e);
+                }
+            })();
+        </script>
+    </body>
+</html>

@@ -84,4 +84,4 @@ jobs:
                   fi
 
             - name: MAX verify (strict, fast, no-push)
-              run: pnpm run verify:all:strict -- --fast --no-push # ✅ Promenjeno u pnpm
+              run: pnpm run verify:all:strict -- --fast --no-push

@@ -95,6 +95,7 @@ module.exports = {
 
         new webpack.DefinePlugin({
             __BUILD_ID__: JSON.stringify(BUILD_ID),
+            __APP_VERSION__: JSON.stringify(require("./package.json").version),
         }),
 
         new HtmlWebpackPlugin({
@@ -134,6 +135,8 @@ module.exports = {
                 { from: "src/static/manifest.webmanifest", to: "manifest.webmanifest" },
                 { from: "src/static/support.html", to: "support.html" },
                 { from: "src/static/privacy.html", to: "privacy.html" },
+                { from: "src/static/changelog.html", to: "changelog.html" },
+                { from: "CHANGELOG.md", to: "CHANGELOG.md" },
                 { from: "assets/icon-16.png", to: "assets/icon-16.png" },
                 { from: "assets/icon-32.png", to: "assets/icon-32.png" },
                 { from: "assets/icon-64.png", to: "assets/icon-64.png" },

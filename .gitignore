@@ -53,3 +53,5 @@ yarn.lock
 
 # pnpm
 .pnpm-debug.log*
+
+Add-Content -Path ".gitignore" -Value "`n.wrangler/`nwrangler.toml.tmp.*"

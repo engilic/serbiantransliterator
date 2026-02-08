@@ -1,0 +1,6 @@
+name = "serbian-transliterator"
+compatibility_date = "2024-01-01"
+
+[[kv_namespaces]]
+binding = "ANALYTICS"
+id = "df64fb75ca504fdb936139a68a42b1d2"
