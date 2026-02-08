@@ -168,22 +168,22 @@ Nijedna promena ne ulazi u master bez prolaska kroz **MAX1** pipeline:
 
 ### Tehničke Metrike
 
-| Metrika | Trenutno (v1.0) | Cilj 2027 | Cilj 2028 |
-|---------|-----------------|-----------|-----------|
-| WASM Init (cold) | 45ms | 25ms | 15ms |
-| Throughput | 18k words/sec | 50k words/sec | 100k words/sec |
-| Bundle Size | 1.8MB | 1.5MB | 2.0MB (sa AI) |
-| Memory (large doc) | 500MB+ | 50MB | 50MB |
-| Offline Capability | Partial | Full PWA | Full + AI |
+| Metrika            | Trenutno (v1.0) | Cilj 2027     | Cilj 2028      |
+| ------------------ | --------------- | ------------- | -------------- |
+| WASM Init (cold)   | 45ms            | 25ms          | 15ms           |
+| Throughput         | 18k words/sec   | 50k words/sec | 100k words/sec |
+| Bundle Size        | 1.8MB           | 1.5MB         | 2.0MB (sa AI)  |
+| Memory (large doc) | 500MB+          | 50MB          | 50MB           |
+| Offline Capability | Partial         | Full PWA      | Full + AI      |
 
 ### Korisničke Metrike (via Analytics)
 
-| Metrika | Cilj Q4 2026 | Cilj 2027 | Cilj 2028 |
-|---------|--------------|-----------|-----------|
-| Monthly Active Users | 1,000 | 10,000 | 100,000 |
-| Conversions/Month | 10,000 | 100,000 | 1M+ |
-| AppSource Rating | — | 4.5★ | 4.8★ |
-| Enterprise Customers | 0 | 5 | 50 |
+| Metrika              | Cilj Q4 2026 | Cilj 2027 | Cilj 2028 |
+| -------------------- | ------------ | --------- | --------- |
+| Monthly Active Users | 1,000        | 10,000    | 100,000   |
+| Conversions/Month    | 10,000       | 100,000   | 1M+       |
+| AppSource Rating     | —            | 4.5★      | 4.8★      |
+| Enterprise Customers | 0            | 5         | 50        |
 
 ---
 
@@ -206,42 +206,42 @@ Mi ne pravimo alat za promenu pisma. Mi gradimo **most**.
              └── Dual-UX Launch (Office + Web)
              └── Cloudflare Analytics
              └── MAX1 Guardian Pipeline
-    
+
     2026 Q2  ████████░░░░░░░░░░░░░░░░  CURRENT: Phase 2 Hardening
              └── Rust Streaming Parser
              └── Memory Optimization
              └── PWA Enhancement
-    
+
     2026 Q3  ░░░░░░░░░░░░░░░░░░░░░░░░  Browser Extension 2.0
              └── Tauri Desktop Hub
              └── MAX CLI
-    
+
     2026 Q4  ░░░░░░░░░░░░░░░░░░░░░░░░  AppSource Submission
              └── Enterprise Features
-    
+
     2027 Q1  ░░░░░░░░░░░░░░░░░░░░░░░░  SDK Launch
              └── NPM Package
              └── Rust Crate
-    
+
     2027 Q2  ░░░░░░░░░░░░░░░░░░░░░░░░  Morphological Analyzer
              └── Context-Aware Dialects
-    
+
     2027 Q3  ░░░░░░░░░░░░░░░░░░░░░░░░  Multi-Language UI
              └── Custom Dictionaries
-    
+
     2027 Q4  ░░░░░░░░░░░░░░░░░░░░░░░░  v2.0.0 MAJOR RELEASE
              └── Full SDK Ecosystem
-    
+
     2028 Q1  ░░░░░░░░░░░░░░░░░░░░░░░░  On-Device AI Integration
              └── NER Model
              └── Neural Suffix Prediction
-    
+
     2028 Q2  ░░░░░░░░░░░░░░░░░░░░░░░░  Mobile Apps
              └── iOS + Android
-    
+
     2028 Q3  ░░░░░░░░░░░░░░░░░░░░░░░░  Cross-Platform Plugins
              └── VS Code, Obsidian, Notion
-    
+
     2028 Q4  ░░░░░░░░░░░░░░░░░░░░░░░░  v3.0.0 AI-POWERED RELEASE
              └── Federated Learning
              └── Full Open Source Ecosystem
