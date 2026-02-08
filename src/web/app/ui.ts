@@ -10,10 +10,16 @@ import type { Dialect } from "../../core/textCore";
 import { renderInteractiveDiffHtml } from "../../taskpane/app/preview/diffRenderer";
 import { t } from "../../shared/i18n";
 
+// --- GLOBAL VARIABLES & STATE ---
 let lastSettingsOpen = false;
+
+// Čuvamo referencu na textarea da ne gubimo fokus pri re-renderovanju
+let cachedInputArea: HTMLTextAreaElement | null = null;
 
 type NavigatorUADataLike = { platform?: string };
 type NavigatorWithUAData = Navigator & { userAgentData?: NavigatorUADataLike };
+
+// --- HELPERS ---
 
 function isMac(): boolean {
     const nav = navigator as NavigatorWithUAData;
@@ -24,15 +30,9 @@ function isMac(): boolean {
     return ua.includes("macintosh") || ua.includes("mac os x");
 }
 
-/**
- * Convert "Ctrl+K" hints to "Cmd+K" on macOS.
- * Input is already a display string (already translated / chosen).
- */
 function hintKey(hint: string): string {
     const h = String(hint || "");
     if (!isMac()) return h;
-
-    // Replace only the leading Ctrl prefix patterns
     return h.replace(/^Ctrl\+/i, "Cmd+").replace(/^Ctrl,/i, "Cmd,");
 }
 
@@ -40,8 +40,6 @@ function setLivePreviewNow(store: Store<AppState>, actions: Actions, next: boole
     const prevStatus = store.get().statusText;
 
     actions.updateSettings({ livePreview: next });
-
-    // persist immediately (without Save)
     saveWebSettings(store.get().settings);
 
     const msg = next ? t("web_status_live_on") : t("web_status_live_off");
@@ -86,6 +84,32 @@ function setSelected(btn: HTMLButtonElement, selected: boolean) {
     btn.setAttribute("aria-selected", selected ? "true" : "false");
 }
 
+// Helper za toast notifikacije
+export function showToast(msg: string) {
+    let container = document.querySelector(".toast-container");
+    if (!container) {
+        container = document.createElement("div");
+        container.className = "toast-container"; // Stilovi su u web.css
+        document.body.appendChild(container);
+    }
+
+    const toast = document.createElement("div");
+    toast.className = "toast";
+    toast.textContent = msg;
+
+    container.appendChild(toast);
+
+    // Animacija izlaza
+    setTimeout(() => {
+        toast.style.opacity = "0";
+        toast.style.transform = "translateY(-10px)";
+        toast.style.transition = "all 0.2s ease";
+        setTimeout(() => toast.remove(), 250);
+    }, 2000);
+}
+
+// --- JOB FORMATTERS ---
+
 function formatJobStatusKey(
     j: DocxJob
 ):
@@ -112,6 +136,8 @@ function computeGlobalProgressPercent(jobs: DocxJob[]): number {
     const sum = jobs.reduce((acc, j) => acc + (Number.isFinite(j.progressPct) ? j.progressPct : 0), 0);
     return Math.round(sum / jobs.length);
 }
+
+// --- MAIN RENDER ---
 
 export function renderApp(root: HTMLElement, store: Store<AppState>, actions: Actions) {
     const s = store.get();
@@ -345,6 +371,7 @@ function renderTextPanel(store: Store<AppState>, actions: Actions) {
 
     const toggleLive = () => setLivePreviewNow(store, actions, !store.get().settings.livePreview);
 
+    // Live Badge Dugme
     const liveBadgeText = s.settings.livePreview ? t("web_ui_live_badge_on") : t("web_ui_live_badge_off");
     const liveBadgeBtn = el(
         "button",
@@ -362,7 +389,7 @@ function renderTextPanel(store: Store<AppState>, actions: Actions) {
         toggleLive();
     });
 
-    // ✅ NEW: kbd-chip is clickable toggle
+    // KBD Chip (Alt+L)
     const liveKbdBtn = button(
         t("web_hint_alt_l"),
         () => toggleLive(),
@@ -370,27 +397,49 @@ function renderTextPanel(store: Store<AppState>, actions: Actions) {
         { title: t("web_ui_live_shortcut_hint") }
     );
 
+    // Copy Dugme sa Toast efektom
+    const copyBtn = button(
+        t("web_ui_btn_copy_result"),
+        () => {
+            actions.copyPlain();
+            showToast("Kopirano u privremenu memoriju! 📋");
+        },
+        "btn",
+        { title: t("web_ui_btn_copy_result_title") }
+    );
+
     const head = el("div", { class: "panel-head" }, [
         el("div", {}, [
             el("h2", { class: "panel-title" }, [textNode(t("web_ui_text_title"))]),
             el("p", { class: "panel-sub" }, [textNode(t("web_ui_text_desc"))]),
         ]),
-        el("div", { class: "row" }, [
-            liveBadgeBtn,
-            liveKbdBtn,
-            button(t("web_ui_btn_copy_result"), () => void actions.copyPlain(), "btn", {
-                title: t("web_ui_btn_copy_result_title"),
-            }),
-        ]),
+        el("div", { class: "row" }, [liveBadgeBtn, liveKbdBtn, copyBtn]),
     ]);
 
-    const inArea = el("textarea", { placeholder: t("web_ui_text_placeholder") }) as HTMLTextAreaElement;
-    inArea.value = s.plain.input;
-    inArea.oninput = () => actions.setPlainInput(inArea.value);
+    // --- UX OPTIMIZACIJA: TEXTAREA CACHING ---
+    if (!cachedInputArea) {
+        cachedInputArea = el("textarea", {
+            id: "web-main-input",
+            placeholder: t("web_ui_text_placeholder"),
+        }) as HTMLTextAreaElement;
+
+        cachedInputArea.oninput = () => {
+            if (cachedInputArea) {
+                actions.setPlainInput(cachedInputArea.value);
+            }
+        };
+    }
+
+    if (cachedInputArea.value !== s.plain.input) {
+        cachedInputArea.value = s.plain.input;
+    }
 
     return el("section", { class: "card" }, [
         head,
-        el("div", { class: "field" }, [el("label", {}, [textNode(t("web_ui_label_input"))]), inArea]),
+        el("div", { class: "field" }, [
+            el("label", {}, [textNode(t("web_ui_label_input"))]),
+            cachedInputArea,
+        ]),
         el("div", { class: "muted" }, [
             textNode(t("web_ui_text_hint") + " • " + t("web_ui_live_shortcut_hint")),
         ]),
