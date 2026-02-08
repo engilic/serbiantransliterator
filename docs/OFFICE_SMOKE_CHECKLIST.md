@@ -13,7 +13,16 @@ ali padne u Office hostu zbog CSP/headers, cache-a, SW-a, ili Office runtime raz
 
 ## A) Pre-check (pre testiranja)
 
+<<<<<<< HEAD
 ### A1) Čist build + testovi (mora biti zeleno)
+=======
+1. Uveri se da radiš na čistom build-u:
+    - `pnpm run verify:all`
+    - ili bar:
+        - `pnpm run build`
+        - `pnpm run test:coverage`
+        - `pnpm run test:e2e`
+>>>>>>> 37bec1fa24a3b586d7219740c2b690290d8b80c0
 
 1. Pokreni full gate:
     - `pnpm run verify:all`
@@ -69,8 +78,12 @@ ali padne u Office hostu zbog CSP/headers, cache-a, SW-a, ili Office runtime raz
 
 1. Pokreni dev:
     - `pnpm run dev`
+<<<<<<< HEAD
       (webpack dev-server + sideload u Word)
 2. Proveri da Word Desktop koristi Edge WebView2 (ako je relevantno u tvom setup-u).
+=======
+      (ovo radi webpack dev-server + sideload u Word)
+>>>>>>> 37bec1fa24a3b586d7219740c2b690290d8b80c0
 
 ### B2) Test dokument (priprema)
 
@@ -190,6 +203,14 @@ Ne smeš imati CSP violations tipa:
 **Symptom:**
 
 - greške tipa “WebAssembly compilation blocked by CSP”
+<<<<<<< HEAD
+=======
+
+Akcija:
+
+- u `_headers` privremeno promeni `script-src` da uključi `'unsafe-eval'` (samo ako mora)
+- retest u Word Web + Desktop
+>>>>>>> 37bec1fa24a3b586d7219740c2b690290d8b80c0
 
 **Akcija (preporučeni redosled):**
 

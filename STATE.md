@@ -114,7 +114,11 @@ This is the most critical logic layer (`src/shared/ooxml`), operating in multipl
 
 ## 5. 🧪 QUALITY ASSURANCE (MAX1 GUARDIAN)
 
+<<<<<<< HEAD
 The **MAX1 Guardian** pipeline (`pnpm run verify:all`) enforces a 12-check battery on every PR:
+=======
+The **MAX1 Guardian** pipeline (`pnpm run verify-all`) enforces a 12-check battery on every PR:
+>>>>>>> 37bec1fa24a3b586d7219740c2b690290d8b80c0
 
 1. **File Headers:** Correct relative paths in all source files.
 2. **Conflict Markers:** Zero `<<<<<<<` markers allowed.
@@ -128,6 +132,8 @@ The **MAX1 Guardian** pipeline (`pnpm run verify:all`) enforces a 12-check batte
 10. **TypeScript:** `tsc --noEmit` with strict mode.
 11. **Lint:** ESLint with zero warnings policy.
 12. **Audit:** `pnpm audit --audit-level=high` for npm dependencies.
+
+_(Note: The project has fully migrated from npm to **pnpm**; all CI and local verification steps are executed via pnpm scripts.)_
 
 _(Note: The project has fully migrated from npm to **pnpm**; all CI and local verification steps are executed via pnpm scripts.)_
 
@@ -195,10 +201,17 @@ The project now supports **two independent user experiences** sharing the same e
 
 **Runtime:**
 
+<<<<<<< HEAD
 - **Node.js:** 22.x (LTS via Volta)
 - **Rust:** 1.75+ (Stable)
 - **TypeScript:** 5.4+
 - **Package Manager:** pnpm 9.x (workspace-aware, replaces npm across the toolchain)
+=======
+- Node.js: 22.x (LTS via Volta)
+- Rust: 1.75+ (Stable)
+- TypeScript: 5.4+
+- **Package Manager:** pnpm (workspace-aware, replaces npm across the toolchain)
+>>>>>>> 37bec1fa24a3b586d7219740c2b690290d8b80c0
 
 **Key Runtime Libs:**
 

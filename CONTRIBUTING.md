@@ -75,6 +75,7 @@ Koristimo Conventional Commits format:
 
     # Full verification pipeline
     pnpm run verify:all -- --no-push
+<<<<<<< HEAD
 
 ---
 
@@ -84,6 +85,8 @@ Koristimo Conventional Commits format:
 - Typecheck mora biti čist.
 - Prettier gate mora biti čist (auto-fix je dozvoljen).
 - Header gate mora proći (header sa relativnom putanjom u svakom source fajlu).
+=======
+>>>>>>> 37bec1fa24a3b586d7219740c2b690290d8b80c0
 
 ---
 

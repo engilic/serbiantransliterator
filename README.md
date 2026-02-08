@@ -17,7 +17,11 @@ Najbrži i najsigurniji način za preslovljavanje ćirilice i latinice u Microso
 
 ### 🛡️ Inteligentna Zaštita
 
+<<<<<<< HEAD
 - **Brand Guard:** Automatska zaštita za brendove (Windows, iPhone, Microsoft...).
+=======
+- **Brand Guard:** Automatska zaštita za hiljade tehnoloških brendova (Windows, iPhone, Microsoft...).
+>>>>>>> 37bec1fa24a3b586d7219740c2b690290d8b80c0
 - **Context Aware:** Prepoznaje razliku između brenda i obične reči (npr. _iPhone Pro_ vs _prosečan_).
 - **Code Protection:** Tekst unutar Markdown koda (backticks) ili specifičnih Word stilova se ne dira.
 - **URI & Paths:** URL-ovi, e-mail adrese i Windows/Unix putanje ostaju netaknute.
