@@ -1,11 +1,10 @@
 // src/web/app/actions.ts
 
+import { track } from "../../shared/analytics";
+
 import JSZip from "jszip";
-import { convertPlainText, type Direction } from "../../core/textCore";
-import { myersDiff } from "../../shared/diff";
 import { InteractiveDiff } from "../../shared/diff/interactive";
 import { renderInteractiveDiffHtml } from "../../taskpane/app/preview/diffRenderer";
-import { toAscii } from "../../shared/ooxml/converterUtils";
 import { WebWorkerClient } from "../workerClient";
 import { convertDocxFileDetailed, downloadBlob } from "../docx";
 import type { Store } from "./store";
@@ -14,6 +13,10 @@ import { buildOoxmlOptionsFromSettings } from "./state";
 import { saveWebSettings, DEFAULT_WEB_SETTINGS, type WebSettings } from "./webSettings";
 import type { ConvertStats } from "../../shared/ooxml/convertOoxml";
 import { t } from "../../shared/i18n";
+
+// ✅ shared engine (no dupe for plain + diff)
+import { createSerbianEngine } from "../../app/engine/serbianEngine";
+import type { Engine, EngineConvertInput } from "../../app/ports/engine";
 
 export interface Actions {
     setMode(mode: AppState["mode"]): void;
@@ -47,12 +50,6 @@ function uid(): string {
     return Math.random().toString(16).slice(2) + "-" + Date.now().toString(16);
 }
 
-function tokenizeForDiff(text: string): string[] {
-    return String(text || "")
-        .split(/([ \t\n\r]+)/)
-        .filter((x) => x);
-}
-
 function sanitizeWebSettings(raw: unknown): WebSettings {
     // Fail-closed: merge into defaults + clamp arrays
     let parsed: Partial<WebSettings> = {};
@@ -68,6 +65,7 @@ function sanitizeWebSettings(raw: unknown): WebSettings {
         schemaVersion: DEFAULT_WEB_SETTINGS.schemaVersion,
     };
 
+    // clamp arrays
     merged.userProtected = Array.isArray(merged.userProtected) ? merged.userProtected.slice(0, 5000) : [];
     merged.ignoredStyles = Array.isArray(merged.ignoredStyles) ? merged.ignoredStyles.slice(0, 500) : [];
 
@@ -81,7 +79,11 @@ function sanitizeWebSettings(raw: unknown): WebSettings {
 
     merged.customSubstitutions = String(merged.customSubstitutions || "");
 
-    // direction harden (allow only known values)
+    // ui prefs harden
+    if (!["auto", "sr", "en"].includes(String(merged.uiLanguage))) merged.uiLanguage = "auto";
+    if (!["auto", "light", "dark"].includes(String(merged.theme))) merged.theme = "auto";
+
+    // direction harden
     const dir = String(merged.direction || "auto");
     if (dir !== "auto" && dir !== "lat-to-cyr" && dir !== "cyr-to-lat" && dir !== "to-ascii") {
         merged.direction = "auto";
@@ -104,6 +106,9 @@ function sanitizeWebSettings(raw: unknown): WebSettings {
     merged.preserveCodeBlocks = merged.preserveCodeBlocks !== false;
     merged.protectRomans = merged.protectRomans !== false;
     merged.autoDownload = merged.autoDownload === true;
+
+    // live preview harden
+    merged.livePreview = merged.livePreview !== false;
 
     return merged;
 }
@@ -167,6 +172,20 @@ function aggregateStats(statsList: ConvertStats[]): ConvertStats | null {
 
 export function createActions(store: Store<AppState>): Actions {
     const workerClient = new WebWorkerClient();
+    const engine: Engine = createSerbianEngine();
+
+    // Live Preview config
+    const LIVE_DEBOUNCE_MS = 220;
+    const LIVE_MAX_CHARS = 50_000;
+
+    let liveTimer: ReturnType<typeof setTimeout> | null = null;
+    let liveRunId = 0;
+
+    const cancelLive = () => {
+        if (liveTimer) clearTimeout(liveTimer);
+        liveTimer = null;
+        liveRunId++; // invalidate any scheduled run
+    };
 
     const setStatus = (msg: string) => {
         store.update((s) => ({ ...s, statusText: msg }));
@@ -189,14 +208,105 @@ export function createActions(store: Store<AppState>): Actions {
 
     const clearAbort = () => store.update((s) => ({ ...s, activeAbort: null }));
 
+    const runPlainConvert = async (args?: { quiet?: boolean }) => {
+        const quiet = args?.quiet === true;
+
+        const s = store.get();
+        const input = String(s.plain.input || "");
+
+        if (!input.trim()) {
+            store.update((x) => ({
+                ...x,
+                plain: { ...x.plain, output: "", typeLabel: "", interactive: null },
+            }));
+            if (!quiet) setStatus(t("msg_enter_text"));
+            return;
+        }
+
+        const opts = buildOoxmlOptionsFromSettings(s.settings);
+
+        const dir0 = opts.direction ?? "auto";
+        const dir: EngineConvertInput["direction"] =
+            dir0 === "auto" || dir0 === "lat-to-cyr" || dir0 === "cyr-to-lat" || dir0 === "to-ascii"
+                ? dir0
+                : "auto";
+
+        const converted = await engine.convert({
+            kind: "plainText",
+            text: input,
+            direction: dir,
+            options: opts as unknown as Record<string, unknown>,
+        });
+
+        if (converted.kind !== "plainText") {
+            throw new Error("Engine returned non-plain output");
+        }
+
+        if (!quiet) {
+            track("convert", {
+                mode: "text",
+                direction: dir,
+                inputLength: input.length,
+            });
+        }
+
+        const typeLabel =
+            String(dir) === "to-ascii" ? t("dir_to_ascii_short") : String(converted.typeLabel || "");
+
+        const ops = await engine.diffText(input, converted.text);
+        const interactive = new InteractiveDiff(ops);
+
+        store.update((x) => ({
+            ...x,
+            outputTab: x.outputTab === "stats" ? "result" : x.outputTab,
+            plain: { ...x.plain, output: converted.text, typeLabel, interactive },
+        }));
+
+        if (!quiet) setStatus(t("web_status_text_type", typeLabel));
+    };
+
+    const scheduleLivePlainConvert = () => {
+        const st = store.get();
+
+        if (st.mode !== "text") return;
+        if (!st.settings.livePreview) return;
+
+        const input = String(st.plain.input || "");
+        if (input.length > LIVE_MAX_CHARS) return;
+
+        if (liveTimer) clearTimeout(liveTimer);
+        const myId = ++liveRunId;
+
+        liveTimer = setTimeout(() => {
+            if (myId !== liveRunId) return;
+            runPlainConvert({ quiet: true }).catch((e) => console.error("Live convert failed:", e));
+        }, LIVE_DEBOUNCE_MS);
+    };
+
     return {
-        setMode: (mode) => store.update((s) => ({ ...s, mode })),
+        setMode: (mode) => {
+            store.update((s) => ({ ...s, mode }));
+
+            // ✅ When leaving text mode, cancel pending live work
+            if (mode !== "text") cancelLive();
+
+            // ✅ When entering text mode, run live preview (if enabled)
+            if (mode === "text") scheduleLivePlainConvert();
+        },
+
         setOutputTab: (tab) => store.update((s) => ({ ...s, outputTab: tab })),
 
         openSettings: (open) => store.update((s) => ({ ...s, settingsOpen: open })),
 
         updateSettings: (patch) => {
             store.update((s) => ({ ...s, settings: { ...s.settings, ...patch } }));
+
+            // ✅ If live preview was turned OFF, cancel any scheduled run
+            if (Object.prototype.hasOwnProperty.call(patch, "livePreview") && patch.livePreview === false) {
+                cancelLive();
+            }
+
+            scheduleLivePlainConvert();
         },
 
         saveSettings: () => {
@@ -226,6 +336,9 @@ export function createActions(store: Store<AppState>): Actions {
                 saveWebSettings(next);
 
                 setStatus(t("web_status_settings_imported"));
+
+                if (!next.livePreview) cancelLive();
+                scheduleLivePlainConvert();
             } catch {
                 setStatus(t("web_status_settings_import_error"));
             }
@@ -233,52 +346,14 @@ export function createActions(store: Store<AppState>): Actions {
 
         setPlainInput: (text) => {
             store.update((s) => ({ ...s, plain: { ...s.plain, input: text } }));
+            scheduleLivePlainConvert();
         },
 
         convertPlain: () => {
-            const s = store.get();
-            const input = String(s.plain.input || "");
-            if (!input.trim()) {
-                store.update((x) => ({
-                    ...x,
-                    plain: { ...x.plain, output: "", typeLabel: "", interactive: null },
-                }));
-                setStatus(t("msg_enter_text"));
-                return;
-            }
-
-            const opts = buildOoxmlOptionsFromSettings(s.settings);
-            const dir = opts.direction ?? "auto";
-
-            let outText = "";
-            let typeLabel = "";
-
-            if (dir === "to-ascii") {
-                const lat = convertPlainText(input, "cyr-to-lat", {
-                    ...opts,
-                    applySerbianQuotes: false,
-                });
-                outText = toAscii(lat.text);
-                typeLabel = t("dir_to_ascii_short");
-            } else {
-                const res = convertPlainText(input, dir as Direction, {
-                    ...opts,
-                    ignoredStyles: [],
-                });
-                outText = res.text;
-                typeLabel = res.type;
-            }
-
-            const ops = myersDiff(tokenizeForDiff(input), tokenizeForDiff(outText));
-            const interactive = new InteractiveDiff(ops);
-
-            store.update((x) => ({
-                ...x,
-                outputTab: x.outputTab === "stats" ? "result" : x.outputTab,
-                plain: { ...x.plain, output: outText, typeLabel, interactive },
-            }));
-
-            setStatus(t("web_status_text_type", typeLabel));
+            void runPlainConvert({ quiet: false }).catch((e) => {
+                const err = e instanceof Error ? e : new Error(String(e));
+                setStatus(t("status_error_prefix", err.message));
+            });
         },
 
         copyPlain: async () => {
@@ -318,6 +393,9 @@ export function createActions(store: Store<AppState>): Actions {
                 jobs: [...s.jobs, ...newJobs],
             }));
 
+            // leaving text mode cancels live
+            cancelLive();
+
             setStatus(t("web_status_files_added", newJobs.length));
         },
 
@@ -339,6 +417,12 @@ export function createActions(store: Store<AppState>): Actions {
                 setStatus(t("web_status_add_docx_files"));
                 return;
             }
+
+            track("convert", {
+                mode: "files",
+                count: jobs.length,
+                direction: s0.settings.direction,
+            });
 
             const opts = buildOoxmlOptionsFromSettings(s0.settings);
             const ac = ensureAbort();
@@ -430,6 +514,12 @@ export function createActions(store: Store<AppState>): Actions {
             const job = s.jobs.find((j) => j.id === jobId);
             if (!job || !job.outBlob) return;
             downloadBlob(job.outBlob, `PRESLOVLJENO_${job.file.name}`);
+
+            track("download", {
+                filename: job.file.name,
+                size: job.outBlob.size,
+                direction: s.settings.direction,
+            });
         },
 
         downloadAllZip: async () => {
@@ -450,6 +540,13 @@ export function createActions(store: Store<AppState>): Actions {
 
             const out = await zip.generateAsync({ type: "blob" });
             downloadBlob(out, `serbian-transliterator-${new Date().toISOString().slice(0, 10)}.zip`);
+
+            track("download", {
+                type: "zip",
+                count: done.length,
+                size: out.size,
+            });
+
             setStatus(t("web_status_zip_downloaded"));
         },
 

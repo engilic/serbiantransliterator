@@ -369,4 +369,50 @@ export const SR_RS = {
 
     web_ui_btn_save: "Sačuvaj",
     web_ui_btn_reset_web: "Reset (web)",
+
+    web_ui_setting_live_preview: "Live preview (dok kucaš)",
+    web_ui_live_badge_on: "LIVE",
+    web_ui_live_badge_off: "LIVE OFF",
+    web_ui_live_shortcut_hint: "Alt+L: uklj/isklj live preview",
+    web_status_live_on: "Live preview: ON",
+    web_status_live_off: "Live preview: OFF",
+
+    web_palette_placeholder: "Ukucaj komandu…",
+    web_palette_footer: "↑/↓ izbor • Enter pokreni • Esc zatvori",
+    web_palette_empty: "Nema rezultata.",
+
+    web_cmd_convert_files: "Preslovi DOCX (Start)",
+    web_cmd_convert_text: "Preslovi tekst",
+    web_cmd_toggle_to_text: "Prebaci na: Tekst",
+    web_cmd_toggle_to_files: "Prebaci na: Fajlovi (.docx)",
+    web_cmd_open_settings: "Otvori podešavanja",
+    web_cmd_cycle_direction: "Promeni smer (sada: {0})",
+    web_cmd_download_zip: "Preuzmi sve kao ZIP",
+    web_cmd_copy_result: "Kopiraj rezultat (tekst)",
+    web_cmd_clear_jobs: "Očisti listu fajlova",
+    web_cmd_toggle_live_on: "Live preview: ON",
+    web_cmd_toggle_live_off: "Live preview: OFF",
+
+    web_hint_ctrl_enter: "Ctrl+Enter",
+    web_hint_ctrl_comma: "Ctrl+,",
+    web_hint_ctrl_shift_c: "Ctrl+Shift+C",
+    web_hint_alt_l: "Alt+L",
+
+    web_status_offline_ready: "✅ Offline spremno. Aplikacija može da radi bez interneta.",
+
+    web_update_available: "✨ Dostupna je nova verzija aplikacije.",
+    web_update_refresh: "Osveži",
+    web_update_later: "Kasnije",
+
+    web_update_dismiss: "Zatvori",
+    web_update_release_notes: "Šta je novo",
+
+    web_hint_ctrl_k: "Ctrl+K",
+    web_ui_shortcut_palette: "Komandna paleta",
+    web_ui_shortcut_live: "Live preview",
+
+    web_badge_offline: "OFFLINE",
+    web_badge_offline_ready: "OFFLINE READY",
+    web_update_available_versions: "✨ Dostupna je nova verzija ({0} → {1}).",
+    web_cmd_update_refresh_now: "Update: osveži sada",
 };

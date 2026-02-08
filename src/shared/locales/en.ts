@@ -381,4 +381,50 @@ export const EN_US: Record<TranslationKey, string> = {
 
     web_ui_btn_save: "Save",
     web_ui_btn_reset_web: "Reset (web)",
+
+    web_ui_setting_live_preview: "Live preview (while typing)",
+    web_ui_live_badge_on: "LIVE",
+    web_ui_live_badge_off: "LIVE OFF",
+    web_ui_live_shortcut_hint: "Alt+L: toggle live preview",
+    web_status_live_on: "Live preview: ON",
+    web_status_live_off: "Live preview: OFF",
+
+    web_palette_placeholder: "Type a command…",
+    web_palette_footer: "↑/↓ select • Enter run • Esc close",
+    web_palette_empty: "No results.",
+
+    web_cmd_convert_files: "Convert DOCX (Start)",
+    web_cmd_convert_text: "Convert text",
+    web_cmd_toggle_to_text: "Switch to: Text",
+    web_cmd_toggle_to_files: "Switch to: Files (.docx)",
+    web_cmd_open_settings: "Open settings",
+    web_cmd_cycle_direction: "Change direction (now: {0})",
+    web_cmd_download_zip: "Download all as ZIP",
+    web_cmd_copy_result: "Copy result (text)",
+    web_cmd_clear_jobs: "Clear file list",
+    web_cmd_toggle_live_on: "Live preview: ON",
+    web_cmd_toggle_live_off: "Live preview: OFF",
+
+    web_hint_ctrl_enter: "Ctrl+Enter",
+    web_hint_ctrl_comma: "Ctrl+,",
+    web_hint_ctrl_shift_c: "Ctrl+Shift+C",
+    web_hint_alt_l: "Alt+L",
+
+    web_status_offline_ready: "✅ Offline ready. The app can work without internet.",
+
+    web_update_available: "✨ A new version is available.",
+    web_update_refresh: "Refresh",
+    web_update_later: "Later",
+
+    web_update_dismiss: "Dismiss",
+    web_update_release_notes: "What's new",
+
+    web_hint_ctrl_k: "Ctrl+K",
+    web_ui_shortcut_palette: "Command palette",
+    web_ui_shortcut_live: "Live preview",
+
+    web_badge_offline: "OFFLINE",
+    web_badge_offline_ready: "OFFLINE READY",
+    web_update_available_versions: "✨ A new version is available ({0} → {1}).",
+    web_cmd_update_refresh_now: "Update: refresh now",
 };

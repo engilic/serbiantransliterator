@@ -12,14 +12,13 @@ export default defineConfig({
         baseURL: "http://127.0.0.1:4173",
     },
     webServer: {
-        // Playwright će startovati server pre testova.
-        command: "npm run serve:dist",
+        // ✅ Promenjeno sa 'npm' na 'pnpm'
+        command: "pnpm run serve:dist",
         port: 4173,
         reuseExistingServer: !process.env.CI,
         timeout: 60_000,
         env: {
             ...process.env,
-            // Suzbija samo DEP0066 warning (Node 21+)
             NODE_OPTIONS: "--disable-warning=DEP0066",
         },
     },

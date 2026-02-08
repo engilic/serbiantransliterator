@@ -23,6 +23,13 @@ Sve značajne promene u projektu će biti dokumentovane u ovom fajlu.
 
 - **CodeQL hardening:** Uklonjeno ručno shell-escape/sanitization sklapanje komandi u skriptama (prelazak na args-based izvršavanje gde je moguće).
 
+### ♻️ Web App / Updates (Service Worker)
+
+- **Update prompt UI:** Dodat banner “Update available” sa akcijama _Refresh_, _Later_ i linkom ka _Release notes_.
+- **Command Palette integration:** Ctrl+K prikazuje komandu **Update: refresh now** kada je update pending.
+- **Service worker messaging:** UI može da pročita verziju waiting SW-a preko `MessageChannel` (“GET_VERSION” → “VERSION”), radi prikaza “from → to” u banneru (best-effort).
+- **Safer reload behavior:** “Refresh now” radi samo kada aplikacija nije _busy_; reload se dešava tek na `controllerchange`.
+
 ---
 
 ## [1.0.0] - 2026-01-23

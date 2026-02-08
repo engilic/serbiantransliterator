@@ -13,6 +13,8 @@ $IgnorePrefixes = @(
     "dist/",
     "coverage/",
     ".git/",
+    ".vs/",
+    ".vscode/",
     "wasm-core/pkg/",
     "wasm-core/target/",
     "src/wasm-core/pkg/",
@@ -115,11 +117,12 @@ function Write-Utf8NoBom([string]$FilePath, [string]$Content) {
     }
 }
 
-function Get-TrackedFiles() {
-    $out = (& git ls-files) 2>$null
+function Get-ProjectFiles() {
+    # Tracked + untracked, ali isključi git-ignored (node_modules/.vs/dist/… ako su u .gitignore)
+    $out = (& git ls-files --cached --others --exclude-standard) 2>$null
     if (-not $out) { return @() }
 
-    return ($out -split "`n") |
+    return ($out -split "\r?\n") |
         ForEach-Object { $_.Trim() } |
         Where-Object { $_ } |
         ForEach-Object { $_.Replace("\", "/") }
@@ -249,24 +252,24 @@ function Fix-OneFile([string]$AbsPath, [string]$RelPath) {
 # MAIN
 # -------------------------
 
-Write-Host "🔍 HEADER AUTO-FIX: scanning git-tracked files..." -ForegroundColor Cyan
+Write-Host "🔍 HEADER AUTO-FIX: scanning project files (tracked + untracked, excluding ignored)..." -ForegroundColor Cyan
 
-$tracked = Get-TrackedFiles
-if ($tracked.Count -eq 0) {
-    Write-Host "⚠ No git-tracked files found (or git not available)." -ForegroundColor Yellow
+$files = Get-ProjectFiles
+if ($files.Count -eq 0) {
+    Write-Host "⚠ No project files found (or git not available)." -ForegroundColor Yellow
     exit 0
 }
 
 # procesuiraj ovaj skript LAST (bezbednije dok radi)
 $selfRel = "scripts/add-headers.ps1"
-if ($tracked -contains $selfRel) {
-    $tracked = @($tracked | Where-Object { $_ -ne $selfRel }) + @($selfRel)
+if ($files -contains $selfRel) {
+    $files = @($files | Where-Object { $_ -ne $selfRel }) + @($selfRel)
 }
 
 # PASS 1: abort on copy/paste wrong-path header u header zoni
 $wrong = New-Object System.Collections.Generic.List[object]
 
-foreach ($rel in $tracked) {
+foreach ($rel in $files) {
     $ext = [System.IO.Path]::GetExtension($rel).ToLower()
     if ($Extensions -notcontains $ext) { continue }
     if (Is-IgnoredRel $rel) { continue }
@@ -300,7 +303,7 @@ if ($wrong.Count -gt 0) {
 # PASS 2: auto-fix everything else
 Write-Host "🧹 HEADER AUTO-FIX: applying fixes..." -ForegroundColor Cyan
 
-foreach ($rel in $tracked) {
+foreach ($rel in $files) {
     $ext = [System.IO.Path]::GetExtension($rel).ToLower()
     if ($Extensions -notcontains $ext) { continue }
     if (Is-IgnoredRel $rel) { continue }

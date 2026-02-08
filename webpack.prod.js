@@ -67,7 +67,8 @@ module.exports = {
                 /\.wasm$/,
                 /\.png$/,
                 /\.json$/,
-                /manifest\.webmanifest$/, // Uključi PWA manifest
+                /\.md$/,
+                /manifest\.webmanifest$/,
             ],
             // [BITNO] Ne keširaj Add-in fajlove za Web korisnike!
             exclude: [
