@@ -19,15 +19,14 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     try {
         const body = (await context.request.json()) as TrackingEvent;
         const event = body.event || "unknown";
-
         const today = new Date().toISOString().split("T")[0];
-        const countKey = count:${today}:${event};
 
+        const countKey = `count:${today}:${event}`;
         const currentCount = await context.env.ANALYTICS.get(countKey);
         const newCount = (parseInt(currentCount || "0", 10) + 1).toString();
         await context.env.ANALYTICS.put(countKey, newCount);
 
-        const totalKey = 	otal:${event};
+        const totalKey = `total:${event}`;
         const currentTotal = await context.env.ANALYTICS.get(totalKey);
         const newTotal = (parseInt(currentTotal || "0", 10) + 1).toString();
         await context.env.ANALYTICS.put(totalKey, newTotal);

@@ -7,23 +7,17 @@ interface Env {
 export const onRequestGet: PagesFunction<Env> = async (context) => {
     const today = new Date().toISOString().split("T")[0];
 
-    const [
-        downloadsToday,
-        downloadsTotal,
-        convertsToday,
-        convertsTotal,
-        visitsToday,
-        visitsTotal,
-    ] = await Promise.all([
-        context.env.ANALYTICS.get(count:${today}:download),
-        context.env.ANALYTICS.get("total:download"),
-        context.env.ANALYTICS.get(count:${today}:convert),
-        context.env.ANALYTICS.get("total:convert"),
-        context.env.ANALYTICS.get(count:${today}:visit),
-        context.env.ANALYTICS.get("total:visit"),
-    ]);
+    const [downloadsToday, downloadsTotal, convertsToday, convertsTotal, visitsToday, visitsTotal] =
+        await Promise.all([
+            context.env.ANALYTICS.get(`count:${today}:download`),
+            context.env.ANALYTICS.get("total:download"),
+            context.env.ANALYTICS.get(`count:${today}:convert`),
+            context.env.ANALYTICS.get("total:convert"),
+            context.env.ANALYTICS.get(`count:${today}:visit`),
+            context.env.ANALYTICS.get("total:visit"),
+        ]);
 
-    const html = <!DOCTYPE html>
+    const html = `<!DOCTYPE html>
 <html lang="sr">
 <head>
     <meta charset="UTF-8">
@@ -85,7 +79,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
         </div>
     </div>
 </body>
-</html>;
+</html>`;
 
     return new Response(html, {
         headers: { "Content-Type": "text/html; charset=utf-8" },
