@@ -1,6 +1,6 @@
 # 📊 PROJECT STATE — v1.0.0 (HARDENING) — DEEP DIVE
 
-**Date:** February 8, 2026  
+**Date:** February 7, 2026  
 **Version:** 1.0.0 (Production / Dev Hardening)  
 **Codename:** "The Neural Frontier" (Phase 2 Active)  
 **Pipeline Identity:** 🛡️ MAX1 Guardian  
@@ -102,81 +102,24 @@ This is the most critical logic layer (`src/shared/ooxml`), operating in multipl
 - **DOMPurify:** Mandatory for all clipboard and HTML rendering operations.
 - **XML Safety:** The `parseSafeOoxml` function blocks XXE-like payloads (DOCTYPE/ENTITY) before they reach the parser.
 
-### Analytics Privacy (NEW - v1.0.0)
-
-- **Cloudflare KV Tracking:** Zero-PII analytics via Cloudflare Pages Functions
-- **Data Collected:** Only aggregated event counts (visit, convert, download)
-- **No Tracking:** Zero IP logging, cookies, fingerprinting, or user identification
-- **Transparency:** Public analytics dashboard at `/stats` endpoint
-- **Compliance:** GDPR-compliant (no personal data processing)
-
 ---
 
 ## 5. 🧪 QUALITY ASSURANCE (MAX1 GUARDIAN)
 
-<<<<<<< HEAD
-The **MAX1 Guardian** pipeline (`pnpm run verify:all`) enforces a 12-check battery on every PR:
-=======
 The **MAX1 Guardian** pipeline (`pnpm run verify-all`) enforces a 12-check battery on every PR:
->>>>>>> 37bec1fa24a3b586d7219740c2b690290d8b80c0
 
 1. **File Headers:** Correct relative paths in all source files.
 2. **Conflict Markers:** Zero `<<<<<<<` markers allowed.
 3. **Big File Gate:** Rejects files > 5MB.
-4. **I18n Integrity:** All used keys must be defined in `sr.ts` and `en.ts`.
+4. **I18n Integrity:** All used keys must be defined in `sr.ts`.
 5. **Security Sniffer:** Scans for secrets and `innerHTML` sinks.
 6. **Coverage:** ~92% coverage threshold via Vitest.
-7. **Rust Quality:** `cargo test`, `cargo fmt --check`, `cargo clippy`.
-8. **E2E Stability:** Playwright accessibility & smoke tests.
-9. **Build Integrity:** Zero webpack errors/warnings.
-10. **TypeScript:** `tsc --noEmit` with strict mode.
-11. **Lint:** ESLint with zero warnings policy.
-12. **Audit:** `pnpm audit --audit-level=high` for npm dependencies.
-
-_(Note: The project has fully migrated from npm to **pnpm**; all CI and local verification steps are executed via pnpm scripts.)_
 
 _(Note: The project has fully migrated from npm to **pnpm**; all CI and local verification steps are executed via pnpm scripts.)_
 
 ---
 
-## 6. 📦 DEPLOYMENT ARCHITECTURE
-
-### Dual-UX Strategy (NEW - v1.0.0)
-
-The project now supports **two independent user experiences** sharing the same engine:
-
-#### Office Add-in (Primary)
-
-- **Entry Points:** `taskpane.html`, `commands.html`
-- **Host:** Microsoft Word (Desktop + Online)
-- **Distribution:** Sideloading via `manifest.xml`
-- **Features:** Full OOXML processing, real-time preview, document-level operations
-
-#### Web App (Secondary)
-
-- **Entry Point:** `web.html`
-- **Host:** Modern browsers (Chrome 90+, Firefox 88+, Safari 14+)
-- **Distribution:** Cloudflare Pages (`https://serbian-transliterator.pages.dev`)
-- **Features:** Plain text conversion, DOCX batch processing, live preview
-
-#### Shared Infrastructure
-
-- **Build:** Single `pnpm run build` generates both UX bundles
-- **Engine:** Identical Rust/WASM core (`src/wasm-core/`)
-- **Logic:** Shared conversion logic (`src/core/`, `src/shared/`)
-- **Analytics:** Unified KV tracking (`functions/track.ts`)
-
-### Cloudflare Pages Integration
-
-- **Hosting:** Static assets served via Cloudflare CDN
-- **Functions:** Serverless analytics endpoints (`/track`, `/stats`)
-- **KV Storage:** Aggregated analytics data (namespace: `ANALYTICS`)
-- **Build Trigger:** Automatic deployment on `git push` to `master`
-- **Preview Deploys:** Every PR gets unique preview URL
-
----
-
-## 7. ⚠️ KNOWN LIMITATIONS & CONSTRAINTS
+## 6. ⚠️ KNOWN LIMITATIONS & CONSTRAINTS
 
 ### A. Memory Wall (Current Milestone)
 
@@ -189,95 +132,20 @@ The project now supports **two independent user experiences** sharing the same e
 - **Impact:** Theme changes (Dark/Light) may not trigger CSS updates in real-time on some Windows builds.
 - **Workaround:** Implemented polling for `Office.context.officeTheme` and refresh on `window.focus`.
 
-### C. Analytics Limitations
-
-- **KV Write Limits:** Cloudflare Free tier allows 1,000 writes/day (sufficient for MVP)
-- **No Real-time Updates:** Dashboard refreshes on page load (no WebSocket live feed)
-- **Data Retention:** KV entries stored indefinitely (manual cleanup required)
-
 ---
 
-## 8. 📊 DEPENDENCY SNAPSHOT
+## 7. 📦 DEPENDENCY SNAPSHOT
 
 **Runtime:**
 
-<<<<<<< HEAD
-- **Node.js:** 22.x (LTS via Volta)
-- **Rust:** 1.75+ (Stable)
-- **TypeScript:** 5.4+
-- **Package Manager:** pnpm 9.x (workspace-aware, replaces npm across the toolchain)
-=======
 - Node.js: 22.x (LTS via Volta)
 - Rust: 1.75+ (Stable)
 - TypeScript: 5.4+
 - **Package Manager:** pnpm (workspace-aware, replaces npm across the toolchain)
->>>>>>> 37bec1fa24a3b586d7219740c2b690290d8b80c0
 
-**Key Runtime Libs:**
+**Key Libs:**
 
 - `fst`: 0.4 (Finite State Transducers)
 - `aho-corasick`: 1.1 (Pattern matching)
 - `@xmldom/xmldom`: 0.8+ (Worker XML support)
 - `jszip`: 3.10 (DOCX batch mode)
-- `dompurify`: 3.3+ (XSS sanitization)
-- `idb`: 8.0+ (IndexedDB wrapper for telemetry)
-
-**Build-time:**
-
-- `webpack`: 5.91+
-- `babel`: 7.29+
-- `wasm-pack`: Latest
-- `vitest`: 4.0+ (test runner)
-- `playwright`: 1.58+ (E2E testing)
-
-**Cloudflare:**
-
-- **Pages Functions:** Runtime environment (no explicit dependency)
-- **KV:** Storage binding (configured in `wrangler.toml`)
-- **Wrangler CLI:** 4.x (deployment tool)
-
----
-
-## 9. 🚀 ROADMAP HIGHLIGHTS
-
-### v1.1.0 (Q2 2026) — "Performance Unlocked"
-
-- [ ] Rust Streaming XML Parser (eliminates memory spikes)
-- [ ] WASM Binary Signing (supply chain security)
-- [ ] Advanced Analytics (conversion success rate, error tracking)
-- [ ] Progressive Web App (PWA) manifest for Web app
-
-### v1.2.0 (Q3 2026) — "Enterprise Ready"
-
-- [ ] AppSource Submission (Microsoft Office Store)
-- [ ] Multi-language UI (Croatian, Bosnian)
-- [ ] Batch API (process multiple documents via single call)
-- [ ] Custom Dictionary Upload (user-defined word lists)
-
-### v2.0.0 (Q4 2026) — "AI-Assisted"
-
-- [ ] LLM-powered context disambiguation
-- [ ] Smart quote correction (using sentence structure)
-- [ ] Neural suffix prediction (morphology-aware)
-- [ ] Cloud sync for settings (encrypted, optional)
-
----
-
-## 10. 📞 CONTACT & CONTRIBUTION
-
-- **Maintainer:** Serbian Transliterator Team
-- **Email:** iddj27510@gmail.com
-- **Repository:** [GitHub](https://github.com/your-org/serbian-transliterator)
-- **Security:** See [SECURITY.md](./SECURITY.md)
-- **Contributing:** See [CONTRIBUTING.md](./CONTRIBUTING.md)
-- **Workflow:** See [WORKFLOW.md](./WORKFLOW.md)
-- **Releasing:** See [RELEASING.md](./RELEASING.md)
-
----
-
-**Last Updated:** February 8, 2026  
-**Next Review:** After v1.1.0 release (target: Q2 2026)
-
----
-
-© 2026 Serbian Transliterator Project. Licensed under MIT.

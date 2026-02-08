@@ -10,18 +10,14 @@ Najbrži i najsigurniji način za preslovljavanje ćirilice i latinice u Microso
 ## 🚀 Ključne Karakteristike (v1.0.0 Hardened)
 
 - **100% Privatno & Offline:** Tekst se obrađuje isključivo u memoriji vašeg uređaja. Podaci nikada ne napuštaju Word host ili browser.
-- **Hybrid Core Engine:** Rust + WASM omogućavaju brz i determinističan rad na velikim dokumentima.
-- **Pametni "Bridge" Sloj:** Tehnologija koja prepoznaje i štiti reči, linkove i brendove čak i kada ih Microsoft Word nasumično razbije kroz više XML čvorova.
+- **Hybrid Core Engine:** Rust + WASM omogućavaju obradu brzinom od preko 18,000 reči u sekundi.
+- **Pametni "Bridge" Sloj:** Jedinstvena tehnologija koja prepoznaje i štiti reči, linkove i brendove čak i kada ih Microsoft Word nasumično razbije kroz više XML čvorova.
 - **Samoisceljujući Workeri:** Supervisor arhitektura automatski restartuje pozadinske procese u slučaju greške, osiguravajući neprekidan rad.
 - **Adaptivni Chunking:** Sistem dinamički prilagođava veličinu paketa teksta performansama vašeg računara kako bi Word interfejs ostao fluidan tokom obrade ogromnih dokumenata.
 
 ### 🛡️ Inteligentna Zaštita
 
-<<<<<<< HEAD
-- **Brand Guard:** Automatska zaštita za brendove (Windows, iPhone, Microsoft...).
-=======
 - **Brand Guard:** Automatska zaštita za hiljade tehnoloških brendova (Windows, iPhone, Microsoft...).
->>>>>>> 37bec1fa24a3b586d7219740c2b690290d8b80c0
 - **Context Aware:** Prepoznaje razliku između brenda i obične reči (npr. _iPhone Pro_ vs _prosečan_).
 - **Code Protection:** Tekst unutar Markdown koda (backticks) ili specifičnih Word stilova se ne dira.
 - **URI & Paths:** URL-ovi, e-mail adrese i Windows/Unix putanje ostaju netaknute.
@@ -32,7 +28,7 @@ Najbrži i najsigurniji način za preslovljavanje ćirilice i latinice u Microso
 
 Aplikacija radi kao samostalni batch processor u browseru:
 
-👉 https://serbiantransliterator.pages.dev
+👉 [serbiantransliterator.pages.dev](https://serbiantransliterator.pages.dev)
 
 - **DOCX Batch Mode:** Prevucite više `.docx` fajlova odjednom i preslovite ih lokalno.
 - **PWA Podrška:** Instalirajte aplikaciju na desktop ili mobilni telefon za brz pristup bez interneta.
