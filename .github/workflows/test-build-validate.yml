@@ -17,16 +17,16 @@ jobs:
             HUSKY: "0"
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
               with:
                   fetch-depth: 0
             # ✅ DODATO: Instalacija pnpm-a
             - name: Install pnpm
-              uses: pnpm/action-setup@v3
+              uses: pnpm/action-setup@v4
               with:
                   version: 9
             - name: Setup Node.js
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@v6
               with:
                   node-version: "22"
                   cache: "pnpm" # ✅ Promenjeno na pnpm
@@ -46,7 +46,7 @@ jobs:
                       src/wasm-core -> target
             # Optional: cache cargo-installed tools (cargo-audit lives here)
             - name: Cache cargo tools (~/.cargo/bin)
-              uses: actions/cache@v4
+              uses: actions/cache@v5
               with:
                   path: ~/.cargo/bin
                   key: cargo-tools-${{ runner.os }}-v2

@@ -28,18 +28,18 @@ jobs:
 
         steps:
             - name: Checkout
-              uses: actions/checkout@v4 # ✅ Vraćeno na v4 (v6 ne postoji)
+              uses: actions/checkout@v6 # ✅ Vraćeno na v4 (v6 ne postoji)
               with:
                   fetch-depth: 0
 
             # ✅ DODATO: Pnpm setup
             - name: Install pnpm
-              uses: pnpm/action-setup@v3
+              uses: pnpm/action-setup@v4
               with:
                   version: 9
 
             - name: Setup Node.js
-              uses: actions/setup-node@v4 # ✅ Vraćeno na v4
+              uses: actions/setup-node@v6 # ✅ Vraćeno na v4
               with:
                   node-version: "20"
                   cache: "pnpm" # ✅ Promenjeno na pnpm
