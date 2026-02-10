@@ -1,0 +1,13 @@
+{
+    "extends": "./tsconfig.json",
+    "include": ["src/**/*.ts", "src/**/*.d.ts"],
+    "exclude": [
+        "dist",
+        "coverage",
+        "node_modules",
+        "playwright-report",
+        "test-results",
+        "pkg",
+        "src/wasm-core/pkg"
+    ]
+}

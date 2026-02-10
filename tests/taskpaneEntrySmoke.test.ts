@@ -21,7 +21,7 @@ vi.mock("../../package.json", () => ({
 }));
 
 function setupDomForTaskpane() {
-    // Minimalan DOM koji settings/ui.ts očekuje u initUi()
+    // Minimal DOM expected by taskpane UI init
     document.body.innerHTML = `
     <button id="runBtn"></button>
     <button id="previewBtn"></button>
@@ -34,10 +34,12 @@ function setupDomForTaskpane() {
     </select>
     <select id="optUiLanguage"></select>
     <select id="optTheme"></select>
+
     <input type="radio" id="dirAuto" name="direction" value="auto" checked />
     <input type="radio" id="dirToAscii" name="direction" value="to-ascii" />
     <input type="radio" id="dirLatToCyr" name="direction" value="lat-to-cyr" />
     <input type="radio" id="dirCyrToLat" name="direction" value="cyr-to-lat" />
+
     <input type="checkbox" id="optConfirmWholeDoc" checked />
     <input type="checkbox" id="optIncludeHeadersFooters" />
     <input type="checkbox" id="optIncludeFootnotes" />
@@ -49,20 +51,22 @@ function setupDomForTaskpane() {
     <input type="checkbox" id="optSetProofingLanguage" checked />
     <input type="checkbox" id="optFixDoubleSpaces" checked />
     <input type="checkbox" id="optFormatDates" />
+
     <button id="toggleAdvancedBtn"></button>
     <div id="advancedSettings" class="advanced-settings">
       <select id="optCurlyProtection">
         <option value="placeholders">placeholders</option>
       </select>
-      
+
       <input id="subSrc" />
       <input id="subDest" />
       <button id="addSubBtn"></button>
       <div id="subsContainer"></div>
       <textarea id="optCustomSubstitutions"></textarea>
-      
+
       <select id="optDialect"></select>
     </div>
+
     <input id="tagFilterInput" />
     <div id="tagsContainer"></div>
     <div id="tagsList"></div>
@@ -72,7 +76,7 @@ function setupDomForTaskpane() {
     <button id="clearPresetBtn"></button>
     <button id="clearAllBtn"></button>
     <button id="exportLogsBtn"></button>
-    
+
     <div id="msg"></div>
     <div id="liveStatus"></div>
     <div id="liveTextLeft"></div>
@@ -80,15 +84,25 @@ function setupDomForTaskpane() {
     <div id="liveIconLeft"></div>
     <div id="liveIconRight"></div>
     <div id="liveAscii"></div>
-    
+
     <div id="statsBox"></div>
     <button id="statsHeader"></button>
     <div id="statsContent"></div>
     <div id="statsTitle"></div>
     <pre id="statsText"></pre>
-    
-    <div id="modalOverlay"><div id="modal"><h3 id="modalTitle"></h3><div id="modalText"></div><textarea id="modalInput"></textarea><div class="modal-actions"><button id="modalCancel"></button><button id="modalOk"></button></div></div></div>
-    
+
+    <div id="modalOverlay">
+      <div id="modal">
+        <h3 id="modalTitle"></h3>
+        <div id="modalText"></div>
+        <textarea id="modalInput"></textarea>
+        <div class="modal-actions">
+          <button id="modalCancel"></button>
+          <button id="modalOk"></button>
+        </div>
+      </div>
+    </div>
+
     <div id="tourOverlay" style="display: none"></div>
     <button id="tourCloseBtn"></button>
     <button id="tourActionBtn"></button>
@@ -112,20 +126,22 @@ function setupOfficeStub() {
             displayLanguage: "en-US",
             contentLanguage: "en-US",
             document: {
-                addHandlerAsync: vi.fn((_event: any, _handler: any, cb?: any) =>
+                addHandlerAsync: vi.fn((_event: unknown, _handler: unknown, cb?: (r: unknown) => void) =>
                     cb?.({ status: "succeeded" })
                 ),
-                removeHandlerAsync: vi.fn((_event: any, _opts: any, cb?: any) =>
+                removeHandlerAsync: vi.fn((_event: unknown, _opts: unknown, cb?: (r: unknown) => void) =>
                     cb?.({ status: "succeeded" })
                 ),
-                getSelectedDataAsync: vi.fn((_type: any, cb: any) => cb({ status: "succeeded", value: "" })),
+                getSelectedDataAsync: vi.fn((_type: unknown, cb: (r: unknown) => void) =>
+                    cb({ status: "succeeded", value: "" })
+                ),
             },
         },
 
         // Supports BOTH:
         // - Office.onReady(cb)
         // - await Office.onReady()
-        onReady: (cb?: (info: any) => void) => {
+        onReady: (cb?: (info: unknown) => void) => {
             const info = { host: "Word" };
             if (typeof cb === "function") setTimeout(() => cb(info), 0);
             return Promise.resolve(info);
@@ -133,7 +149,7 @@ function setupOfficeStub() {
     };
 
     const WordStub = {
-        run: async (callback: any) => {
+        run: async (callback: (ctx: unknown) => unknown) => {
             const context = {
                 document: {
                     body: { load: () => {}, text: "" },
@@ -146,8 +162,11 @@ function setupOfficeStub() {
         InsertLocation: { replace: "replace" },
     };
 
-    (globalThis as any).Office = OfficeStub;
-    (globalThis as any).Word = WordStub;
+    // Make it visible both ways (some code checks window.Office, some checks global Office)
+    (globalThis as unknown as { Office?: unknown }).Office = OfficeStub;
+    (globalThis as unknown as { Word?: unknown }).Word = WordStub;
+    (window as unknown as { Office?: unknown }).Office = OfficeStub;
+    (window as unknown as { Word?: unknown }).Word = WordStub;
 }
 
 beforeEach(() => {
@@ -155,7 +174,7 @@ beforeEach(() => {
 
     Object.defineProperty(window, "matchMedia", {
         writable: true,
-        value: vi.fn().mockImplementation((query) => ({
+        value: vi.fn().mockImplementation((query: string) => ({
             matches: false,
             media: query,
             onchange: null,
@@ -171,8 +190,11 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-    delete (globalThis as any).Office;
-    delete (globalThis as any).Word;
+    delete (globalThis as unknown as { Office?: unknown }).Office;
+    delete (globalThis as unknown as { Word?: unknown }).Word;
+    delete (window as unknown as { Office?: unknown }).Office;
+    delete (window as unknown as { Word?: unknown }).Word;
+
     document.body.innerHTML = "";
     vi.restoreAllMocks();
 });
@@ -181,12 +203,24 @@ describe("taskpane entrypoint smoke", () => {
     it("imports src/taskpane/taskpane.ts without throwing (Office stub + minimal DOM)", async () => {
         vi.resetModules();
         await import("../src/taskpane/taskpane");
+
+        // ✅ Wait for BOTH signals.
+        // Version is set early (startAddin start), but Office wiring happens later
+        // (onReady Promise + setTimeout + lazy imports + initTaskpane).
         await vi.waitFor(
             () => {
-                const runBtn = document.getElementById("runBtn");
-                expect(runBtn?.onclick).toBeTruthy();
+                const ver = document.getElementById("footerVersion");
+                expect(ver?.textContent).toContain("v1.0.0");
+
+                const addHandlerAsync = (
+                    globalThis as unknown as {
+                        Office: { context: { document: { addHandlerAsync: ReturnType<typeof vi.fn> } } };
+                    }
+                ).Office.context.document.addHandlerAsync;
+
+                expect(addHandlerAsync).toHaveBeenCalled();
             },
-            { timeout: 3000, interval: 100 }
+            { timeout: 3000, interval: 50 }
         );
     }, 30000);
 });
