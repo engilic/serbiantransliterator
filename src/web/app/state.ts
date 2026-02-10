@@ -37,9 +37,6 @@ export interface AppState {
     settingsOpen: boolean;
     settings: WebSettings;
 
-    /** UI-only: simulated offline toggle (in addition to real navigator.onLine) */
-    simulatedOffline: boolean;
-
     busy: boolean;
     statusText: string;
 
@@ -60,8 +57,6 @@ export function createInitialState(meta: { version: string }): AppState {
 
         settingsOpen: false,
         settings,
-
-        simulatedOffline: false,
 
         busy: false,
         statusText: "Spremno.",

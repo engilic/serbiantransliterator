@@ -1,11 +1,11 @@
 // src/web/web.ts
 
-import { ensureWasmReady } from "./ensureWasmReady";
 import { track } from "../shared/analytics";
 
 import "./web.css";
 
 import pkg from "../../package.json";
+import { initWasm } from "../core/textCore";
 import { mountWebApp } from "./app/mount";
 import type { Store } from "./app/store";
 import type { AppState } from "./app/state";
@@ -76,7 +76,7 @@ function createUpdateBanner(args: { onRefresh: () => void; onLater: () => void }
     notes.textContent = t("web_update_release_notes");
     notes.onclick = (e) => {
         e.preventDefault();
-        window.location.href = "./changelog.html";
+        window.open("./changelog.html", "_blank", "noopener,noreferrer");
     };
 
     const refresh = document.createElement("button");
@@ -120,6 +120,7 @@ function registerServiceWorkerWithUpdatePrompt(store: Store<AppState>) {
     // waiting SW version (best effort)
     let updateToVersion: string | null = null;
 
+    // Allow command palette (or other UI) to trigger refresh
     window.addEventListener("st:update-refresh", () => {
         if (!updateWaiting) return;
         refreshing = true;
@@ -194,6 +195,7 @@ function registerServiceWorkerWithUpdatePrompt(store: Store<AppState>) {
                 updateWaiting = reg.waiting;
                 updatePending = true;
 
+                // notify palette immediately
                 try {
                     window.dispatchEvent(
                         new CustomEvent("st:update-available", {
@@ -204,8 +206,10 @@ function registerServiceWorkerWithUpdatePrompt(store: Store<AppState>) {
                     // ignore
                 }
 
+                // show banner if allowed
                 maybeShowUpdate();
 
+                // best-effort: fetch version and update banner text if shown
                 void requestSwVersion(updateWaiting).then((v) => {
                     updateToVersion = v;
                     setBannerText();
@@ -227,7 +231,6 @@ function registerServiceWorkerWithUpdatePrompt(store: Store<AppState>) {
 
             window.addEventListener("focus", () => {
                 try {
-                    if (store.get().simulatedOffline) return;
                     if (navigator.onLine) void reg.update();
                 } catch {
                     // ignore
@@ -243,6 +246,8 @@ async function main() {
     const ver = document.getElementById("ver");
     if (ver) ver.textContent = `v${pkg.version}`;
 
+    await initWasm();
+
     track("visit", { page: "web" });
 
     const root = document.getElementById("app");
@@ -250,10 +255,9 @@ async function main() {
 
     const { store } = mountWebApp(root, { version: pkg.version });
 
-    // ✅ WASM init u pozadini (ne blokira UI)
-    void ensureWasmReady().catch((e) => console.error("WASM init failed:", e));
-
     registerServiceWorkerWithUpdatePrompt(store);
 }
 
-main().catch((e) => console.error(e));
+main().catch((e) => {
+    console.error(e);
+});

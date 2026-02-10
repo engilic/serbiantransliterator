@@ -1,10 +1,10 @@
 // src/web/app/actions.ts
 
-import { ensureWasmReady } from "../ensureWasmReady";
 import { track } from "../../shared/analytics";
 
 import JSZip from "jszip";
 import { InteractiveDiff } from "../../shared/diff/interactive";
+import { renderInteractiveDiffHtml } from "../../taskpane/app/preview/diffRenderer";
 import { WebWorkerClient } from "../workerClient";
 import { convertDocxFileDetailed, downloadBlob } from "../docx";
 import type { Store } from "./store";
@@ -23,7 +23,6 @@ export interface Actions {
     setOutputTab(tab: AppState["outputTab"]): void;
 
     openSettings(open: boolean): void;
-    setSimulatedOffline(next: boolean): void;
     updateSettings(patch: Partial<AppState["settings"]>): void;
     saveSettings(): void;
 
@@ -171,45 +170,9 @@ function aggregateStats(statsList: ConvertStats[]): ConvertStats | null {
     return sum;
 }
 
-async function safeCopyText(text: string): Promise<boolean> {
-    const s = String(text || "");
-    if (!s) return false;
-
-    try {
-        if (!navigator.clipboard || typeof navigator.clipboard.writeText !== "function") return false;
-        await navigator.clipboard.writeText(s);
-        return true;
-    } catch {
-        return false;
-    }
-}
-
 export function createActions(store: Store<AppState>): Actions {
     const workerClient = new WebWorkerClient();
     const engine: Engine = createSerbianEngine();
-
-    const ensurePlainDiff = async () => {
-        const s = store.get();
-        if (s.mode !== "text") return;
-
-        // ✅ Guard: Diff tab “on demand” računamo samo kad je Live Preview uključen
-        // (tada je output tipično svež, pa diff nije “stale”)
-        if (!s.settings.livePreview) return;
-
-        if (s.plain.interactive) return;
-
-        const input = String(s.plain.input || "");
-        const output = String(s.plain.output || "");
-        if (!input.trim() || !output.trim()) return;
-
-        const ops = await engine.diffText(input, output);
-        const interactive = new InteractiveDiff(ops);
-
-        store.update((x) => ({
-            ...x,
-            plain: { ...x.plain, interactive },
-        }));
-    };
 
     // Live Preview config
     const LIVE_DEBOUNCE_MS = 220;
@@ -245,33 +208,17 @@ export function createActions(store: Store<AppState>): Actions {
 
     const clearAbort = () => store.update((s) => ({ ...s, activeAbort: null }));
 
-    const runPlainConvert = async (args?: { quiet?: boolean; token?: number }) => {
+    const runPlainConvert = async (args?: { quiet?: boolean }) => {
         const quiet = args?.quiet === true;
-        const token = args?.token;
 
         const s = store.get();
         const input = String(s.plain.input || "");
 
-        // If this run is for live preview, ignore stale runs
-        const isLiveRun = typeof token === "number";
-        const tokenOk = () => !isLiveRun || token === liveRunId;
-
         if (!input.trim()) {
-            if (
-                String(s.plain.output || "") === "" &&
-                String(s.plain.typeLabel || "") === "" &&
-                s.plain.interactive === null
-            ) {
-                return;
-            }
-
-            if (!tokenOk()) return;
-
             store.update((x) => ({
                 ...x,
                 plain: { ...x.plain, output: "", typeLabel: "", interactive: null },
             }));
-
             if (!quiet) setStatus(t("msg_enter_text"));
             return;
         }
@@ -283,8 +230,6 @@ export function createActions(store: Store<AppState>): Actions {
             dir0 === "auto" || dir0 === "lat-to-cyr" || dir0 === "cyr-to-lat" || dir0 === "to-ascii"
                 ? dir0
                 : "auto";
-
-        await ensureWasmReady();
 
         const converted = await engine.convert({
             kind: "plainText",
@@ -308,20 +253,12 @@ export function createActions(store: Store<AppState>): Actions {
         const typeLabel =
             String(dir) === "to-ascii" ? t("dir_to_ascii_short") : String(converted.typeLabel || "");
 
-        const needDiff = !quiet || store.get().outputTab === "diff";
-
-        let interactive: InteractiveDiff | null = null;
-        if (needDiff) {
-            const ops = await engine.diffText(input, converted.text);
-            interactive = new InteractiveDiff(ops);
-        }
-
-        if (!tokenOk()) return;
+        const ops = await engine.diffText(input, converted.text);
+        const interactive = new InteractiveDiff(ops);
 
         store.update((x) => ({
             ...x,
-            // NOTE: for live (quiet) do NOT force-tab away from stats
-            outputTab: quiet ? x.outputTab : x.outputTab === "stats" ? "result" : x.outputTab,
+            outputTab: x.outputTab === "stats" ? "result" : x.outputTab,
             plain: { ...x.plain, output: converted.text, typeLabel, interactive },
         }));
 
@@ -335,43 +272,20 @@ export function createActions(store: Store<AppState>): Actions {
         if (!st.settings.livePreview) return;
 
         const input = String(st.plain.input || "");
-        if (input.length > LIVE_MAX_CHARS) {
-            cancelLive();
-            return;
-        }
+        if (input.length > LIVE_MAX_CHARS) return;
 
         if (liveTimer) clearTimeout(liveTimer);
         const myId = ++liveRunId;
 
         liveTimer = setTimeout(() => {
             if (myId !== liveRunId) return;
-            runPlainConvert({ quiet: true, token: myId }).catch((e) =>
-                console.error("Live convert failed:", e)
-            );
+            runPlainConvert({ quiet: true }).catch((e) => console.error("Live convert failed:", e));
         }, LIVE_DEBOUNCE_MS);
     };
 
     return {
         setMode: (mode) => {
-            store.update((s) => {
-                // reset “files-only” status messages when switching to Text
-                let statusText = s.statusText;
-                if (mode === "text") {
-                    const filesHints = new Set([
-                        t("web_status_add_docx_files"),
-                        t("web_status_no_docx_files"),
-                        t("web_status_jobs_cleared"),
-                        t("web_status_no_done_files"),
-                        t("web_status_packing_zip"),
-                        t("web_status_zip_downloaded"),
-                    ]);
-                    if (filesHints.has(String(s.statusText || ""))) {
-                        statusText = t("web_ui_status_idle");
-                    }
-                }
-
-                return { ...s, mode, statusText };
-            });
+            store.update((s) => ({ ...s, mode }));
 
             // ✅ When leaving text mode, cancel pending live work
             if (mode !== "text") cancelLive();
@@ -380,62 +294,18 @@ export function createActions(store: Store<AppState>): Actions {
             if (mode === "text") scheduleLivePlainConvert();
         },
 
-        setOutputTab: (tab) => {
-            store.update((s) => ({ ...s, outputTab: tab }));
-            if (tab === "diff") {
-                void ensurePlainDiff().catch((e) => console.error("ensurePlainDiff failed:", e));
-            }
-        },
+        setOutputTab: (tab) => store.update((s) => ({ ...s, outputTab: tab })),
 
         openSettings: (open) => store.update((s) => ({ ...s, settingsOpen: open })),
 
-        setSimulatedOffline: (next) => {
-            store.update((s) => ({ ...s, simulatedOffline: next }));
-        },
-
         updateSettings: (patch) => {
-            const hasLive = Object.prototype.hasOwnProperty.call(patch, "livePreview");
-            const turnedOff = hasLive && patch.livePreview === false;
-            const turnedOn = hasLive && patch.livePreview === true;
+            store.update((s) => ({ ...s, settings: { ...s.settings, ...patch } }));
 
-            // 1) Pure state update (no side-effects)
-            store.update((s) => {
-                const nextSettings = { ...s.settings, ...patch };
-
-                let statusText = s.statusText;
-                if (hasLive) {
-                    statusText = turnedOff ? t("web_status_live_off") : t("web_status_live_on");
-                }
-
-                return { ...s, settings: nextSettings, statusText };
-            });
-
-            // 2) Side-effects AFTER state update
-            if (turnedOff) {
+            // ✅ If live preview was turned OFF, cancel any scheduled run
+            if (Object.prototype.hasOwnProperty.call(patch, "livePreview") && patch.livePreview === false) {
                 cancelLive();
-                return;
             }
 
-            if (turnedOn) {
-                // invalidate any pending live run + clear timer
-                cancelLive();
-
-                const st = store.get();
-                const input = String(st.plain.input || "");
-
-                if (st.mode === "text" && input.trim().length > 0 && input.length <= LIVE_MAX_CHARS) {
-                    // cancelLive already incremented liveRunId, so use current value as token
-                    const token = liveRunId;
-
-                    void runPlainConvert({ quiet: true, token }).catch((e) =>
-                        console.error("Live convert failed:", e)
-                    );
-                }
-
-                return;
-            }
-
-            // other settings changed -> keep normal live behavior
             scheduleLivePlainConvert();
         },
 
@@ -490,10 +360,8 @@ export function createActions(store: Store<AppState>): Actions {
             const s = store.get();
             const txt = String(s.plain.output || "");
             if (!txt) return;
-
-            const ok = await safeCopyText(txt);
-            if (ok) setStatus(t("preview_toast_copied"));
-            else setStatus(t("web_status_copy_failed"));
+            await navigator.clipboard.writeText(txt);
+            setStatus(t("preview_toast_copied"));
         },
 
         addFiles: (files) => {
@@ -510,7 +378,7 @@ export function createActions(store: Store<AppState>): Actions {
                 file,
                 status: "queued",
                 progressPct: 0,
-                message: t("web_job_msg_queued"),
+                message: "U redu čekanja",
                 outBlob: null,
                 error: null,
                 stats: null,
@@ -550,9 +418,6 @@ export function createActions(store: Store<AppState>): Actions {
                 return;
             }
 
-            // ✅ WASM ready pre starta (instant UI pattern)
-            await ensureWasmReady();
-
             track("convert", {
                 mode: "files",
                 count: jobs.length,
@@ -574,11 +439,7 @@ export function createActions(store: Store<AppState>): Actions {
                 for (const job of store.get().jobs) {
                     if (ac.signal.aborted) break;
 
-                    updateJob(job.id, {
-                        status: "running",
-                        progressPct: 1,
-                        message: t("web_job_msg_loading"),
-                    });
+                    updateJob(job.id, { status: "running", progressPct: 1, message: "Učitavanje..." });
 
                     const started = performance.now();
 
@@ -596,7 +457,7 @@ export function createActions(store: Store<AppState>): Actions {
                     updateJob(job.id, {
                         status: "done",
                         progressPct: 100,
-                        message: t("web_job_msg_done_ms", took),
+                        message: `Gotovo (${took}ms)`,
                         outBlob: blob,
                         stats,
                         changedParts,
@@ -616,7 +477,7 @@ export function createActions(store: Store<AppState>): Actions {
                         ...s,
                         jobs: s.jobs.map((j) =>
                             j.status === "running" || j.status === "queued"
-                                ? { ...j, status: "canceled", message: t("web_job_msg_canceled") }
+                                ? { ...j, status: "canceled", message: "Otkaženo" }
                                 : j
                         ),
                     }));
@@ -633,12 +494,7 @@ export function createActions(store: Store<AppState>): Actions {
                         ...s,
                         jobs: s.jobs.map((j) =>
                             j.status === "running"
-                                ? {
-                                      ...j,
-                                      status: "error",
-                                      error: err.message,
-                                      message: t("web_job_msg_error"),
-                                  }
+                                ? { ...j, status: "error", error: err.message, message: "Greška" }
                                 : j
                         ),
                     }));
@@ -701,6 +557,7 @@ export function createActions(store: Store<AppState>): Actions {
 
             interactive.toggle(index);
             const rebuilt = interactive.buildResult();
+            renderInteractiveDiffHtml(interactive, 20000);
 
             store.update((x) => ({
                 ...x,

@@ -64,12 +64,6 @@
                 gap: 8px;
                 align-items: center;
                 flex-wrap: wrap;
-                justify-content: flex-end; /* sve ka desno */
-            }
-
-            /* X uvek poslednji u flex toku (i kad se prelama na više redova) */
-            .drawer-close-x {
-                order: 999;
             }
 
             a,
@@ -86,28 +80,6 @@
 
             a:hover,
             button:hover {
-                border-color: rgba(255, 255, 255, 0.22);
-                background: rgba(255, 255, 255, 0.06);
-            }
-
-            /* X dugme umesto "Back" */
-            .drawer-close-x {
-                width: 36px;
-                height: 34px;
-                padding: 0;
-                border-radius: 12px;
-                font-size: 18px;
-                font-weight: 900;
-                line-height: 1;
-                display: inline-flex;
-                align-items: center;
-                justify-content: center;
-                /* ghost look */
-                background: transparent;
-                border-color: transparent;
-            }
-
-            .drawer-close-x:hover {
                 border-color: rgba(255, 255, 255, 0.22);
                 background: rgba(255, 255, 255, 0.06);
             }
@@ -184,14 +156,12 @@
             </div>
 
             <div class="actions">
-                <input id="q" type="search" autocomplete="off" autocapitalize="off" spellcheck="false" />
+                <a href="./web.html" id="backLink">Back</a>
+
+                <input id="q" />
 
                 <button id="btnNext" type="button">Next</button>
                 <button id="btnCopy" class="primary" type="button">Copy</button>
-
-                <button id="btnBack" class="drawer-close-x" type="button" aria-label="Back" title="Back">
-                    ×
-                </button>
             </div>
         </header>
 
@@ -205,7 +175,6 @@
             const isSr = String(navigator.language || "")
                 .toLowerCase()
                 .startsWith("sr");
-
             const S = isSr
                 ? {
                       loading: "Učitavanje…",
@@ -217,7 +186,6 @@
                       search: "Pretraga…",
                       next: "Sledeće",
                       noMatch: "Nema rezultata",
-                      refreshed: "Osveženo",
                   }
                 : {
                       loading: "Loading…",
@@ -229,44 +197,21 @@
                       search: "Search…",
                       next: "Next",
                       noMatch: "No match",
-                      refreshed: "Refreshed",
                   };
 
             const msg = document.getElementById("msg");
             const out = document.getElementById("out");
             const btnCopy = document.getElementById("btnCopy");
-            const btnBack = document.getElementById("btnBack");
+            const backLink = document.getElementById("backLink");
             const toast = document.getElementById("toast");
             const q = document.getElementById("q");
             const btnNext = document.getElementById("btnNext");
 
-            if (!msg) throw new Error("Missing #msg");
-            if (!out) throw new Error("Missing #out");
-            if (!btnCopy) throw new Error("Missing #btnCopy");
-            if (!btnBack) throw new Error("Missing #btnBack");
-            if (!toast) throw new Error("Missing #toast");
-            if (!q) throw new Error("Missing #q");
-            if (!btnNext) throw new Error("Missing #btnNext");
-
             msg.textContent = S.loading;
-            btnBack.title = S.back;
-            btnBack.setAttribute("aria-label", S.back);
+            backLink.textContent = S.back;
             btnCopy.textContent = S.copy;
             q.placeholder = S.search;
-            q.setAttribute("aria-label", S.search);
             btnNext.textContent = S.next;
-
-            btnBack.addEventListener("click", (e) => {
-                e.preventDefault();
-
-                if (history.length > 1) {
-                    history.back();
-                    return;
-                }
-
-                // fallback ako je changelog otvoren direktno (nema "back")
-                location.href = "./web.html";
-            });
 
             let loadedText = "";
             btnNext.disabled = true;
@@ -305,7 +250,7 @@
                     }
 
                     const rect = range.getBoundingClientRect();
-                    const top = window.scrollY + rect.top - 140; // keep header visible
+                    const top = window.scrollY + rect.top - 140; // 140px offset to keep header visible
                     window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
                 } catch {
                     // ignore
@@ -349,7 +294,7 @@
                 }
             });
 
-            // kad se query promeni, resetuj lastIndex da “Next” kreće od početka
+            // (preporučeno) kad se query promeni, resetuj lastIndex da “Next” kreće od početka
             q.addEventListener("input", () => {
                 lastIndex = -1;
             });
@@ -374,53 +319,16 @@
                 else showToast(S.copyFail);
             };
 
-            // ----------------------------
-            // CHANGELOG LOAD (cache-first + background reload)
-            // ----------------------------
-
-            async function loadChangelog(cacheMode) {
-                const r = await fetch("./CHANGELOG.md", cacheMode ? { cache: cacheMode } : undefined);
-                if (!r.ok) throw new Error("HTTP " + r.status);
-                return await r.text();
-            }
-
-            function applyLoadedText(txt) {
-                loadedText = String(txt || "");
-                out.textContent = loadedText;
-                btnNext.disabled = false;
-                btnCopy.disabled = false;
-                msg.textContent = "";
-                lastIndex = -1;
-            }
-
-            function maybeBackgroundReload() {
-                if (navigator.onLine !== true) return;
-
-                // pusti UI da se prikaže odmah, pa osveži u pozadini
-                setTimeout(async () => {
-                    try {
-                        const fresh = await loadChangelog("reload");
-                        if (fresh && fresh !== loadedText) {
-                            applyLoadedText(fresh);
-                            // opciono:
-                            // showToast(S.refreshed);
-                        }
-                    } catch {
-                        // best-effort: ignoriši
-                    }
-                }, 250);
-            }
-
             (async () => {
                 try {
-                    msg.textContent = S.loading;
-
-                    // 1) cache-first (offline radi ako je precache)
-                    const txt = await loadChangelog();
-                    applyLoadedText(txt);
-
-                    // 2) online: background reload
-                    maybeBackgroundReload();
+                    const r = await fetch("./CHANGELOG.md", { cache: "no-store" });
+                    if (!r.ok) throw new Error("HTTP " + r.status);
+                    loadedText = await r.text();
+                    btnNext.disabled = false;
+                    btnCopy.disabled = false;
+                    out.textContent = loadedText;
+                    msg.textContent = "";
+                    lastIndex = -1;
                 } catch (e) {
                     msg.textContent = S.loadFail;
                     out.textContent = String(e && e.message ? e.message : e);
