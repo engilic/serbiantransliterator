@@ -1,121 +1,152 @@
+# .github/workflows/codeql.yml
+
 name: CodeQL
 
 on:
-    push:
-        branches: ["master"]
-    pull_request:
-        branches: ["master"]
-    schedule:
-        - cron: "0 6 * * 1"
-    workflow_dispatch:
+  push:
+    branches: ["master"]
+  pull_request:
+    branches: ["master"]
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
 
 concurrency:
-    group: pr-${{ github.event.pull_request.number || github.ref }}
-    cancel-in-progress: true
+  group: pr-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
-    analyze:
-        name: Analyze (CodeQL)
-        runs-on: ubuntu-latest
-        permissions:
-            actions: read
-            contents: read
-            security-events: write
+  analyze:
+    name: Analyze (CodeQL)
+    runs-on: ubuntu-latest
 
-        strategy:
-            fail-fast: false
-            matrix:
-                language: ["javascript-typescript"]
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
 
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v4 # ✅ Vraćeno na v4
-              with:
-                  fetch-depth: 0
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ["javascript-typescript"]
 
-            - name: Initialize CodeQL
-              uses: github/codeql-action/init@v3 # ✅ Promenjeno na v3 (standardna stabilna verzija)
-              with:
-                  languages: ${{ matrix.language }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
-            # ✅ DODATO: Pnpm setup
-            - name: Install pnpm
-              uses: pnpm/action-setup@v3
-              with:
-                  version: 9
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
 
-            - name: Setup Node.js
-              uses: actions/setup-node@v4 # ✅ Vraćeno na v4
-              with:
-                  node-version: "20"
-                  cache: "pnpm" # ✅ Promenjeno
+      # IMPORTANT:
+      # Repo already pins pnpm via package.json "packageManager": "pnpm@X.Y.Z".
+      # With pnpm/action-setup@v4, do NOT also specify "with: version:" (it fails).
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
 
-            - name: Install deps (pnpm install --frozen-lockfile)
-              run: pnpm install --frozen-lockfile # ✅ Promenjeno
-              env:
-                  HUSKY: "0"
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: "pnpm"
 
-            - name: Install wasm-pack
-              uses: jetli/wasm-pack-action@v0.4.0
-              with:
-                  version: "latest"
+      - name: Install deps (pnpm install --frozen-lockfile)
+        run: pnpm install --frozen-lockfile
+        env:
+          HUSKY: "0"
 
-            - name: Build (production)
-              run: pnpm run build # ✅ Promenjeno
+      - name: Install wasm-pack
+        uses: jetli/wasm-pack-action@v0.4.0
+        with:
+          version: "latest"
 
-            - name: Perform CodeQL Analysis (generate SARIF, do not upload)
-              uses: github/codeql-action/analyze@v3 # ✅ Promenjeno na v3
-              with:
-                  category: "/language:${{ matrix.language }}"
-                  output: sarif-results
-                  upload: false
+      - name: Build (production)
+        run: pnpm run build
+        env:
+          HUSKY: "0"
 
-            - name: List SARIF outputs
-              shell: bash
-              run: |
-                  set -euo pipefail
-                  echo "Listing sarif-results:"
-                  ls -la sarif-results || true
-                  echo "SARIF files:"
-                  ls -la sarif-results/*.sarif 2>/dev/null || true
+      - name: Perform CodeQL Analysis (generate SARIF, do not upload)
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:${{ matrix.language }}"
+          output: sarif-results
+          upload: false
 
-            - name: Filter ALL SARIF files (hard remove OOXML xmlParser false positives)
-              shell: bash
-              run: |
-                  set -euo pipefail
-                  shopt -s nullglob
-                  files=(sarif-results/*.sarif)
+      - name: List SARIF outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Tree (sarif-results):"
+          find sarif-results -maxdepth 4 -type f -print || true
+          echo "SARIF files:"
+          find sarif-results -type f -name "*.sarif" -print || true
 
-                  if [ ${#files[@]} -eq 0 ]; then
-                    echo "ERROR: No SARIF files found in sarif-results/"
-                    exit 1
-                  fi
+      # Fix for: "Path does not exist: sarif-results/javascript-typescript.sarif"
+      # We do NOT assume the SARIF filename. We normalize it deterministically.
+      - name: Normalize SARIF filename
+        id: sarif
+        shell: bash
+        run: |
+          set -euo pipefail
 
-                  for f in "${files[@]}"; do
-                    node scripts/filter-codeql-sarif.cjs --in "$f" --out "$f"
-                  done
+          mapfile -t files < <(find sarif-results -type f -name "*.sarif" -print)
 
-            - name: Assert filtered SARIF contains no remaining matches
-              shell: bash
-              run: |
-                  set -euo pipefail
-                  shopt -s nullglob
-                  files=(sarif-results/*.sarif)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "ERROR: No SARIF files found under sarif-results/"
+            find sarif-results -maxdepth 6 -type f -print || true
+            exit 1
+          fi
 
-                  if jq -r '
-                    .runs[].results[]?
-                    | select(.ruleId=="js/xss" or .ruleId=="js/xml-bomb")
-                    | (.locations[0].physicalLocation.artifactLocation.uri // "")
-                  ' "${files[@]}" | grep -Ei "src[\\/]+shared[\\/]+ooxml[\\/]+xmlParser\.ts" -q; then
-                    echo "ERROR: SARIF still contains js/xss or js/xml-bomb results for src/shared/ooxml/xmlParser.ts"
-                    exit 1
-                  fi
+          # Pick the largest SARIF (usually the primary result).
+          main="$(ls -S "${files[@]}" | head -n 1)"
+          target="sarif-results/${{ matrix.language }}.sarif"
 
-                  echo "OK: filtered SARIF has no remaining matches"
+          echo "Picked SARIF: $main"
+          echo "Target SARIF: $target"
 
-            - name: Upload SARIF (filtered)
-              uses: github/codeql-action/upload-sarif@v3 # ✅ Promenjeno na v3
-              with:
-                  sarif_file: sarif-results
-                  category: "/language:${{ matrix.language }}"
-                  wait-for-processing: true
+          mv "$main" "$target"
+
+          # Remove any remaining SARIF files to avoid confusion.
+          mapfile -t rest < <(find sarif-results -type f -name "*.sarif" -print)
+          for f in "${rest[@]}"; do
+            if [ "$f" != "$target" ]; then
+              rm -f "$f"
+            fi
+          done
+
+          # Validate JSON shape (basic)
+          jq -e . "$target" >/dev/null
+
+          echo "file=$target" >> "$GITHUB_OUTPUT"
+
+      - name: Filter SARIF (hard remove OOXML xmlParser false positives)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/filter-codeql-sarif.cjs --in "${{ steps.sarif.outputs.file }}" --out "${{ steps.sarif.outputs.file }}"
+
+      - name: Assert filtered SARIF contains no remaining matches
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if jq -r '
+            .runs[].results[]?
+            | select(.ruleId=="js/xss" or .ruleId=="js/xml-bomb")
+            | (.locations[0].physicalLocation.artifactLocation.uri // "")
+          ' "${{ steps.sarif.outputs.file }}" | grep -Ei "src[\\/]+shared[\\/]+ooxml[\\/]+xmlParser\.ts" -q; then
+            echo "ERROR: SARIF still contains js/xss or js/xml-bomb results for src/shared/ooxml/xmlParser.ts"
+            exit 1
+          fi
+
+          echo "OK: filtered SARIF has no remaining matches"
+
+      - name: Upload SARIF (filtered)
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: ${{ steps.sarif.outputs.file }}
+          category: "/language:${{ matrix.language }}"
+          wait-for-processing: true
