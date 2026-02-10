@@ -1,151 +1,271 @@
-# 📊 PROJECT STATE — v1.0.0 (HARDENING) — DEEP DIVE
+# 📊 PROJECT STATE — v1.0.0 (HARDENING) — DEEP DIVE (REV 2026-02-10)
 
-**Date:** February 7, 2026  
-**Version:** 1.0.0 (Production / Dev Hardening)  
-**Codename:** "The Neural Frontier" (Phase 2 Active)  
-**Pipeline Identity:** 🛡️ MAX1 Guardian  
-**Status:** 🟢 GREEN (Passing all strict verification gates)
+Date: February 10, 2026
+Version: 1.0.0 (Production / Dev Hardening)
+Codename: “The Neural Frontier” (Phase 2 Active)
+Pipeline Identity: 🛡️ MAX1 Guardian
+Status: 🟢 GREEN (Strict gates passing locally)
 
----
 
-## 1. 🏗️ SYSTEM ARCHITECTURE & INTERNALS
+============================================================
+1) 🏗️ SYSTEM ARCHITECTURE & INTERNALS
+============================================================
 
-The system operates on a **MAX Mode Hybrid Architecture** designed to balance the ubiquity of JavaScript with the raw performance of Rust.
+The system runs on a MAX Mode Hybrid Architecture that combines:
+- TypeScript shells (Office Add-in + Web App)
+- Rust/WASM compute core
+- Worker-first processing to keep UI responsive
 
-### A. The Core Engine (Rust/WASM)
+------------------------------------------------------------
+A) The Core Engine (Rust/WASM)
+------------------------------------------------------------
 
-**Crate:** `serbian-transliterator-wasm`
+Crate / package:
+- Rust WASM core lives under src/wasm-core (wasm-pack build --target web)
+- JS/TS loads generated pkg artifacts for the engine
 
-**Zero-Lock Caching (v7.6):** We have migrated from global `Mutex` locking to `thread_local!` storage with `RefCell`. This ensures zero-cost cache lookups within the Web Worker, eliminating atomic overhead during high-throughput processing.
+Performance posture (current philosophy):
+- Compute stays off the UI thread (workers)
+- Engine stays deterministic and offline-first
 
-**Key Algorithms:**
+Cache model:
+- “Per-worker” isolation is the default mental model: each worker has its own WASM instance + memory.
+- Cache should be local to that instance to avoid contention and cross-job leakage.
 
-- **FST (Finite State Transducers):** Used for O(k) dictionary lookups.
-- **Zero-Copy Deserialization:** Dictionaries are memory-mapped into WASM memory from `Uint8Array` assets.
-- **Aho-Corasick:** Used for the `init_replacer` logic to perform multi-pattern string replacement in a single pass.
+Algorithms in current design (as implemented or planned in-core):
+- Dictionary-based lookup strategy (FST-style goal: O(k) query)
+- Multi-pattern replacement pipeline (Aho-Corasick-style goal: single pass)
+- SIMD scanning (goal: faster character classification on supported CPUs)
 
-**SIMD:** 128-bit vectorization is explicitly enabled for character scanning and pattern matching on supported CPUs.
+NOTE:
+- Where a statement is “design intent” vs “implemented detail”, treat it as intent unless verified by source code inspection of src/wasm-core/src/*.rs.
 
-### B. The Frontend Shell (TypeScript)
 
-- **Framework:** Vanilla TypeScript (No Virtual DOM overhead).
-- **State Management:** Custom `StateManager` (`src/taskpane/app/state.ts`) with an Observer pattern.
-- **Styling:** Fluent UI Variables via CSS Modules. Theme detection is handled via CSS Custom Properties and a `data-theme` attribute on the root element.
+------------------------------------------------------------
+B) The Frontend Shell (TypeScript)
+------------------------------------------------------------
 
-### C. The Worker Pipeline (Supervisor Pattern)
+Frontend approach:
+- Vanilla TypeScript (no React/Vue runtime); direct DOM rendering for predictable perf.
+- Two UX surfaces:
+  1) Office Add-in taskpane
+  2) Web App (standalone)
 
-**Architecture:** 100% of document processing is offloaded to Web Workers.
+State & UI patterns (observed in repo):
+- Web App uses a custom store + subscribe/render loop (mount + actions + UI render).
+- Settings are persisted locally (Web: localStorage “safe storage” wrappers; Add-in: settings store).
 
-**Self-Healing (v1.0.0 Hardened):** The `WorkerClient` now implements a full **Supervisor Pattern**.
+The “no stutter” rule:
+- UI must never block on WASM init; WASM warm-up runs in background where possible (ensureWasmReady pattern).
 
-- **Automatic Restart:** If a worker crashes (e.g., WASM panic), the client automatically spawns a new instance.
-- **Seamless Recovery:** In-flight jobs are transparently re-queued or processed via a main-thread fallback, ensuring no data loss.
-- **Heartbeat:** 8s soft-timeout for worker initialization.
 
----
+------------------------------------------------------------
+C) Worker Pipeline (Supervisor Pattern)
+------------------------------------------------------------
 
-## 2. 🧩 MODULES & DATA FLOW
+Worker-first:
+- DOCX conversions run via a worker client (pool/supervisor pattern).
+- JS remains a coordinator: queue jobs, stream progress, handle cancellations (AbortController).
 
-### OOXML Processing ("The Bridge")
+Hardening goal:
+- If worker crashes or WASM panics, system should fail soft:
+  - restart worker
+  - re-queue job or fall back (where safe)
+  - never lose user input or settings
 
-This is the most critical logic layer (`src/shared/ooxml`), operating in multiple passes:
 
-1. **Parsing:** Currently uses `@xmldom/xmldom` ponyfill for cross-environment compatibility between the main thread and Web Workers.
+============================================================
+2) 🧩 MODULES & DATA FLOW
+============================================================
 
-2. **Bridging (Multi-Pass):**
-    - **Structural Pass:** Normalizes spaces and handles NBSP (`\u00A0`) across text nodes.
-    - **Lexical Pass:** Reconstructs split links, brands, and digraphs (e.g., `L` | `j` -> `Љ`).
-    - **Contextual Pass (NEW):** Handles ambiguous brand suffixes (e.g., protecting "Pro" or "Max" only when preceded by a known brand like "iPhone").
+------------------------------------------------------------
+OOXML Processing (“The Bridge”)
+------------------------------------------------------------
 
-3. **Reconstruction:** Uses `XMLSerializer` to return valid, production-ready OOXML.
+Critical layer:
+- src/shared/ooxml
 
-### Dictionary Management
+Pipeline (multi-pass, intent-preserving):
+1) Parse OOXML safely
+   - block unsafe XML constructs where relevant (DOCTYPE/ENTITY, etc.)
+2) Bridging passes
+   - Structural: spaces/NBSP normalization, run boundaries
+   - Lexical: reconstruct split tokens (links, digraphs, brand fragments across runs)
+   - Contextual: ambiguous suffix protection (e.g., “Pro/Max” logic when preceded by brand)
+3) Re-serialize back into OOXML with minimal structural disruption
+   - preserve styles/runs/fields as much as possible
 
-- **Source:** Morphology-aware JSON files in `src/static/assets/`.
-- **Compiler:** The `compiler.rs` binary builds enhanced FST images that include metadata for linguistic suffixes, allowing for smarter root-based transliteration.
+Constraint:
+- Current DOM-based parsing can be memory-heavy for huge XML parts (the “memory wall”).
 
----
+Planned hardening milestone (v1.1.x target):
+- Rust streaming pull-parser inside WASM (quick-xml style) to avoid full DOM materialization.
+- Goal: near O(1) memory behavior with bounded buffers.
 
-## 3. 📈 PERFORMANCE METRICS
 
-### Execution Speed (Reference: i7-12700H)
+------------------------------------------------------------
+Dictionary Management
+------------------------------------------------------------
 
-- **WASM Init:** ~45ms (cold), ~5ms (warm).
-- **Compute Throughput:** ~18,000+ words/sec (Worker mode).
-- **UI Latency:** < 16ms (maintained via Adaptive Chunking).
+Assets:
+- Source JSON in src/static/assets/
+- Compiled binary dictionaries produced by Rust compiler tool (cargo run --bin compiler)
 
-### Bundle Size
+Operational rule:
+- If JSON dictionaries change, run compile step:
+  - pnpm run compile:dicts
 
-- **Total Gzipped:** ~1.8 MB
-    - `taskpane.js`: ~150 KB
-    - `wasm_bg.wasm`: ~600 KB
-    - `dict_*.bin`: ~1.0 MB (Highly compressed FST)
 
-### Memory Footprint
+============================================================
+3) 📈 PERFORMANCE METRICS (CURRENT BASELINE + TARGETED FIX)
+============================================================
 
-- **Idle:** ~20 MB
-- **Active (Small Doc):** ~80 MB
-- **Active (Large Doc > 100MB XML):** Spikes to **500MB+** due to `DOMParser` tree creation.
-    - **Status:** Targeted for v1.1.0 via **Rust Streaming Parser**.
+Reference machine baseline (as previously measured):
+- WASM Init: ~45ms cold, ~5ms warm
+- Throughput: ~18k+ words/sec (worker mode)
+- UI latency: <16ms (maintained via chunking + worker-first)
 
----
+Bundle size (approx baseline):
+- Total gzipped: ~1.8MB
+  - taskpane/web JS: ~150KB order-of-magnitude
+  - wasm: ~600KB order-of-magnitude
+  - dict bins: ~1.0MB order-of-magnitude
 
-## 4. 🛡️ SECURITY & COMPLIANCE
+Memory footprint (known wall):
+- Idle: ~20MB
+- Active small docs: ~80MB
+- Active large docs (>100MB XML parts): spikes to ~500MB+ due to DOM tree creation
 
-### Content Security Policy (CSP)
+Hardening target:
+- Replace DOM-based parse for heavy parts with streaming Rust parser in WASM:
+  - reduce peak memory
+  - reduce GC pressure
+  - reduce crash probability on huge docs
 
-- **WASM:** Uses `wasm-unsafe-eval` for module instantiation (standard for modern WASM apps).
-- **Connect-Src:** Restricted to `'self'` and Microsoft endpoints.
 
-### Input Sanitization
+============================================================
+4) 🛡️ SECURITY & COMPLIANCE (OFFLINE-FIRST REALITY)
+============================================================
 
-- **DOMPurify:** Mandatory for all clipboard and HTML rendering operations.
-- **XML Safety:** The `parseSafeOoxml` function blocks XXE-like payloads (DOCTYPE/ENTITY) before they reach the parser.
+CSP posture:
+- WASM instantiation requires WASM-related allowances (standard for modern WASM apps).
+- Network endpoints must remain minimal and privacy-reviewed.
 
----
+Input sanitization:
+- DOMPurify is mandatory anywhere untrusted HTML could touch the DOM.
+- XML safety: block XXE-like payloads before any XML parsing.
 
-## 5. 🧪 QUALITY ASSURANCE (MAX1 GUARDIAN)
+Privacy rules (non-negotiable):
+- No document contents leave device.
+- Analytics (if enabled) must be aggregate + anonymous, no PII, no content.
 
-The **MAX1 Guardian** pipeline (`pnpm run verify-all`) enforces a 12-check battery on every PR:
 
-1. **File Headers:** Correct relative paths in all source files.
-2. **Conflict Markers:** Zero `<<<<<<<` markers allowed.
-3. **Big File Gate:** Rejects files > 5MB.
-4. **I18n Integrity:** All used keys must be defined in `sr.ts`.
-5. **Security Sniffer:** Scans for secrets and `innerHTML` sinks.
-6. **Coverage:** ~92% coverage threshold via Vitest.
+============================================================
+5) 🧪 QUALITY ASSURANCE (MAX1 GUARDIAN)
+============================================================
 
-_(Note: The project has fully migrated from npm to **pnpm**; all CI and local verification steps are executed via pnpm scripts.)_
+MAX1 Guardian gates (local truth):
+- lint (eslint) with --max-warnings 0
+- typecheck (tsc --noEmit)
+- unit tests (vitest)
+- e2e tests (playwright)
+- manifest validation
+- rust fmt/clippy/test where applicable
 
----
+Coverage posture:
+- Vitest coverage threshold ~92% (target/guarded)
 
-## 6. ⚠️ KNOWN LIMITATIONS & CONSTRAINTS
 
-### A. Memory Wall (Current Milestone)
+============================================================
+6) ⚠️ KNOWN LIMITATIONS & CONSTRAINTS (TRACKED)
+============================================================
 
-- **Impact:** Extremely large documents (>200 pages) can crash the browser tab due to `DOMParser` overhead.
-- **Mitigation:** Adaptive Chunking slices processing into batches.
-- **Target:** v1.1.0 will introduce a Rust-based streaming pull-parser (`quick-xml`).
+A) Memory Wall (Current Milestone)
+Impact:
+- Very large documents can crash tabs due to DOM-based parsing overhead.
 
-### B. WebView2 / Office Theme Sync
+Mitigation:
+- Worker chunking + progress updates + cancel support.
 
-- **Impact:** Theme changes (Dark/Light) may not trigger CSS updates in real-time on some Windows builds.
-- **Workaround:** Implemented polling for `Office.context.officeTheme` and refresh on `window.focus`.
+Target:
+- v1.1.x: Rust streaming pull-parser in WASM.
 
----
+B) WebView2 / Office Theme Sync (Windows)
+Impact:
+- Theme changes might not always propagate instantly in some Office/Windows builds.
 
-## 7. 📦 DEPENDENCY SNAPSHOT
+Mitigation pattern:
+- Refresh/polling on focus, reapply CSS variables/root data-theme when needed.
 
-**Runtime:**
+C) Visual Studio HTML Validator Noise (Templates)
+Impact:
+- Visual Studio may show “Missing attribute name” for taskpane.html when it contains EJS template tags (<%= ... %>).
+Reality:
+- This is typically editor validation noise, not a build failure, because the HTML is templated and transformed by webpack.
 
-- Node.js: 22.x (LTS via Volta)
-- Rust: 1.75+ (Stable)
-- TypeScript: 5.4+
-- **Package Manager:** pnpm (workspace-aware, replaces npm across the toolchain)
 
-**Key Libs:**
+============================================================
+7) ✅ RECENT HARDENING CHANGES (2026-02-10)
+============================================================
 
-- `fst`: 0.4 (Finite State Transducers)
-- `aho-corasick`: 1.1 (Pattern matching)
-- `@xmldom/xmldom`: 0.8+ (Worker XML support)
-- `jszip`: 3.10 (DOCX batch mode)
+A) Office runtime detection is now type-safe and test-safe
+- No “any” in production detection path.
+- Uses unknown + type guards to detect Office safely in:
+  - real Office host
+  - Vitest/JSDOM tests
+  - plain web contexts
+
+B) Office.js types are now explicitly included
+- src/global.d.ts includes:
+  - /// <reference types="office-js" />
+- This makes Office/Word globals typed (compile-time) without importing runtime.
+
+C) Vitest smoke test stabilized (race condition removed)
+- The taskpane entrypoint now starts through:
+  - Office.onReady() Promise
+  - setTimeout(0)
+  - lazy imports
+- The test now waits for BOTH:
+  - footerVersion to be set
+  - addHandlerAsync to be called
+  using vi.waitFor (no flakiness)
+
+D) ESLint hardened for declaration files (optional safety)
+- Recommended override for **/*.d.ts to allow triple-slash reference if ESLint complains.
+
+
+============================================================
+8) 📦 DEPENDENCY SNAPSHOT (AS OF v1.0.0 HARDENING)
+============================================================
+
+Runtime/toolchain (from repo config):
+- Node: 22.x (managed via Volta; engines allow >=20, but Volta pins Node 22.x)
+- pnpm: 9.x (Volta pins 9.1.0; packageManager is pnpm@9.1.0)
+- TypeScript: 5.9.x (devDependency)
+- Rust: stable toolchain
+- wasm-pack: required for build:wasm
+
+Key libs (from package.json):
+- @xmldom/xmldom
+- dompurify
+- idb
+- jszip
+- core-js, regenerator-runtime
+- vitest, playwright
+- eslint + eslint-plugin-office-addins
+- @types/office-js (typed Office globals)
+
+
+============================================================
+END STATE SUMMARY (2026-02-10)
+============================================================
+
+v1.0.0 is production-ready and in “hardening posture”.
+The next biggest technical win is eliminating the DOM memory wall via streaming OOXML parsing in Rust/WASM,
+while preserving the system’s core invariants:
+- Privacy by design
+- Worker-first compute
+- Structure-preserving OOXML bridging
+- Unified engine across Add-in + Web App
+
+© 2026 Serbian Transliterator Project. Licensed under MIT.

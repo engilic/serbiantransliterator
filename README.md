@@ -1,74 +1,89 @@
 # Serbian Transliterator (v1.0.0)
 
-**Status:** 🟢 Phase 2: Hardening (Pipeline: **MAX1 Guardian**)  
-**Codename:** "The Neural Frontier"
+Status: 🟢 Phase 2 — Hardening (Pipeline: MAX1 Guardian)  
+Codename: “The Neural Frontier”
 
-Najbrži i najsigurniji način za preslovljavanje ćirilice i latinice u Microsoft Word-u i na webu. Pokretan ekstremno brzim **Rust** jezgrom preko **WebAssembly** tehnologije.
-
----
-
-## 🚀 Ključne Karakteristike (v1.0.0 Hardened)
-
-- **100% Privatno & Offline:** Tekst se obrađuje isključivo u memoriji vašeg uređaja. Podaci nikada ne napuštaju Word host ili browser.
-- **Hybrid Core Engine:** Rust + WASM omogućavaju obradu brzinom od preko 18,000 reči u sekundi.
-- **Pametni "Bridge" Sloj:** Jedinstvena tehnologija koja prepoznaje i štiti reči, linkove i brendove čak i kada ih Microsoft Word nasumično razbije kroz više XML čvorova.
-- **Samoisceljujući Workeri:** Supervisor arhitektura automatski restartuje pozadinske procese u slučaju greške, osiguravajući neprekidan rad.
-- **Adaptivni Chunking:** Sistem dinamički prilagođava veličinu paketa teksta performansama vašeg računara kako bi Word interfejs ostao fluidan tokom obrade ogromnih dokumenata.
-
-### 🛡️ Inteligentna Zaštita
-
-- **Brand Guard:** Automatska zaštita za hiljade tehnoloških brendova (Windows, iPhone, Microsoft...).
-- **Context Aware:** Prepoznaje razliku između brenda i obične reči (npr. _iPhone Pro_ vs _prosečan_).
-- **Code Protection:** Tekst unutar Markdown koda (backticks) ili specifičnih Word stilova se ne dira.
-- **URI & Paths:** URL-ovi, e-mail adrese i Windows/Unix putanje ostaju netaknute.
+Najbrži i najsigurniji način za preslovljavanje ćirilice i latinice u Microsoft Word-u i na webu. Pokretan ekstremno brzim Rust jezgrom preko WebAssembly (WASM) tehnologije.
 
 ---
 
-## 🌍 Web Režim (PWA)
+## 🚀 Ključne karakteristike (v1.0.0 Hardened)
 
-Aplikacija radi kao samostalni batch processor u browseru:
+- 100% privatno & offline  
+  Tekst se obrađuje lokalno (u memoriji vašeg uređaja). Sadržaj dokumenata ne napušta Word host ili browser.
 
-👉 [serbiantransliterator.pages.dev](https://serbiantransliterator.pages.dev)
+- Hybrid Core Engine (Rust + WASM)  
+  Visok throughput uz determinističan rad i offline-first pristup.
 
-- **DOCX Batch Mode:** Prevucite više `.docx` fajlova odjednom i preslovite ih lokalno.
-- **PWA Podrška:** Instalirajte aplikaciju na desktop ili mobilni telefon za brz pristup bez interneta.
+- Pametni “Bridge” sloj (OOXML intent-preserving)  
+  Štiti i rekonstruiše “razbijene” tokene koje Word često podeli u više XML run-ova (npr. brendovi, linkovi, digrafi), pa ih vraća bez gubitka stilova.
+
+- Samoisceljujući workeri (Supervisor pattern)  
+  Pozadinska obrada je izolovana u Worker-ima; sistem je dizajniran da se oporavi od worker crash/panic scenarija bez gubitka posla.
+
+- Adaptivni chunking (UI ostaje fluidan)  
+  Batch veličina se prilagođava realnim performansama uređaja kako bi UI ostao responzivan i u velikim dokumentima.
 
 ---
 
-## 🛠️ Razvoj i Instalacija (Za Developere)
+## 🛡️ Inteligentna zaštita (Protection Layer)
+
+- Brand Guard  
+  Automatska zaštita za tehnološke brendove i izraze koji treba da ostanu u originalu (npr. Windows, iPhone, Microsoft…).
+
+- Context-aware zaštita  
+  Razlikuje brend/sufiks u kontekstu (npr. “iPhone Pro”) od obične upotrebe reči.
+
+- Code protection  
+  Ne dira tekst u code blokovima (backticks) i/ili u definisanim Word stilovima (kada je uključeno).
+
+- URI & paths integrity  
+  URL-ovi, email adrese i Windows/Unix putanje ostaju netaknute.
+
+---
+
+## 🌍 Web režim (PWA)
+
+Aplikacija radi kao samostalni batch processor u browseru.
+
+Serbian Transliterator Web: serbiantransliterator.pages.dev
+
+Mogućnosti:
+- DOCX batch mode: prevuci više .docx fajlova odjednom i preslovi ih lokalno
+- PWA podrška: instalacija za offline-first korišćenje i brz pristup
+
+---
+
+## 🛠️ Razvoj i instalacija (za developere)
 
 ### Okruženje
 
-- **Runtime:** Node.js 22.x (LTS)
-- **Engine:** Rust (Stable) + wasm-pack
-- **Package Manager:** pnpm
-- **Shell:** PowerShell 7 (preporučeno)
+- Runtime: Node.js 22.x (via Volta preporučeno)
+- Engine: Rust (stable) + wasm-pack
+- Package manager: pnpm
+- Shell: PowerShell 7 (preporučeno)
 
 ### Početak rada
 
-1. Instalirajte zavisnosti:
+1) Instaliraj zavisnosti:
+pnpm install
 
-    pnpm install
+2) Izgradi WASM jezgro:
+pnpm run build:wasm
 
-2. Izgradite WASM jezgro:
+3) Pokreni lokalni dev server:
+pnpm start
 
-    pnpm run build:wasm
+### MAX1 Guardian (kvalitet koda)
 
-3. Pokrenite lokalni dev server:
-
-    pnpm start
-
-### MAX1 Guardian (Kvalitet koda)
-
-Pre svakog commit-a, obavezno pokrenite verifikaciju:
-
-    pnpm run verify:all
+Pre svakog commit-a, obavezno pokreni verifikaciju:
+pnpm run verify:all
 
 ---
 
-## ⚖️ Napomena o Beta Funkcionalnostima
+## ⚖️ Napomena o beta funkcionalnostima
 
-Opcija "Ekavica ↔ Ijekavica" koristi morfološke rečnike i smatra se beta funkcionalnošću. Preciznost zavisi od kompleksnosti i konteksta ulaznog teksta.
+Opcija “Ekavica ↔ Ijekavica” koristi morfološke rečnike i smatra se beta funkcionalnošću. Preciznost zavisi od kompleksnosti i konteksta ulaznog teksta.
 
 ---
 

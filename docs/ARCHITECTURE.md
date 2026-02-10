@@ -1,165 +1,188 @@
-# Architecture Decision Record (ADR)
+# Architecture Decision Record (ADR) (REV 2026-02-10)
 
-## 1. Hybrid Engine (TypeScript + Rust/WASM)
+This ADR documents key architectural decisions for Serbian Transliterator.
 
-### Context
+Principles:
+- Offline-first + privacy-by-design
+- Worker-first compute (UI must remain responsive)
+- Unified engine across Office Add-in and Web App
+- Strict correctness for Office.js semantics (proxy objects vs ClientResult)
+- Deterministic, testable behavior with strong repo gates (MAX1 Guardian)
 
-The project processes text in two main environments:
 
-- Microsoft Word (Office Add-in) via Word JavaScript API (Office.js).
-- A standalone web UI (PWA-style) that also supports large inputs and batch conversions.
+============================================================
+1) Hybrid Engine (TypeScript + Rust/WASM)
+============================================================
 
-JavaScript/TypeScript string processing is sufficient for small texts and UI glue, but:
+Context
+- The project processes text in two primary environments:
+  1) Microsoft Word (Office Add-in) via Office.js / Word JS API
+  2) Standalone Web UI (PWA-style) for plain text + DOCX batch conversions
+- TypeScript is excellent for UI and host integration, but:
+  - Large documents benefit from faster core transforms
+  - Linguistic logic benefits from strong typing and high-performance data structures
 
-- Large documents (Word OOXML, many paragraphs) benefit from faster core processing.
-- Linguistic features (e.g., dialect conversion) are easier to express and keep correct in a strongly typed, performance-oriented core.
+Decision
+- We use a hybrid approach:
 
-### Decision
+A) TypeScript (UI & glue)
+- Office.js interactions (selection/document reading, apply/insert ops)
+- Settings + UI state management
+- Web UX (command palette, live preview, offline simulation)
+- Service Worker update prompt UX (banner + command palette integration)
 
-We use a hybrid approach:
+B) Rust/WASM (core logic)
+- Transliteration + dialect conversion
+- Dictionary-backed transformations
+- Core protection primitives (as applicable)
 
-- **TypeScript (UI & Glue):**
-    - Word JS API interactions (selection/document reading, insert operations).
-    - Settings/UI state management, command palette, live preview behavior.
-    - Service Worker update prompt + UX integration (banner + command palette refresh).
-- **Rust/WASM (Core Logic):**
-    - High-performance transliteration and dialect conversion logic.
-    - Dictionary-backed matching / transformations.
+Benefits
+- Performance: WASM provides high throughput and stable latency for repeated transforms
+- Memory safety: Rust reduces risk of memory-safety bugs in core logic
+- Maintainability: complex linguistic rules are easier to express with Rust enums/pattern matching
 
-### Benefits
 
-- **Performance:** WASM core provides near-native speed for large inputs and repeated transforms.
-- **Memory Safety:** Rust prevents common memory bugs and supports robust refactoring.
-- **Maintainability:** Complex linguistic logic is easier to express using Rust enums/pattern matching.
+============================================================
+2) Document Processing Model (Word + OOXML)
+============================================================
 
----
+Context
+- Word content is accessed through Office.js / Word JS API.
+- Office.js has two important result categories:
+  - Loadable proxy objects (require load(...) + context.sync())
+  - ClientResult<T> (value available only after context.sync(); load() does not apply)
+- Correct formatting retention requires OOXML-level operations in many cases.
 
-## 2. Document Processing Model (Word + OOXML)
+Decision
+- We support two processing modes:
+  1) Plain text
+     - fast preview / sanity checks
+     - simpler UX loops
+  2) OOXML
+     - format-preserving apply
+     - required for correct retention of styles/structure
+- Office.js usage rules are enforced:
+  - Use load(...) only on proxy objects that are loadable
+  - For ClientResult<T> (e.g. range.getOoxml()), call context.sync() before reading .value
 
-### Context
+Benefits
+- Correctness: respects Office.js batching semantics and avoids runtime misuse
+- Format preservation: OOXML apply retains formatting where possible
 
-Word content is accessed via Office.js. Some calls return **proxy objects** requiring `load(...) + context.sync()`, while others return **ClientResult<T>** where `.value` is available only after `context.sync()` (and `load()` is not applicable).
 
-### Decision
+============================================================
+3) Web Update Mechanism (Service Worker + UI Integration)
+============================================================
 
-- For selection/document processing we support:
-    - **Plain text** (fast preview, sanity checks).
-    - **OOXML** (format-preserving apply; required for correct document formatting retention).
-- Follow Office.js rules:
-    - Use `load(...)` only for loadable proxy objects.
-    - For `ClientResult` (e.g., `range.getOoxml()`), call `context.sync()` before reading `.value`.
+Context
+- Standalone web UI is served with a Service Worker.
+- Updates must be:
+  - discoverable
+  - user-controlled
+  - safe (no reload while conversions are in-flight)
 
-### Benefits
-
-- **Correctness:** Avoids Office.js runtime issues and respects batching semantics.
-- **Format preservation:** OOXML apply retains Word formatting where possible.
-
----
-
-## 3. Web Update Mechanism (Service Worker + UI Integration)
-
-### Context
-
-The standalone web UI is served with a Service Worker. Updates should be:
-
-- Discoverable (banner + command palette entry).
-- User-controlled (“Refresh now” / “Later”).
-- Safe (avoid reload during active processing).
-
-### Decision
-
+Decision
 - Implement SW update prompt with:
-    - A banner that appears when a waiting SW exists.
-    - A command palette item (Ctrl+K) to trigger refresh when an update is pending.
-- Use a simple event bridge (`st:update-available`, `st:update-refresh`) so multiple UI surfaces can react to updates.
+  - Banner when a waiting SW exists (update pending)
+  - Command palette item (Ctrl+K) to refresh when update is pending
+- Use a small event bridge so multiple UI surfaces can react:
+  - st:update-available
+  - st:update-refresh
+- Reload safety:
+  - do not refresh while the app is busy
+  - reload only on serviceWorker controllerchange after SKIP_WAITING is executed
 
-### Benefits
+Benefits
+- UX: consistent behavior across banner and command palette
+- Safety: avoids reload mid-processing; user explicitly chooses timing
 
-- **UX:** Consistent update behavior across banner and command palette.
-- **Safety:** Avoids reload while busy; enables explicit user action.
 
----
+============================================================
+4) Build System
+============================================================
 
-## 4. Build System
+Context
+- We ship:
+  - Office Add-in bundles (taskpane + commands)
+  - Web app bundle
+  - Rust/WASM core artifacts
 
-### Context
+Decision
+- Webpack 5 is the primary bundler.
+- wasm-pack compiles Rust to WASM (target web).
+- wasm-pack integration into the build is automated (WASM build step is part of the pipeline).
 
-We need to ship:
+Benefits
+- Single pipeline: one build produces JS bundles + WASM artifacts
+- Repeatability: automated WASM build reduces human error
 
-- Office Add-in bundles (taskpane/commands).
-- A web UI bundle.
-- A Rust/WASM core.
 
-### Decision
+============================================================
+5) Testing Strategy
+============================================================
 
-- **Webpack 5** bundles the application.
-- **wasm-pack** compiles Rust to WebAssembly.
-- **@wasm-tool/wasm-pack-plugin** integrates Rust/WASM builds into the Webpack pipeline.
+Context
+- We want fast feedback without requiring a live Office host for unit tests.
+- Service Worker environment is not fully reproduced in unit tests.
 
-### Benefits
+Decision
+- Vitest: unit tests for logic, routing, cache decisions, UI state transitions
+- Mocking strategy:
+  - mock WASM core where appropriate to validate JS orchestration and fallback logic
+  - stub Office.js / Word.run to validate selection/document routing deterministically
+- Playwright: E2E smoke tests for critical flows in a real browser
 
-- **Single pipeline:** One build system produces JS bundles + WASM artifacts.
-- **Repeatable builds:** WASM build is automated as part of Webpack.
+Benefits
+- Speed: most logic is testable in JSDOM/Node
+- Confidence: E2E confirms critical user journeys
 
----
 
-## 5. Testing Strategy
+============================================================
+6) Dictionary Management
+============================================================
 
-### Context
+Context
+- Dictionary lookups are performance-sensitive and used frequently.
 
-We want fast feedback and reliable coverage without running Office host or full SW environment in unit tests.
+Decision
+- Dictionary implementation lives in the Rust core (dictionary.rs and supporting code).
+- Use optimized structures suitable for high-frequency transformations (goal: minimal overhead per lookup).
 
-### Decision
+Benefits
+- Performance: predictable fast lookups
+- Determinism: easier to validate transformation correctness and regressions
 
-- **Vitest** for unit tests (logic, routing, cache decisions, UI state transitions).
-- **Mocking strategy:**
-    - Mock WASM core where appropriate in unit tests to verify JS orchestration and fallback logic.
-    - Stub Office.js / `Word.run` interactions to validate selection/document routing logic deterministically.
-- **Playwright** for E2E smoke tests.
 
-### Benefits
+============================================================
+7) Repo Gates / Verification (Quality Controls)
+============================================================
 
-- **Speed:** Most logic is testable in JSDOM/Node.
-- **Confidence:** E2E confirms critical flows in a real browser.
+Context
+- Repo combines multiple toolchains (TS/JS, Rust/WASM, Office.js, Service Worker).
+- We require strict consistency and reproducibility.
 
----
+Decision
+- MAX1 Guardian pipeline includes:
+  - header enforcement (auto-fix where supported)
+  - prettier formatting gate
+  - ESLint with max warnings = 0 (warnings fail)
+  - TypeScript typecheck gate
+  - unit tests + optional E2E gates
+- Header auto-fix scans project files (tracked + untracked) excluding ignored directories to catch newly created local files without touching build outputs (.vs, node_modules, dist, etc.).
 
-## 6. Dictionary Management
+Benefits
+- Consistency: new files get standardized headers automatically
+- Strictness: no lint warnings slip into CI
+- Reduced churn: ignored directories are not touched
 
-### Context
 
-Dictionary lookups are performance-sensitive and used frequently during conversion.
+============================================================
+Appendix: Office.js Type Safety Policy (Hardening Note)
+============================================================
 
-### Decision
-
-- Dictionary lives in `src/wasm-core/src/dictionary.rs`.
-- Use static matching / optimized structures suitable for high-frequency transformations.
-
-### Benefits
-
-- **Performance:** Minimal overhead per lookup.
-- **Determinism:** Easier to validate transformation correctness.
-
----
-
-## 7. Repo Gates / Verification (Quality Controls)
-
-### Context
-
-We enforce consistent formatting, headers, and lint/type safety across the repo. The repo contains multiple toolchains (TS/JS, Rust, SW, Office.js).
-
-### Decision
-
-- Verification pipeline includes:
-    - Header auto-fix for supported source files.
-    - Prettier formatting gate.
-    - ESLint with **max warnings = 0** (warnings fail the build).
-    - Typecheck gate.
-    - Unit tests + optional E2E gates.
-- Header auto-fix scans **project files (tracked + untracked) excluding ignored** to catch new local files, while still ignoring non-project folders (e.g., `.vs`, `node_modules`, build outputs).
-
-### Benefits
-
-- **Consistency:** New files get standardized headers automatically.
-- **Strictness:** No lint warnings slip through CI.
-- **Reduced churn:** Ignored directories aren’t touched.
+- Compile-time types:
+  - Use @types/office-js
+  - Ensure TS program includes Office types (e.g., via triple-slash reference in src/global.d.ts)
+- Runtime:
+  - Office global is not guaranteed in web/tests
+  - Always use runtime detection (unknown + type guard) before calling Office.onReady()

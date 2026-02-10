@@ -1,80 +1,161 @@
-# 🚀 Releasing Serbian Transliterator
+# 🚀 Releasing Serbian Transliterator (REV 2026-02-10)
 
 Ovaj projekat koristi automatizovan proces za izdavanje novih verzija kako bi se osigurao integritet koda i pravilno osvežavanje keša u Microsoft Word hostu.
+
+Cilj release-a:
+- determinističan build (WASM + dict binovi + webpack)
+- sinhronizovane verzije (SemVer + manifest 4-part)
+- minimalna šansa za “stale” Office cache
 
 ---
 
 ## 0) Versioning Policy
 
-Koristimo dualni sistem verzija: **SemVer** za NPM/kod i **4-part** verziju za Office manifest.
+Koristimo dualni sistem verzija:
+- SemVer za NPM/kod
+- 4-part verziju za Office manifest
 
-### `package.json` (SemVer)
+### package.json (SemVer)
 
-- **PATCH** (`1.0.0` → `1.0.1`): Bugfix-ovi, optimizacije performansi, UI popravke bez promene logike.
-- **MINOR** (`1.0.0` → `1.1.0`): Nove funkcionalnosti (npr. novi bridge moduli, novi preview modovi, podrška za nove elemente).
-- **MAJOR** (`1.0.0` → `2.0.0`): Breaking promene u logici, promena formata podešavanja bez automatske migracije.
+- PATCH (1.0.0 → 1.0.1): bugfix, perf optimizacije, UI popravke bez promene logike
+- MINOR (1.0.0 → 1.1.0): nove funkcionalnosti (novi bridge moduli, novi preview modovi, nova OOXML podrška)
+- MAJOR (1.0.0 → 2.0.0): breaking promene u logici ili formatu podešavanja bez automatske migracije
 
-### `manifest.xml` / `manifest.prod.xml` (4-part)
+### manifest.xml / manifest.prod.xml (4-part)
 
-- **OBAVEZNO:** Bumpujemo poslednji broj pri svakom produkcionom deploy-u (npr. `1.0.0.12` → `1.0.0.13`).
-- **Razlog:** Word/Office agresivno kešira manifest. Promena verzije u XML-u je jedini siguran način da klijenti (i Word Desktop i Online) dobiju najnovije JS artefakte.
+OBAVEZNO:
+- bumpuj poslednji broj pri svakom produkcionom deploy-u (npr. 1.0.0.12 → 1.0.0.13)
+
+Razlog:
+- Word/Office agresivno kešira manifest i statičke artefakte
+- promena manifest verzije je najpouzdaniji način da klijent dobije najnoviji bundle
 
 ---
 
 ## 1) Automatizovani Release (Preporučeno)
 
-Umesto ručnog editovanja verzija u više fajlova, koristi ugrađeni **MAX1 Release Commander**. Ova skripta sinhronizuje verzije u `package.json`, `src/wasm-core/Cargo.toml` i oba manifesta:
+Nemoj ručno editovati verzije u više fajlova.
 
-    # Pokretanje interaktivnog release procesa
-    pnpm run release
+Koristi MAX1 Release Commander:
 
-Skripta će ponuditi izbor (Patch/Minor/Major), ažurirati `CHANGELOG.md`, komitovati izmene i kreirati Git tag.
+PS> pnpm run release
+
+Šta skripta radi:
+- ponudi izbor Patch/Minor/Major
+- ažurira package.json verziju (SemVer)
+- sinhronizuje verzije gde je potrebno (npr. Cargo.toml / manifest.xml / manifest.prod.xml)
+- generiše i osvežava CHANGELOG.md
+- kreira release commit
+- kreira git tag (vX.Y.Z)
+
+Napomena:
+- Ako release skripta očekuje čist working tree, uradi commit ili stash pre pokretanja.
 
 ---
 
 ## 2) Pre-Release Checklist (MAX1 Standard)
 
-Pre nego što se verzija pusti u produkciju, MAX1 Guardian mora dati zeleno svetlo u striktnom modu. Pokreni proveru lokalno:
+Pre produkcionog release-a, MAX1 Guardian mora proći u strict modu.
 
-    # Pokretanje pune baterije testova i provera
-    pnpm run verify:all:strict -- --no-push
+PS> pnpm run verify:all:strict -- --no-push
 
-Ova komanda osigurava:
+Ovo mora da obezbedi:
+- I18n Integrity: svi ključevi postoje u sr.ts i en.ts
+- Rust Gates: cargo fmt, cargo clippy (bez warninga), cargo test
+- Build Gate: webpack production build prolazi
+- Test Gate: unit testovi prolaze (coverage iznad cilja)
+- E2E Gate: Playwright smoke prolazi
 
-- **I18n Integrity:** Svi ključevi su definisani u `sr.ts` i `en.ts`.
-- **Rust Gates:** Rust testovi prolaze, kôd je formatiran i bez clippy upozorenja.
-- **Build Gate:** Webpack produkcioni build se izvršava bez grešaka.
-- **Test Gate:** Unit testovi imaju pokrivenost (coverage) iznad 90%.
-- **E2E Gate:** Osnovni scenariji (smoke testovi) prolaze u headless browseru.
+Ako strict padne:
+- release se NE radi
+- popravi uzrok i ponovi strict
 
 ---
 
 ## 3) Deployment Procedura
 
-Nakon što su sve provere prošle i verzija je bump-ovana:
+Kada su provere prošle i verzije bump-ovane:
 
-### Push promene na master:
+### 3.1 Push na master (sa tagovima)
 
-    # --follow-tags osigurava da i novokreirani vX.X.X tag ode na server
-    git push origin master --follow-tags
+PS> git push origin master --follow-tags
 
-### Cloudflare Pages CI/CD:
+Napomena:
+- --follow-tags osigurava da i novokreirani vX.Y.Z tag ode na remote
+- bez taga, release pipeline može da ne okine deploy (zavisno od CI konfiguracije)
 
-Push taga automatski pokreće build proces na Cloudflare Pages. Prati progres u Dashboard-u.
+### 3.2 Cloudflare Pages CI/CD
 
-### Verifikacija u Word-u:
+Push (commit/tag) automatski pokreće build na Cloudflare Pages.
 
-Otvori Word i proveri verziju u footeru taskpane-a. Ako i dalje vidiš staru verziju, uradi **Right click → Reload** ili isprazni Office keš.
+Proveri:
+- build logove (WASM korak, compile:dicts, webpack)
+- finalne artefakte (dist folder output u deploy-u)
+
+### 3.3 Verifikacija u Word-u (post-deploy)
+
+1) Otvori Word
+2) Otvori add-in taskpane
+3) Proveri verziju u footeru (mora da se poklopi sa package.json SemVer)
+
+Ako vidiš staru verziju:
+- Right click → Reload (taskpane)
+- očisti Office cache (po internom checklist-u)
+- proveri da li je manifest 4-part broj stvarno bumpovan
 
 ---
 
 ## 4) 🚑 Troubleshooting Release-a
 
-**WASM Mismatch:**
-Ako nakon release-a aplikacija puca sa "WASM module not found", proveri da li je `src/wasm-core/pkg` ispravno generisan pre Webpack faze.
+### A) WASM mismatch / “WASM module not found”
+Simptom:
+- posle release-a app puca pri startu
 
-**Manifest Validation:**
-Ako Word odbije da učita manifest, pokreni `pnpm run validate:prod` da proveriš validnost XML-a prema Office šemi.
+Provera:
+- da li je src/wasm-core/pkg generisan u build pipeline-u pre webpack faze
+- da li dist sadrži očekivane wasm fajlove i da li su putanje ispravne
 
-**Node Version:**
-Release proces zahteva Node 22. Proveri verziju sa `node -v`.
+Fix:
+- ponovi lokalno: pnpm run build:wasm
+- zatim: pnpm run build
+- tek onda release
+
+### B) Manifest validation fail (Word odbija manifest)
+Simptom:
+- Word prijavi invalid manifest / neće da učita add-in
+
+Provera:
+PS> pnpm run validate:prod
+
+Fix:
+- ispravi XML prema Office šemi
+- ponovi validate:prod pre push-a
+
+### C) Node version mismatch (release zahteva Node 22)
+Provera:
+PS> node -v
+
+Fix (Volta):
+PS> volta install node@22
+
+### D) “Release je deployovan ali korisnici i dalje imaju star bundle”
+Najčešći uzrok:
+- manifest 4-part broj nije bumpovan
+- ili klijent cache nije osvežen
+
+Fix:
+- bump manifest verziju (poslednji broj)
+- redeploy
+- uputi korisnike na reload/clear cache proceduru
+
+---
+
+## 5) Minimalni “Golden Path” (Copy/Paste)
+
+PS> git switch master
+PS> git pull --ff-only
+PS> pnpm install
+PS> pnpm run clean
+PS> pnpm run verify:all:strict -- --no-push
+PS> pnpm run release
+PS> git push origin master --follow-tags
