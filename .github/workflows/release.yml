@@ -1,87 +1,86 @@
+# .github/workflows/release.yml
+
 name: Release
 
 on:
-    workflow_dispatch:
-        inputs:
-            dry_run:
-                description: "Dry run (no tag/push changes)"
-                type: boolean
-                required: false
-                default: true
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run (no tag/push changes)"
+        type: boolean
+        required: false
+        default: true
 
-    # Optional: run when version tags are pushed (v1.2.3)
-    push:
-        tags:
-            - "v*"
+  push:
+    tags:
+      - "v*"
 
 permissions:
-    contents: write
+  contents: write
 
 concurrency:
-    group: release-${{ github.ref }}
-    cancel-in-progress: false
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-    release:
-        name: Release
-        runs-on: ubuntu-latest
+  release:
+    name: Release
+    runs-on: ubuntu-latest
 
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v6 # ✅ Vraćeno na v4 (v6 ne postoji)
-              with:
-                  fetch-depth: 0
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
-            # ✅ DODATO: Pnpm setup
-            - name: Install pnpm
-              uses: pnpm/action-setup@v4
-              with:
-                  version: 9
+      # IMPORTANT: Do NOT set pnpm version here when package.json has "packageManager".
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
 
-            - name: Setup Node.js
-              uses: actions/setup-node@v6 # ✅ Vraćeno na v4
-              with:
-                  node-version: "20"
-                  cache: "pnpm" # ✅ Promenjeno na pnpm
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: "pnpm"
 
-            - name: Install deps (pnpm install --frozen-lockfile)
-              run: pnpm install --frozen-lockfile # ✅ Promenjeno
-              env:
-                  HUSKY: "0"
+      - name: Install deps (pnpm install --frozen-lockfile)
+        run: pnpm install --frozen-lockfile
+        env:
+          HUSKY: "0"
 
-            - name: Install wasm-pack
-              uses: jetli/wasm-pack-action@v0.4.0
-              with:
-                  version: "latest"
+      - name: Install wasm-pack
+        uses: jetli/wasm-pack-action@v0.4.0
+        with:
+          version: "latest"
 
-            - name: Verify (strict, no push)
-              run: pnpm run verify:all:strict -- --no-push # ✅ Promenjeno
-              env:
-                  HUSKY: "0"
+      - name: Verify (strict, no push)
+        run: pnpm run verify:all:strict -- --no-push
+        env:
+          HUSKY: "0"
 
-            - name: Configure git author
-              run: |
-                  git config user.name "${{ github.actor }}"
-                  git config user.email "${{ github.actor }}@users.noreply.github.com"
+      - name: Configure git author
+        run: |
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor }}@users.noreply.github.com"
 
-            - name: Release (dry run)
-              if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run == true }}
-              run: pnpm run release -- --dry-run # ✅ Promenjeno
-              env:
-                  HUSKY: "0"
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Release (dry run)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run == true }}
+        run: pnpm run release -- --dry-run
+        env:
+          HUSKY: "0"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-            - name: Release
-              if: ${{ github.event_name != 'workflow_dispatch' || inputs.dry_run == false }}
-              run: pnpm run release # ✅ Promenjeno
-              env:
-                  HUSKY: "0"
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Release
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.dry_run == false }}
+        run: pnpm run release
+        env:
+          HUSKY: "0"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-            - name: Push changes + tags
-              if: ${{ github.event_name != 'workflow_dispatch' || inputs.dry_run == false }}
-              run: |
-                  git push
-                  git push --follow-tags
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Push changes + tags
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.dry_run == false }}
+        run: |
+          git push
+          git push --follow-tags
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

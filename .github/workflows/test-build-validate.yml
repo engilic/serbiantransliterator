@@ -1,72 +1,82 @@
+# .github/workflows/test-build-validate.yml
+
 name: test-build-validate
+
 on:
-    push:
-        branches: ["master"]
-    pull_request:
-        branches: ["master"]
-    workflow_dispatch:
+  push:
+    branches: ["master"]
+  pull_request:
+    branches: ["master"]
+  workflow_dispatch:
+
 concurrency:
-    group: test-build-validate-${{ github.ref }}
-    cancel-in-progress: true
+  group: test-build-validate-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-    test-build-validate:
-        runs-on: ubuntu-latest
-        timeout-minutes: 40
-        env:
-            CI: "true"
-            HUSKY: "0"
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v6
-              with:
-                  fetch-depth: 0
-            # ✅ DODATO: Instalacija pnpm-a
-            - name: Install pnpm
-              uses: pnpm/action-setup@v4
-              with:
-                  version: 9
-            - name: Setup Node.js
-              uses: actions/setup-node@v6
-              with:
-                  node-version: "22"
-                  cache: "pnpm" # ✅ Promenjeno na pnpm
-            # ✅ DODATO: Instalacija zavisnosti (ekvivalent npm ci)
-            - name: Install dependencies
-              run: pnpm install --frozen-lockfile
-            - name: Setup Rust (stable + components + wasm target)
-              uses: dtolnay/rust-toolchain@stable
-              with:
-                  components: rustfmt, clippy
-                  targets: wasm32-unknown-unknown
-            # Rust build cache (registry + git + target)
-            - name: Rust cache
-              uses: Swatinem/rust-cache@v2
-              with:
-                  workspaces: |
-                      src/wasm-core -> target
-            # Optional: cache cargo-installed tools (cargo-audit lives here)
-            - name: Cache cargo tools (~/.cargo/bin)
-              uses: actions/cache@v5
-              with:
-                  path: ~/.cargo/bin
-                  key: cargo-tools-${{ runner.os }}-v2
-            - name: Ensure ~/.cargo/bin on PATH
-              run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-            - name: Install cargo-audit (if missing)
-              run: |
-                  if ! command -v cargo-audit >/dev/null 2>&1; then
-                    cargo install cargo-audit --locked
-                  else
-                    echo "cargo-audit already present (cached)"
-                  fi
-            # Install wasm-pack
-            - name: Install wasm-pack (if missing)
-              run: |
-                  if ! command -v wasm-pack >/dev/null 2>&1; then
-                    echo "Installing wasm-pack..."
-                    curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
-                  else
-                    echo "wasm-pack already present (cached)"
-                  fi
-            - name: MAX verify (strict, fast, no-push)
-              run: pnpm run verify:all:strict -- --fast --no-push
+  test-build-validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      CI: "true"
+      HUSKY: "0"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      # IMPORTANT: Do NOT set pnpm version here when package.json has "packageManager".
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Setup Rust (stable + components + wasm target)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+          targets: wasm32-unknown-unknown
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            src/wasm-core -> target
+
+      - name: Cache cargo tools (~/.cargo/bin)
+        uses: actions/cache@v5
+        with:
+          path: ~/.cargo/bin
+          key: cargo-tools-${{ runner.os }}-v2
+
+      - name: Ensure ~/.cargo/bin on PATH
+        run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Install cargo-audit (if missing)
+        run: |
+          if ! command -v cargo-audit >/dev/null 2>&1; then
+            cargo install cargo-audit --locked
+          else
+            echo "cargo-audit already present (cached)"
+          fi
+
+      - name: Install wasm-pack (if missing)
+        run: |
+          if ! command -v wasm-pack >/dev/null 2>&1; then
+            echo "Installing wasm-pack..."
+            curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+          else
+            echo "wasm-pack already present (cached)"
+          fi
+
+      - name: MAX verify (strict, fast, no-push)
+        run: pnpm run verify:all:strict -- --fast --no-push
