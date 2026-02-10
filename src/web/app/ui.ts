@@ -16,6 +16,9 @@ let lastSettingsOpen = false;
 // Čuvamo referencu na textarea da ne gubimo fokus pri re-renderovanju
 let cachedInputArea: HTMLTextAreaElement | null = null;
 
+// Kada user kuca u textarea, tražimo da se fokus vrati posle re-rendera
+let restoreTextFocusNextRender = false;
+
 type NavigatorUADataLike = { platform?: string };
 type NavigatorWithUAData = Navigator & { userAgentData?: NavigatorUADataLike };
 
@@ -37,19 +40,8 @@ function hintKey(hint: string): string {
 }
 
 function setLivePreviewNow(store: Store<AppState>, actions: Actions, next: boolean) {
-    const prevStatus = store.get().statusText;
-
     actions.updateSettings({ livePreview: next });
     saveWebSettings(store.get().settings);
-
-    const msg = next ? t("web_status_live_on") : t("web_status_live_off");
-    store.update((st) => ({ ...st, statusText: msg }));
-
-    setTimeout(() => {
-        if (store.get().statusText === msg) {
-            store.update((st) => ({ ...st, statusText: prevStatus }));
-        }
-    }, 1200);
 }
 
 function el<K extends keyof HTMLElementTagNameMap>(
@@ -149,6 +141,20 @@ export function renderApp(root: HTMLElement, store: Store<AppState>, actions: Ac
     const overlay = renderDrawerOverlay(s.settingsOpen, () => actions.openSettings(false));
     const drawer = renderDrawer(store, actions);
 
+    // --- Preserve focus/selection for cached textarea across full re-render ---
+    const inputEl = cachedInputArea;
+    const active = document.activeElement;
+
+    const shouldRestoreTextFocus =
+        s.mode === "text" &&
+        !s.settingsOpen &&
+        !!inputEl &&
+        (active === inputEl || restoreTextFocusNextRender);
+
+    const selStart = shouldRestoreTextFocus ? inputEl.selectionStart : null;
+    const selEnd = shouldRestoreTextFocus ? inputEl.selectionEnd : null;
+    const selDir = shouldRestoreTextFocus ? inputEl.selectionDirection : null;
+
     root.replaceChildren(top, grid, status, overlay, drawer);
 
     // Focus management: when drawer opens, focus Close button
@@ -157,6 +163,24 @@ export function renderApp(root: HTMLElement, store: Store<AppState>, actions: Ac
         closeBtn?.focus();
     }
     lastSettingsOpen = s.settingsOpen;
+
+    // Restore focus AFTER DOM update (and after drawer focus logic)
+    if (shouldRestoreTextFocus && cachedInputArea) {
+        restoreTextFocusNextRender = false;
+
+        requestAnimationFrame(() => {
+            try {
+                cachedInputArea.focus({ preventScroll: true });
+                if (typeof selStart === "number" && typeof selEnd === "number") {
+                    cachedInputArea.setSelectionRange(selStart, selEnd, selDir || undefined);
+                }
+            } catch {
+                // ignore
+            }
+        });
+    } else {
+        restoreTextFocusNextRender = false;
+    }
 
     // Diff click delegation
     if (s.mode === "text" && s.outputTab === "diff") {
@@ -179,20 +203,73 @@ export function renderApp(root: HTMLElement, store: Store<AppState>, actions: Ac
 function renderTop(store: Store<AppState>, actions: Actions) {
     const s = store.get();
 
-    const modeFiles = el("button", { class: "seg-btn", type: "button" }, [
+    // --- LOGIKA ZA MREŽU ---
+    const realOffline = (() => {
+        try {
+            return navigator.onLine === false;
+        } catch {
+            return false;
+        }
+    })();
+    const isOffline = realOffline || s.simulatedOffline;
+
+    // Wifi signal
+    const iconWifiOn = `
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M2.5 8.5C7.6 4.1 16.4 4.1 21.5 8.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none" />
+        <path d="M5.7 11.7c3.3-2.8 9.3-2.8 12.6 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none" />
+        <path d="M8.9 14.9c1.8-1.5 4.4-1.5 6.2 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none" />
+        <circle cx="12" cy="18" r="1.6" fill="currentColor" />
+        </svg>
+    `;
+
+    // Wifi Off / Airplane mode
+    const iconWifiOff = `
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+             <path d="M2.5 8.5C7.6 4.1 16.4 4.1 21.5 8.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none" />
+             <path d="M5.7 11.7c3.3-2.8 9.3-2.8 12.6 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none" />
+             <path d="M8.9 14.9c1.8-1.5 4.4-1.5 6.2 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none" />
+             <circle cx="12" cy="18" r="1.6" fill="currentColor" />
+             <path d="M4 20L20 4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" fill="none" />
+        </svg>
+    `;
+
+    // --- ELEMENTI ---
+
+    const modeFiles = el("button", { class: "btn ghost seg-btn", type: "button" }, [
         textNode(t("web_ui_mode_files")),
     ]) as HTMLButtonElement;
-    const modeText = el("button", { class: "seg-btn", type: "button" }, [
+    const modeText = el("button", { class: "btn ghost seg-btn", type: "button" }, [
         textNode(t("web_ui_mode_text")),
     ]) as HTMLButtonElement;
-
     setPressed(modeFiles, s.mode === "files");
     setPressed(modeText, s.mode === "text");
-
     modeFiles.onclick = () => actions.setMode("files");
     modeText.onclick = () => actions.setMode("text");
+    const segment = el("div", { class: "segment" }, [modeFiles, modeText]);
 
-    const dir = el("select") as HTMLSelectElement;
+    // WIFI DUGME (Ikona + Tekst)
+    const wifiBtn = el("button", {
+        class: `btn ghost wifi-btn ${isOffline ? "is-offline" : "is-online"}`,
+        type: "button",
+        title: isOffline ? t("web_wifi_title_offline") : t("web_wifi_title_online"),
+    }) as HTMLButtonElement;
+
+    // Sadržaj dugmeta: Ikona + Tekst (span)
+    // PREVOD PREMA PRAVOPISU:
+    const wifiLabel = isOffline ? t("web_wifi_offline") : t("web_wifi_online");
+
+    const wifiIcon = isOffline ? iconWifiOff : iconWifiOn;
+    wifiBtn.innerHTML = `${wifiIcon} <span class="wifi-label">${wifiLabel}</span>`;
+
+    wifiBtn.onclick = () => {
+        const next = !store.get().simulatedOffline;
+        actions.setSimulatedOffline(next);
+        showToast(next ? t("web_toast_offline_mode") : t("web_toast_online_mode"));
+    };
+
+    // DROPDOWN (Dodali smo klasu 'direction-select')
+    const dir = el("select", { class: "direction-select" }) as HTMLSelectElement;
     dir.append(
         new Option(t("dir_auto"), "auto"),
         new Option(t("dir_lat_to_cyr_short"), "lat-to-cyr"),
@@ -205,8 +282,8 @@ function renderTop(store: Store<AppState>, actions: Actions) {
         actions.saveSettings();
     };
 
+    // Dugmići
     const settingsBtn = button(t("web_ui_btn_settings"), () => actions.openSettings(true), "btn ghost");
-
     const primary =
         s.mode === "files"
             ? button(
@@ -215,39 +292,37 @@ function renderTop(store: Store<AppState>, actions: Actions) {
                   "btn primary"
               )
             : button(t("web_ui_btn_convert"), () => actions.convertPlain(), "btn primary");
-
-    (primary as HTMLButtonElement).disabled = s.busy;
+    const hasJobs = s.jobs.length > 0;
+    const hasText = String(s.plain.input || "").trim().length > 0;
+    const canConvert = s.mode === "files" ? hasJobs : hasText;
+    (primary as HTMLButtonElement).disabled = s.busy || !canConvert;
 
     const cancelBtn = button(t("btn_cancel"), () => actions.cancel(), "btn ghost");
     (cancelBtn as HTMLButtonElement).disabled = !s.activeAbort;
 
-    // ✅ Compute net badge BEFORE return
-    const offline = (() => {
-        try {
-            return navigator.onLine === false;
-        } catch {
-            return false;
-        }
-    })();
+    // Version button (same frame as other buttons)
+    const versionBtn = button(
+        `v${s.meta.version}`,
+        () => {
+            window.location.href = "./changelog.html";
+        },
+        "btn ghost",
+        { title: t("web_update_release_notes") }
+    );
 
-    const offlineReady = (() => {
-        try {
-            return !!(navigator.serviceWorker && navigator.serviceWorker.controller);
-        } catch {
-            return false;
-        }
-    })();
+    // Actions group (must be before wifi + version)
+    const topActions = el("div", { class: "top-actions" }, [settingsBtn, primary, cancelBtn]);
 
-    const netBadge = offline
-        ? el("span", { class: "badge warn" }, [textNode(t("web_badge_offline"))])
-        : offlineReady
-          ? el("span", { class: "badge good" }, [textNode(t("web_badge_offline_ready"))])
-          : null;
+    // Left group: mode toggles + direction select (immediately adjacent)
+    const topLeftGroup = el("div", { class: "top-left-group" }, [segment, dir]);
 
-    return el("div", { class: "card app-top" }, [
-        el("div", { class: "row" }, [el("div", { class: "segment" }, [modeFiles, modeText]), dir]),
-        el("div", { class: "row" }, [settingsBtn, ...(netBadge ? [netBadge] : []), primary, cancelBtn]),
-    ]);
+    // Right group: actions, then wifi, then version
+    const topRightGroup = el("div", { class: "top-right-group" }, [topActions, wifiBtn, versionBtn]);
+
+    // Single responsive row (wraps nicely on smaller widths)
+    const rowMain = el("div", { class: "top-row-main" }, [topLeftGroup, topRightGroup]);
+
+    return el("div", { class: "card app-top-col" }, [rowMain]);
 }
 
 function renderGrid(store: Store<AppState>, actions: Actions) {
@@ -258,17 +333,31 @@ function renderGrid(store: Store<AppState>, actions: Actions) {
 }
 
 function renderFilesPanel(store: Store<AppState>, actions: Actions) {
-    const head = el("div", { class: "panel-head" }, [
-        el("div", {}, [
+    const s = store.get();
+
+    const hasJobs = s.jobs.length > 0;
+    const hasDone = s.jobs.some((j) => j.status === "done" && !!j.outBlob);
+
+    // Actions (disabled when they can't do anything useful)
+    const clearBtn = button(
+        t("web_ui_btn_clear_list"),
+        () => actions.clearJobs(),
+        "btn ghost"
+    ) as HTMLButtonElement;
+    clearBtn.disabled = s.busy || !hasJobs;
+
+    const zipBtn = button(t("web_ui_btn_download_zip"), () => void actions.downloadAllZip(), "btn", {
+        title: t("web_ui_btn_download_zip_title"),
+    }) as HTMLButtonElement;
+    zipBtn.disabled = s.busy || !hasDone;
+
+    // Header: title + actions on the same top row, description below (single-line via CSS)
+    const head = el("div", { class: "panel-head panel-head-files" }, [
+        el("div", { class: "panel-head-row" }, [
             el("h2", { class: "panel-title" }, [textNode(t("web_ui_docx_title"))]),
-            el("p", { class: "panel-sub" }, [textNode(t("web_ui_docx_desc"))]),
+            el("div", { class: "panel-actions" }, [clearBtn, zipBtn]),
         ]),
-        el("div", { class: "row" }, [
-            button(t("web_ui_btn_clear_list"), () => actions.clearJobs(), "btn ghost"),
-            button(t("web_ui_btn_download_zip"), () => void actions.downloadAllZip(), "btn", {
-                title: t("web_ui_btn_download_zip_title"),
-            }),
-        ]),
+        el("p", { class: "panel-sub u-nowrap" }, [textNode(t("web_ui_docx_desc"))]),
     ]);
 
     const drop = el("div", { class: "drop" }, [
@@ -297,6 +386,7 @@ function renderFilesPanel(store: Store<AppState>, actions: Actions) {
             drop.classList.add("drag");
         });
     });
+
     ["dragleave", "drop"].forEach((ev) => {
         drop.addEventListener(ev, (e) => {
             prevent(e as DragEvent);
@@ -314,6 +404,7 @@ function renderFilesPanel(store: Store<AppState>, actions: Actions) {
 
 function renderJobsTable(store: Store<AppState>, actions: Actions) {
     const s = store.get();
+    const busy = s.busy;
 
     if (s.jobs.length === 0) {
         return el("div", { class: "muted" }, [textNode(t("web_ui_no_files"))]);
@@ -347,7 +438,13 @@ function renderJobsTable(store: Store<AppState>, actions: Actions) {
         const metaMs = j.status === "done" ? String(j.ms ?? "-") : "-";
         const meta = el("div", { class: "pill" }, [textNode(t("web_ui_meta_parts_ms", metaParts, metaMs))]);
 
-        const removeBtn = button(t("web_ui_btn_remove"), () => actions.removeJob(j.id), "btn ghost");
+        const removeBtn = button(
+            t("web_ui_btn_remove"),
+            () => actions.removeJob(j.id),
+            "btn ghost"
+        ) as HTMLButtonElement;
+        removeBtn.disabled = busy;
+
         const dlBtn = button(t("web_ui_btn_download"), () => actions.downloadJob(j.id), "btn");
         (dlBtn as HTMLButtonElement).disabled = !(j.status === "done" && j.outBlob);
 
@@ -376,7 +473,7 @@ function renderTextPanel(store: Store<AppState>, actions: Actions) {
     const liveBadgeBtn = el(
         "button",
         {
-            class: "badge clickable",
+            class: "btn ghost live-toggle",
             type: "button",
             title: t("web_ui_live_shortcut_hint"),
             "aria-pressed": s.settings.livePreview ? "true" : "false",
@@ -393,7 +490,7 @@ function renderTextPanel(store: Store<AppState>, actions: Actions) {
     const liveKbdBtn = button(
         t("web_hint_alt_l"),
         () => toggleLive(),
-        "kbd-chip" + (s.settings.livePreview ? "" : " off"),
+        "btn ghost kbd-chip" + (s.settings.livePreview ? "" : " off"),
         { title: t("web_ui_live_shortcut_hint") }
     );
 
@@ -402,18 +499,25 @@ function renderTextPanel(store: Store<AppState>, actions: Actions) {
         t("web_ui_btn_copy_result"),
         () => {
             actions.copyPlain();
-            showToast("Kopirano u privremenu memoriju! 📋");
+            showToast(t("web_toast_copied_clipboard"));
         },
         "btn",
         { title: t("web_ui_btn_copy_result_title") }
     );
+    (copyBtn as HTMLButtonElement).disabled = !String(s.plain.output || "").length;
 
-    const head = el("div", { class: "panel-head" }, [
-        el("div", {}, [
+    const head = el("div", { class: "panel-head panel-head-text" }, [
+        // Row 1: title (left) + actions (right) — same level
+        el("div", { class: "panel-head-row" }, [
             el("h2", { class: "panel-title" }, [textNode(t("web_ui_text_title"))]),
-            el("p", { class: "panel-sub" }, [textNode(t("web_ui_text_desc"))]),
+            el("div", { class: "text-actions" }, [liveBadgeBtn, liveKbdBtn, copyBtn]),
         ]),
-        el("div", { class: "row" }, [liveBadgeBtn, liveKbdBtn, copyBtn]),
+
+        // Row 2: desc (left) + label (right)
+        el("div", { class: "panel-sub-row" }, [
+            el("p", { class: "panel-sub" }, [textNode(t("web_ui_text_desc"))]),
+            el("div", { class: "panel-sub-label" }, [textNode(t("web_ui_label_input"))]),
+        ]),
     ]);
 
     // --- UX OPTIMIZACIJA: TEXTAREA CACHING ---
@@ -425,6 +529,7 @@ function renderTextPanel(store: Store<AppState>, actions: Actions) {
 
         cachedInputArea.oninput = () => {
             if (cachedInputArea) {
+                restoreTextFocusNextRender = true; // ✅ user je kucao, vrati fokus posle rendera
                 actions.setPlainInput(cachedInputArea.value);
             }
         };
@@ -434,10 +539,14 @@ function renderTextPanel(store: Store<AppState>, actions: Actions) {
         cachedInputArea.value = s.plain.input;
     }
 
+    // keep a11y + placeholder in sync with current UI language
+    cachedInputArea.setAttribute("aria-label", t("web_ui_label_input"));
+    cachedInputArea.setAttribute("placeholder", t("web_ui_text_placeholder"));
+
     return el("section", { class: "card" }, [
         head,
         el("div", { class: "field" }, [
-            el("label", {}, [textNode(t("web_ui_label_input"))]),
+            el("label", { class: "u-sr-only", for: "web-main-input" }, [textNode(t("web_ui_label_input"))]),
             cachedInputArea,
         ]),
         el("div", { class: "muted" }, [
@@ -454,24 +563,15 @@ function renderOutputPanel(store: Store<AppState>, actions: Actions) {
             ? t("web_ui_output_desc_files")
             : t("web_ui_output_desc_text", s.plain.typeLabel || "-");
 
-    const head = el("div", { class: "panel-head" }, [
-        el("div", {}, [
-            el("h2", { class: "panel-title" }, [textNode(t("web_ui_output_title"))]),
-            el("p", { class: "panel-sub" }, [textNode(desc)]),
-        ]),
-        el("div", { class: "row" }, [
-            el("span", { class: "badge" }, [textNode(t("web_ui_badge_version", store.get().meta.version))]),
-        ]),
-    ]);
-
-    const tabs = el("div", { class: "tabs" }, []);
-    const tabResult = el("button", { class: "tab-btn", type: "button" }, [
+    // Tabs (move into header row, aligned right)
+    const tabs = el("div", { class: "tabs tabs-inline" }, []);
+    const tabResult = el("button", { class: "btn ghost tab-btn", type: "button" }, [
         textNode(t("web_ui_tab_result")),
     ]) as HTMLButtonElement;
-    const tabDiff = el("button", { class: "tab-btn", type: "button" }, [
+    const tabDiff = el("button", { class: "btn ghost tab-btn", type: "button" }, [
         textNode(t("web_ui_tab_diff")),
     ]) as HTMLButtonElement;
-    const tabStats = el("button", { class: "tab-btn", type: "button" }, [
+    const tabStats = el("button", { class: "btn ghost tab-btn", type: "button" }, [
         textNode(t("web_ui_tab_stats")),
     ]) as HTMLButtonElement;
 
@@ -485,6 +585,23 @@ function renderOutputPanel(store: Store<AppState>, actions: Actions) {
 
     tabs.append(tabResult, tabDiff, tabStats);
 
+    const rightSubLabel = s.mode === "text" && s.outputTab === "result" ? t("web_ui_label_result") : "";
+
+    const sub = rightSubLabel
+        ? el("div", { class: "panel-sub-row" }, [
+              el("p", { class: "panel-sub u-nowrap" }, [textNode(desc)]),
+              el("div", { class: "panel-sub-label" }, [textNode(rightSubLabel)]),
+          ])
+        : el("p", { class: "panel-sub" }, [textNode(desc)]);
+
+    const head = el("div", { class: "panel-head" }, [
+        el("div", { class: "panel-head-row" }, [
+            el("h2", { class: "panel-title" }, [textNode(t("web_ui_output_title"))]),
+            tabs, // tabs desno u nivou naslova
+        ]),
+        sub,
+    ]);
+
     let body: HTMLElement;
     if (s.outputTab === "result")
         body = s.mode === "files" ? renderFilesResult(store) : renderTextResult(store);
@@ -492,17 +609,21 @@ function renderOutputPanel(store: Store<AppState>, actions: Actions) {
         body = s.mode === "files" ? renderFilesDiffPlaceholder() : renderTextDiff(store);
     else body = renderStats(store);
 
-    return el("section", { class: "card" }, [head, tabs, body]);
+    return el("section", { class: "card" }, [head, body]);
 }
 
 function renderTextResult(store: Store<AppState>) {
     const s = store.get();
     const out = el("textarea", {
+        id: "web-output-text",
         readonly: "true",
         placeholder: t("web_ui_result_placeholder"),
     }) as HTMLTextAreaElement;
     out.value = s.plain.output || "";
-    return el("div", { class: "field" }, [el("label", {}, [textNode(t("web_ui_label_result"))]), out]);
+    return el("div", { class: "field" }, [
+        el("label", { class: "u-sr-only", for: "web-output-text" }, [textNode(t("web_ui_label_result"))]),
+        out,
+    ]);
 }
 
 function renderTextDiff(store: Store<AppState>) {
@@ -588,14 +709,15 @@ function renderStatus(store: Store<AppState>) {
     const pct = s.busy ? computeGlobalProgressPercent(s.jobs) : 0;
 
     const bar = el("div", { class: "bar", style: `width:${Math.max(0, Math.min(100, pct))}%` });
+    const leftText = String(s.statusText || "").trim() || t("web_ui_status_idle");
+    const rightText = s.busy ? t("web_ui_status_busy_pct", pct) : "";
+    const rowKids: HTMLElement[] = [el("span", { class: "pill grow" }, [textNode(leftText)])];
+    if (rightText) {
+        rowKids.push(el("span", { class: "pill" }, [textNode(rightText)]));
+    }
 
     return el("div", { class: "card" }, [
-        el("div", { class: "row" }, [
-            el("span", { class: "pill grow" }, [textNode(s.statusText || "")]),
-            el("span", { class: "pill" }, [
-                textNode(s.busy ? t("web_ui_status_busy_pct", pct) : t("web_ui_status_idle")),
-            ]),
-        ]),
+        el("div", { class: "row" }, rowKids),
         el("div", { style: "height:10px" }),
         el("div", { class: "progress" }, [bar]),
     ]);
@@ -614,13 +736,18 @@ function renderDrawer(store: Store<AppState>, actions: Actions) {
     const drawer = el("aside", { class: "drawer" }, []);
     if (s.settingsOpen) drawer.classList.add("open");
 
-    const closeBtn = button(t("btn_close"), () => actions.openSettings(false), "btn ghost", {
+    const closeBtn = button("×", () => actions.openSettings(false), "btn ghost drawer-close-x", {
         id: "webSettingsCloseBtn",
+        title: t("btn_close"),
+        "aria-label": t("btn_close"),
     });
 
     const notesBtn = button(
         t("web_update_release_notes"),
-        () => window.open("./changelog.html", "_blank", "noopener,noreferrer"),
+        () => {
+            actions.openSettings(false);
+            window.location.href = "./changelog.html";
+        },
         "btn ghost",
         { title: t("web_update_release_notes") }
     );
