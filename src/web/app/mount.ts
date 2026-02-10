@@ -22,6 +22,15 @@ export function mountWebApp(
     store.subscribe(render);
     render();
 
+    // Disable "enter" animations on subsequent re-renders (prevents visible refresh/blink)
+    requestAnimationFrame(() => {
+        try {
+            document.documentElement.dataset.mounted = "1";
+        } catch {
+            // ignore
+        }
+    });
+
     // Side-effects (once)
     installNetworkStatus(store);
 
