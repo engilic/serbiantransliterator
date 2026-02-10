@@ -1,5 +1,7 @@
 // src/global.d.ts
 
+/// <reference types="office-js" />
+
 declare module "*.wasm" {
     const content: string;
     export default content;
