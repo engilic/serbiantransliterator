@@ -4,14 +4,24 @@
 <html lang="sr">
     <head>
         <meta charset="UTF-8" />
-        <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+
         <title data-i18n="app_title">Serbian Transliterator</title>
+        <meta
+            name="description"
+            content="Offline-first Word add-in for Serbian transliteration (Lat ↔ Ćir)."
+        />
+
         <link rel="manifest" href="manifest.webmanifest" />
 
-        <link rel="preconnect" href="https://appsforoffice.microsoft.com" />
-        <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+        <link rel="preconnect" href="https://appsforoffice.microsoft.com" crossorigin />
+        <script
+            type="text/javascript"
+            src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"
+        ></script>
     </head>
+
     <body>
         <div
             id="webModePreloader"
@@ -43,10 +53,11 @@
 
         <main id="appMain" role="main" style="display: none">
             <h1 class="visually-hidden" data-i18n="app_title">Serbian Transliterator</h1>
-            <%= readPart('components/settings/profile.html') %> <%=
-            readPart('components/settings/direction.html') %> <%=
-            readPart('components/settings/protected.html') %> <%= readPart('components/settings/options.html')
-            %> <%= readPart('components/advanced/advanced.html') %>
+
+            <%= readPart("components/settings/profile.html") %> <%=
+            readPart("components/settings/direction.html") %> <%=
+            readPart("components/settings/protected.html") %> <%= readPart("components/settings/options.html")
+            %> <%= readPart("components/advanced/advanced.html") %>
 
             <div id="progressContainer" class="progress-container" style="display: none" role="progressbar">
                 <div id="progressBar" class="progress-bar"></div>
@@ -62,14 +73,16 @@
                 >
                     <span class="accordion-title" data-i18n="ui_stats_accordion_header"></span>
                 </button>
+
                 <div id="statsContent" class="accordion-content" aria-hidden="true">
                     <pre id="statsText"></pre>
                 </div>
             </div>
         </main>
 
-        <footer role="contentinfo"><%= readPart('components/footer/sticky-footer.html') %></footer>
-        <%= readPart('components/modals/confirm-modal.html') %> <%=
-        readPart('components/modals/tour-modal.html') %>
+        <footer role="contentinfo"><%= readPart("components/footer/sticky-footer.html") %></footer>
+
+        <%= readPart("components/modals/confirm-modal.html") %> <%=
+        readPart("components/modals/tour-modal.html") %>
     </body>
 </html>

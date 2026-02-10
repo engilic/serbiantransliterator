@@ -18,8 +18,7 @@ import "./components.css";
 import "./components/modals/modals.css";
 
 import pkg from "../../package.json";
-import { initTaskpane } from "./app";
-import { workerClient } from "./worker/client";
+import { getOfficeRuntime } from "./officeRuntime";
 
 function showNotInOfficeMessage() {
     const msgEl = document.getElementById("msg");
@@ -29,16 +28,32 @@ function showNotInOfficeMessage() {
     }
 }
 
-function startAddin() {
+function showFatalError(e: unknown) {
+    // eslint-disable-next-line no-console
+    console.error("FATAL ERROR in taskpane.ts:", e);
+    const msgEl = document.getElementById("msg");
+    if (msgEl) {
+        msgEl.textContent = "Greška pri učitavanju: " + String(e);
+        msgEl.style.color = "red";
+    }
+}
+
+async function startAddin() {
     const verEl = document.getElementById("footerVersion");
     if (verEl) verEl.textContent = `v${pkg.version}`;
 
     // eslint-disable-next-line no-console
     console.log(`🚀 Serbian Transliterator v${pkg.version} starting (Add-in)...`);
 
+    // ✅ LAZY import: ne evaluira ./app i ./worker/client tokom import(taskpane.ts)
+    const [{ initTaskpane }, { workerClient }] = await Promise.all([
+        import("./app"),
+        import("./worker/client"),
+    ]);
+
     // eslint-disable-next-line no-console
     console.log("🚀 Spawning Worker Pool...");
-    workerClient.init().catch((err) => {
+    workerClient.init().catch((err: unknown) => {
         // eslint-disable-next-line no-console
         console.warn("⚠️ Worker Pool failed, using Fallback.", err);
     });
@@ -46,23 +61,19 @@ function startAddin() {
     initTaskpane(false);
 }
 
-// Guard: taskpane.html nije web app
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const anyWindow = window as any;
-if (!anyWindow.Office || typeof anyWindow.Office.onReady !== "function") {
+// Robust Office detection (works in Vitest/JSDOM too)
+const office = getOfficeRuntime();
+
+if (!office) {
     showNotInOfficeMessage();
 } else {
-    Office.onReady(() => {
-        try {
-            startAddin();
-        } catch (e) {
-            // eslint-disable-next-line no-console
-            console.error("FATAL ERROR in taskpane.ts:", e);
-            const msgEl = document.getElementById("msg");
-            if (msgEl) {
-                msgEl.textContent = "Greška pri učitavanju: " + String(e);
-                msgEl.style.color = "red";
-            }
-        }
-    });
+    void office
+        .onReady()
+        .then(() => {
+            // ✅ odloži start da Office stub (u testu) ne “zaglavi” import-evaluaciju
+            setTimeout(() => {
+                void startAddin().catch(showFatalError);
+            }, 0);
+        })
+        .catch(showFatalError);
 }

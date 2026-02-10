@@ -1,53 +1,91 @@
 // src/shared/locales/sr.ts
 
 export const SR_RS = {
+    // Meta
+    name: "Srpski",
+    dir: "ltr",
+
+    // Common
+    btn_ok: "OK",
+    btn_cancel: "Otkaži",
+    btn_close: "Zatvori",
+    btn_export: "Izvezi podešavanja",
+    btn_import: "Uvezi podešavanja",
+    btn_export_title: "Izvezi podešavanja",
+    btn_import_title: "Uvezi podešavanja",
+
+    // App / Sections
     app_title: "Serbian Transliterator",
     ui_version_prefix: "v",
     section_settings: "PODEŠAVANJA",
-    btn_export: "Izvezi",
-    btn_import: "Uvezi",
-    btn_export_title: "Izvezi podešavanja",
-    btn_import_title: "Uvezi podešavanja",
     section_profile: "PROFIL",
-    btn_reset_factory: "Resetuj",
-    profile_select_aria: "Izbor profila",
     section_direction: "CILJNO PISMO",
-    dir_auto: "Automatski",
-    dir_to_ascii: "→ ASCII Lat",
-    dir_lat_to_cyr: "→ Ćirilica",
-    dir_cyr_to_lat: "→ Latinica",
-    dir_auto_short: "Auto",
-    dir_lat_to_cyr_short: "→ Ćir",
-    dir_cyr_to_lat_short: "→ Lat",
-    dir_to_ascii_short: "→ ASCII",
     section_options: "OPCIJE",
+    section_corrections: "KOREKCIJA",
+    section_advanced: "NAPREDNO",
+    section_protected: "ZAŠTIĆENO",
+
+    // Profiles
+    profile_select_aria: "Izbor profila",
+    profile_custom: "Ručno",
+    profile_it: "IT / Tehnologija",
+    profile_finance: "Finansije / Bankarstvo",
+    profile_medical: "Medicina / Farmacija",
+    profile_legal: "Pravo / Administracija",
+    profile_marketing: "Marketing / Društvene mreže",
+    profile_journalism: "Novinarstvo / Mediji",
+    status_profile_changed: "Profil promenjen na: {0}",
+
+    // Factory reset / basic buttons
+    btn_reset_factory: "Resetuj",
+    msg_reset_confirm: "Ovo će vratiti opcije na fabričke vrednosti...",
+
+    // Directions (long)
+    dir_auto: "Automatski (Detekcija)",
+    dir_lat_to_cyr: "Latinica ➔ Ćirilica",
+    dir_cyr_to_lat: "Ćirilica ➔ Latinica",
+    dir_to_ascii: "Ukloni kvačice (čćšđž ➔ ccsdz)",
+
+    // Directions (short)
+    dir_auto_short: "Auto",
+    dir_lat_to_cyr_short: "Lat ➔ Ćir",
+    dir_cyr_to_lat_short: "Ćir ➔ Lat",
+    dir_to_ascii_short: "Ukloni kvačice",
+
+    // Theme
+    ui_theme_label: "Tema interfejsa",
+    ui_theme_aria: "Izbor teme",
+    ui_theme_auto: "Sistemska",
+    ui_theme_light: "Svetla",
+    ui_theme_dark: "Tamna",
+
+    // UI language (Office/taskpane)
+    opt_ui_language_label: "Jezik",
+    opt_ui_language_aria: "Izbor jezika interfejsa",
+    opt_ui_language_sr: "Srpski (podrazumevano)",
+    opt_ui_language_en: "English",
+    opt_ui_language_auto: "Auto (Office/browser)",
+    opt_ui_language_hint: "Menja jezik UI-ja.",
+
+    // Options
     opt_confirm_whole_doc: "Potvrdi preslovljavanje celog dokumenta",
     opt_include_headers_footers: "Uključi zaglavlja/podnožja (header/footer)",
     opt_include_footnotes: "Uključi fusnote",
     opt_include_endnotes: "Uključi endnote",
     opt_protect_brands: "Zaštiti brendove (Windows, ...)",
     opt_smart_quotes: "Pametni navodnici ( „ … “ )",
+
+    // Preserve code (label pieces)
     opt_preserve_code_before: "Zaštiti kod (",
     ui_inline_code_word: "inline",
     opt_preserve_code_between: " / ",
     ui_block_code_word: "blok",
     opt_preserve_code_after: ")",
-    section_corrections: "KOREKCIJA",
+
+    // Corrections
     opt_fix_spaces: "Ukloni višak razmaka",
-    section_advanced: "NAPREDNO",
-    btn_toggle_advanced: "Napredno",
-    btn_toggle_advanced_title: "Prikaži/sakrij napredna podešavanja",
-    opt_ui_language_label: "Jezik", // [CHANGE] Shortened
-    opt_ui_language_aria: "Izbor jezika interfejsa",
-    opt_ui_language_sr: "Srpski (podrazumevano)",
-    opt_ui_language_en: "English",
-    opt_ui_language_auto: "Auto (Office/browser)",
-    opt_ui_language_hint: "Menja jezik UI-ja.",
-    ui_theme_label: "Tema / Theme",
-    ui_theme_aria: "Izbor teme",
-    ui_theme_auto: "Auto",
-    ui_theme_light: "Svetla ☀️",
-    ui_theme_dark: "Tamna 🌙",
+
+    // Curly braces protection (Office/taskpane)
     opt_curly_label_before: "Zaštita ",
     opt_curly_label_after: " blokova",
     opt_curly_aria: "Zaštita vitičastih zagrada",
@@ -55,10 +93,14 @@ export const SR_RS = {
     opt_curly_all: "Sve u {...} (legacy)",
     opt_curly_none: "Ne štiti {...}",
     opt_curly_hint: "Kontroliše da li se sadržaj u vitičastim zagradama preslovljava.",
+
+    // Advanced options
     opt_protect_romans: "Zaštiti rimske brojeve (IV, XIV)",
     opt_set_proofing_language: "Postavi jezik provere (sr-Cyrl / sr-Latn)",
     opt_format_dates: "Formatiraj datume (npr. 21.10.2023.)",
     opt_format_dates_hint: "Ova opcija menja sadržaj (nije samo preslovljavanje).",
+
+    // Custom substitutions (Office/taskpane)
     opt_custom_subs_label: "Sopstvene zamene (Izvor -> Cilj)",
     opt_custom_subs_placeholder: "vreme -> vrijeme\nlepo -> lijepo",
     opt_custom_subs_hint: "Jedno pravilo po liniji. Primenjuje se na kraju.",
@@ -67,15 +109,20 @@ export const SR_RS = {
     subs_input_dest: "Cilj (npr. lijepo)",
     subs_input_src_short: "izvor",
     subs_input_dest_short: "cilj",
+
+    // Dialect (Office/taskpane)
     opt_dialect_label: "Dijalekt / Pismo",
     opt_dialect_aria: "Izbor dijalekta",
     opt_dialect_none: "Samo preslovljavanje (Standard)",
     opt_dialect_ei: "Ekavica → Ijekavica (beta)",
     opt_dialect_ie: "Ijekavica → Ekavica (beta)",
+
+    // Ignored styles (Office/taskpane)
     opt_ignored_styles_label: "Ignorisani Stilovi",
     opt_ignored_styles_hint: "Tekst u ovim stilovima (npr. 'Code') se neće menjati.",
     opt_ignored_styles_placeholder: "Code\nQuote",
-    section_protected: "ZAŠTIĆENO",
+
+    // Protected tags (Office/taskpane)
     btn_add_word_title: "Dodaj reč",
     btn_clear_custom: "Moje",
     btn_clear_preset: "Profil",
@@ -87,12 +134,19 @@ export const SR_RS = {
     tags_hint: "Ove reči se ne preslovljavaju.",
     tags_filter_placeholder: "🔍 Filtriraj...",
     tags_filter_aria: "Filtriraj zaštićene reči",
+
+    // Footer (Office/taskpane)
     footer_help: "Pomoć",
     footer_privacy: "Privatnost",
     footer_copyright: "© 2026",
     footer_donate: "Podrži ❤️",
+    lbl_support: "Podrška",
+
+    // Stats accordion header
     ui_stats_accordion_header: "STATISTIKA",
     ui_stats_empty_placeholder: "(Nema podataka)",
+
+    // Status messages (Office/taskpane)
     status_ready: "Spreman za rad.",
     status_generating_preview: "Generišem pregled...",
     status_processing: "Obrada u toku...",
@@ -102,7 +156,6 @@ export const SR_RS = {
     status_settings_saved: "Podešavanja vraćena (reči sačuvane).",
     status_settings_loaded: "Podešavanja uspešno učitana.",
     status_settings_error: "Greška: Neispravan fajl.",
-    status_profile_changed: "Profil promenjen na: {0}",
     status_done_selection: "Završeno: {0} ({1}ms)",
     status_done_document: "Završeno: {0} ({1}ms){2}",
     status_preview_applied: "Završeno (primenjen preview).",
@@ -118,23 +171,33 @@ export const SR_RS = {
     status_extra_footnotes_na: "Fusnote: N/A",
     status_extra_endnotes_na: "Endnote: N/A",
     status_doc_too_large_short: "Dokument prevelik (limit 5MB)",
+
+    // Modals
     modal_title_confirm: "Potvrda",
     modal_title_error: "Greška",
     modal_title_info: "Nema izmena",
     modal_title_about: "O Aplikaciji",
     modal_title_debug: "Dijagnostika (Debug)",
-    btn_ok: "OK",
-    btn_cancel: "Otkaži",
-    btn_close: "Zatvori",
+
+    // UI buttons (Office/taskpane)
     btn_load_more: "Učitaj još",
     btn_apply: "PRESLOVI",
     ui_btn_run: "PRESLOVI",
     ui_btn_preview: "PREGLED",
-    ui_tag_remove: "Ukloni",
+
+    // Tag remove label
+    ui_tag_remove: "Ukloni reč",
+
+    // Web mode label
     ui_web_mode: "Web režim",
+
+    // Web: drag/drop generic (Office-web shared)
     web_drop_title: "Prevucite .docx fajl ovde",
     web_drop_subtitle: "ili kliknite za izbor",
     web_drop_invalid_file: "Samo .docx fajlovi su podržani!",
+    web_drop_overlay_title: "Prevucite fajl ovde",
+
+    // Preview UI
     preview_btn_diff: "Razlike",
     preview_btn_plain: "Rezultat",
     preview_btn_side: "Pre/Posle",
@@ -150,25 +213,31 @@ export const SR_RS = {
     preview_diff_tip_insert: "Klikni da odbaciš izmenu",
     preview_diff_tip_delete: "Klikni da zadržiš ovaj tekst",
     preview_toast_debug_logs_copied: "Debug logovi kopirani u clipboard!",
-    msg_empty_selection: "Selektovan je samo prazan prostor...",
-    msg_no_selection: "Nema selekcije za preslovljavanje.",
-    msg_confirm_whole_doc: "Nije selektovan tekst.<br/>Da li želite da preslovite <b>CEO dokument</b>?",
-    msg_reset_confirm: "Ovo će vratiti opcije na fabričke vrednosti...",
-    msg_preview_empty: "Preview failed: result is empty text.",
-    msg_preview_no_changes: "Tekst je već u traženom pismu ili nema šta da se menja.",
-    msg_preview_scope_doc: "Dostupno samo kada pregledate ceo dokument",
-    msg_doc_too_large: "Dokument je prevelik za automatsku obradu...",
+    preview_toast_copied: "Kopirano",
+    preview_toast_copy_fail: "Ne mogu da kopiram",
     preview_title_selection: "Selektovani tekst ({0})",
     preview_title_doc: "Prvih {0} paragrafa ({1})",
     preview_diff_no_changes: "Nema izmena u tekstu.",
-    preview_toast_copied: "Kopirano",
-    preview_toast_copy_fail: "Ne mogu da kopiram",
+
+    // Common messages
+    msg_empty_selection: "Selektovan je samo prazan prostor...",
+    msg_no_selection: "Nema selekcije za preslovljavanje.",
+    msg_confirm_whole_doc: "Nije selektovan tekst.<br/>Da li želite da preslovite <b>CEO dokument</b>?",
+    msg_preview_empty: "Pregled nije uspeo: rezultat je prazan tekst.",
+    msg_preview_no_changes: "Tekst je već u traženom pismu ili nema šta da se menja.",
+    msg_preview_scope_doc: "Dostupno samo kada pregledate ceo dokument",
+    msg_doc_too_large: "Dokument je prevelik za automatsku obradu...",
+    msg_enter_text: "Unesite neki tekst.",
+
+    // Cache reasons
     reason_opts_changed: "podešavanja su promenjena",
     reason_expired: "cache je istekao",
     reason_selection_changed: "selekcija je promenjena",
     reason_formatting_changed: "formatiranje/selekcija (OOXML) su promenjeni",
     reason_missing: "cache nije kompletan",
     reason_unknown: "nepoznat razlog",
+
+    // Stats (detailed)
     stats_scope_selection: "Selekcija",
     stats_scope_document: "Ceo dokument",
     stats_header_apply: "Statistika: {0}",
@@ -191,23 +260,22 @@ export const SR_RS = {
     stats_line_footnotes: "Fusnote: {0}",
     stats_line_endnotes: "Endnote: {0}",
     stats_line_chars: "Karakteri: {0}",
-    profile_custom: "Ručno",
-    profile_it: "IT / Tehnologija",
-    profile_finance: "Finansije / Bankarstvo",
-    profile_medical: "Medicina / Farmacija",
-    profile_legal: "Pravo / Administracija",
-    profile_marketing: "Marketing / Društvene mreže",
-    profile_journalism: "Novinarstvo / Mediji",
+
+    // Stats pluralization variants
     stats_line_nodes_changed_one: "Promenjen {0} čvor",
     stats_line_nodes_changed_few: "Promenjena {0} čvora",
     stats_line_nodes_changed_many: "Promenjeno {0} čvorova",
+
+    // Errors / perf
     error_max_retries_exceeded: "Maksimalan broj pokušaja prekoračen",
     error_network_retrying: "Mrežna greška, pokušavam ponovo...",
     error_word_api_retrying: "Word API greška, pokušavam ponovo...",
     error_out_of_memory_split_document: "Dokument je prevelik. Molimo podelite ga na manje delove.",
     error_selection_lost: "Selekcija je izgubljena. Molimo selektujte ponovo.",
     perf_slow_operation: "Operacija traje duže od očekivanog...",
-    perf_very_slow_warning: "Processing is very slow. Consider splitting the document.",
+    perf_very_slow_warning: "Obrada je veoma spora. Razmotrite deljenje dokumenta.",
+
+    // Tour
     tour_skip: "Preskoči",
     tour_next: "Dalje",
     tour_finish: "Kreni!",
@@ -217,8 +285,11 @@ export const SR_RS = {
     tour_step2_text: "Imena firmi i specifične reči dodajte u <b>Zaštićeno</b>...",
     tour_step3_title: "Pregled pre Primene 👁️",
     tour_step3_text: "Koristite dugme <b>PREGLED</b> da vidite i izaberete izmene...",
-    lbl_support: "Podrška",
+
+    // Debug
     btn_export_logs: "Sačuvaj logove (Debug)",
+
+    // Web clipboard
     web_clipboard_header: "Brzi tekst / Clipboard",
     web_clipboard_placeholder: "Nalepi tekst ovde (Ctrl+V)...",
     web_clipboard_convert: "Preslovi Tekst",
@@ -226,11 +297,14 @@ export const SR_RS = {
     web_clipboard_copied: "Kopirano! ✅",
     web_clipboard_ready: "Spremno za novi tekst...",
     web_convert_error: "Greška pri konverziji.",
-    msg_enter_text: "Unesite neki tekst.",
+
+    // Live
     live_empty_doc: "Prazan dokument",
     live_no_text: "Nema teksta",
     live_sel_words: "Selekcija: {0}",
     live_doc_words: "Dokument: {0}",
+
+    // Word/char count plural forms
     word_count: "{0} reči",
     word_count_one: "{0} reč",
     word_count_few: "{0} reči",
@@ -239,17 +313,181 @@ export const SR_RS = {
     char_count_one: "{0} znak",
     char_count_few: "{0} znaka",
     char_count_many: "{0} znakova",
+
+    // Live direction labels
     live_auto_to_cyr: "Auto (→ Ćir)",
     live_auto_to_lat: "Auto (→ Lat)",
     live_target_cyr: "→ Ćirilica",
     live_target_lat: "→ Latin",
     live_target_ascii: "→ ASCII",
     live_warn_ascii: " (ASCII?)",
-    web_drop_overlay_title: "Prevucite fajl ovde",
+
+    // Tooltips
     tooltip_run_shortcut: " (Alt+Enter)",
     tooltip_preview_shortcut: " (Alt+P)",
+
+    // Online/offline messages
     msg_offline: "📡 Nema interneta? Nema problema. Radim offline.",
     msg_online: "🌐 Ponovo na mreži.",
+
+    // ===== WEB APP (src/web) =====
+
+    // Web UI - modes / top buttons
+    web_ui_mode_files: "Dokumenti",
+    web_ui_mode_text: "Tekst",
+    web_ui_btn_settings: "Podešavanja",
+    web_ui_btn_convert: "Preslovi",
+    web_ui_btn_working: "Obrada...",
+
+    // Web status (web app)
+    web_status_live_on: "Prikaz uživo uključen",
+    web_status_live_off: "Prikaz uživo isključen",
+    web_ui_status_idle: "Spremno.",
+    web_ui_status_busy_pct: "Obrada... {0}%",
+
+    // Web badges
+    web_badge_offline: "Bez mreže",
+    web_badge_offline_ready: "Spremno za rad bez mreže",
+    web_status_offline_ready: "✅ Offline spremno. Aplikacija može da radi bez interneta.",
+
+    // Web DOCX panel
+    web_ui_docx_title: "Dokumenti (.docx)",
+    web_ui_docx_desc: "Prevuci dokumente, pokreni preslovljavanje, pa preuzmi rezultate.",
+    web_ui_btn_clear_list: "Očisti listu",
+    web_ui_btn_download_zip: "Preuzmi ZIP",
+    web_ui_btn_download_zip_title: "Preuzmi sve obrađene dokumente kao ZIP arhivu",
+    web_ui_drop_title: "Prevuci dokumente ovde",
+    web_ui_drop_sub: "Ili klikni da odabereš sa računara",
+    web_ui_no_files: "Nema dokumenata na listi.",
+
+    // Web DOCX table
+    web_ui_table_file: "Dokument",
+    web_ui_table_status: "Status",
+    web_ui_table_progress: "Napredak",
+    web_ui_table_meta: "Detalji",
+    web_ui_table_actions: "Radnje",
+    web_ui_job_queued: "Na čekanju",
+    web_ui_job_running: "Obrada...",
+    web_ui_job_done: "Završeno",
+    web_ui_job_error: "Greška",
+    web_ui_job_canceled: "Otkazano",
+    web_ui_meta_parts_ms: "{0} delova u {1}ms",
+    web_ui_btn_remove: "Ukloni",
+    web_ui_btn_download: "Preuzmi",
+
+    // Web Text panel
+    web_ui_text_title: "Brzi tekst",
+    web_ui_text_desc: "Kucaj ili nalepi tekst za trenutno preslovljavanje.",
+    web_ui_label_input: "Unos:",
+    web_ui_text_placeholder: "Ovde unesi tekst...",
+    web_ui_text_hint: "Prečica: Ctrl+Enter za preslovljavanje",
+    web_ui_btn_copy_result: "Kopiraj rezultat",
+    web_ui_btn_copy_result_title: "Kopiraj preslovljeni tekst u privremenu memoriju",
+
+    // Web Output panel
+    web_ui_output_title: "Rezultat",
+    web_ui_output_desc_files: "Pregled statusa obrade dokumenata.",
+    web_ui_output_desc_text: "Rezultat preslovljavanja ({0}).",
+    web_ui_badge_version: "Verzija {0}",
+    web_ui_tab_result: "Rezultat",
+    web_ui_tab_diff: "Razlike",
+    web_ui_tab_stats: "Statistika",
+    web_ui_label_result: "Izlaz:",
+    web_ui_result_placeholder: "Rezultat će se pojaviti ovde...",
+    web_ui_no_diff: "Nema izmena za prikaz ili je prikaz isključen.",
+    web_ui_diff_help: "Crveno: obrisano (original), Zeleno: dodato (novo).",
+
+    // Web files summary
+    web_ui_files_done: "završeno: {0}/{1}",
+    web_ui_files_errors: "grešaka: {0}",
+    web_ui_files_result_hint: "Preuzmi dokumente pojedinačno ili kao ZIP arhivu.",
+    web_ui_docx_diff_placeholder: "Poređenje nije dostupno za dokumente, samo za tekstualni režim.",
+
+    // Web stats
+    web_ui_stats_chars_in: "Karaktera (ulaz): {0}",
+    web_ui_stats_chars_out: "Karaktera (izlaz): {0}",
+    web_ui_stats_no_data: "Nema statistike.",
+    web_ui_stats_direction: "Smer: {0}",
+    web_ui_stats_nodes: "Tekst čvorova: {0}",
+    web_ui_stats_time_ms: "Vreme: {0}ms",
+    web_ui_stats_chars_before: "Karaktera pre: {0}",
+    web_ui_stats_chars_after: "Karaktera posle: {0}",
+    web_ui_stats_detected_urls: "Detektovano linkova: {0}",
+    web_ui_stats_detected_emails: "Detektovano e-adresa: {0}",
+    web_ui_stats_bridges_header: "--- Mostovi (Bridges) ---",
+
+    // Web drawer/settings
+    web_ui_drawer_title: "Podešavanja",
+    web_ui_shortcut_palette: "Komandna paleta",
+    web_ui_shortcut_live: "Uključi/isključi uživo prikaz",
+    web_ui_setting_language: "Jezik interfejsa",
+    web_ui_lang_auto: "Automatski",
+    web_ui_lang_sr: "Srpski",
+    web_ui_lang_en: "English",
+    web_ui_setting_protect_brands: "Zaštiti poznate brendove (npr. YouTube, Facebook)",
+    web_ui_setting_quotes: "Primeni srpske navodnike („ ”)",
+    web_ui_setting_code: "Zaštiti blokove koda (prema stilovima)",
+    web_ui_setting_romans: "Zaštiti rimske brojeve (I, II, V, X...)",
+    web_ui_setting_autodl: "Automatsko preuzimanje nakon obrade",
+    web_ui_setting_live_preview: "Prikaz uživo (dok kucaš)",
+
+    web_ui_setting_curly: "Zaštita reči u vitičastim zagradama {tekst}",
+    web_ui_curly_placeholders: "Samo placeholder-i (npr. {USER_NAME})",
+    web_ui_curly_all: "Sve unutar { ... }",
+    web_ui_curly_none: "Isključeno",
+
+    web_ui_protected_label: "Zaštićene reči (neće se preslovljavati)",
+    web_ui_protected_placeholder: "Unesi reč i pritisni Enter...",
+    web_ui_protected_help: "Klikni na reč da je ukloniš sa liste.",
+    web_ui_btn_add: "Dodaj",
+    web_ui_btn_clear: "Obriši sve",
+
+    web_ui_ignored_styles_label: "Ignorisani Word stilovi (jedan po redu)",
+    web_ui_ignored_styles_placeholder: "npr. Code, MyStyle...",
+
+    web_ui_dialect_label: "Konverzija dijalekta (Beta)",
+    web_ui_dialect_none: "Bez promene",
+    web_ui_dialect_ei: "Ekavica u Ijekavicu",
+    web_ui_dialect_ie: "Ijekavica u Ekavicu",
+
+    web_ui_subs_label: "Prilagođene zamene (lat -> ćir)",
+    web_ui_subs_placeholder: "npr. dj -> đ (svaka u novi red)",
+
+    web_ui_btn_save: "Sačuvaj podešavanja",
+    web_ui_btn_reset_web: "Vrati na podrazumevano",
+
+    // Web live badge
+    web_ui_live_badge_on: "UŽIVO",
+    web_ui_live_badge_off: "PAUZA",
+    web_ui_live_shortcut_hint: "Alt+L za prebacivanje",
+
+    // Web palette
+    web_palette_placeholder: "Ukucaj komandu…",
+    web_palette_footer: "↑/↓ izbor • Enter pokreni • Esc zatvori",
+    web_palette_empty: "Nema rezultata.",
+
+    // Web commands
+    web_cmd_convert_files: "Preslovi DOCX (Start)",
+    web_cmd_convert_text: "Preslovi tekst",
+    web_cmd_toggle_to_text: "Prebaci na: Tekst",
+    web_cmd_toggle_to_files: "Prebaci na: Dokumenti",
+    web_cmd_open_settings: "Otvori podešavanja",
+    web_cmd_cycle_direction: "Promeni smer (sada: {0})",
+    web_cmd_download_zip: "Preuzmi sve kao ZIP",
+    web_cmd_copy_result: "Kopiraj rezultat (tekst)",
+    web_cmd_clear_jobs: "Očisti listu fajlova",
+    web_cmd_toggle_live_on: "Prikaz uživo: UKLJUČEN",
+    web_cmd_toggle_live_off: "Prikaz uživo: ISKLJUČEN",
+    web_cmd_update_refresh_now: "Ažuriranje: osveži sada",
+
+    // Web hints
+    web_hint_ctrl_k: "Ctrl+K",
+    web_hint_alt_l: "Alt+L",
+    web_hint_ctrl_enter: "Ctrl+Enter",
+    web_hint_ctrl_comma: "Ctrl+,",
+    web_hint_ctrl_shift_c: "Ctrl+Shift+C",
+
+    // Web statuses
     web_status_settings_saved: "Podešavanja sačuvana.",
     web_status_text_type: "Tekst: {0}",
     web_status_no_docx_files: "Nema .docx fajlova.",
@@ -265,154 +503,27 @@ export const SR_RS = {
     web_status_settings_imported: "Podešavanja učitana.",
     web_status_settings_import_error: "Greška: neispravan fajl.",
 
-    web_ui_mode_files: "Fajlovi (.docx)",
-    web_ui_mode_text: "Tekst",
-    web_ui_btn_settings: "Podešavanja",
-    web_ui_btn_convert: "Preslovi",
-    web_ui_btn_working: "Obrada...",
-    web_ui_docx_title: "DOCX konverzija",
-    web_ui_docx_desc: "Prevuci fajlove, pokreni preslovljavanje, pa preuzmi rezultate.",
-    web_ui_btn_clear_list: "Očisti listu",
-    web_ui_btn_download_zip: "Download ZIP",
-    web_ui_btn_download_zip_title: "Preuzmi sve kao ZIP",
-    web_ui_drop_title: "Prevuci .docx ovde ili klikni da izabereš fajl",
-    web_ui_drop_sub: "Više fajlova je podržano. Obrada se radi lokalno.",
-    web_ui_no_files: "Nema fajlova. Dodaj .docx da kreneš.",
-    web_ui_table_file: "Fajl",
-    web_ui_table_status: "Status",
-    web_ui_table_progress: "Napredak",
-    web_ui_table_meta: "Meta",
-    web_ui_table_actions: "Akcije",
-    web_ui_job_done: "gotovo",
-    web_ui_job_error: "greška",
-    web_ui_job_running: "radi",
-    web_ui_job_canceled: "otkazano",
-    web_ui_job_queued: "čeka",
-    web_ui_meta_parts_ms: "{0} delova • {1}ms",
-    web_ui_btn_remove: "Ukloni",
-    web_ui_btn_download: "Download",
-
-    web_ui_text_title: "Brza konverzija teksta",
-    web_ui_text_desc: "Plain text režim. Radi lokalno. Ima Diff i interaktivno odbacivanje izmena.",
-    web_ui_btn_copy_result: "Kopiraj rezultat",
-    web_ui_btn_copy_result_title: "Kopiraj u clipboard",
-    web_ui_text_placeholder: "Nalepi tekst ovde...",
-    web_ui_label_input: "Tekst",
-    web_ui_text_hint: "Tip: u Diff tabu klikći zelene/crvene delove da odbaciš izmenu.",
-
-    web_ui_output_title: "Output",
-    web_ui_output_desc_files: "Rezultati i preuzimanje.",
-    web_ui_output_desc_text: "Rezultat: {0}",
-    web_ui_badge_version: "ver {0}",
-    web_ui_tab_result: "Rezultat",
-    web_ui_tab_diff: "Razlike",
-    web_ui_tab_stats: "Statistika",
-    web_ui_label_result: "Rezultat",
-    web_ui_result_placeholder: "Rezultat će se pojaviti ovde...",
-    web_ui_no_diff: "Nema diff-a. Preslovi tekst prvo.",
-    web_ui_diff_help: "Klikni obojene delove da odbaciš izmenu (insert) ili zadržiš obrisano (delete).",
-
-    web_ui_files_done: "done: {0}/{1}",
-    web_ui_files_errors: "errors: {0}",
-    web_ui_files_result_hint: "Rezultate preuzimaš iz tabele levo (Download).",
-    web_ui_docx_diff_placeholder:
-        "Diff za DOCX dodajemo kasnije (treba stabilan preview tekst). Za sada koristi Text režim za Diff.",
-
-    web_ui_stats_no_data: "Nema statistike još (pokreni konverziju).",
-    web_ui_stats_chars_in: "chars in: {0}",
-    web_ui_stats_chars_out: "chars out: {0}",
-    web_ui_stats_direction: "direction: {0}",
-    web_ui_stats_nodes: "nodes: {0}",
-    web_ui_stats_time_ms: "time: {0}ms",
-    web_ui_stats_chars_before: "charsBefore: {0}",
-    web_ui_stats_chars_after: "charsAfter: {0}",
-    web_ui_stats_detected_urls: "detected.urls: {0}",
-    web_ui_stats_detected_emails: "detected.emails: {0}",
-    web_ui_stats_bridges_header: "bridges:",
-
-    web_ui_status_idle: "idle",
-    web_ui_status_busy_pct: "busy {0}%",
-
-    web_ui_drawer_title: "Podešavanja",
-    web_ui_setting_language: "Jezik",
-    web_ui_lang_auto: "Auto",
-    web_ui_lang_sr: "Srpski",
-    web_ui_lang_en: "English",
-
-    web_ui_setting_protect_brands: "Zaštiti brendove/tehnologije",
-    web_ui_setting_quotes: "Primeni srpske navodnike (Lat → Ćir)",
-    web_ui_setting_code: "Sačuvaj code blocks (`...` i ```...```)",
-    web_ui_setting_romans: "Zaštiti rimske brojeve (IV, XIV)",
-    web_ui_setting_autodl: "Auto-download posle konverzije",
-
-    web_ui_setting_curly: "Curly zaštita",
-    web_ui_curly_placeholders: "Samo {placeholders}",
-    web_ui_curly_all: "Sve {...}",
-    web_ui_curly_none: "Ništa",
-
-    web_ui_protected_label: "Zaštićene reči/fraze",
-    web_ui_protected_placeholder: "Dodaj reč ili frazu...",
-    web_ui_btn_add: "Dodaj",
-    web_ui_btn_clear: "Očisti",
-    web_ui_protected_help: "Ove reči ostaju nepromenjene u konverziji (i u tekstu i u DOCX-u).",
-
-    web_ui_ignored_styles_label: "Ignored styles (DOCX)",
-    web_ui_ignored_styles_placeholder: "Ignorisani stilovi (svaki u novom redu)\nCode\nQuote",
-
-    web_ui_dialect_label: "Dialect",
-    web_ui_dialect_none: "Standard (samo preslovljavanje)",
-    web_ui_dialect_ei: "Ekavica → Ijekavica (beta)",
-    web_ui_dialect_ie: "Ijekavica → Ekavica (beta)",
-
-    web_ui_subs_label: "Custom substitutions",
-    web_ui_subs_placeholder: "Sopstvene zamene (src -> dest)\nvreme -> vrijeme",
-
-    web_ui_btn_save: "Sačuvaj",
-    web_ui_btn_reset_web: "Reset (web)",
-
-    web_ui_setting_live_preview: "Live preview (dok kucaš)",
-    web_ui_live_badge_on: "LIVE",
-    web_ui_live_badge_off: "LIVE OFF",
-    web_ui_live_shortcut_hint: "Alt+L: uklj/isklj live preview",
-    web_status_live_on: "Live preview: ON",
-    web_status_live_off: "Live preview: OFF",
-
-    web_palette_placeholder: "Ukucaj komandu…",
-    web_palette_footer: "↑/↓ izbor • Enter pokreni • Esc zatvori",
-    web_palette_empty: "Nema rezultata.",
-
-    web_cmd_convert_files: "Preslovi DOCX (Start)",
-    web_cmd_convert_text: "Preslovi tekst",
-    web_cmd_toggle_to_text: "Prebaci na: Tekst",
-    web_cmd_toggle_to_files: "Prebaci na: Fajlovi (.docx)",
-    web_cmd_open_settings: "Otvori podešavanja",
-    web_cmd_cycle_direction: "Promeni smer (sada: {0})",
-    web_cmd_download_zip: "Preuzmi sve kao ZIP",
-    web_cmd_copy_result: "Kopiraj rezultat (tekst)",
-    web_cmd_clear_jobs: "Očisti listu fajlova",
-    web_cmd_toggle_live_on: "Live preview: ON",
-    web_cmd_toggle_live_off: "Live preview: OFF",
-
-    web_hint_ctrl_enter: "Ctrl+Enter",
-    web_hint_ctrl_comma: "Ctrl+,",
-    web_hint_ctrl_shift_c: "Ctrl+Shift+C",
-    web_hint_alt_l: "Alt+L",
-
-    web_status_offline_ready: "✅ Offline spremno. Aplikacija može da radi bez interneta.",
-
-    web_update_available: "✨ Dostupna je nova verzija aplikacije.",
+    // Web updates
+    web_update_available: "Dostupna je nova verzija!",
+    web_update_available_versions: "Ažuriranje: {0} ➔ {1}",
     web_update_refresh: "Osveži",
     web_update_later: "Kasnije",
-
     web_update_dismiss: "Zatvori",
-    web_update_release_notes: "Šta je novo",
+    web_update_release_notes: "Šta je novo?",
 
-    web_hint_ctrl_k: "Ctrl+K",
-    web_ui_shortcut_palette: "Komandna paleta",
-    web_ui_shortcut_live: "Live preview",
+    // Web jobs (messages shown in progress pill)
+    web_job_msg_queued: "U redu čekanja",
+    web_job_msg_loading: "Učitavanje...",
+    web_job_msg_done_ms: "Gotovo ({0}ms)",
+    web_job_msg_canceled: "Otkaženo",
+    web_job_msg_error: "Greška",
 
-    web_badge_offline: "OFFLINE",
-    web_badge_offline_ready: "OFFLINE READY",
-    web_update_available_versions: "✨ Dostupna je nova verzija ({0} → {1}).",
-    web_cmd_update_refresh_now: "Update: osveži sada",
+    web_wifi_online: "Na mreži",
+    web_wifi_offline: "Van mreže",
+    web_toast_offline_mode: "Rad u režimu van mreže",
+    web_toast_online_mode: "Mreža je aktivna",
+    web_toast_copied_clipboard: "Kopirano u privremenu memoriju!",
+    web_status_copy_failed: "Ne mogu da kopiram (clipboard nije dostupan).",
+    web_wifi_title_online: "Na mreži (klikni za rad van mreže)",
+    web_wifi_title_offline: "Van mreže (klikni za povezivanje)",
 };
