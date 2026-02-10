@@ -19,6 +19,7 @@ jobs:
   analyze:
     name: Analyze (CodeQL)
     runs-on: ubuntu-latest
+
     permissions:
       actions: read
       contents: read
@@ -40,7 +41,9 @@ jobs:
         with:
           languages: ${{ matrix.language }}
 
-      # IMPORTANT: Do NOT set pnpm version here when package.json has "packageManager".
+      # IMPORTANT:
+      # Repo already pins pnpm via package.json "packageManager": "pnpm@X.Y.Z".
+      # With pnpm/action-setup@v4, do NOT also specify "with: version:" (it fails).
       - name: Install pnpm
         uses: pnpm/action-setup@v4
 
@@ -76,49 +79,74 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo "Listing sarif-results:"
-          ls -la sarif-results || true
+          echo "Tree (sarif-results):"
+          find sarif-results -maxdepth 4 -type f -print || true
           echo "SARIF files:"
-          ls -la sarif-results/*.sarif 2>/dev/null || true
+          find sarif-results -type f -name "*.sarif" -print || true
 
-      - name: Filter SARIF files (hard remove OOXML xmlParser false positives)
+      # Fix for: "Path does not exist: sarif-results/javascript-typescript.sarif"
+      # We do NOT assume the SARIF filename. We normalize it deterministically.
+      - name: Normalize SARIF filename
+        id: sarif
         shell: bash
         run: |
           set -euo pipefail
-          shopt -s nullglob
-          files=(sarif-results/*.sarif)
+
+          mapfile -t files < <(find sarif-results -type f -name "*.sarif" -print)
 
           if [ ${#files[@]} -eq 0 ]; then
-            echo "ERROR: No SARIF files found in sarif-results/"
+            echo "ERROR: No SARIF files found under sarif-results/"
+            find sarif-results -maxdepth 6 -type f -print || true
             exit 1
           fi
 
-          for f in "${files[@]}"; do
-            node scripts/filter-codeql-sarif.cjs --in "$f" --out "$f"
+          # Pick the largest SARIF (usually the primary result).
+          main="$(ls -S "${files[@]}" | head -n 1)"
+          target="sarif-results/${{ matrix.language }}.sarif"
+
+          echo "Picked SARIF: $main"
+          echo "Target SARIF: $target"
+
+          mv "$main" "$target"
+
+          # Remove any remaining SARIF files to avoid confusion.
+          mapfile -t rest < <(find sarif-results -type f -name "*.sarif" -print)
+          for f in "${rest[@]}"; do
+            if [ "$f" != "$target" ]; then
+              rm -f "$f"
+            fi
           done
+
+          # Validate JSON shape (basic)
+          jq -e . "$target" >/dev/null
+
+          echo "file=$target" >> "$GITHUB_OUTPUT"
+
+      - name: Filter SARIF (hard remove OOXML xmlParser false positives)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/filter-codeql-sarif.cjs --in "${{ steps.sarif.outputs.file }}" --out "${{ steps.sarif.outputs.file }}"
 
       - name: Assert filtered SARIF contains no remaining matches
         shell: bash
         run: |
           set -euo pipefail
-          shopt -s nullglob
-          files=(sarif-results/*.sarif)
 
           if jq -r '
             .runs[].results[]?
             | select(.ruleId=="js/xss" or .ruleId=="js/xml-bomb")
             | (.locations[0].physicalLocation.artifactLocation.uri // "")
-          ' "${files[@]}" | grep -Ei "src[\\/]+shared[\\/]+ooxml[\\/]+xmlParser\.ts" -q; then
+          ' "${{ steps.sarif.outputs.file }}" | grep -Ei "src[\\/]+shared[\\/]+ooxml[\\/]+xmlParser\.ts" -q; then
             echo "ERROR: SARIF still contains js/xss or js/xml-bomb results for src/shared/ooxml/xmlParser.ts"
             exit 1
           fi
 
           echo "OK: filtered SARIF has no remaining matches"
 
-      # IMPORTANT: Upload a single SARIF file path (more reliable than uploading a directory).
       - name: Upload SARIF (filtered)
         uses: github/codeql-action/upload-sarif@v4
         with:
-          sarif_file: sarif-results/${{ matrix.language }}.sarif
+          sarif_file: ${{ steps.sarif.outputs.file }}
           category: "/language:${{ matrix.language }}"
           wait-for-processing: true
