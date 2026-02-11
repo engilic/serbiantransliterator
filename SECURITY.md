@@ -1,85 +1,55 @@
-# Security Policy
-
-## Supported Versions
-
-This project is actively maintained on the `master` branch. Security updates are prioritized for the hybrid Rust/WASM core and the OOXML processing bridge.
-
-**Version Support**
-
-- **1.0.x** — ✅ Yes (Stable)
-- **< 1.0.0** — ❌ No
-
-If you are running an older release, please upgrade to the latest 1.0.x version and re-test before reporting.
-
+# 🛡️ SECURITY POLICY — v1.0.0 (HARDENING PHASE)
 ---
 
-## Reporting a Vulnerability (Private Disclosure Only)
+**Project:** Serbian Transliterator (Universal Engine)
+**Posture:** Privacy-First / Air-Gap Standard
+**Standard:** MAX1 Guardian Verification
 
-If you believe you have found a security vulnerability, please **do not** open a public GitHub Issue and **do not** post proof-of-concepts publicly.
+# 🟢 01 // SUPPORTED VERSIONS
+---
+Ovaj projekat se aktivno održava na `master` grani. Bezbednosne zakrpe su apsolutni prioritet.
 
-Report it privately using one of the following channels:
+| Verzija | Status | Podrška |
+| :--- | :--- | :--- |
+| **1.0.x** | ✅ Stable | Aktivno održavanje i bezbednosni apdejti. |
+| **< 1.0.0** | ❌ Legacy | Više nije podržano. Obavezno pređite na 1.0.x. |
 
-1. **Email (preferred):** iddj27510@gmail.com
-    - Subject: `Serbian Transliterator - Security report`
+# 📨 02 // REPORTING A VULNERABILITY
+---
+Ako smatrate da ste pronašli bezbednosni propust, molimo vas da **NE** otvarate javni Issue. Koristite isključivo privatne kanale:
 
-2. **GitHub Security Advisories:**
-    - Use GitHub’s **“Report a vulnerability”** flow (creates a private advisory thread)
+1.  **Email:** `iddj27510@gmail.com`
+    - Subject: `Serbian Transliterator - Security Report`
+2.  **GitHub Security Advisories:**
+    - Kreirajte privatni thread kroz GitHub alat **“Report a vulnerability”**.
 
-### Please include
+**Molimo uključite:**
+- Detaljan opis propusta i potencijalni uticaj.
+- Korake za reprodukciju (PoC).
+- Cenzurišite osetljiv sadržaj dokumenata pre slanja bilo kakvih logova.
 
-- A clear description of the issue and its impact
-- Steps to reproduce (PoC if possible)
-- Affected versions and/or commit hash
-- Environment details (Word version, OS, browser/WebView2 version)
-- Relevant logs (sanitize sensitive document content before sending)
+# 🦾 03 // DEFENSE-IN-DEPTH (HARDENING MEASURES)
+---
+Od verzije **v1.0.0**, primenjujemo sledeće rigorozne mere:
 
-### Response targets (best effort)
+### A) XML & OOXML Safety
+- **Pre-parse Validation:** Validacija XML-a na XXE konstrukte (`DOCTYPE` / `ENTITY`) pre ulaska u parser.
+- **Structural Integrity:** Rekonstrukcija tokena sprečava korupciju OOXML strukture dokumenta.
 
-- **Acknowledgement:** within 72 hours
-- **Status update:** within 7 days
-- **Fix timeline:** depends on severity and release constraints
+### B) Execution Sandbox
+- **WASM Memory Safety:** Jezgro u Rust-u eliminiše rizike od "buffer overflow" i sličnih grešaka.
+- **Worker Isolation:** Obrada dokumenata se vrši u izolovanim nitima, štiteći glavni UI thread.
+
+### C) MAX1 Guardian Pipeline
+- **Automated Audit:** Svaka verifikacija koda automatski pokreće `pnpm audit` i `cargo audit`.
+- **Secrets Sniffer:** Automatsko skeniranje koda na hardkodovane tajne i ključeve.
+- **A11y Guard:** Osiguravamo da UI ne diskriminiše korisnike kroz loš kontrast ili nepristupačan dizajn.
+
+# 🌐 04 // SYSTEM CONTEXT
+---
+- **Local Processing:** Sadržaj dokumenata se obrađuje isključivo u lokalnoj memoriji (RAM).
+- **Air-Gap Policy:** Aplikacija ne šalje tekst dokumenata na eksterne servere nakon učitavanja.
+- **Zero-Persistence:** Sirovi sadržaj dokumenata se nikada ne čuva na disku.
 
 ---
-
-## Mitigations & Defense-in-Depth
-
-As of **v1.0.0 (Phase 2 Hardening)**, the following security measures are enforced:
-
-- **Pre-parse XML Validation:** OOXML parts are validated for XXE-like constructs (e.g., `DOCTYPE` / `ENTITY`) and “Billion Laughs”-style signatures before being parsed.
-- **Worker Isolation:** Document processing is executed in an isolated Web Worker context where applicable (to keep the UI thread non-blocking and reduce blast radius).
-- **WASM Memory Safety:** The core engine is implemented in Rust, reducing risk of classic memory-safety vulnerabilities (buffer overflows, use-after-free) in text manipulation logic.
-- **MAX1 Sniffer / CI Security Gates:** The automated pipeline (`pnpm run verify:all` / `pnpm run verify:all:strict`) scans commits for secrets, hardcoded keys, and unsafe HTML sinks (e.g., unreviewed `innerHTML` usage).
-- **DOMPurify:** Mandatory sanitization for any clipboard-derived HTML and any UI rendering path that touches HTML.
-
----
-
-## Scope Notes
-
-### In scope
-
-- Anything that could compromise user privacy (e.g., unexpected network calls, data exfiltration)
-- Integrity of document content (e.g., vulnerabilities that could corrupt OOXML or silently change meaning)
-- Execution safety (worker/WASM boundary issues, sandbox escapes)
-- XSS / injection in UI surfaces (Taskpane + Web app)
-- Vulnerabilities in the build/release pipeline (compromised artifacts, dependency attacks)
-
-### Out of scope
-
-- Issues requiring a fully compromised OS or a malicious browser extension to exploit
-- Social engineering attacks
-- Denial-of-service reports that rely on unrealistic inputs
-    - (We do consider DoS issues **in scope** if they reflect common real-world documents and usage patterns.)
-
----
-
-## System Context (for reporters)
-
-- **Execution:** Document text is processed **locally** (client-side).
-- **Network:** After the initial app load, the product is designed to operate in an “air-gap” posture for document content (no document contents are sent to external services).
-- **Automated Audits:** The project uses MAX1 Guardian verification gates on PRs (lint/typecheck/tests/build + security checks + dependency audits as configured).
-- **Persistence:** Document content is not intentionally persisted to disk by the application. It exists in memory during processing.
-    - Settings, UI preferences, and (optional) performance telemetry may be stored locally (e.g., localStorage/IndexedDB), but **not raw document content**.
-
----
-
 © 2026 Serbian Transliterator Project. Licensed under MIT.

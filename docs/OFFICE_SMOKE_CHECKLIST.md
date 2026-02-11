@@ -1,218 +1,70 @@
-# Office Smoke Checklist — Serbian Transliterator (Release Safety) (REV 2026-02-10)
+# 🚭 OFFICE SMOKE CHECKLIST — v1.0.1 (RELEASE SAFETY)
+---
 
-Cilj: potvrdi da je add-in “store/enterprise safe” pre objave (Word Desktop + Word Web + Web Mode).
+**Project:** Serbian Transliterator (Universal Engine)
+**Standard:** MAX1 Guardian Hardening (v1.0.0+)
+**Goal:** Potvrdi da je add-in “Store & Enterprise Safe” pre nego što stigne do korisnika na produkciji.
 
-Ovaj checklist je namerno “dosadan”: pokriva najčešće situacije gde add-in radi lokalno, ali padne u Office hostu zbog CSP/headers, cache-a, ili Office runtime razlika.
+# ☢️ A // PRE-CHECK (VERIFIKACIJA OKRUŽENJA)
+---
+Pre početka bilo kakvog manuelnog testiranja, sistem mora proći rigoroznu automatizovanu torturu.
 
-============================================================
-A) PRE-CHECK (pre testiranja)
-============================================================
+**A1) Clean Slate Integrity**
+- Working tree mora biti savršeno čist (`git status`).
+- Očistite sve stare artefakte i keš: `PS> pnpm run clean`.
 
-A1) Clean local state (recommended)
+**A2) MAX1 Guardian (Total Verification)**
+Obavezno pokrenite totalnu verifikaciju. Izveštaj mora biti bez ijednog warninga.
+`PS> pnpm run verify:all`
 
-- Radi na čistom working tree (git status mora biti čist ili svesno kontrolisan).
-- Po potrebi očisti artefakte:
+**A3) A11y Contrast Verification**
+- Potvrdite vizuelno da je primarna plava boja promenjena na `#005a9e`.
+- Proverite da li Playwright testovi u `tests-e2e/a11y.spec.ts` prolaze bez "color-contrast" prekršaja.
 
-PS> pnpm run clean
+**A4) Headers & CSP Sanity**
+Proverite `src/static/_headers` fajl:
+- `Content-Security-Policy` mora dozvoliti WASM instanciranje (`script-src 'unsafe-eval'`).
+- `frame-ancestors` mora dozvoliti `https://*.office.com` i ostale Microsoft domene.
+- `X-Content-Type-Options: nosniff` mora biti prisutan radi zaštite od MIME sniffing napada.
 
-A2) MAX1 verification (pre smoke testova)
-Obavezno uradi jedan od ova dva nivoa:
+# 🖥️ B // TEST 1 — WORD DESKTOP (WINDOWS)
+---
+**B1) Setup**
+`PS> pnpm run dev` (Pokreće dev-server i Sideload u Word Desktop).
 
-Option 1 (recommended):
-PS> pnpm run verify:all
+**B2) Smoke Scenariji**
+1. **Startup Speed:** Skeleton ekran mora nestati trenutno (0ms delay nakon `onReady`).
+2. **Context-Aware Translit:** Selektujte pasus koji sadrži reč "iPhone Pro" napisanu pola bold, pola normal.
+   - *Očekivanje:* Brend ostaje zaštićen, a Word formatiranje ostaje netaknuto.
+3. **Interactive Diff:** 
+   - Pokrenite *Preview*.
+   - Manuelno odbijte (Reject) jednu promenu u Diff prozoru.
+   - Kliknite *Apply*.
+   - *Očekivanje:* Dokument se menja tačno prema stanju iz Diff prozora.
+4. **Abort Logic:** Pokrenite konverziju celog dokumenta (50+ strana) i pritisnite `ESC`.
+   - *Očekivanje:* Status se menja u "Cancelled", bez delimičnih izmena u tekstu.
 
-Option 2 (minimum):
-PS> pnpm run build
-PS> pnpm run test:coverage
-PS> pnpm run test:e2e
+# 🌐 C // TEST 2 — WORD ON THE WEB (OFFICE.COM)
+---
+**C1) Cloud Verifikacija**
+1. **CSP Instantiation:** Otvorite konzolu i potvrdite da nema fatalnih grešaka tipa "Refused to instantiate WebAssembly".
+2. **Dark Mode Reaction:** Prebacite Word Web u Dark Mode. Add-in mora detektovati promenu (preko focus-a) i primeniti tamne varijable.
+3. **Service Worker:** Potvrdite da se aplikacija učitava čak i ako se mreža simulira kao "Slow 3G" bez pucanja WASM modula.
 
-A3) Hosting sanity (prod)
+# 🌍 D // TEST 3 — WEB APP MODE (STANDALONE)
+---
+**D1) PWA & Batch Hardening**
+1. **DOCX Drop:** Prevucite 10+ različitih DOCX fajlova u Files panel.
+2. **Parallel Processing:** Potvrdite da se procesiranje odvija paralelno i da progress bar ne "secka".
+3. **Download Loop:** Preuzmite rezultate. Proverite da li su nazivi fajlova ispravno formatirani (npr. `PRESLOVLJENO_ime.docx`).
+4. **Offline Toggle:** Kliknite na WiFi ikonu u headeru. Pokrenite konverziju teksta. Sve mora raditi (Air-gap potvrda).
 
-- manifest.prod.xml mora da koristi HTTPS URL-ove, npr:
-  https://serbiantransliterator.pages.dev/...
+# 🏆 G // FINAL EVIDENCE COLLECTION
+---
+Pre objave, arhivirajte sledeće dokaze:
+1. `verify-all` FINAL REPORT iz terminala (sa "🏆 VERIFY PASSED!").
+2. Screenshot `pnpm audit` tabele koja pokazuje nula propusta.
+3. Potvrdu verzije iz footera (mora se podudarati sa tagom na Gitu).
 
-A4) Headers / CSP sanity
-
-- src/static/\_headers mora da sadrži:
-    - Content-Security-Policy (deny-by-default, ali kompatibilan sa Office + WASM)
-    - frame-ancestors koji dopušta Office hostove
-    - X-Content-Type-Options: nosniff
-    - Referrer-Policy (npr. strict-origin-when-cross-origin)
-- Ako ikad koristiš Office Dialog API cross-domain:
-    - preporuka: Cross-Origin-Opener-Policy: unsafe-none
-    - nemoj COOP same-origin ako ti treba cross-window messaging
-
-============================================================
-B) TEST 1 — WORD DESKTOP (Windows) / SIDELOAD
-============================================================
-
-B0) Setup
-PS> pnpm run dev
-(Ovo startuje webpack dev-server + sideload u Word)
-
-B1) Smoke scenariji
-
-1. Otvori Word dokument koji sadrži:
-    - mešano: latinica + ćirilica
-    - URL + email
-    - NBSP + više razmaka
-    - tekst sa “CODE” stilom (ako koristiš ignoredStyles / code protection)
-    - bar jedan pasus sa digrafima (Nj/Lj/Dž) preko run boundary (npr. bold mid-token)
-
-2. Otvori add-in (task pane)
-
-3. Convert selection
-    - selektuj 2–3 pasusa
-    - preslovi (u izabranom smeru)
-    - očekivanje: samo selekcija se menja, stilovi ostaju
-
-4. Preview workflow
-    - Preview → Diff mode
-    - toggle reject/accept par izmena
-    - Apply
-    - očekivanje: rezultat odgovara diff stanju
-
-5. Cancel / Abort
-    - pokreni obradu većeg dela teksta
-    - pritisni ESC ili Cancel
-    - očekivanje: “Cancelled”, bez polu-primenjenog stanja
-
-6. Offline scenario (manual)
-    - isključi mrežu (ili koristi sistemski offline)
-    - očekivanje: UI može pokazati “offline”, ali core transliteration mora da radi (offline-first)
-
-B2) Fail simptomi
-
-- add-in se ne učitava (blank / white screen)
-- Office.js error u konzoli
-- CSP errors (Refused to load/execute…)
-- WASM init error (module not found / instantiate blocked)
-
-B3) Evidence (Desktop)
-
-- screenshot: taskpane prikaz + verzija u footeru
-- screenshot/log: Console bez fatal CSP errora
-- (ako ima issue) kopiraj full console stack + network errors
-
-============================================================
-C) TEST 2 — WORD ON THE WEB (Office.com)
-============================================================
-
-C0) Setup
-
-1. Okači/otvori Word dokument u Office.com
-2. Deploy/Sideload add-in (zavisi od tenant/admin setup-a)
-
-C1) Smoke scenariji (isti kao Desktop)
-
-1. Otvori task pane
-2. Convert selection
-3. Preview + Diff toggle + Apply
-4. Cancel / Abort (gde je moguće)
-5. Proveri da core radi stabilno i da nema “host-only” regressions
-
-C2) Najčešći problemi u Word Web
-
-- connect-src u CSP previše strict (Office runtime ponekad traži Microsoft domene)
-- frame-ancestors ne pokriva Office/SharePoint/Outlook hostove (u zavisnosti od embed)
-- caching: stara verzija se drži ako manifest 4-part nije bumpovan ili html caching nije pravilno podešen
-- service worker update flow: mora biti update-safe (banner + controllerchange reload)
-
-============================================================
-D) TEST 3 — WEB MODE (taskpane.html?mode=web)
-============================================================
-
-D0) Setup
-Otvori u browseru:
-https://serbiantransliterator.pages.dev/taskpane.html?mode=web
-
-D1) Smoke scenariji
-
-1. Rich text paste
-    - paste iz Word-a i sa web stranice
-    - očekivanje: format se uglavnom očuva, ali bez XSS (sanitized)
-
-2. Convert text
-    - preslovi plain/rich tekst
-    - očekivanje: rezultat je konzistentan sa direction settings
-
-3. Copy
-    - proveri copy behavior (plain text + (ako podržano) HTML)
-    - očekivanje: nema “clipboard write denied” bez jasne poruke
-
-4. DOCX drop
-    - mali .docx (npr. ~200KB)
-    - očekivanje: generiše “PRESLOVLJENO\_\*.docx” i download radi
-
-5. Limit test (policy)
-    - ogroman .docx (npr. >5MB)
-    - očekivanje: jasna poruka “Document too large” (ili ekvivalent), bez crash-a
-
-D2) Evidence (Web mode)
-
-- screenshot: konverzija + rezultat
-- screenshot: jobs tabela + download
-- console: bez CSP fatal errora, bez WASM init errora
-
-============================================================
-E) CSP / HEADERS VERIFIKACIJA (šta tačno gledati)
-============================================================
-
-E1) Response headers (Web mode)
-U DevTools → Network → (HTML/JS/WASM request) proveri:
-
-- Content-Security-Policy
-- X-Content-Type-Options
-- Referrer-Policy
-- (po potrebi) Cross-Origin-Opener-Policy
-- (po potrebi) Cross-Origin-Embedder-Policy (ako ikad uvedeš COI/SharedArrayBuffer)
-
-E2) Console (CSP/WASM)
-Ne smeš imati:
-
-- “Refused to execute inline script…” (ne bi trebalo da ima inline script)
-- “Refused to compile or instantiate WebAssembly…” (ako se desi → CSP mora da dopusti WASM)
-- “Refused to connect…” (ako connect-src blokira Office/Microsoft domene u Word Web)
-
-E3) Minimalna CSP realnost za WASM
-Ako WASM instantiation pada zbog CSP:
-
-- potvrdi da CSP dopušta WebAssembly korišćenje u target host-u
-- i da Office.js CDN domen nije blokiran (ako ga koristiš)
-
-============================================================
-F) AKO NEŠTO PUKNE (fallback procedura)
-============================================================
-
-F1) Ako WASM ne radi zbog CSP
-Simptom:
-
-- “WebAssembly compilation blocked by CSP”
-- “Refused to compile/instantiate WebAssembly…”
-
-Akcija:
-
-- u \_headers privremeno olabavi script-src (samo ako mora) i retest
-- cilj: minimalna relax koja prolazi u Word Desktop + Word Web
-- zabeleži finalnu CSP varijantu u docs/ARCHITECTURE.md ili SECURITY.md
-
-F2) Ako Office Dialog ikad bude korišćen i messaging padne (error 12006)
-Akcija:
-
-- potvrdi da response header nije Cross-Origin-Opener-Policy: same-origin
-- preporuka: Cross-Origin-Opener-Policy: unsafe-none
-- ili drži add-in i dialog na istom domenu
-
-============================================================
-G) EVIDENCE (šta sačuvati pre release-a)
-============================================================
-
-- screenshot/zip Console output: verify-all PASS (lokalno)
-- link ili artifact: coverage report (HTML)
-- Word Desktop: screenshot da taskpane radi + verzija u footeru
-- Word Web: screenshot da preview/apply radi
-- Web mode: screenshot (DOCX job + download)
-- (ako bilo šta failuje) kopiraj:
-    - Console stack trace
-    - Network CSP error detalje
-    - tačan URL i manifest verziju
+---
+Dokument kreirao: Architecture Team (MAX1) | Poslednja revizija: 2026-02-11
