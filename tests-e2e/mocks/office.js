@@ -20,10 +20,15 @@ window.Office = {
         },
         displayLanguage: "sr-Latn-RS",
     },
+    // FIX: onReady mora da vrati Promise da bi .then() u taskpane.ts radio
     onReady: function (callback) {
-        // Simuliramo kašnjenje mreže da bi bilo realnije
-        setTimeout(function () {
-            callback({ host: "Word" });
-        }, 50);
+        const info = { host: "Word" };
+        const promise = new Promise((resolve) => {
+            setTimeout(() => {
+                if (callback) callback(info);
+                resolve(info);
+            }, 50);
+        });
+        return promise;
     },
 };

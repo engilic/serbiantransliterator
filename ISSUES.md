@@ -1,108 +1,86 @@
-# 🛠️ INTERNAL ISSUE TRACKER & TECHNICAL DEBT REGISTRY — v1.0.0-dev
-
-Ovaj dokument služi kao primarni registar svih identifikovanih sistemskih ograničenja, tehničkog duga i planiranih ispravki.
-
-**Fokus:** Prelazak sa "Functional" na "Bulletproof" stabilnost (Faza 2: Hardening).  
-**Identitet Pipeline-a:** 🛡️ MAX1 Guardian
+# 🛠️ ISSUES & TECHNICAL DEBT — v1.0.1 (HARDENING)
 
 ---
 
-## 🟢 RESOLVED / REŠENO (Phase 2 Hardening)
+**Project:** Serbian Transliterator (Hybrid: TypeScript + Rust/WASM)
+**Registry Version:** 1.0.1 (REV 2026-02-11)
+**Pipeline Identity:** 🛡️ MAX1 Guardian
+**Focus:** Tranzicija sa funkcionalne stabilnosti na "Bulletproof" arhitekturu.
 
-### 1) Worker Lifecycle & Panic Recovery (Self-Healing)
-
-- **Status:** ✅ REŠENO (v1.0.0-dev)
-- **Implementacija:** Uveden supervisor pattern unutar `WorkerClient.ts`. Klijent sada automatski detektuje pad workera, re-inicijalizuje WASM i re-queuje in-flight zadatke.
-
-### 2) Digraph Ambiguity in Bridge Logic
-
-- **Status:** ✅ REŠENO (v1.0.0-dev)
-- **Implementacija:** Unapređena heuristika u `digraphs.ts`. Spajanje karaktera (npr. `n` | `j`) sada proverava leksički kontekst i eliminiše lažne pogrešne spojeve na granicama čvorova.
-
-### 3) Mutex Overhead in Rust Core
-
-- **Status:** ✅ REŠENO (v7.6 Optimization)
-- **Implementacija:** Migrirano sa globalnog `Mutex` na `thread_local!` storage unutar Rust koda. Pristup rečnicima i kešu reči sada ima nultu latenciju (zero-lock architecture).
-
-### 4) Legacy Labeling (GOD1 -> MAX1)
-
-- **Status:** ✅ REŠENO (Branding Sync)
-- **Implementacija:** Svi sistemski natpisi, logovi i CI workflow koraci su prebačeni na **MAX1** standard.
+# 🟢 RESOLVED / REŠENO (Hardening Phase 2)
 
 ---
 
-## 🔴 CRITICAL: MEMORY & PERFORMANCE (Priority: P0)
+### 1. WCAG 2 AA Compliance (A11y Contrast)
 
-### 5) DOMParser Memory Bloat (The "RAM Wall")
+- **Status:** ✅ REŠENO (2026-02-11)
+- **Opis:** Primarne brend boje (#0078d4) nisu zadovoljavale kontrast od 4.5:1 na beloj pozadini.
+- **Fix:** Redefinisane boje u `global.css` na standardnu tamniju plavu (#005a9e).
+- **Dokaz:** Axe-core validacija unutar E2E pipeline-a sada vraća nula prekršaja.
 
-- **Opis:** Trenutna implementacija koristi browser-native `DOMParser`. Za dokumente od 100MB+, RAM može skočiti na 800MB+ zbog V8 mapiranja čvorova.
-- **Privremeno rešenje:** Adaptive Chunking (procesiranje po dinamičkim grupama paragrafa).
-- **Zadatak:** Implementacija **Rust Streaming Pull-Parsera** koristeći `quick-xml`.
-- **Cilj:** O(1) memory complexity; potrošnja <50MB RAM bez obzira na veličinu fajla.
+### 2. Startup Latency & Skeleton Removal
 
-**Napomene / rizici:**
+- **Status:** ✅ REŠENO (2026-02-11)
+- **Fix:** Uklonjen veštački delay od 100ms. Implementirana Promise-based inicijalizacija koja reaguje na `Office.onReady`.
+- **Dokaz:** Eliminisan "expect(locator).toBeHidden()" timeout u testovima.
 
-- Potrebno je očuvati kompatibilnost sa WordprocessingML (`w:p`, `w:r`, `w:t`, `w:tab`, `w:br`, `w:cr`) i postojećim “bridge” mehanizmima.
-- Uvesti “safety rails”: limit na dubinu XML-a i limit na veličinu token buffer-a da se izbegne DoS kroz ekstremno ugnježdene strukture.
+### 3. E2E Infrastructure (Office Stub & Selectors)
 
----
+- **Status:** ✅ REŠENO (2026-02-11)
+- **Fix:** Ažuriran `office.js` mock da podržava `then()`. Playwright selektori u `web-live-toggle.spec.ts` su precizirani (button-focused).
 
-## 🟡 HIGH PRIORITY: UX & INTEGRATION (Priority: P1)
+### 4. Verify Pipeline Optimization (Zero-Noise)
 
-### 6) WebView2 Office Theme Sync Failure
+- **Status:** ✅ REŠENO (2026-02-11)
+- **Fix:** Uvedena unificirana funkcija `runValidationSuite`. Sve interne pnpm komande koriste `--silent`.
+- **Dokaz:** Čist terminalski izveštaj sa tačno dva prazna reda razmaka nakon svakog koraka.
 
-- **Opis:** Promena sistemske teme (Light/Dark) se ne propagira u Taskpane u realnom vremenu na Windows Desktopu.
-- **Zadatak:** Uvesti polling mehanizam (svaka 2s) nad `Office.context.officeTheme` ili osvežavanje na `window.focus`.
+### 5. Security Audit Visibility
 
-**Napomena:**
+- **Status:** ✅ REŠENO (2026-02-11)
+- **Fix:** `checkProjectHealth` sada ispisuje kompletnu tabelu propusta direktno u izveštaj.
 
-- Rešenje treba da bude “low-impact”: polling samo dok je taskpane u fokusu ili dok je vidljiv.
-
-### 7) State Persistence (Recovery after Close)
-
-- **Opis:** Zatvaranje Taskpane-a briše trenutnu statistiku i izabrane filtere u "Zaštićeno" sekciji.
-- **Zadatak:** Implementirati `sessionStorage` sinhronizaciju za `AppState` (AppState Rehydration).
-
-**Napomena:**
-
-- Ne upisivati velike payload-e (npr. cele dokumente). Fokus na “UI state” + poslednje odabrane opcije.
+# 🔴 CRITICAL: PERFORMANCE & MEMORY (P0)
 
 ---
 
-## 🟢 MEDIUM PRIORITY: LOGIC & TOOLING (Priority: P2)
+### 6. Web UX "Live" Input Lag
 
-### 8) I18n Bloat & Dead Keys
+- **Status:** 🔴 OPEN
+- **Problem:** Dok je uključen Live mod u Web verziji, kucanje može biti isprekidano ili može doći do gubitka fokusa/kursora.
+- **Uzrok:** Trenutna arhitektura koristi `replaceChildren` koji vrši kompletan re-render DOM stabla pri promeni stanja. Iako postoji keširanje elemenata, fizičko uklanjanje i vraćanje u DOM uzrokuje "štucanje" brauzera.
+- **Zadatak (v1.1.x):** Implementirati hirurško osvežavanje (Surgical DOM Updates) ili uvesti lagani Virtual DOM mehanizam koji ne dira Input panel dok korisnik kuca.
 
-- **Problem:** Postoji značajan broj neiskorišćenih ključeva u `sr.ts` i `en.ts`.
-- **Zadatak:** Integrisati `scripts/checkI18nKeys.cjs` u `verify-all.js` pipeline i obrisati "orphan" ključeve.
+### 7. DOMParser Memory Wall
 
-**Napomena:**
+- **Status:** 🔴 OPEN
+- **Problem:** DOM-based XML parser gradi kompletno stablo u RAM-u, što kod DOCX fajlova >100MB dovodi do pucanja taba.
+- **Zadatak (v1.1.x):** Prelazak na **Rust streaming pull-parser** (quick-xml) unutar WASM jezgra.
 
-- Gate treba da razlikuje “dead keys” od ključeva korišćenih u HTML template-ovima i runtime string formatima.
-
-### 9) Custom Subs Separator Validation
-
-- **Opis:** Korisnici ponekad unose `->` unutar reči u "Sopstvenim zamenama", što kvari podelu na izvor/cilj.
-- **Zadatak:** Dodati regex validaciju u `subsUi.ts` koja sprečava ili escape-uje separator unutar stringa.
-
----
-
-## ⚪ LOW PRIORITY: POLISH (Priority: P3)
-
-### 10) Large File Fuzzing
-
-- **Zadatak:** Proširiti `fuzz/ooxml.fuzz.test.ts` da generiše ekstremno velike i duboko ugnježdene XML strukture (npr. Nested Content Controls) radi testiranja limita parsera.
+# 🟡 HIGH PRIORITY: UX & STATE (P1)
 
 ---
 
-## 📋 BACKLOG ZA VERZIJU 1.1.0 (Summary)
+### 8. WebView2 Office Theme Sync (Windows)
 
-- [ ] **Rust Streaming Engine:** Integracija `quick-xml` (P0)
-- [ ] **Theme Polling:** Rešavanje Dark Mode laga (P1)
-- [ ] **Persistence:** Rehidratacija stanja iz `sessionStorage` (P1)
-- [ ] **I18n Cleanup:** Uklanjanje mrtvog koda iz lokalizacije (P2)
-- [ ] **Office.js hardening:** Standardizovati “select is best-effort” (ne sme da ruši testove/mokove) i dokumentovati razliku između `ClientResult.value` i `load(...)` objekata (P2)
+- **Status:** 🟡 OPEN
+- **Problem:** Promena teme u Windowsu se nekada ne propagira u Word bez manuelnog reload-a.
+
+### 9. UI State Rehydration (Persistence)
+
+- **Status:** 🟡 OPEN
+- **Problem:** Zatvaranje taskpane-a resetuje UI stanje (statistika i izabrani filteri se gube).
+
+# 📋 BACKLOG ZA VERZIJU 1.1.x (Summary)
 
 ---
 
-Generated: 2026-02-07 02:50 | Architect: Senior Rust/TypeScript Architect
+- [ ] **P0:** Rust Streaming Engine (XML memory optimization).
+- [ ] **P0:** Web UX Surgical Updates (Glatko kucanje bez re-rendera).
+- [ ] **P1:** Theme Polling / Focus refresh.
+- [ ] **P1:** UI State Rehydration (sessionStorage).
+- [ ] **P2:** I18n Keys Automated Cleanup.
+
+---
+
+**META:** Last Revised: 2026-02-11 | Architect: Jugoslav Ilić (engilic)

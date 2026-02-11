@@ -1,79 +1,69 @@
-# Security Policy
-
-## Supported Versions
-
-This project is actively maintained on the `master` branch. Security updates are prioritized for the hybrid Rust/WASM core and the OOXML processing bridge.
-
-**Version Support:**
-
-- 1.0.x — ✅ Yes (Stable)
-- < 1.0.0 — ❌ No
-
-If you are running an older release, please upgrade to the latest version and re-test before reporting.
+# 🛡️ SECURITY POLICY — v1.0.0 (HARDENING PHASE)
 
 ---
 
-## Reporting a Vulnerability
+**Project:** Serbian Transliterator (Universal Engine)
+**Posture:** Privacy-First / Air-Gap Standard
+**Standard:** MAX1 Guardian Verification
 
-If you believe you have found a security vulnerability, please **do not** open a public GitHub Issue and do not post proof-of-concepts publicly.
-
-Report it privately using one of the following channels:
-
-**1. Email (preferred):** iddj27510@gmail.com
-
-- Subject: `Serbian Transliterator - Security report`
-
-**2. GitHub Security Advisories:**
-
-- Use GitHub's "Report a vulnerability" flow (creates a private advisory thread)
-
-### Please include:
-
-- A clear description of the issue and its impact.
-- Steps to reproduce (PoC if possible).
-- Affected versions/commit hash.
-- Environment details (Word version, OS, browser/WebView2 version).
-- Any relevant logs (sanitize sensitive document content before sending).
+# 🟢 01 // SUPPORTED VERSIONS
 
 ---
 
-## Mitigations & Defense-in-Depth
+Ovaj projekat se aktivno održava na `master` grani. Bezbednosne zakrpe su apsolutni prioritet.
 
-As of **v1.0.0 (Phase 2 Hardening)**, the following security measures are enforced:
+| Verzija     | Status    | Podrška                                        |
+| :---------- | :-------- | :--------------------------------------------- |
+| **1.0.x**   | ✅ Stable | Aktivno održavanje i bezbednosni apdejti.      |
+| **< 1.0.0** | ❌ Legacy | Više nije podržano. Obavezno pređite na 1.0.x. |
 
-- **Pre-parse XML Validation:** All OOXML is validated for XXE (External Entity) and Billion Laughs signatures before entering the DOM parser.
-- **Worker Isolation:** 100% of text processing occurs in a isolated Web Worker context.
-- **WASM Memory Safety:** The core engine is built in Rust, providing memory safety guarantees that prevent buffer overflows in text manipulation.
-- **MAX1 Sniffer:** Our automated pipeline (`pnpm run verify-all`) scans every commit for secrets, hardcoded keys, and the use of unsafe HTML sinks (`innerHTML`).
-- **DOMPurify:** Mandatory sanitization for all clipboard and UI rendering operations.
-
----
-
-## Scope Notes
-
-### In scope:
-
-- Anything that could compromise user privacy (e.g., unexpected network calls).
-- Integrity of document content (e.g., vulnerabilities that could corrupt OOXML).
-- Execution safety (Worker/WASM escape).
-- XSS in UI surfaces (Taskpane/Web mode).
-- Vulnerabilities in the build/release pipeline (compromised artifacts).
-
-### Out of scope:
-
-- Issues requiring a fully compromised OS or a malicious browser extension to exploit.
-- Social engineering attacks.
-- Denial-of-service reports that rely on unrealistic inputs (unless they represent common real-world documents).
+# 📨 02 // REPORTING A VULNERABILITY
 
 ---
 
-## System Context (for reporters)
+Ako smatrate da ste pronašli bezbednosni propust, molimo vas da **NE** otvarate javni Issue. Koristite isključivo privatne kanale:
 
-- **Execution:** This add-in processes document text **locally** (client-side only).
-- **Network:** After initial load from Cloudflare Pages, the app operates in an **Air-Gap standard** mode (no data leaves the device).
-- **Automated Audits:** The project uses `MAX1 Guardian` (pnpm audit high + cargo audit strict + custom security sniffer) on every PR.
-- **No Persistence:** Document content is never stored permanently; it exists only in memory during processing.
+1.  **Email:** `iddj27510@gmail.com`
+    - Subject: `Serbian Transliterator - Security Report`
+2.  **GitHub Security Advisories:**
+    - Kreirajte privatni thread kroz GitHub alat **“Report a vulnerability”**.
+
+**Molimo uključite:**
+
+- Detaljan opis propusta i potencijalni uticaj.
+- Korake za reprodukciju (PoC).
+- Cenzurišite osetljiv sadržaj dokumenata pre slanja bilo kakvih logova.
+
+# 🦾 03 // DEFENSE-IN-DEPTH (HARDENING MEASURES)
 
 ---
 
-© 2026 Serbian Transliterator Project.
+Od verzije **v1.0.0**, primenjujemo sledeće rigorozne mere:
+
+### A) XML & OOXML Safety
+
+- **Pre-parse Validation:** Validacija XML-a na XXE konstrukte (`DOCTYPE` / `ENTITY`) pre ulaska u parser.
+- **Structural Integrity:** Rekonstrukcija tokena sprečava korupciju OOXML strukture dokumenta.
+
+### B) Execution Sandbox
+
+- **WASM Memory Safety:** Jezgro u Rust-u eliminiše rizike od "buffer overflow" i sličnih grešaka.
+- **Worker Isolation:** Obrada dokumenata se vrši u izolovanim nitima, štiteći glavni UI thread.
+
+### C) MAX1 Guardian Pipeline
+
+- **Automated Audit:** Svaka verifikacija koda automatski pokreće `pnpm audit` i `cargo audit`.
+- **Secrets Sniffer:** Automatsko skeniranje koda na hardkodovane tajne i ključeve.
+- **A11y Guard:** Osiguravamo da UI ne diskriminiše korisnike kroz loš kontrast ili nepristupačan dizajn.
+
+# 🌐 04 // SYSTEM CONTEXT
+
+---
+
+- **Local Processing:** Sadržaj dokumenata se obrađuje isključivo u lokalnoj memoriji (RAM).
+- **Air-Gap Policy:** Aplikacija ne šalje tekst dokumenata na eksterne servere nakon učitavanja.
+- **Zero-Persistence:** Sirovi sadržaj dokumenata se nikada ne čuva na disku.
+
+---
+
+© 2026 Serbian Transliterator Project. Licensed under MIT.

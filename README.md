@@ -1,75 +1,85 @@
-# Serbian Transliterator (v1.0.0)
-
-**Status:** 🟢 Phase 2: Hardening (Pipeline: **MAX1 Guardian**)  
-**Codename:** "The Neural Frontier"
-
-Najbrži i najsigurniji način za preslovljavanje ćirilice i latinice u Microsoft Word-u i na webu. Pokretan ekstremno brzim **Rust** jezgrom preko **WebAssembly** tehnologije.
+# 🛡️ Serbian Transliterator (v1.0.0)
 
 ---
 
-## 🚀 Ključne Karakteristike (v1.0.0 Hardened)
+**Status:** 🟢 Phase 2 — Hardening (Pipeline: MAX1 Guardian)  
+**Codename:** “The Neural Frontier”  
+**Motto:** “Absolute Privacy. Infinite Performance. Universal Reach.”
 
-- **100% Privatno & Offline:** Tekst se obrađuje isključivo u memoriji vašeg uređaja. Podaci nikada ne napuštaju Word host ili browser.
-- **Hybrid Core Engine:** Rust + WASM omogućavaju obradu brzinom od preko 18,000 reči u sekundi.
-- **Pametni "Bridge" Sloj:** Jedinstvena tehnologija koja prepoznaje i štiti reči, linkove i brendove čak i kada ih Microsoft Word nasumično razbije kroz više XML čvorova.
-- **Samoisceljujući Workeri:** Supervisor arhitektura automatski restartuje pozadinske procese u slučaju greške, osiguravajući neprekidan rad.
-- **Adaptivni Chunking:** Sistem dinamički prilagođava veličinu paketa teksta performansama vašeg računara kako bi Word interfejs ostao fluidan tokom obrade ogromnih dokumenata.
+Najbrži i najsigurniji sistem za preslovljavanje ćirilice i latinice u Microsoft Word-u i na webu. Pokretan ekstremno brzim Rust jezgrom preko WebAssembly (WASM) tehnologije, ovaj alat je izgrađen da izdrži najzahtevnije profesionalne zadatke uz nultu toleranciju na greške.
 
-### 🛡️ Inteligentna Zaštita
-
-- **Brand Guard:** Automatska zaštita za hiljade tehnoloških brendova (Windows, iPhone, Microsoft...).
-- **Context Aware:** Prepoznaje razliku između brenda i obične reči (npr. _iPhone Pro_ vs _prosečan_).
-- **Code Protection:** Tekst unutar Markdown koda (backticks) ili specifičnih Word stilova se ne dira.
-- **URI & Paths:** URL-ovi, e-mail adrese i Windows/Unix putanje ostaju netaknute.
+# 🚀 01 // KLJUČNE KARAKTERISTIKE
 
 ---
 
-## 🌍 Web Režim (PWA)
+Sistem je dizajniran prema MAX Mode standardu koji garantuje nultu latenciju i maksimalnu zaštitu podataka.
 
-Aplikacija radi kao samostalni batch processor u browseru:
+- **100% Privatno (Air-Gap Standard):** Tekst se obrađuje isključivo u lokalnoj memoriji vašeg uređaja. Sadržaj vaših dokumenata nikada ne napušta Word host ili browser.
+- **Hybrid Core Engine (Rust + WASM):** Kombinuje bezbednost i performanse Rust jezika sa univerzalnom dostupnošću WebAssembly-ja.
+- **OOXML-Safe Bridge:** Pametni sloj koji rekonstruiše tokene razbijene stilovima (npr. **i**Phone), vrši konverziju i vraća ih u originalne XML pozicije bez gubitka formatiranja (bold, italic, font).
+- **Inkluzivni UI (WCAG 2 AA):** Interfejs je u potpunosti prilagođen osobama sa slabijim vidom, sa optimizovanim kontrastom (standard #005a9e) i punom ARIA podrškom.
+- **Samoisceljujući Workeri:** Pozadinska obrada je izolovana u nitima koji se automatski restartuju u slučaju nepredviđenih grešaka (Supervisor pattern).
 
-👉 [serbiantransliterator.pages.dev](https://serbiantransliterator.pages.dev)
-
-- **DOCX Batch Mode:** Prevucite više `.docx` fajlova odjednom i preslovite ih lokalno.
-- **PWA Podrška:** Instalirajte aplikaciju na desktop ili mobilni telefon za brz pristup bez interneta.
-
----
-
-## 🛠️ Razvoj i Instalacija (Za Developere)
-
-### Okruženje
-
-- **Runtime:** Node.js 22.x (LTS)
-- **Engine:** Rust (Stable) + wasm-pack
-- **Package Manager:** pnpm
-- **Shell:** PowerShell 7 (preporučeno)
-
-### Početak rada
-
-1. Instalirajte zavisnosti:
-
-    pnpm install
-
-2. Izgradite WASM jezgro:
-
-    pnpm run build:wasm
-
-3. Pokrenite lokalni dev server:
-
-    pnpm start
-
-### MAX1 Guardian (Kvalitet koda)
-
-Pre svakog commit-a, obavezno pokrenite verifikaciju:
-
-    pnpm run verify:all
+# 🛡️ 02 // INTELIGENTNA ZAŠTITA (PROTECTION LAYER)
 
 ---
 
-## ⚖️ Napomena o Beta Funkcionalnostima
+Transliterator ne menja samo slova; on razume strukturu i namenu teksta kroz četiri nivoa zaštite:
 
-Opcija "Ekavica ↔ Ijekavica" koristi morfološke rečnike i smatra se beta funkcionalnošću. Preciznost zavisi od kompleksnosti i konteksta ulaznog teksta.
+- **Brand Guard:** Automatska detekcija i zaštita za preko 5.000 globalnih brendova (Windows, Microsoft, iPhone, Samsung...).
+- **Context-Aware Suffixes:** Pametno razlikuje brend od obične reči u kontekstu (npr. “iPhone Pro” se štiti, dok se obični nastavci preslovljavaju).
+- **Code & Path Integrity:** Ne dira tekst unutar programerskih blokova (backticks), URL-ove, email adrese, kao i Windows/Unix putanje (C:\..., /usr/bin/...).
+- **Roman Numerals:** Opciona zaštita rimskih brojeva kako bi se očuvao integritet istorijskih datuma i nabrajanja u dokumentima.
+
+# 🌍 03 // MULTI-PLATFORM REACH
 
 ---
 
-© 2026 Jugoslav Ilić. Izgrađeno uz fokus na suverenitet jezika i digitalnu privatnost.
+Aplikacija radi sinhronizovano na dva nivoa, deleći identično Rust "mozak":
+
+### Microsoft Word (Add-in)
+
+Duboka integracija za profesionalni tok rada. Podržava preslovljavanje selekcije, celog dokumenta, fusnota, zaglavlja i podnožja.
+
+- **Status:** Spremno za Sideload i AppSource.
+
+### Web App (PWA)
+
+Samostalni procesor u browseru koji omogućava brz rad bez instalacije Word-a.
+
+- **DOCX Batch Mode:** Prevuci desetine dokumenata odjednom i preslovi ih lokalno za nekoliko sekundi.
+- **Offline-First:** Instaliraj aplikaciju kao PWA za rad bez internet konekcije.
+- **URL:** https://serbiantransliterator.pages.dev
+
+# 🛠️ 04 // RAZVOJ I KVALITET (ZA DEVELOPERE)
+
+---
+
+Projekat koristi MAX1 Guardian pipeline koji garantuje integritet svakog commit-a.
+
+**Okruženje:**
+
+- Runtime: Node.js 22.x (Volta pinned)
+- Core: Rust (Stable) + wasm-pack
+- Package Manager: pnpm 9.x
+
+**Početak rada:**
+
+1. Instalacija: pnpm install
+2. Izgradnja jezgra: pnpm run build:wasm
+3. Start dev servera: pnpm start
+
+**Verifikacija (The Guardian):**
+Pre svakog slanja koda, obavezno pokreni punu proveru koja uključuje Security Audit, Rust testove i E2E provere:
+PS> pnpm run verify:all
+
+# ⚖️ 05 // NAPOMENA O BETA FUNKCIJAMA
+
+---
+
+Opcija “Ekavica ↔ Ijekavica” koristi napredne morfološke rečnike i smatra se beta funkcionalnošću. Preciznost zavisi od kompleksnosti teksta i može zahtevati manuelnu proveru u specifičnim lingvističkim kontekstima.
+
+---
+
+© 2026 Serbian Transliterator Project. Built with ❤️ in Rust & TypeScript.  
+**Author:** Jugoslav Ilić (engilic) | Licensed under MIT.

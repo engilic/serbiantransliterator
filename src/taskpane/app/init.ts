@@ -6,7 +6,6 @@ import { onSelectionChange, checkSelectionAndUpdateButtons } from "./selection";
 import { closeModal } from "./modal/modal";
 import { modalManager } from "./modal/modalManager";
 import { logger } from "./telemetry/logger";
-import { showPreviewToast } from "./modal/previewModal";
 import { initOnboarding } from "./onboarding/tour";
 import { initWasm } from "../../core/textCore";
 import { showModalInfo } from "./modal/modal";
@@ -25,7 +24,6 @@ function registerServiceWorker() {
         window.addEventListener("load", () => {
             navigator.serviceWorker
                 .register("./sw.js", {
-                    // ✅ Ensure SW updates are not blocked by HTTP cache
                     updateViaCache: "none",
                 })
                 .catch((err) => console.log("SW registration failed: ", err));
@@ -34,19 +32,24 @@ function registerServiceWorker() {
 }
 
 export function initTaskpane(isWebMode = false) {
+    // ✅ FIX: Odmah sakrij skeleton i prikaži glavni UI.
+    // Ovo rešava "expect(locator).toBeHidden()" grešku u E2E testovima.
+    const skeleton = document.getElementById("skeleton");
+    const main = document.getElementById("appMain");
+    if (skeleton) {
+        skeleton.style.display = "none";
+        skeleton.setAttribute("aria-hidden", "true");
+    }
+    if (main) {
+        main.style.display = "flex";
+    }
+
     initGlobalErrorBoundary();
 
     window.onerror = (msg, url, line, col, error) => {
         logger.error("Global Error: " + msg, { url, line, col, stack: error?.stack });
     };
     window.onunhandledrejection = (event) => logger.error("Unhandled Rejection: " + event.reason);
-
-    const skeleton = document.getElementById("skeleton");
-    const main = document.getElementById("appMain");
-    setTimeout(() => {
-        if (skeleton) skeleton.style.display = "none";
-        if (main) main.style.display = "flex";
-    }, 100);
 
     try {
         initUi();
@@ -63,10 +66,13 @@ export function initTaskpane(isWebMode = false) {
         // ignore
     }
 
+    // WASM se inicijalizuje u pozadini
     initWasm().catch((e) => logger.error("WASM init failed", e));
+
     setupVersionHandler();
 
     window.addEventListener("beforeunload", () => cleanupEventHandlers());
+
     try {
         initOnboarding();
     } catch (e) {
@@ -74,13 +80,14 @@ export function initTaskpane(isWebMode = false) {
     }
 
     if (isWebMode) {
-        console.log("Web Mode");
+        console.log("Web Mode active (no Office context)");
         registerServiceWorker();
         setupKeyboardShortcuts();
         setupNetworkListeners();
         return;
     }
 
+    // Office-specific inicijalizacija
     state.selectionChangeHandler = () => onSelectionChange();
     if (Office.context && Office.context.document) {
         try {
@@ -92,6 +99,7 @@ export function initTaskpane(isWebMode = false) {
             // best-effort
         }
     }
+
     try {
         void checkSelectionAndUpdateButtons();
     } catch {
@@ -235,7 +243,7 @@ function cleanupEventHandlers() {
                 handler: state.selectionChangeHandler,
             });
         } catch {
-            // best-effort
+            // ignore
         }
         state.selectionChangeHandler = null;
     }

@@ -19,6 +19,8 @@ let cachedInputArea: HTMLTextAreaElement | null = null;
 // Kada user kuca u textarea, tražimo da se fokus vrati posle re-rendera
 let restoreTextFocusNextRender = false;
 
+let inputDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
 type NavigatorUADataLike = { platform?: string };
 type NavigatorWithUAData = Navigator & { userAgentData?: NavigatorUADataLike };
 
@@ -158,28 +160,35 @@ export function renderApp(root: HTMLElement, store: Store<AppState>, actions: Ac
     root.replaceChildren(top, grid, status, overlay, drawer);
 
     // Focus management: when drawer opens, focus Close button
-    if (s.settingsOpen && !lastSettingsOpen) {
+    // ✅ FIX: Ne krademo fokus ako korisnik aktivno kuca u polju
+    if (s.settingsOpen && !lastSettingsOpen && !shouldRestoreTextFocus) {
         const closeBtn = root.querySelector("#webSettingsCloseBtn") as HTMLButtonElement | null;
         closeBtn?.focus();
     }
     lastSettingsOpen = s.settingsOpen;
 
-    // Restore focus AFTER DOM update (and after drawer focus logic)
+    // ✅ ULTRA-STABLE FOCUS RESTORE
     if (shouldRestoreTextFocus && cachedInputArea) {
         restoreTextFocusNextRender = false;
 
-        requestAnimationFrame(() => {
-            try {
-                cachedInputArea.focus({ preventScroll: true });
-                if (typeof selStart === "number" && typeof selEnd === "number") {
-                    cachedInputArea.setSelectionRange(selStart, selEnd, selDir || undefined);
+        // Sinhrono vraćamo fokus PRE bilo kakvih drugih operacija
+        if (document.activeElement !== cachedInputArea) {
+            cachedInputArea.focus({ preventScroll: true });
+        }
+
+        // Kursor vraćamo u sledećem frejmu tek ako je element i dalje "živ"
+        if (typeof selStart === "number") {
+            requestAnimationFrame(() => {
+                try {
+                    if (cachedInputArea && document.activeElement === cachedInputArea) {
+                        // Koristimo 'as number' da uverimo TS, ili samo sklonimo '!' ako je gore provereno
+                        cachedInputArea.setSelectionRange(selStart, selEnd as number, selDir || undefined);
+                    }
+                } catch (e) {
+                    /* ignore */
                 }
-            } catch {
-                // ignore
-            }
-        });
-    } else {
-        restoreTextFocusNextRender = false;
+            });
+        }
     }
 
     // Diff click delegation
@@ -520,26 +529,41 @@ function renderTextPanel(store: Store<AppState>, actions: Actions) {
         ]),
     ]);
 
-    // --- UX OPTIMIZACIJA: TEXTAREA CACHING ---
+    // --- UX OPTIMIZACIJA: TEXTAREA CACHING & STABILITY ---
     if (!cachedInputArea) {
         cachedInputArea = el("textarea", {
             id: "web-main-input",
             placeholder: t("web_ui_text_placeholder"),
+            spellcheck: "false",
+            autocomplete: "off",
+            autocorrect: "off",
+            autocapitalize: "off",
         }) as HTMLTextAreaElement;
 
         cachedInputArea.oninput = () => {
             if (cachedInputArea) {
-                restoreTextFocusNextRender = true; // ✅ user je kucao, vrati fokus posle rendera
-                actions.setPlainInput(cachedInputArea.value);
+                // ✅ Marker da želimo fokus nazad nakon što Store javi promenu
+                restoreTextFocusNextRender = true;
+
+                // ✅ Povećan DEBOUNCE na 150ms za bolju stabilnost WASM-a
+                if (inputDebounceTimer) clearTimeout(inputDebounceTimer);
+                inputDebounceTimer = setTimeout(() => {
+                    if (cachedInputArea) {
+                        actions.setPlainInput(cachedInputArea.value);
+                    }
+                }, 200);
             }
         };
     }
 
-    if (cachedInputArea.value !== s.plain.input) {
+    // ✅ KLJUČNI FIX: Ne diraj vrednost dok korisnik kuca!
+    // U tvom prošlom kodu je ovde bila dupla dodela koja je kočila kursor.
+    const isTyping = document.activeElement === cachedInputArea;
+    if (!isTyping && cachedInputArea.value !== s.plain.input) {
         cachedInputArea.value = s.plain.input;
     }
 
-    // keep a11y + placeholder in sync with current UI language
+    // keep a11y + placeholder in sync sa jezikom
     cachedInputArea.setAttribute("aria-label", t("web_ui_label_input"));
     cachedInputArea.setAttribute("placeholder", t("web_ui_text_placeholder"));
 

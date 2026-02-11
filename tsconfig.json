@@ -3,7 +3,7 @@
         "target": "es2018",
         "lib": ["es2018", "dom", "webworker"],
         "allowJs": true,
-        "baseUrl": ".",
+        "checkJs": false,
         "esModuleInterop": true,
         "noEmitOnError": true,
         "outDir": "dist",
@@ -13,8 +13,11 @@
         "moduleResolution": "bundler",
 
         "resolveJsonModule": true,
+        "skipLibCheck": true,
 
-        "skipLibCheck": true
+        "paths": {
+            "*": ["./*"]
+        }
     },
     "exclude": ["node_modules", "dist", "scripts"]
 }

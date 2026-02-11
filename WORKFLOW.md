@@ -1,313 +1,137 @@
-# 🛡️ WORKFLOW v8.0 — PNPM OPS EDITION (MAXIMUM SECURITY)
+# 🛡️ WORKFLOW v8.2 — PNPM OPS EDITION
+
+---
 
 **Project:** Serbian Transliterator (Hybrid: TypeScript + Rust/WASM)
-**Environment:** VS Code 2026, PowerShell 7, Node 22.x, pnpm 9.x (Managed via Volta), Rust (Stable)
+**Environment:** Visual Studio 2026, PowerShell 7, Node 22.x, pnpm 9.x (Volta), Rust (Stable)
 **Ops Level:** ZERO TOLERANCE for errors.
-**Core Principle:** "Local Verification is the only Source of Truth."
-**Labeling:** MAX1 Guardian
-**Default branch:** `master`
+**Core Principle:** “Local Verification is the only Source of Truth.”
+
+# ☢️ 00 // DAILY SANITY & CLEAN SLATE
 
 ---
 
-## 0. ☢️ DAILY SANITY & CLEAN SLATE
+Pre pisanja koda, osiguraj da je okruženje sterilno. Stari build artefakti i "stale" keš su neprijatelji stabilnosti.
 
-Pre pisanja ijedne linije koda, osiguraj da je tvoje okruženje sterilno.
-Stari artefakti i stale keš su neprijatelji stabilnosti.
+### STANDARD START (Svaki dan)
 
-### Standard Start
+1. Idi na master i povuci najnovije promene.
+2. Sinhronizuj zavisnosti i očisti keširane artefakte.
 
-Koristi ovo svakodnevno za sinhronizaciju i čišćenje osnovnih build artefakata.
+PS> git switch master
+PS> git pull --ff-only
+PS> pnpm install
+PS> pnpm run clean
 
-1. Idi na `master` i povuci najnovije promene.
-2. Sinhronizuj zavisnosti (pnpm je ekstremno brz ovde).
-3. Obriši privremene build artefakte (dist, coverage, pkg).
+### VISUAL STUDIO 2026 “CACHE RESET”
 
-```powershell
-git switch master
-git pull --ff-only
-pnpm install
-pnpm run clean
-```
+Ako Visual Studio prijavi lažne greške (npr. Error 5102 na `tsconfig.json`) ili IntelliSense ne vidi Office tipove:
 
-### The "Nuclear Option" (Emergency Only)
+1. Zatvori Visual Studio.
+2. PS> Remove-Item -Recurse -Force .vs -ErrorAction SilentlyContinue
+3. Ponovo otvori projekat.
 
-Koristi ovo ako naiđeš na čudne greške pri kompajliranju, "module not found" ili probleme sa Rust linkovanjem.
+### THE “NUCLEAR OPTION” (Samo u hitnim slučajevima)
 
-> ⚠️ **PAŽNJA:** Ovo briše sve fajlove koji nisu pod git kontrolom i ignorisane foldere!
+Koristi ako su node_modules korumpirani ili WASM artefakti nekonzistentni.
+PS> git clean -fdX
+PS> pnpm install
+PS> cd src/wasm-core; cargo clean; cd ../..
+PS> pnpm run build:wasm
 
-```powershell
-git clean -fdX
-Remove-Item -Recurse -Force node_modules -ErrorAction SilentlyContinue
-pnpm store prune
-pnpm install
-cd src/wasm-core
-cargo clean
-cd ../..
-pnpm run build:wasm
-```
+# 🧬 01 // DEVELOPMENT LIFECYCLE
 
 ---
 
-## 1. 🧬 DEVELOPMENT LIFECYCLE
+### A) BRANCHING STRATEGY
 
-### A. Branching Strategy
+Direktni commit-ovi na master su ZABRANJENI.
+Format grana: `tip/kebab-case-opis` (npr. `feat/streaming-parser`, `fix/a11y-contrast`).
 
-Direktni commit-ovi na `master` su **ZABRANJENI** (osim release commit-ova generisanih skriptama).
+### B) THE CODING STANDARD (LAW)
 
-**Format:** `tip/kebab-case-opis`
+1. **FILE IDENTITY HEADERS:** Svaki izvorni fajl (.ts, .rs, .js) MORA početi sa putanjom na prvoj liniji. (PS> pwsh ./scripts/add-headers.ps1)
+2. **NO console.log:** Koristi isključivo interni `logger` (info, warn, error).
+3. **STRICT TYPING:** Upotreba `any` je strogo zabranjena. Koristi `unknown` + type guards.
+4. **WCAG 2 AA COMPLIANCE:** Svaka promena boja mora proći kontrast test (Min 4.5:1). Standardna plava: `#005a9e`.
 
-**Types:**
-
-- `feat/` — Nove funkcionalnosti (npr. `feat/streaming-parser`)
-- `fix/` — Ispravke bagova (npr. `fix/memory-leak`)
-- `refactor/` — Izmena koda bez promene ponašanja (npr. `refactor/cleanup-utils`)
-- `chore/` — Konfiguracija, skripte, zavisnosti (npr. `chore/update-deps`)
-- `docs/` — Dokumentacija (npr. `docs/api-reference`)
-
-```powershell
-git switch -c feat/my-new-feature
-```
+# 🛡️ 02 // THE GUARDIAN GATE (MAX1 VERIFICATION)
 
 ---
 
-### B. The Coding Standard (Law)
+`scripts/verify-all.js` je vrhovni autoritet. On sada podrazumevano radi SVE.
 
-#### 1. File Identity Headers (MANDATORY)
+### LEVEL 0: ULTRA-FAST VERIFY (Pre-commit / Quick Sanity)
 
-Svaki izvorni fajl (`.ts`, `.rs`, `.js`, `.ps1`) **MORA** početi sa komentarom relativne putanje.
+Proverava sintaksu, formate i I18n ključeve.
+PS> pnpm run verify:all --ultra-fast
 
-_Auto-fix:_
+### LEVEL 1: SMART VERIFY (Tokom razvoja)
 
-```powershell
-pwsh ./scripts/add-headers.ps1
-```
+Radi kompletan pipeline, ali pametno preskače module koje nisi menjao koristeći git diff.
+PS> pnpm run verify:all --smart
 
-#### 2. No `console.log`
+### LEVEL 2: TOTAL VERIFY (Pre-Push / CI / Source of Truth)
 
-Koristi isključivo logger:
+Podrazumevani mod. Ne preskače ništa. Radi Security Audit, Rust, Build, Unit Tests i E2E.
+PS> pnpm run verify:all
 
-- `logger.info()`
-- `logger.warn()`
-- `logger.error()`
+### LEVEL 3: STRICT VERIFY (Samo za Release proces)
 
-> **Izuzetak:** Privremeni lokalni debugging koji se briše pre commit-a.
+Dodaje najstrože provere distribucionih artefakata.
+PS> pnpm run verify:all:strict
 
-#### 3. Strict Typing
-
-- `any` je **zabranjen**. Koristi `unknown` + type guards.
-- Interfejsi moraju biti eksplicitni.
-
-#### 4. Error Handling
-
-- Nikada ne gutaj greške (never swallow errors).
-- Koristi `normalizeUnknownError(e)` pre logovanja.
-- UI mora imati fallback mehanizam (toast/banner), nikada "white-screen".
+# 🦀 03 // RUST & WASM WORKFLOW
 
 ---
 
-## 2. 🛡️ THE GUARDIAN GATE (MAX1 VERIFICATION)
+### MANUALNA KOMPILACIJA WASM-a
 
-Guardian (`scripts/verify-all.js`) je vrhovni autoritet. **Ako on padne, tvoj kod ne postoji.**
+Neophodno pre pokretanja TypeScript testova koji zavise od jezgra.
+PS> pnpm run build:wasm
 
-**LEVEL 0: Ultra-Fast Verify (Quick Sanity)**  
-Samo linting, format i typecheck. Preskače install, build i testove. Najbrži fidbek.
+### KOMPILACIJA REČNIKA
 
-```powershell
-pnpm verify:all --ultra-fast --no-push
-```
+Pokreni ako menjaš .json fajlove sa pravilima preslovljavanja.
+PS> pnpm run compile:dicts
 
-**LEVEL 1: Fast Verify (During Dev)**  
-Sve iz nivoa 0 + manifest provera + Rust gates. Skipa Unit/E2E testove.
+### RUST TESTOVI & VERZIJE
 
-```powershell
-pnpm verify:all --fast --no-push
-```
+PS> cd src/wasm-core
+PS> cargo test
+PS> cargo update --dry-run (Informativni uvid u zastarelost Rust biblioteka).
 
-**LEVEL 2: Full Verify (Pre-Commit)**  
-Kompletna baterija testova uključujući Unit testove sa coverage izveštajem.
-
-```powershell
-pnpm verify:all --no-push
-```
-
-**LEVEL 3: Strict Verify (Pre-Push / CI / Release)**  
-Maksimalna sigurnost. Build provera + strict audit. Ovo pokreće GitHub Actions.
-
-```powershell
-pnpm verify:all:strict --no-push
-```
-
-### Checklist koji Guardian izvršava:
-
-- **Header Check** — Da li su putanje prisutne i tačne?
-- **Conflict Check** — Da li ima `<<<<<<<` git markera?
-- **Big File Gate** — Da li ima fajlova > 5MB?
-- **Security Sniffer** — Skeniranje za secrets/keys u kodu.
-- **I18n Integrity** — Da li su svi ključevi definisani u `sr.ts`?
-- **Rust Gates** — `cargo fmt`, `cargo clippy` (bez warninga), `cargo test`
-- **Build Gate** — Da li `npm run build` uspeva?
-- **Test Gate** — `vitest run --coverage` (coverage enforced)
-- **E2E Gate** — `playwright test` (smoke testovi u browseru)
+# 🚀 04 // COMMIT, PUSH & PR
 
 ---
 
-## 3. 🦀 RUST & WASM WORKFLOW
+### COMMIT PROTOCOL
 
-Pošto je ovo hibridni projekat, Rust zahteva specifičnu pažnju.
+Prati Conventional Commits standard:
 
-### Manualna kompilacija
+- `feat:` (nova funkcija)
+- `fix:` (ispravka)
+- `refactor:` (promena koda bez promene logike)
 
-```powershell
-pnpm run build:wasm
-```
+### PUSH SEQUENCE
 
-> Generiše `src/wasm-core/pkg` neophodan za TS
+1. **Total Verify:** PS> pnpm run verify:all (Mora biti 🟢 zeleno!).
+2. **Stage & Commit:** PS> git add . && git commit -m "feat: implement logic for ..."
+3. **Push:** PS> git push -u origin tip/opis-grane
 
-### Kompilacija rečnika
-
-Ako menjaš `.json` fajlove u `src/static/assets/`:
-
-```powershell
-pnpm run compile:dicts
-```
-
-> Kreira `.bin` fajlove optimizovane za FST engine
-
-### Rust Testovi
-
-```powershell
-cd src/wasm-core
-cargo test
-```
+# 📦 05 // RELEASE PROCEDURE
 
 ---
 
-## 4. 🚀 COMMIT, PUSH & PR
+1. PS> git switch master && git pull --ff-only
+2. PS> pnpm run verify:all:strict
+3. PS> pnpm run release
+4. PS> git push --follow-tags
 
-### Commit Protocol
-
-Conventional Commits (neophodno za auto-changelog):
-
-- `feat:` → Minor verzija (1.1.0) — npr. `feat: add streaming mode`
-- `fix:` → Patch verzija (1.0.1) — npr. `fix: resolve memory leak`
-- `BREAKING CHANGE:` → Major verzija (2.0.0) — npr. `feat!: redesign API`
-
-### Push Sequence
-
-```powershell
-# 1. Finalna provera
-pnpm verify:all --no-push
-
-# 2. Stage & Commit
-git add .
-git commit -m "feat: implement ..."
-
-# 3. Push
-git push -u origin tip/opis
-```
+# 🚑 06 // TROUBLESHOOTING
 
 ---
 
-## 5. 📦 RELEASE PROCEDURE (Maintainers Only)
-
-```powershell
-# 1. Sync with master
-git pull origin master
-
-# 2. Full strict verification
-pnpm verify:all:strict --no-push
-
-# 3. Auto version bump, changelog, and tag
-pnpm run release
-
-# 4. Push (triggers Cloudflare Pages deploy)
-git push --follow-tags
-```
-
----
-
-## 6. 🚑 TROUBLESHOOTING
-
-### A) WASM module not found / File not found
-
-Verovatno si očistio projekat, ali nisi re-buildovao WASM.
-
-```powershell
-pnpm run build:wasm
-```
-
-### B) Webpack "PureExpressionDependency" greška (Dev Mode)
-
-Regresija u Webpack 5.104+. Osiguraj da `webpack.dev.js` ima:
-
-```javascript
-optimization: {
-    concatenateModules: false,
-    providedExports: false,
-    usedExports: false,
-    sideEffects: false,
-}
-```
-
-### C) Node/pnpm verzija mismatch
-
-Projekat zahteva Node 22. Proveri sa:
-
-```powershell
-node -v
-pnpm -v
-```
-
-Koristi Volta za fiksiranje:
-
-```powershell
-volta install node@22
-```
-
-### D) CodeQL "flapping" (nasumični fail/pass)
-
-To znači da više workflow-a uploaduje SARIF rezultate.
-
-**Fast local check:**
-
-```powershell
-git grep "codeql-action" .github/workflows
-```
-
-> Samo jedan fajl (obično `codeql.yml`) sme da sadrži upload korake.
-
-### E) wasm-pack nije pronađen
-
-Instaliraj globalno:
-
-```powershell
-cargo install wasm-pack
-```
-
----
-
-## 📊 CI/CD INFRASTRUCTURE
-
-**GitHub Actions**
-
-- Node: 22.x
-- pnpm: 9.x (via action-setup)
-- Rust: Stable
-- wasm-pack: Auto
-- Trigger: Push/PR
-
-**Cloudflare Pages**
-
-- Node: 22.x
-- pnpm: 9.x (Auto-install script)
-- Rust: Stable
-- wasm-pack: Auto
-- Trigger: Push to master
-
-**Local (Volta)**
-
-- Node: 22.x
-- pnpm: 9.x
-- Rust: Stable
-  -wasm-pack: Manual
-- Trigger: pnpm start, verify:all
+- **E2E Report:** Playwright ne otvara brauzer automatski radi tišine. Otvori ga sa: PS> pnpm exec playwright show-report
+- **Security Audit:** Ako `pnpm audit` nađe propuste, prvo pokušaj `pnpm update`. Ako ne pomaže, koristi `overrides` u `package.json`.
+- **Node/pnpm Mismatch:** Volta je obavezna. (PS> volta install node@22)
