@@ -22,7 +22,7 @@
         "dev-server": "pnpm run build:wasm && pnpm run compile:dicts && webpack serve --mode development",
         "start": "pnpm run dev-server",
         "sideload:word": "office-addin-dev-settings sideload manifest.xml --app word",
-        "dev": "concurrently --kill-others \"pnpm run start\" \"wait-on https://localhost:3000/taskpane.html && pnpm run sideload:word\"",
+        "dev": "concurrently \"pnpm run start\" \"wait-on https://localhost:3000/taskpane.html && pnpm run sideload:word\"",
         "validate": "office-addin-manifest validate manifest.xml",
         "validate:prod": "office-addin-manifest validate manifest.prod.xml",
         "test": "cross-env VITE_CJS_IGNORE_WARNING=1 vitest run",

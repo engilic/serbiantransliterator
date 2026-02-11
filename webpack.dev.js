@@ -4,6 +4,7 @@ module.exports = {
     mode: "development",
     devtool: "source-map",
     stats: "minimal",
+    cache: false, // 👈 DODAJ OVO: Prisilno gasi keš koji pravi probleme
     optimization: {
         minimize: false,
         concatenateModules: false,
