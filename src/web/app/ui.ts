@@ -19,7 +19,7 @@ let cachedInputArea: HTMLTextAreaElement | null = null;
 // Kada user kuca u textarea, tražimo da se fokus vrati posle re-rendera
 let restoreTextFocusNextRender = false;
 
-let inputDebounceTimer: any = null;
+let inputDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 type NavigatorUADataLike = { platform?: string };
 type NavigatorWithUAData = Navigator & { userAgentData?: NavigatorUADataLike };
@@ -167,26 +167,29 @@ export function renderApp(root: HTMLElement, store: Store<AppState>, actions: Ac
     }
     lastSettingsOpen = s.settingsOpen;
 
-        // ✅ ULTRA-STABLE FOCUS RESTORE
-        if (shouldRestoreTextFocus && cachedInputArea) {
-            restoreTextFocusNextRender = false;
-        
-            // Sinhrono vraćamo fokus PRE bilo kakvih drugih operacija
-            if (document.activeElement !== cachedInputArea) {
-                cachedInputArea.focus({ preventScroll: true });
-            }
+    // ✅ ULTRA-STABLE FOCUS RESTORE
+    if (shouldRestoreTextFocus && cachedInputArea) {
+        restoreTextFocusNextRender = false;
 
-            // Kursor vraćamo u sledećem frejmu tek ako je element i dalje "živ"
-            if (typeof selStart === "number") {
-                requestAnimationFrame(() => {
-                    try {
-                        if (cachedInputArea && document.activeElement === cachedInputArea) {
-                            cachedInputArea.setSelectionRange(selStart, selEnd!, selDir || undefined);
-                        }
-                    } catch (e) { /* ignore */ }
-                });
-            }
+        // Sinhrono vraćamo fokus PRE bilo kakvih drugih operacija
+        if (document.activeElement !== cachedInputArea) {
+            cachedInputArea.focus({ preventScroll: true });
         }
+
+        // Kursor vraćamo u sledećem frejmu tek ako je element i dalje "živ"
+        if (typeof selStart === "number") {
+            requestAnimationFrame(() => {
+                try {
+                    if (cachedInputArea && document.activeElement === cachedInputArea) {
+                        // Koristimo 'as number' da uverimo TS, ili samo sklonimo '!' ako je gore provereno
+                        cachedInputArea.setSelectionRange(selStart, selEnd as number, selDir || undefined);
+                    }
+                } catch (e) {
+                    /* ignore */
+                }
+            });
+        }
+    }
 
     // Diff click delegation
     if (s.mode === "text" && s.outputTab === "diff") {
@@ -293,10 +296,10 @@ function renderTop(store: Store<AppState>, actions: Actions) {
     const primary =
         s.mode === "files"
             ? button(
-                s.busy ? t("web_ui_btn_working") : t("web_ui_btn_convert"),
-                () => void actions.startJobs(),
-                "btn primary"
-            )
+                  s.busy ? t("web_ui_btn_working") : t("web_ui_btn_convert"),
+                  () => void actions.startJobs(),
+                  "btn primary"
+              )
             : button(t("web_ui_btn_convert"), () => actions.convertPlain(), "btn primary");
     const hasJobs = s.jobs.length > 0;
     const hasText = String(s.plain.input || "").trim().length > 0;
@@ -526,41 +529,43 @@ function renderTextPanel(store: Store<AppState>, actions: Actions) {
         ]),
     ]);
 
-        // --- UX OPTIMIZACIJA: TEXTAREA CACHING & STABILITY ---
-        if (!cachedInputArea) {
-            cachedInputArea = el("textarea", {
-                id: "web-main-input",
-                placeholder: t("web_ui_text_placeholder"),
-                spellcheck: "false",      
-                autocomplete: "off",
-                autocorrect: "off",
-                autocapitalize: "off"
-            }) as HTMLTextAreaElement;
+    // --- UX OPTIMIZACIJA: TEXTAREA CACHING & STABILITY ---
+    if (!cachedInputArea) {
+        cachedInputArea = el("textarea", {
+            id: "web-main-input",
+            placeholder: t("web_ui_text_placeholder"),
+            spellcheck: "false",
+            autocomplete: "off",
+            autocorrect: "off",
+            autocapitalize: "off",
+        }) as HTMLTextAreaElement;
 
-            cachedInputArea.oninput = () => {
-                if (cachedInputArea) {
-                    // ✅ Marker da želimo fokus nazad nakon što Store javi promenu
-                    restoreTextFocusNextRender = true; 
-                
-                    // ✅ Povećan DEBOUNCE na 150ms za bolju stabilnost WASM-a
-                    if (inputDebounceTimer) clearTimeout(inputDebounceTimer);
-                    inputDebounceTimer = setTimeout(() => {
-                        actions.setPlainInput(cachedInputArea!.value);
-                    }, 150); 
-                }
-            };
-        }
+        cachedInputArea.oninput = () => {
+            if (cachedInputArea) {
+                // ✅ Marker da želimo fokus nazad nakon što Store javi promenu
+                restoreTextFocusNextRender = true;
 
-        // ✅ KLJUČNI FIX: Ne diraj vrednost dok korisnik kuca!
-        // U tvom prošlom kodu je ovde bila dupla dodela koja je kočila kursor.
-        const isTyping = document.activeElement === cachedInputArea;
-        if (!isTyping && cachedInputArea.value !== s.plain.input) {
-            cachedInputArea.value = s.plain.input;
-        }
+                // ✅ Povećan DEBOUNCE na 150ms za bolju stabilnost WASM-a
+                if (inputDebounceTimer) clearTimeout(inputDebounceTimer);
+                inputDebounceTimer = setTimeout(() => {
+                    if (cachedInputArea) {
+                        actions.setPlainInput(cachedInputArea.value);
+                    }
+                }, 200);
+            }
+        };
+    }
 
-        // keep a11y + placeholder in sync sa jezikom
-        cachedInputArea.setAttribute("aria-label", t("web_ui_label_input"));
-        cachedInputArea.setAttribute("placeholder", t("web_ui_text_placeholder"));
+    // ✅ KLJUČNI FIX: Ne diraj vrednost dok korisnik kuca!
+    // U tvom prošlom kodu je ovde bila dupla dodela koja je kočila kursor.
+    const isTyping = document.activeElement === cachedInputArea;
+    if (!isTyping && cachedInputArea.value !== s.plain.input) {
+        cachedInputArea.value = s.plain.input;
+    }
+
+    // keep a11y + placeholder in sync sa jezikom
+    cachedInputArea.setAttribute("aria-label", t("web_ui_label_input"));
+    cachedInputArea.setAttribute("placeholder", t("web_ui_text_placeholder"));
 
     return el("section", { class: "card" }, [
         head,
@@ -608,9 +613,9 @@ function renderOutputPanel(store: Store<AppState>, actions: Actions) {
 
     const sub = rightSubLabel
         ? el("div", { class: "panel-sub-row" }, [
-            el("p", { class: "panel-sub u-nowrap" }, [textNode(desc)]),
-            el("div", { class: "panel-sub-label" }, [textNode(rightSubLabel)]),
-        ])
+              el("p", { class: "panel-sub u-nowrap" }, [textNode(desc)]),
+              el("div", { class: "panel-sub-label" }, [textNode(rightSubLabel)]),
+          ])
         : el("p", { class: "panel-sub" }, [textNode(desc)]);
 
     const head = el("div", { class: "panel-head" }, [
@@ -1001,4 +1006,4 @@ function checkboxRow(label: string, checked: boolean, onChange: (v: boolean) => 
 
     wrap.append(input, lab);
     return wrap;
-} 
+}
