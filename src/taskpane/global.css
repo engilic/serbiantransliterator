@@ -8,10 +8,10 @@
     --colorNeutralForeground1: #242424;
     --colorNeutralForeground2: #424242;
     --colorNeutralForeground3: #616161;
-    --colorBrandBackground: #0078d4;
-    --colorBrandBackgroundHover: #106ebe;
-    --colorBrandBackgroundPressed: #005a9e;
-    --colorBrandForeground1: #0078d4;
+    --colorBrandBackground: #005a9e;
+    --colorBrandBackgroundHover: #004578;
+    --colorBrandBackgroundPressed: #002d50;
+    --colorBrandForeground1: #005a9e;
     --colorNeutralStroke1: #e0e0e0;
     --colorNeutralStroke2: #d1d1d1;
     --colorStatusSuccessBackground: #dff6dd;
@@ -66,9 +66,9 @@
     --colorNeutralForeground1: #242424;
     --colorNeutralForeground2: #424242;
     --colorNeutralForeground3: #616161;
-    --colorBrandBackground: #0078d4;
-    --colorBrandBackgroundHover: #106ebe;
-    --colorBrandForeground1: #0078d4;
+    --colorBrandBackground: #005a9e;
+    --colorBrandBackgroundHover: #004578;
+    --colorBrandForeground1: #005a9e;
     --colorNeutralStroke1: #e0e0e0;
     --colorNeutralStroke2: #d1d1d1;
     --shadow2: 0 2px 4px rgba(0, 0, 0, 0.04);

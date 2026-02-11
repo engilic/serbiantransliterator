@@ -49,6 +49,7 @@ Aplikacija radi kao samostalni batch processor u browseru.
 Serbian Transliterator Web: serbiantransliterator.pages.dev
 
 Mogućnosti:
+
 - DOCX batch mode: prevuci više .docx fajlova odjednom i preslovi ih lokalno
 - PWA podrška: instalacija za offline-first korišćenje i brz pristup
 
@@ -65,14 +66,14 @@ Mogućnosti:
 
 ### Početak rada
 
-1) Instaliraj zavisnosti:
-pnpm install
+1. Instaliraj zavisnosti:
+   pnpm install
 
-2) Izgradi WASM jezgro:
-pnpm run build:wasm
+2. Izgradi WASM jezgro:
+   pnpm run build:wasm
 
-3) Pokreni lokalni dev server:
-pnpm start
+3. Pokreni lokalni dev server:
+   pnpm start
 
 ### MAX1 Guardian (kvalitet koda)
 

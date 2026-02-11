@@ -19,31 +19,34 @@ Package manager: projekat koristi pnpm (ne npm).
 ## Standard PR workflow
 
 Napomena (Windows):
+
 - Nemoj koristiti `<` i `>` u imenima grana.
 - Umesto `chore/<opis>` koristi `chore/opis` (npr. `chore/docs-tools-workflow`).
 
-1) Start from latest master
+1. Start from latest master
 
     git switch master
     git pull --ff-only
     git switch -c feat/your-task-name
 
-2) Make changes and verify (MAX1 Guardian)
+2. Make changes and verify (MAX1 Guardian)
 
     # Full local verification before committing (recommended)
+
     pnpm run verify:all -- --no-push
 
     # Optional quick gates during development:
+
     pnpm run lint
     pnpm run typecheck
     pnpm run test
 
-3) Commit with conventional format
+3. Commit with conventional format
 
     git add .
     git commit -m "feat: add new feature description"
 
-4) Push and create PR
+4. Push and create PR
 
     git push -u origin feat/your-task-name
 
@@ -66,11 +69,12 @@ Napomena (Windows):
 - any tip je zabranjen — koristi unknown + type guards.
 - Nikada ne gutaj greške (never swallow errors).
 - Ne uvodi net pozive za sadržaj dokumenata (privacy-by-design). Ako je mrežni poziv neophodan (npr. telemetry), mora biti:
-  - jasno dokumentovan
-  - agregatan i anoniman
-  - bez PII i bez sadržaja dokumenata
+    - jasno dokumentovan
+    - agregatan i anoniman
+    - bez PII i bez sadržaja dokumenata
 
 Office.js tipovi:
+
 - @types/office-js je devDependency.
 - src/global.d.ts uključuje: /// <reference types="office-js" />
 - Runtime Office objekat nije garantovan u testovima/web-u, zato koristimo runtime guard (unknown + type guard) pre poziva Office.onReady().

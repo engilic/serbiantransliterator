@@ -2,6 +2,8 @@
 // scripts/verify-all.js
 
 "use strict";
+process.env.PW_TEST_HTML_REPORT_OPEN = "never"; // Ne otvaraj report u brauzeru
+process.env.PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1"; // Opciono: brže ako su browseri već tu
 
 // Force colors also for THIS Node process (not only child processes)
 process.env.FORCE_COLOR = process.env.FORCE_COLOR || "1";
@@ -15,6 +17,13 @@ const { C, color } = require("./_ui.cjs");
 
 const ROOT = process.cwd();
 const WASM_DIR = path.join(ROOT, "src", "wasm-core");
+
+// Definicije komandi za plan i report
+const CMD_RUST = "cargo test / clippy / fmt";
+const CMD_BUILD = "pnpm run build";
+const CMD_E2E = "pnpm run test:e2e:trace";
+const CMD_UNIT = "pnpm run test:coverage";
+const CMD_AUDIT = "pnpm audit / cargo audit";
 
 // ✅ Verify pipeline identity
 const VERIFY_TEST_NAME = "VERIFY";
@@ -36,11 +45,17 @@ function readJsonSafe(p) {
 const APP_PKG = readJsonSafe(path.join(ROOT, "package.json"));
 
 const ARGS = process.argv.slice(2);
-const IS_ULTRA_FAST = ARGS.includes("--ultra-fast"); // ✅ ultra fast option
+
+// MODNI REŽIMI (Sada je po defaultu sve uključeno)
+const IS_ULTRA_FAST = ARGS.includes("--ultra-fast");
+const IS_SMART = ARGS.includes("--smart"); // Nova zastavica ako želiš preskakanje
+
+// AKO NIJE --smart, onda radimo NO_SKIP (sve)
+// AKO NIJE --fast ili --ultra-fast, onda radimo i testove i strict provere
+const NO_SKIP = !IS_SMART;
+const IS_STRICT = !IS_ULTRA_FAST; // Radimo audite uvek osim u ultra-brzom modu
 const IS_FAST_MODE = ARGS.includes("--fast") || IS_ULTRA_FAST;
-const NO_PUSH = ARGS.includes("--no-push") || IS_ULTRA_FAST; // ultra-fast never pushes
-const IS_STRICT = ARGS.includes("--strict");
-const NO_SKIP = ARGS.includes("--no-skip"); // force full run (no smart skipping)
+const NO_PUSH = ARGS.includes("--no-push") || IS_ULTRA_FAST;
 const NO_TIMINGS = ARGS.includes("--no-timings"); // optional: disable timings table
 
 const TIMINGS = [];
@@ -437,23 +452,21 @@ function printSmartPlan(changedInfo) {
     const e2eHits = matchingFiles(changedInfo, E2E_TRIGGERS);
 
     console.log(
-        `   • Rust gates : ${rust ? color(C.green, "RUN") : color(C.gray, "SKIP")}  | triggers:${fmtHits(rustHits)}`
+        `   • Rust gates : ${rust ? color(C.green, "RUN ") : color(C.gray, "SKIP")} | triggers:${fmtHits(rustHits)} : ${color(C.gray, CMD_RUST)}`
     );
     console.log(
-        `   • Build      : ${build ? color(C.green, "RUN") : color(C.gray, "SKIP")}  | triggers:${fmtHits(buildHits)}`
+        `   • Build      : ${build ? color(C.green, "RUN ") : color(C.gray, "SKIP")} | triggers:${fmtHits(buildHits)} : ${color(C.gray, CMD_BUILD)}`
     );
     console.log(
-        `   • E2E        : ${e2e ? color(C.green, "RUN") : color(C.gray, "SKIP")}  | triggers:${fmtHits(e2eHits)}`
+        `   • E2E        : ${e2e ? color(C.green, "RUN ") : color(C.gray, "SKIP")} | triggers:${fmtHits(e2eHits)} : ${color(C.gray, CMD_E2E)}`
     );
 
     if (IS_ULTRA_FAST) {
-        console.log(
-            color(C.gray, "\n   • note: ULTRA-FAST skips install/build/validate/tests/rust/audits\n")
-        );
+        console.log(color(C.gray, "\n   • note: ULTRA-FAST skips install/build/validate/tests/rust/audits"));
     } else if (IS_STRICT) {
-        console.log(color(C.gray, "\n   • note: STRICT forces Build + runs strict-only audits\n"));
+        console.log(color(C.gray, "\n   • note: STRICT forces Build + runs strict-only audits"));
     } else {
-        console.log("");
+        process.stdout.write("");
     }
 }
 
@@ -469,7 +482,7 @@ function run(step, cmd, args, cwd = ROOT, hooks = null) {
     EXECUTED.push(step);
 
     const STEP_STYLE = "\x1b[1m\x1b[96m";
-    console.log(color(STEP_STYLE, `\n>>> ${step}`));
+    console.log(color(STEP_STYLE, `>>> ${step}`));
     console.log(color(C.gray, `    ${cmdLineForDisplay(resolveCmd(cmd), args)}`));
 
     const start = Date.now();
@@ -498,14 +511,14 @@ function run(step, cmd, args, cwd = ROOT, hooks = null) {
 
     const cum = cumulativeSecondsStr();
     console.log(""); // exactly one blank line before OK
-    console.log(color(C.green, `✅ [${stepNo(step)}] OK — ${step} : ${cum}s`));
+    console.log(color(C.green, `✅ [${stepNo(step)}] OK — ${step} : ${cum}s\n\n`));
 }
 
 async function runInline(step, fn, cmdLine /* string | null */) {
     EXECUTED.push(step);
 
     const STEP_STYLE = "\x1b[1m\x1b[96m";
-    console.log(color(STEP_STYLE, `\n>>> ${step}`));
+    console.log(color(STEP_STYLE, `>>> ${step}`));
 
     const shown = cmdLine ? cmdLine : "internal";
     console.log(color(C.gray, `    ${shown}`));
@@ -525,7 +538,7 @@ async function runInline(step, fn, cmdLine /* string | null */) {
 
     const cum = cumulativeSecondsStr();
     console.log(""); // exactly one blank line before OK
-    console.log(color(C.green, `✅ [${stepNo(step)}] OK — ${step} : ${cum}s`));
+    console.log(color(C.green, `✅ [${stepNo(step)}] OK — ${step} : ${cum}s\n\n`));
 }
 
 // --------------------------
@@ -1042,6 +1055,64 @@ async function cargoAuditStrictGate() {
     }
 }
 
+async function checkProjectHealth() {
+    console.log(color(C.cyan, "\n🛡️  HEALTH & UPDATE CHECK:"));
+
+    // 1. BEZBEDNOST (Audit)
+    const auditRes = runCmdCapture("pnpm", ["--silent", "audit", "--prod", "--audit-level=high"]);
+
+    if (auditRes.status === 0) {
+        console.log(color(C.green, "   • Security: Nema pronađenih kritičnih propusta u produkciji."));
+    } else {
+        console.log(color(C.red, "   • Security: Pronađeni su bezbednosni propusti!"));
+        console.log(color(C.gray, "     --- Detalji iz 'pnpm audit' ---"));
+        // Ovo ispisuje tabelu koju pnpm generiše
+        console.log(auditRes.stdout || auditRes.stderr);
+        console.log(color(C.gray, "     -------------------------------"));
+    }
+
+    // 2. SIGURNI UPDATE-I (Safe Updates)
+    const updatesRes = runCmdCapture("pnpm", ["--silent", "outdated"]);
+
+    if (updatesRes.stdout.trim().length > 0) {
+        console.log(color(C.yellow, "   • Updates: Postoje sigurne ispravke za tvoje biblioteke."));
+        console.log(color(C.gray, "     --- Kompatibilne verzije (patch/minor) ---"));
+        // Ispisujemo tabelu da znaš tačno šta možeš da apdejtuješ
+        console.log(updatesRes.stdout);
+        console.log(color(C.gray, "     ------------------------------------------"));
+        console.log(color(C.cyan, "     👉 Savet: Pokreni 'pnpm update' da primeniš ove ispravke."));
+    } else {
+        console.log(color(C.green, "   • Updates: Sve biblioteke su na najnovijim kompatibilnim verzijama."));
+    }
+
+    // 3. RUST STATUS
+    const rustRes = spawnSync(resolveCmd("cargo"), ["update", "--dry-run"], { cwd: WASM_DIR });
+    if (rustRes.status === 0) {
+        console.log(color(C.gray, "   • Rust/WASM: Jezgro je stabilno."));
+    }
+}
+
+async function runValidationSuite() {
+    runStep("Lint (eslint)", "pnpm", ["--silent", "run", "lint"]);
+    runStep("Typecheck", "pnpm", ["--silent", "run", "typecheck"]);
+
+    if (IS_ULTRA_FAST) {
+        // U Ultra-Fast modu samo ispisujemo da preskačemo
+        await runInlineStepCmd(
+            "Dependency Health Check (ultra-fast skip)",
+            "skipping in ultra-fast mode",
+            async () => console.log(color(C.gray, "   • Health check skipped in ultra-fast mode."))
+        );
+    } else {
+        // U svim ostalim modovima pokrećemo stvarnu proveru
+        await runInlineStepCmd(
+            "Dependency Health Check",
+            "internal security & update scan",
+            checkProjectHealth
+        );
+    }
+}
+
 // --------------------------
 // Main
 // --------------------------
@@ -1087,15 +1158,14 @@ async function main() {
             prettierGate
         );
 
-        runStep("Lint (eslint)", "pnpm", ["run", "lint"]);
-        runStep("Typecheck", "pnpm", ["run", "typecheck"]);
+        await runValidationSuite();
 
-        SKIPPED.push("Install (pnpm install --frozen-lockfile) (ultra-fast)");
-        SKIPPED.push("Audit (strict-only) (ultra-fast)");
-        SKIPPED.push("Rust fmt/clippy/tests (ultra-fast)");
-        SKIPPED.push("Build + validate + dist gate (ultra-fast)");
-        SKIPPED.push("Unit Tests / E2E (ultra-fast)");
-        SKIPPED.push("Push (ultra-fast)");
+        SKIPPED.push(`Install (pnpm install --frozen-lockfile) (ultra-fast)`);
+        SKIPPED.push(`Audit (strict-only) (ultra-fast) : ${CMD_AUDIT}`);
+        SKIPPED.push(`Rust fmt/clippy/tests (ultra-fast) : ${CMD_RUST}`);
+        SKIPPED.push(`Build + validate + dist gate (ultra-fast) : ${CMD_BUILD}`);
+        SKIPPED.push(`Unit Tests / E2E (ultra-fast) : ${CMD_UNIT} / ${CMD_E2E}`);
+        SKIPPED.push(`Push (ultra-fast)`);
 
         beep();
         FAILED_STEP = null;
@@ -1137,7 +1207,7 @@ async function main() {
     const lockHashBefore = fs.existsSync(lockPath) ? hashFileSha256(lockPath) : null;
 
     const INSTALL_STEP = nextStep("Install (pnpm install --frozen-lockfile)");
-    run(INSTALL_STEP, "pnpm", ["install", "--frozen-lockfile"]);
+    run(INSTALL_STEP, "pnpm", ["--silent", "install", "--frozen-lockfile"]);
 
     const lockHashAfter = fs.existsSync(lockPath) ? hashFileSha256(lockPath) : null;
     if (lockHashBefore && lockHashAfter && lockHashBefore !== lockHashAfter) {
@@ -1150,8 +1220,7 @@ async function main() {
         prettierGate
     );
 
-    runStep("Lint (eslint)", "pnpm", ["run", "lint"]);
-    runStep("Typecheck", "pnpm", ["run", "typecheck"]);
+    await runValidationSuite();
 
     // Strict-only audits
     if (IS_STRICT) {
@@ -1162,8 +1231,8 @@ async function main() {
             cargoAuditStrictGate
         );
     } else {
-        SKIPPED.push("Audit (pnpm prod/high) (strict-only)");
-        SKIPPED.push("Cargo audit (wasm-core) (strict-only)");
+        SKIPPED.push(`Audit (pnpm prod/high) (strict-only) : ${CMD_AUDIT}`);
+        SKIPPED.push(`Cargo audit (wasm-core) (strict-only) : ${CMD_AUDIT}`);
     }
 
     // Rust gates (smart-skip if no wasm/rust changes)
@@ -1178,18 +1247,16 @@ async function main() {
         runStep("Rust clippy (-Dwarnings)", "cargo", ["clippy", "--", "-Dwarnings"], WASM_DIR);
         await runInlineStepCmd("Rust tests", "cargo test -- --quiet", runRustTestsAligned);
     } else {
-        SKIPPED.push("Rust fmt (no wasm/rust changes)");
-        SKIPPED.push("Rust clippy (-Dwarnings) (no wasm/rust changes)");
-        SKIPPED.push("Rust tests (no wasm/rust changes)");
+        SKIPPED.push(`Rust fmt/clippy/tests (no wasm/rust changes) : ${CMD_RUST}`);
     }
 
     // Build
     const shouldRunBuild = IS_STRICT ? true : anyChanged(changedInfo, BUILD_TRIGGERS);
     if (shouldRunBuild) {
         const BUILD_STEP = nextStep("Build");
-        run(BUILD_STEP, "pnpm", ["run", "build"]);
+        run(BUILD_STEP, "pnpm", ["--silent", "run", "build"]);
     } else {
-        SKIPPED.push("Build (no relevant changes)");
+        SKIPPED.push(`Build (no relevant changes) : ${CMD_BUILD}`);
     }
 
     runStep("Manifest validate (dev)", "pnpm", ["run", "validate"]);
@@ -1211,17 +1278,19 @@ async function main() {
     // Tests
     if (!IS_FAST_MODE) {
         const COV_STEP = nextStep("Unit Tests (coverage)");
-        run(COV_STEP, "pnpm", ["run", "test:coverage"], ROOT, { beforeOk: printCoverageLocations });
+        run(COV_STEP, "pnpm", ["--silent", "run", "test:coverage"], ROOT, {
+            beforeOk: printCoverageLocations,
+        });
 
         const shouldRunE2E = anyChanged(changedInfo, E2E_TRIGGERS);
         if (shouldRunE2E) {
-            runStep("E2E Tests (trace on failure)", "pnpm", ["run", "test:e2e:trace"]);
+            runStep("E2E Tests (trace on failure)", "pnpm", ["--silent", "run", "test:e2e:trace"]);
         } else {
-            SKIPPED.push("E2E Tests (no relevant changes)");
+            SKIPPED.push(`E2E Tests (no relevant changes) : ${CMD_E2E}`);
         }
     } else {
-        SKIPPED.push("Unit Tests (fast)");
-        SKIPPED.push("E2E Tests (fast)");
+        SKIPPED.push(`Unit Tests (fast) : ${CMD_UNIT}`);
+        SKIPPED.push(`E2E Tests (fast) : ${CMD_E2E}`);
         console.log(color(C.gray, "\n(FAST MODE) Skipping Unit/E2E tests.\n"));
     }
 

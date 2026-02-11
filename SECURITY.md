@@ -5,6 +5,7 @@
 This project is actively maintained on the `master` branch. Security updates are prioritized for the hybrid Rust/WASM core and the OOXML processing bridge.
 
 **Version Support**
+
 - **1.0.x** — ✅ Yes (Stable)
 - **< 1.0.0** — ❌ No
 
@@ -18,11 +19,11 @@ If you believe you have found a security vulnerability, please **do not** open a
 
 Report it privately using one of the following channels:
 
-1) **Email (preferred):** iddj27510@gmail.com  
-   - Subject: `Serbian Transliterator - Security report`
+1. **Email (preferred):** iddj27510@gmail.com
+    - Subject: `Serbian Transliterator - Security report`
 
-2) **GitHub Security Advisories:**  
-   - Use GitHub’s **“Report a vulnerability”** flow (creates a private advisory thread)
+2. **GitHub Security Advisories:**
+    - Use GitHub’s **“Report a vulnerability”** flow (creates a private advisory thread)
 
 ### Please include
 
@@ -66,8 +67,8 @@ As of **v1.0.0 (Phase 2 Hardening)**, the following security measures are enforc
 
 - Issues requiring a fully compromised OS or a malicious browser extension to exploit
 - Social engineering attacks
-- Denial-of-service reports that rely on unrealistic inputs  
-  - (We do consider DoS issues **in scope** if they reflect common real-world documents and usage patterns.)
+- Denial-of-service reports that rely on unrealistic inputs
+    - (We do consider DoS issues **in scope** if they reflect common real-world documents and usage patterns.)
 
 ---
 
@@ -76,8 +77,8 @@ As of **v1.0.0 (Phase 2 Hardening)**, the following security measures are enforc
 - **Execution:** Document text is processed **locally** (client-side).
 - **Network:** After the initial app load, the product is designed to operate in an “air-gap” posture for document content (no document contents are sent to external services).
 - **Automated Audits:** The project uses MAX1 Guardian verification gates on PRs (lint/typecheck/tests/build + security checks + dependency audits as configured).
-- **Persistence:** Document content is not intentionally persisted to disk by the application. It exists in memory during processing.  
-  - Settings, UI preferences, and (optional) performance telemetry may be stored locally (e.g., localStorage/IndexedDB), but **not raw document content**.
+- **Persistence:** Document content is not intentionally persisted to disk by the application. It exists in memory during processing.
+    - Settings, UI preferences, and (optional) performance telemetry may be stored locally (e.g., localStorage/IndexedDB), but **not raw document content**.
 
 ---
 

@@ -7,24 +7,21 @@ Core Principle: “Local Verification is the only Source of Truth.”
 Labeling: MAX1 Guardian
 Default branch: master
 
-
-============================================================
-0) ☢️ DAILY SANITY & CLEAN SLATE
-============================================================
+# ============================================================ 0) ☢️ DAILY SANITY & CLEAN SLATE
 
 Pre pisanja ijedne linije koda, osiguraj da je okruženje sterilno.
 Stari artefakti i stale cache su neprijatelji stabilnosti.
 
 STANDARD START (svaki dan)
-1) Idi na master i povuci najnovije promene.
-2) Sinhronizuj zavisnosti.
-3) Očisti build artefakte (dist/coverage/pkg).
+
+1. Idi na master i povuci najnovije promene.
+2. Sinhronizuj zavisnosti.
+3. Očisti build artefakte (dist/coverage/pkg).
 
 PS> git switch master
 PS> git pull --ff-only
 PS> pnpm install
 PS> pnpm run clean
-
 
 VISUAL STUDIO 2026 “CACHE RESET” (kada IntelliSense poludi)
 Ako VS ne vidi nove tipove (npr. Office types), ili Error List prijavljuje fantomske probleme:
@@ -32,9 +29,9 @@ Ako VS ne vidi nove tipove (npr. Office types), ili Error List prijavljuje fanto
 Napomena: Zatvori Visual Studio pre ovoga.
 PS> Remove-Item -Recurse -Force .vs -ErrorAction SilentlyContinue
 
-
 THE “NUCLEAR OPTION” (Emergency Only)
 Koristi samo ako:
+
 - module not found,
 - čudne greške pri kompajliranju,
 - WASM/pkg artefakti stale,
@@ -52,10 +49,9 @@ PS> cargo clean
 PS> cd ../..
 PS> pnpm run build:wasm
 
+============================================================
 
-============================================================
-1) 🧬 DEVELOPMENT LIFECYCLE
-============================================================
+1. # 🧬 DEVELOPMENT LIFECYCLE
 
 A) BRANCHING STRATEGY
 Direktni commit-ovi na master su ZABRANJENI (osim release commit-ova generisanih skriptama).
@@ -63,50 +59,51 @@ Direktni commit-ovi na master su ZABRANJENI (osim release commit-ova generisanih
 Format: tip/kebab-case-opis
 
 Types:
-- feat/      — nove funkcionalnosti (npr. feat/streaming-parser)
-- fix/       — bugfix (npr. fix/memory-leak)
-- refactor/  — refaktor bez promene ponašanja
-- chore/     — config, skripte, deps
-- docs/      — dokumentacija
+
+- feat/ — nove funkcionalnosti (npr. feat/streaming-parser)
+- fix/ — bugfix (npr. fix/memory-leak)
+- refactor/ — refaktor bez promene ponašanja
+- chore/ — config, skripte, deps
+- docs/ — dokumentacija
 
 PS> git switch -c feat/my-new-feature
 
-
 B) THE CODING STANDARD (LAW)
 
-1) FILE IDENTITY HEADERS (MANDATORY)
-Svaki izvorni fajl (.ts, .rs, .js, .ps1) MORA početi sa komentarom relativne putanje.
+1. FILE IDENTITY HEADERS (MANDATORY)
+   Svaki izvorni fajl (.ts, .rs, .js, .ps1) MORA početi sa komentarom relativne putanje.
 
 PS> pwsh ./scripts/add-headers.ps1
 
-2) NO console.log
-Koristi isključivo logger:
+2. NO console.log
+   Koristi isključivo logger:
+
 - logger.info()
 - logger.warn()
 - logger.error()
 
 Izuzetak: privremeni lokalni debugging koji se briše pre commit-a.
 
-3) STRICT TYPING (Security-first)
+3. STRICT TYPING (Security-first)
+
 - any je zabranjen u produkcionom kodu. Koristi unknown + type guards.
 - Interfejsi moraju biti eksplicitni.
 
 OFFICE.JS TIPOVI (MUST-HAVE)
+
 - Drži ovo na vrhu src/global.d.ts:
   /// <reference types="office-js" />
 
 - ESLint mora tolerisati triple-slash u .d.ts:
-  - Dodaj override za **/*.d.ts i ugasi @typescript-eslint/triple-slash-reference (ako se ikad javi).
+    - Dodaj override za \*_/_.d.ts i ugasi @typescript-eslint/triple-slash-reference (ako se ikad javi).
 
-4) ERROR HANDLING (Never swallow errors)
+4. ERROR HANDLING (Never swallow errors)
+
 - Nikada ne gutaj greške.
 - Koristi normalizeUnknownError(e) pre logovanja.
 - UI mora imati fallback (toast/banner), nikada white-screen.
 
-
-============================================================
-2) 🛡️ THE GUARDIAN GATE (MAX1 VERIFICATION)
-============================================================
+# ============================================================ 2) 🛡️ THE GUARDIAN GATE (MAX1 VERIFICATION)
 
 Guardian (scripts/verify-all.js) je vrhovni autoritet. Ako on padne — tvoj kod ne postoji.
 
@@ -118,8 +115,9 @@ PS> pnpm run lint
 PS> pnpm run typecheck
 
 Napomena (Windows/PowerShell):
+
 - Globovi su najstabilniji kad su u navodnicima u package.json,
-  npr. eslint "src/**/*.ts" --max-warnings 0
+  npr. eslint "src/\*_/_.ts" --max-warnings 0
 
 LEVEL 1: FAST VERIFY (During Dev)
 Dodaje unit testove bez E2E:
@@ -140,8 +138,8 @@ Maksimalna sigurnost:
 
 PS> pnpm run verify:all:strict
 
-
 CHECKLIST koji Gate mora da pokrije (lokalno ili kroz verify-all)
+
 - Header check (putanje na vrhu fajlova)
 - Conflict check (<<<<<<<)
 - Big file gate (npr. >5MB)
@@ -151,10 +149,7 @@ CHECKLIST koji Gate mora da pokrije (lokalno ili kroz verify-all)
 - Test gate: pnpm run test (+ coverage ako je enforced)
 - E2E gate: pnpm run test:e2e (po potrebi)
 
-
-============================================================
-3) 🦀 RUST & WASM WORKFLOW
-============================================================
+# ============================================================ 3) 🦀 RUST & WASM WORKFLOW
 
 MANUALNA KOMPILACIJA WASM-a
 PS> pnpm run build:wasm
@@ -169,33 +164,29 @@ RUST TESTOVI
 PS> cd src/wasm-core
 PS> cargo test
 
-
-============================================================
-4) 🚀 COMMIT, PUSH & PR
-============================================================
+# ============================================================ 4) 🚀 COMMIT, PUSH & PR
 
 COMMIT PROTOCOL (Conventional Commits)
-- feat:  → minor (1.1.0)
-- fix:   → patch (1.0.1)
+
+- feat: → minor (1.1.0)
+- fix: → patch (1.0.1)
 - feat!: ili BREAKING CHANGE: → major (2.0.0)
 
 PUSH SEQUENCE
-1) Finalna provera:
-PS> pnpm run lint
-PS> pnpm run typecheck
-PS> pnpm run test
 
-2) Stage & Commit:
-PS> git add .
-PS> git commit -m "feat: implement ..."
+1. Finalna provera:
+   PS> pnpm run lint
+   PS> pnpm run typecheck
+   PS> pnpm run test
 
-3) Push:
-PS> git push -u origin feat/my-new-feature
+2. Stage & Commit:
+   PS> git add .
+   PS> git commit -m "feat: implement ..."
 
+3. Push:
+   PS> git push -u origin feat/my-new-feature
 
-============================================================
-5) 📦 RELEASE PROCEDURE (Maintainers Only)
-============================================================
+# ============================================================ 5) 📦 RELEASE PROCEDURE (Maintainers Only)
 
 PS> git switch master
 PS> git pull --ff-only
@@ -203,10 +194,7 @@ PS> pnpm run verify:all:strict
 PS> pnpm run release
 PS> git push --follow-tags
 
-
-============================================================
-6) 🚑 TROUBLESHOOTING
-============================================================
+# ============================================================ 6) 🚑 TROUBLESHOOTING
 
 A) WASM module not found / File not found
 PS> pnpm run build:wasm
@@ -215,10 +203,10 @@ B) Webpack “PureExpressionDependency” (Dev Mode)
 Ako se javi regresija u Webpack 5.x, u webpack.dev.js:
 
 optimization:
-  concatenateModules: false
-  providedExports: false
-  usedExports: false
-  sideEffects: false
+concatenateModules: false
+providedExports: false
+usedExports: false
+sideEffects: false
 
 C) Node/pnpm mismatch (Volta is law)
 PS> node -v
@@ -236,15 +224,16 @@ PS> cargo install wasm-pack
 F) Visual Studio Warning: “Missing attribute name” u .html
 Ovo je često VS HTML validator + template sintaksa (npr. EJS <%= ... %>), posebno kad je fajl pod “Miscellaneous Files”.
 Pravila:
+
 - Ako build radi, to je editor-noise.
 - Ako hoćeš da ga utišaš: Tools → Options → Text Editor → HTML → Validation (relaksiraj ili isključi).
-
 
 ============================================================
 📊 CI/CD INFRASTRUCTURE
 ============================================================
 
 GITHUB ACTIONS
+
 - Node: 22.x
 - pnpm: 9.x
 - Rust: Stable
@@ -252,6 +241,7 @@ GITHUB ACTIONS
 - Trigger: Push/PR
 
 CLOUDFLARE PAGES
+
 - Node: 22.x
 - pnpm: 9.x
 - Rust: Stable
@@ -259,6 +249,7 @@ CLOUDFLARE PAGES
 - Trigger: Push to master
 
 LOCAL (Volta)
+
 - Node: 22.x
 - pnpm: 9.x
 - Rust: Stable

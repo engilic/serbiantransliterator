@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 // scripts/checkDistArtifacts.cjs
 
 "use strict";
@@ -43,12 +42,9 @@ function readTextSafe(relPath) {
 
 /**
  * Extract ONLY user/office-facing URLs from manifest:
- * - DefaultValue="..."
- * - <AppDomain>...</AppDomain>
- *
- * This intentionally ignores xmlns="http://schemas..." etc.
  */
 function extractManifestUrls(xml) {
+    /** @type {any[]} */
     const urls = [];
 
     // DefaultValue="..."
@@ -72,6 +68,7 @@ function extractManifestUrls(xml) {
 function findInsecureManifestUrls(xml, fileLabel) {
     const urls = extractManifestUrls(xml);
 
+    /** @type {any[]} */
     const insecure = [];
 
     for (const u of urls) {
@@ -108,7 +105,9 @@ function main() {
     const files = walk(DIST);
     const relFiles = files.map(rel);
 
+    /** @type {any[]} */
     const blockers = [];
+    /** @type {any[]} */
     const warnings = [];
 
     // Always-block

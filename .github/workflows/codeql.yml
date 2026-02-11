@@ -3,150 +3,150 @@
 name: CodeQL
 
 on:
-  push:
-    branches: ["master"]
-  pull_request:
-    branches: ["master"]
-  schedule:
-    - cron: "0 6 * * 1"
-  workflow_dispatch:
+    push:
+        branches: ["master"]
+    pull_request:
+        branches: ["master"]
+    schedule:
+        - cron: "0 6 * * 1"
+    workflow_dispatch:
 
 concurrency:
-  group: pr-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+    group: pr-${{ github.event.pull_request.number || github.ref }}
+    cancel-in-progress: true
 
 jobs:
-  analyze:
-    name: Analyze (CodeQL)
-    runs-on: ubuntu-latest
+    analyze:
+        name: Analyze (CodeQL)
+        runs-on: ubuntu-latest
 
-    permissions:
-      actions: read
-      contents: read
-      security-events: write
+        permissions:
+            actions: read
+            contents: read
+            security-events: write
 
-    strategy:
-      fail-fast: false
-      matrix:
-        language: ["javascript-typescript"]
+        strategy:
+            fail-fast: false
+            matrix:
+                language: ["javascript-typescript"]
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v6
+              with:
+                  fetch-depth: 0
 
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4
-        with:
-          languages: ${{ matrix.language }}
+            - name: Initialize CodeQL
+              uses: github/codeql-action/init@v4
+              with:
+                  languages: ${{ matrix.language }}
 
-      # IMPORTANT:
-      # Repo already pins pnpm via package.json "packageManager": "pnpm@X.Y.Z".
-      # With pnpm/action-setup@v4, do NOT also specify "with: version:" (it fails).
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
+            # IMPORTANT:
+            # Repo already pins pnpm via package.json "packageManager": "pnpm@X.Y.Z".
+            # With pnpm/action-setup@v4, do NOT also specify "with: version:" (it fails).
+            - name: Install pnpm
+              uses: pnpm/action-setup@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: "22"
-          cache: "pnpm"
+            - name: Setup Node.js
+              uses: actions/setup-node@v6
+              with:
+                  node-version: "22"
+                  cache: "pnpm"
 
-      - name: Install deps (pnpm install --frozen-lockfile)
-        run: pnpm install --frozen-lockfile
-        env:
-          HUSKY: "0"
+            - name: Install deps (pnpm install --frozen-lockfile)
+              run: pnpm install --frozen-lockfile
+              env:
+                  HUSKY: "0"
 
-      - name: Install wasm-pack
-        uses: jetli/wasm-pack-action@v0.4.0
-        with:
-          version: "latest"
+            - name: Install wasm-pack
+              uses: jetli/wasm-pack-action@v0.4.0
+              with:
+                  version: "latest"
 
-      - name: Build (production)
-        run: pnpm run build
-        env:
-          HUSKY: "0"
+            - name: Build (production)
+              run: pnpm run build
+              env:
+                  HUSKY: "0"
 
-      - name: Perform CodeQL Analysis (generate SARIF, do not upload)
-        uses: github/codeql-action/analyze@v4
-        with:
-          category: "/language:${{ matrix.language }}"
-          output: sarif-results
-          upload: false
+            - name: Perform CodeQL Analysis (generate SARIF, do not upload)
+              uses: github/codeql-action/analyze@v4
+              with:
+                  category: "/language:${{ matrix.language }}"
+                  output: sarif-results
+                  upload: false
 
-      - name: List SARIF outputs
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "Tree (sarif-results):"
-          find sarif-results -maxdepth 4 -type f -print || true
-          echo "SARIF files:"
-          find sarif-results -type f -name "*.sarif" -print || true
+            - name: List SARIF outputs
+              shell: bash
+              run: |
+                  set -euo pipefail
+                  echo "Tree (sarif-results):"
+                  find sarif-results -maxdepth 4 -type f -print || true
+                  echo "SARIF files:"
+                  find sarif-results -type f -name "*.sarif" -print || true
 
-      # Fix for: "Path does not exist: sarif-results/javascript-typescript.sarif"
-      # We do NOT assume the SARIF filename. We normalize it deterministically.
-      - name: Normalize SARIF filename
-        id: sarif
-        shell: bash
-        run: |
-          set -euo pipefail
+            # Fix for: "Path does not exist: sarif-results/javascript-typescript.sarif"
+            # We do NOT assume the SARIF filename. We normalize it deterministically.
+            - name: Normalize SARIF filename
+              id: sarif
+              shell: bash
+              run: |
+                  set -euo pipefail
 
-          mapfile -t files < <(find sarif-results -type f -name "*.sarif" -print)
+                  mapfile -t files < <(find sarif-results -type f -name "*.sarif" -print)
 
-          if [ ${#files[@]} -eq 0 ]; then
-            echo "ERROR: No SARIF files found under sarif-results/"
-            find sarif-results -maxdepth 6 -type f -print || true
-            exit 1
-          fi
+                  if [ ${#files[@]} -eq 0 ]; then
+                    echo "ERROR: No SARIF files found under sarif-results/"
+                    find sarif-results -maxdepth 6 -type f -print || true
+                    exit 1
+                  fi
 
-          # Pick the largest SARIF (usually the primary result).
-          main="$(ls -S "${files[@]}" | head -n 1)"
-          target="sarif-results/${{ matrix.language }}.sarif"
+                  # Pick the largest SARIF (usually the primary result).
+                  main="$(ls -S "${files[@]}" | head -n 1)"
+                  target="sarif-results/${{ matrix.language }}.sarif"
 
-          echo "Picked SARIF: $main"
-          echo "Target SARIF: $target"
+                  echo "Picked SARIF: $main"
+                  echo "Target SARIF: $target"
 
-          mv "$main" "$target"
+                  mv "$main" "$target"
 
-          # Remove any remaining SARIF files to avoid confusion.
-          mapfile -t rest < <(find sarif-results -type f -name "*.sarif" -print)
-          for f in "${rest[@]}"; do
-            if [ "$f" != "$target" ]; then
-              rm -f "$f"
-            fi
-          done
+                  # Remove any remaining SARIF files to avoid confusion.
+                  mapfile -t rest < <(find sarif-results -type f -name "*.sarif" -print)
+                  for f in "${rest[@]}"; do
+                    if [ "$f" != "$target" ]; then
+                      rm -f "$f"
+                    fi
+                  done
 
-          # Validate JSON shape (basic)
-          jq -e . "$target" >/dev/null
+                  # Validate JSON shape (basic)
+                  jq -e . "$target" >/dev/null
 
-          echo "file=$target" >> "$GITHUB_OUTPUT"
+                  echo "file=$target" >> "$GITHUB_OUTPUT"
 
-      - name: Filter SARIF (hard remove OOXML xmlParser false positives)
-        shell: bash
-        run: |
-          set -euo pipefail
-          node scripts/filter-codeql-sarif.cjs --in "${{ steps.sarif.outputs.file }}" --out "${{ steps.sarif.outputs.file }}"
+            - name: Filter SARIF (hard remove OOXML xmlParser false positives)
+              shell: bash
+              run: |
+                  set -euo pipefail
+                  node scripts/filter-codeql-sarif.cjs --in "${{ steps.sarif.outputs.file }}" --out "${{ steps.sarif.outputs.file }}"
 
-      - name: Assert filtered SARIF contains no remaining matches
-        shell: bash
-        run: |
-          set -euo pipefail
+            - name: Assert filtered SARIF contains no remaining matches
+              shell: bash
+              run: |
+                  set -euo pipefail
 
-          if jq -r '
-            .runs[].results[]?
-            | select(.ruleId=="js/xss" or .ruleId=="js/xml-bomb")
-            | (.locations[0].physicalLocation.artifactLocation.uri // "")
-          ' "${{ steps.sarif.outputs.file }}" | grep -Ei "src[\\/]+shared[\\/]+ooxml[\\/]+xmlParser\.ts" -q; then
-            echo "ERROR: SARIF still contains js/xss or js/xml-bomb results for src/shared/ooxml/xmlParser.ts"
-            exit 1
-          fi
+                  if jq -r '
+                    .runs[].results[]?
+                    | select(.ruleId=="js/xss" or .ruleId=="js/xml-bomb")
+                    | (.locations[0].physicalLocation.artifactLocation.uri // "")
+                  ' "${{ steps.sarif.outputs.file }}" | grep -Ei "src[\\/]+shared[\\/]+ooxml[\\/]+xmlParser\.ts" -q; then
+                    echo "ERROR: SARIF still contains js/xss or js/xml-bomb results for src/shared/ooxml/xmlParser.ts"
+                    exit 1
+                  fi
 
-          echo "OK: filtered SARIF has no remaining matches"
+                  echo "OK: filtered SARIF has no remaining matches"
 
-      - name: Upload SARIF (filtered)
-        uses: github/codeql-action/upload-sarif@v4
-        with:
-          sarif_file: ${{ steps.sarif.outputs.file }}
-          category: "/language:${{ matrix.language }}"
-          wait-for-processing: true
+            - name: Upload SARIF (filtered)
+              uses: github/codeql-action/upload-sarif@v4
+              with:
+                  sarif_file: ${{ steps.sarif.outputs.file }}
+                  category: "/language:${{ matrix.language }}"
+                  wait-for-processing: true
