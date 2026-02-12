@@ -51,9 +51,28 @@ function ensureWorkerXmlDomGlobals() {
 }
 
 function assertTransliterationWorks() {
-    const res = convertPlainText("Test", "lat-to-cyr", {} as CoreOptions);
-    if (!res || typeof res.text !== "string" || res.text === "Test") {
-        throw new Error("Worker self-test failed: transliteration no-op (expected 'Тест' from 'Test').");
+    // 1) basic lat->cyr sanity
+    const a = convertPlainText("Test", "lat-to-cyr", {} as CoreOptions);
+    if (!a || typeof a.text !== "string" || a.text !== "Тест") {
+        throw new Error(
+            `Worker self-test failed: lat-to-cyr expected 'Тест', got '${String(a?.text ?? "")}'.`
+        );
+    }
+
+    // 2) ALL CAPS digraph sanity (requires 3.1 peek-aware WASM to_latin)
+    const b = convertPlainText("ЉУБЉАНА", "cyr-to-lat", {} as CoreOptions);
+    if (!b || typeof b.text !== "string" || b.text !== "LJUBLJANA") {
+        throw new Error(
+            `Worker self-test failed: cyr-to-lat expected 'LJUBLJANA', got '${String(b?.text ?? "")}'.`
+        );
+    }
+
+    // 3) Ч/ч mapping sanity
+    const c = convertPlainText("Чаша", "cyr-to-lat", {} as CoreOptions);
+    if (!c || typeof c.text !== "string" || c.text !== "Čaša") {
+        throw new Error(
+            `Worker self-test failed: cyr-to-lat expected 'Čaša', got '${String(c?.text ?? "")}'.`
+        );
     }
 }
 
