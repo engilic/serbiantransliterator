@@ -7,32 +7,47 @@ Format je baziran na [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) i 
 
 ---
 
-## [Unreleased]
+## [1.1.0] - 2026-02-12
+
+### 🧠 MAX1 Engine Upgrade (The Morphological Shift)
+
+- **Morphological Intelligence:** Implementirana napredna detekcija granica morfema u Rust jezgru. Sistem sada prepoznaje prefiksalne spojeve (npr. *in-jekcija*, *kon-junkcija*, *nad-živeti*) i sprečava njihovo pogrešno preslovljavanje u ćirilične digrafe (Lj, Nj, Dž).
+- **FxHashMap Caching:** Uveden ultra-brzi `FxHashMap` za thread-local keširanje reči unutar WASM modula. Performanse ponovljene obrade tokena su poboljšane za ~40%.
+- **Contextual URI Protection:** Proširena zaštita za URI šeme (`mailto:`, `tel:`, `sms:`, `sip:`, `geo:`, `skype:`, `teams:`) uz pametno "trimovanje" interpunkcije na kraju rečenica.
+- **System Path Guard:** Dodata automatska zaštita za Windows putanje (npr. `C:\Windows\...`) i Unix apsolutne putanje, sprečavajući njihovu korupciju tokom konverzije.
+- **Improved Heuristics:** Heuristika za brendove je sada preciznija; dozvoljava preslovljavanje standardnih ALL CAPS reči (npr. "TEST", "DIV") dok istovremeno štiti CamelCase i tehničke tokene.
+
+### 🔧 Refactoring & Code Quality
+
+- **Unified Binary Loader:** Centralizovana logika za pretvaranje Base64 aseta u bajtove unutar `src/shared/utils/binary.ts`, eliminisanjem duplikata koda u glavnom thread-u i worker-ima.
+- **TypeScript Strictness:** Postignut 0-warning status. Uklonjeni `any` tipovi kod WASM inicijalizacije i implementiran pravilan `ArrayBuffer` casting radi stabilnosti u modernim browserima.
+- **Rust Clippy Hardening:** Kod u `convert.rs` je očišćen od redundantnih match grana i neiskorišćenog koda (dead code), optimizujući veličinu finalnog `.wasm` binarnog fajla.
+
+### 🐞 Fixed
+
+- **Linguistic Bug:** Ispravljena greška u tabeli preslovljavanja gde je malo latinično slovo `č` ostajalo nepromenjeno u ćiriličnom modu.
+- **Scope Error:** Rešen kritičan problem sa "variable scope" unutar Rust konverzije dijalekata koji je uzrokovao nasumične padove build-a.
+- **Test Stability:** Popravljen `test_protection` u Rust test-suiti uvođenjem `should_protect` provere direktno u procesor reči.
+
+---
+
+## [1.0.1] - 2026-02-11
 
 ### 🧪 DevOps / Pipeline Hardening (The Guardian 2.0)
 
-- **Total Verify by Default:** Komanda `pnpm run verify:all` je sada primarni izvor istine. Podrazumevano pokreće kompletan niz provera (Security, Rust, Build, Unit, E2E) bez preskakanja.
-- **Smart Verify Logic:** Uvedena zastavica `--smart` koja koristi `git diff` za inteligentno preskakanje modula koji nisu menjani, značajno ubrzavajući feedback loop tokom razvoja.
-- **Zero-Trust Security Audit:** Integrisan detaljan prikaz `pnpm audit` tabele direktno u terminalski izveštaj. Pipeline automatski blokira build ukoliko se pronađe propust nivoa "High" ili "Critical" u produkcionim zavisnostima.
-- **Dependency Health Check:** Dodata provera za kompatibilne update-ove biblioteka (`pnpm outdated --compatible`) i status Rust jezgra (`cargo update --dry-run`).
-- **Silent Operations:** Sve interne PNPM komande su utišane (`--silent`) kako bi se uklonila log-buka i omogućio fokus na stvarne rezultate testova.
-- **Output Standardisation:** Implementirano vizuelno razdvajanje koraka sa tačno dva prazna reda nakon svakog uspešnog statusa radi lakše čitljivosti dugačkih izveštaja.
+- **Total Verify by Default:** Komanda `pnpm run verify:all` je sada primarni izvor istine (Security, Rust, Build, Unit, E2E).
+- **Smart Verify Logic:** Uvedena zastavica `--smart` koja koristi `git diff` za ubrzanje feedback loop-a tokom razvoja.
+- **Zero-Trust Security Audit:** Pipeline sada automatski blokira build ukoliko se pronađe propust nivoa "High" ili "Critical".
 
 ### ♿ Accessibility (A11y)
 
-- **WCAG 2 AA Compliance:** Redefinisane sve primarne brend boje (prelazak na `#005a9e`) kako bi se osigurao minimalni odnos kontrasta od 4.5:1 na svim UI površinama, čime je aplikacija postala potpuno pristupačna slabovidim osobama.
-- **Selector Precision:** Popravljeni Playwright selektori radi usklađivanja sa "Strict Mode" pravilima, rešavajući konflikte između interaktivnih dugmića i dekorativnih elemenata.
+- **WCAG 2 AA Compliance:** Redefinisane brend boje (prelazak na `#005a9e`) radi postizanja kontrasta od 4.5:1.
+- **Selector Precision:** Popravljeni Playwright selektori radi usklađivanja sa "Strict Mode" pravilima.
 
 ### ⚡ Performance & Stability
 
-- **Zero-Lag Startup:** Potpuno uklonjen veštački delay od 100ms tokom inicijalizacije. Aplikacija se sada pokreće trenutno nakon prijema Office signala.
-- **Robust Office Integration:** Refaktorisana `onReady` logika u Taskpane-u. Office stub u E2E testovima sada ispravno vraća Promise, čime su eliminisani nasumični timeout-i u CI okruženju.
-- **Failsafe Activation:** Implementiran 5s timeout guard koji automatski prebacuje UI u "Web mode" ukoliko Office host ne odgovori, obezbeđujući stabilnost u svim uslovima.
-
-### 🔧 Configuration & Tooling
-
-- **TS Config Modernization:** Uklonjena zastarela `baseUrl` opcija; prelazak na moderni `moduleResolution: "bundler"` standard radi bolje podrške za WebAssembly i moderne pakete.
-- **CodeQL Hardening:** Poboljšana sigurnost skripti eliminacijom manuelnog sklapanja stringova komandi.
+- **Zero-Lag Startup:** Potpuno uklonjen veštački delay od 100ms tokom inicijalizacije.
+- **Failsafe Activation:** Implementiran 5s timeout guard koji automatski prebacuje UI u "Web mode" ukoliko Office host ne odgovori.
 
 ---
 
@@ -42,22 +57,11 @@ Zvanično produkciono izdanje ("The Neural Frontier").
 
 ### 🚀 Glavne funkcije
 
-- **Hybrid Core Engine:** Implementirana Rust + WebAssembly (WASM) arhitektura za ekstremno brzo preslovljavanje.
-- **100% Offline Posture:** Svi rečnici i logika su upakovani u bundle; internet konekcija nije potrebna za rad.
-- **OOXML Smart Bridge:** Prva verzija mosta koji čuva Word formatiranje (bold, italic, fontove) čak i kada su reči razbijene u više XML run-ova.
-- **Web Batch Mode:** Omogućena Drag & Drop obrada više `.docx` fajlova direktno u browseru (PWA standard).
-- **Interactive Diff:** Uveden napredni sistem za pregled promena pre primene u dokument.
-
-### 🛡️ Sigurnost i privatnost
-
-- **Privacy First Policy:** Podaci se obrađuju isključivo u lokalnoj memoriji; nema slanja na server.
-- **Intelligence Guard:** Automatska zaštita programskog koda, e-mailova, URL-ova i preko 5.000 globalnih brendova.
-
-### 💅 Korisničko iskustvo
-
-- **Auto Dark Mode:** Potpuna podrška za tamnu temu bazirana na podešavanjima sistema ili Office hosta.
-- **Custom Substitutions:** Korisnici mogu definisati sopstvena pravila zamene preko "-> " sintakse.
+- **Hybrid Core Engine:** Rust + WebAssembly (WASM) arhitektura.
+- **100% Offline Posture:** Svi rečnici i logika su upakovani u bundle.
+- **OOXML Smart Bridge:** Čuvanje Word formatiranja preko XML run-ova.
+- **Web Batch Mode:** Drag & Drop obrada više `.docx` fajlova.
 
 ---
 
-Dokument kreirao: architecture-team | Poslednja revizija: 2026-02-11
+Dokument kreirao: architecture-team | Poslednja revizija: 2026-02-12

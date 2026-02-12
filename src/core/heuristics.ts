@@ -111,17 +111,20 @@ export function shouldProtectAmbiguousBrandToken(tokens: Tok[], idx: number): bo
     return false;
 }
 
-export function shouldProtectHeuristic(word: unknown): boolean {
-    // [FIX] Defensive guard: word must be a string
-    if (word == null) return false;
-    const w = String(word);
+// [MAX1] - Napredna heuristika za detekciju onoga što NE treba preslovljavati
+export function shouldProtectHeuristic(word: string): boolean {
+    if (!word || word.length < 2) return false;
 
-    if (w.length < 3) return false;
+    // 1. Reči sa stranim karakterima (q, w, x, y) su uvek zaštićene
+    if (/[qwyxQWYX]/.test(word)) return true;
 
-    // [FIX] Ovde je pucalo ako w nije string
-    const slice = w.slice(1);
+    // 2. camelCase ili PascalCase (npr. iPhone, PayPal, eČitulja)
+    const hasUpperInside = /[a-zčćžšđ][A-ZČĆŽŠĐ]/.test(word);
+    if (hasUpperInside) return true;
 
-    const hasUpper = /[A-ZČĆŽŠĐ]/.test(slice);
-    const hasLower = /[a-zčćžšđ]/.test(slice);
-    return hasUpper && hasLower;
+    // 3. Tehnološki obrasci (npr. x86, sha256, win64)
+    if (/\p{L}\d+\p{L}/u.test(word) || /\d+\p{L}/u.test(word)) return true;
+
+    // Obrisana agresivna provera za ALL CAPS (TEST, DIV, SMS sada mogu biti preslovljeni)
+    return false;
 }

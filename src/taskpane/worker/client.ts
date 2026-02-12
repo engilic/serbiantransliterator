@@ -1,5 +1,6 @@
 // src/taskpane/worker/client.ts
 
+import { dataUriToBytes } from "../../shared/utils/binary";
 import type { OoxmlOptions, ConvertStats } from "../../shared/ooxml/convertOoxml";
 import { convertOoxml } from "../../shared/ooxml/convertOoxml";
 import * as textCore from "../../core/textCore";
@@ -64,29 +65,6 @@ function ensureConvertPayloadSafe(xml: string, options: OoxmlOptions): void {
 
     const ig = (options && Array.isArray(options.ignoredStyles) ? options.ignoredStyles : []) as unknown[];
     if (ig.length > MAX_IGNORED_STYLES) throw new Error("Too many ignored styles");
-}
-
-function dataUriToBytes(dataUri: string | null | undefined): Uint8Array {
-    const str = String(dataUri || "");
-
-    // Defensive: must be a data URI; otherwise treat as empty.
-    if (!str.startsWith("data:")) return new Uint8Array(0);
-
-    const parts = str.split(",");
-    const base64 = parts.length > 1 ? parts[1] : null;
-    if (!base64) return new Uint8Array(0);
-
-    // Quick cap to avoid pathological atob input (should never happen for our bundled assets).
-    if (base64.length > 10 * 1024 * 1024) {
-        throw new Error("Init payload too large (base64)");
-    }
-
-    const binaryStr = window.atob(base64);
-    const bytes = new Uint8Array(binaryStr.length);
-    for (let i = 0; i < binaryStr.length; i++) {
-        bytes[i] = binaryStr.charCodeAt(i);
-    }
-    return bytes;
 }
 
 function computeRemainingTimeoutMs(deadlineTs: number | null): number | null {
