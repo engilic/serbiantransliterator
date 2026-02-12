@@ -319,8 +319,8 @@ Write-Host "`n📊 HEADER AUTO-FIX REPORT:" -ForegroundColor White
 
 $rows = @(
     @{ Label = "Scanned"; Value = $Stats.Scanned; Color = $null },
-    @{ Label = "Fixed";   Value = $Stats.Fixed;   Color = "Green" },
-    @{ Label = "Skipped"; Value = $Stats.Skipped; Color = "Gray" }
+    @{ Label = "Skipped"; Value = $Stats.Skipped; Color = "Gray" },
+    @{ Label = "Fixed";   Value = $Stats.Fixed;   Color = "Green" }
 )
 
 $labelWidth = ($rows | ForEach-Object { ($_.Label + ":").Length } | Measure-Object -Maximum).Maximum

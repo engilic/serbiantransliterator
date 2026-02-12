@@ -358,11 +358,51 @@ pub fn to_cyrillic_internal(text: &str) -> String {
     result
 }
 
+#[inline(always)]
+fn is_upper_cyrillic_letter(ch: char) -> bool {
+    let cp = ch as u32;
+    (0x0400..=0x052F).contains(&cp) && ch.is_uppercase()
+}
+
 // [OPTIMIZATION] Direct iterator, no vec
 pub fn to_latin_internal(text: &str) -> String {
     let mut result = String::with_capacity(text.len());
-    for c in text.chars() {
+
+    let mut it = text.chars().peekable();
+    while let Some(c) = it.next() {
         match c {
+            // --- digrafi (case-aware) ---
+            'Љ' => {
+                let next_is_upper = it
+                    .peek()
+                    .copied()
+                    .map(is_upper_cyrillic_letter)
+                    .unwrap_or(false);
+                result.push_str(if next_is_upper { "LJ" } else { "Lj" });
+            }
+            'Њ' => {
+                let next_is_upper = it
+                    .peek()
+                    .copied()
+                    .map(is_upper_cyrillic_letter)
+                    .unwrap_or(false);
+                result.push_str(if next_is_upper { "NJ" } else { "Nj" });
+            }
+            'Џ' => {
+                let next_is_upper = it
+                    .peek()
+                    .copied()
+                    .map(is_upper_cyrillic_letter)
+                    .unwrap_or(false);
+                result.push_str(if next_is_upper { "DŽ" } else { "Dž" });
+            }
+
+            // --- digrafi lowercase ---
+            'љ' => result.push_str("lj"),
+            'њ' => result.push_str("nj"),
+            'џ' => result.push_str("dž"),
+
+            // --- jednoznaci ---
             'А' => result.push('A'),
             'а' => result.push('a'),
             'Б' => result.push('B'),
@@ -389,14 +429,10 @@ pub fn to_latin_internal(text: &str) -> String {
             'к' => result.push('k'),
             'Л' => result.push('L'),
             'л' => result.push('l'),
-            'Љ' => result.push_str("Lj"),
-            'љ' => result.push_str("lj"),
             'М' => result.push('M'),
             'м' => result.push('m'),
             'Н' => result.push('N'),
             'н' => result.push('n'),
-            'Њ' => result.push_str("Nj"),
-            'њ' => result.push_str("nj"),
             'О' => result.push('O'),
             'о' => result.push('o'),
             'П' => result.push('P'),
@@ -417,14 +453,17 @@ pub fn to_latin_internal(text: &str) -> String {
             'х' => result.push('h'),
             'Ц' => result.push('C'),
             'ц' => result.push('c'),
-            'Č' => result.push('Č'),
-            'č' => result.push('č'),
-            'Џ' => result.push_str("Dž"),
-            'џ' => result.push_str("dž"),
+
+            // ✅ FIX: ćirilica Ч/ч -> latinica Č/č
+            'Ч' => result.push('Č'),
+            'ч' => result.push('č'),
+
             'Ш' => result.push('Š'),
             'ш' => result.push('š'),
+
             _ => result.push(c),
         }
     }
+
     result
 }

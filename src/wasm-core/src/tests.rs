@@ -39,6 +39,22 @@ fn test_cyr_digraphs_to_lat() {
 }
 
 #[test]
+fn test_cyr_allcaps_digraphs_to_lat() {
+    // ALL CAPS: Љ + veliko ćir slovo posle => LJ (ne Lj)
+    assert_eq!(to_latin_internal("ЉУБЉАНА"), "LJUBLJANA");
+
+    // još 2 brza sanity check-a
+    assert_eq!(to_latin_internal("ЊЕГОШ"), "NJEGOŠ");
+    assert_eq!(to_latin_internal("ЏЕЗ"), "DŽEZ");
+}
+
+#[test]
+fn test_cyr_che_to_lat() {
+    assert_eq!(to_latin_internal("Чаша"), "Čaša");
+    assert_eq!(to_latin_internal("чаша"), "čaša");
+}
+
+#[test]
 fn test_protection() {
     // Rust engine (bez TS zaštite) preslovljava e-mail jer sadrži samo mapabilna slova.
     assert_eq!(to_cyrillic_internal("e-mail"), "е-маил");

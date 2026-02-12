@@ -20,14 +20,19 @@ function getBuildId() {
 
 const BUILD_ID = getBuildId();
 
+const IS_CLOUDFLARE = !!process.env.CF_PAGES_COMMIT_SHA;
+const IS_CI = IS_CLOUDFLARE || process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true";
+
 module.exports = {
-    cache: {
-        type: "filesystem",
-        name: "serbian-transliterator-webpack-cache",
-        buildDependencies: {
-            config: [__filename],
-        },
-    },
+    cache: IS_CI
+        ? false
+        : {
+              type: "filesystem",
+              name: "serbian-transliterator-webpack-cache",
+              buildDependencies: {
+                  config: [__filename],
+              },
+          },
 
     entry: {
         taskpane: ["./src/taskpane/taskpane.ts"],

@@ -59,7 +59,11 @@ pub fn init_replacer(custom_json: &str) -> Result<(), JsValue> {
         replacements.push(rep.to_string());
     }
 
-    for (pat, rep) in custom_map {
+    let mut custom_entries: Vec<(String, String)> = custom_map.into_iter().collect();
+
+    custom_entries.sort_by(|(pa, _), (pb, _)| pb.len().cmp(&pa.len()).then_with(|| pa.cmp(pb)));
+
+    for (pat, rep) in custom_entries {
         patterns.push(pat);
         replacements.push(rep);
     }

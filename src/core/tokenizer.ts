@@ -38,7 +38,6 @@ export function tokenize(text: string): Tok[] {
             ch === "#" ||
             ch === "/";
 
-        // FIX: Uklonjeni svi uzvičnici (prev! -> prev) jer su promenljive sada sigurne
         const joinerOk =
             isJoiner &&
             ((ch === "." && (isLetterOrDigit(next) || (isLetterOrDigit(prev) && isLetterOrDigit(next)))) ||
