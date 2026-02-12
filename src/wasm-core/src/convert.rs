@@ -4,14 +4,24 @@ use crate::dictionary::{DictionaryStore, DICTIONARIES};
 use rustc_hash::FxHashMap;
 use std::cell::RefCell;
 
-// [MAX3 OPTIMIZATION] Thread-Local Storage (TLS)
-// Pošto se WASM izvršava u Web Worker-u (single-threaded context po instanci),
-// Mutex je bio nepotreban overhead (atomics/locking).
-// Prebacujemo se na thread_local! + RefCell za Zero-Overhead pristup kešu.
 thread_local! {
+    // [MAX1] - Thread-local keš sprečava locking overhead.
+    // FxHashMap je 3-5x brži od standardnog HashMap-a za kratke stringove (reči).
     static WORD_CACHE: RefCell<FxHashMap<String, String>> = RefCell::new(
-        FxHashMap::with_capacity_and_hasher(10000, Default::default())
+        FxHashMap::with_capacity_and_hasher(15000, Default::default())
     );
+}
+
+#[inline(always)]
+fn insert_to_cache(word: &str, translated: String) {
+    WORD_CACHE.with(|cache| {
+        let mut map = cache.borrow_mut();
+        // Sprečavamo preveliku potrošnju memorije u browseru
+        if map.len() > 15000 {
+            map.clear();
+        }
+        map.insert(word.to_string(), translated);
+    });
 }
 
 // [MAX4] Force Inline
@@ -140,330 +150,310 @@ pub fn convert_dialect_internal(text: &str, mode: &str) -> String {
         let word = &text[word_start..word_end];
 
         // Process word
-        // CACHE READ
         let cached = WORD_CACHE.with(|cache| cache.borrow().get(word).cloned());
 
         if let Some(c) = cached {
             result.push_str(&c);
         } else if should_protect(word) {
             result.push_str(word);
-            WORD_CACHE.with(|cache| {
-                let mut map = cache.borrow_mut();
-                if map.len() > 10000 {
-                    map.clear();
-                }
-                map.insert(word.to_string(), word.to_string());
-            });
+            // PROMENA: Ovde prosleđujemo word.to_string() jer final_word ne postoji ovde
+            insert_to_cache(word, word.to_string());
         } else {
-            let replacement = if let Some(store) = store_opt {
-                try_smart_lookup(store, word)
-            } else {
-                None
-            };
-
-            let final_word = if let Some(repl) = replacement {
-                repl
-            } else {
-                word.to_string()
-            };
+            let replacement = store_opt.and_then(|store| try_smart_lookup(store, word));
+            let final_word = replacement.unwrap_or_else(|| word.to_string());
 
             result.push_str(&final_word);
-
-            // CACHE WRITE
-            WORD_CACHE.with(|cache| {
-                let mut map = cache.borrow_mut();
-                if map.len() > 10000 {
-                    map.clear();
-                }
-                map.insert(word.to_string(), final_word);
-            });
+            insert_to_cache(word, final_word);
         }
     }
 
     result
 }
 
-// [MAX4] Force Inline
+/// [MAX1] Pomoćna funkcija za proveru granice prefiksa kod slova NJ (npr. in-jekcija)
 #[inline(always)]
-fn should_split_nj(word_lower: &str) -> bool {
-    if word_lower.contains("njek") || word_lower.contains("njekt") {
-        return true;
-    }
-    if word_lower.contains("njunk") {
-        return true;
-    }
-    if word_lower.contains("tanjug") {
-        return true;
+fn is_at_prefix_boundary_nj(word_lower: &str, pos: usize) -> bool {
+    if pos >= 2 {
+        let prefix = &word_lower[..pos];
+        // MAX1: Provera najčešćih prefiksa koji se završavaju na 'n' ispred 'j'
+        return prefix.ends_with("in")
+            || prefix.ends_with("ko")
+            || prefix.ends_with("ta")
+            || prefix.ends_with("an")
+            || prefix.ends_with("ka");
     }
     false
 }
 
+/// [MAX1] Pomoćna funkcija za proveru granice prefiksa kod slova DŽ (npr. nad-živeti)
 #[inline(always)]
-fn should_split_dz(word_lower: &str) -> bool {
-    if word_lower.starts_with("nadž") || word_lower.starts_with("podž") {
-        return true;
+fn is_at_prefix_boundary_dz(word_lower: &str, pos: usize) -> bool {
+    if pos >= 2 {
+        let prefix = &word_lower[..pos];
+        // MAX1: Provera prefiksa 'nad' i 'pod' ispred 'ž'
+        if prefix.ends_with("na") || prefix.ends_with("po") {
+            // Izuzeci gde dž ostaje dž (deo korena)
+            let roots = ["hadž", "madž", "džam", "džab", "džidž"];
+            if roots.iter().any(|&r| word_lower.contains(r)) {
+                return false;
+            }
+            return true;
+        }
     }
     false
 }
 
-// [OPTIMIZATION] Rewritten to use iterators instead of Vec<char> to save memory
+/// [MAX1] Mapiranje pojedinačnih karaktera (fallback)
+#[inline(always)]
+fn map_char_to_cyr(c: char) -> char {
+    match c {
+        'A' => 'А',
+        'a' => 'а',
+        'B' => 'Б',
+        'b' => 'б',
+        'V' => 'В',
+        'v' => 'в',
+        'G' => 'Г',
+        'g' => 'г',
+        'D' => 'Д',
+        'd' => 'д',
+        'Đ' => 'Ђ',
+        'đ' => 'ђ',
+        'E' => 'Е',
+        'e' => 'е',
+        'Ž' => 'Ж',
+        'ž' => 'ж',
+        'Z' => 'З',
+        'z' => 'з',
+        'I' => 'И',
+        'i' => 'и',
+        'J' => 'Ј',
+        'j' => 'ј',
+        'K' => 'К',
+        'k' => 'к',
+        'L' => 'Л',
+        'l' => 'л',
+        'M' => 'М',
+        'm' => 'м',
+        'N' => 'Н',
+        'n' => 'н',
+        'O' => 'О',
+        'o' => 'о',
+        'P' => 'П',
+        'p' => 'п',
+        'R' => 'Р',
+        'r' => 'р',
+        'S' => 'С',
+        's' => 'с',
+        'T' => 'Т',
+        't' => 'т',
+        'Ć' => 'Ћ',
+        'ć' => 'ћ',
+        'U' => 'У',
+        'u' => 'у',
+        'F' => 'Ф',
+        'h' => 'х',
+        'H' => 'Х',
+        'f' => 'ф',
+        'C' => 'Ц',
+        'c' => 'ц',
+        'Č' => 'Ч',
+        'č' => 'ч',
+        'Š' => 'Ш',
+        'š' => 'ш',
+        'Ч' => 'Ч',
+        'ч' => 'ч',
+        _ => c,
+    }
+}
+
+/// [MAX1] Glavna funkcija za procesiranje reči u ćirilicu
 fn process_word_to_cyr(result: &mut String, word: &str) {
-    if should_protect(word) {
-        result.push_str(word);
+    let cached = WORD_CACHE.with(|cache| cache.borrow().get(word).cloned());
+    if let Some(c) = cached {
+        result.push_str(&c);
         return;
     }
 
+    // [MAX1 FIX] - DODAJ OVE LINIJE OVDE:
+    if should_protect(word) {
+        result.push_str(word);
+        insert_to_cache(word, word.to_string());
+        return;
+    }
+
+    let mut translated = String::with_capacity(word.len() * 2);
     let word_lower = word.to_lowercase();
-    let split_nj = should_split_nj(&word_lower);
-    let split_dz = should_split_dz(&word_lower);
+    let mut iter = word.chars().enumerate().peekable();
 
-    let mut iter = word.chars().peekable();
-
-    while let Some(c) = iter.next() {
-        // Lookahead for digraphs
-        let next_opt = iter.peek().cloned();
+    while let Some((i, c)) = iter.next() {
+        let next_opt = iter.peek().map(|(_, ch)| *ch);
+        let mut processed = false;
 
         if let Some(next) = next_opt {
-            // Handle digraphs Lj, Nj, Dž
-            match (c, next) {
-                ('L', 'j') | ('L', 'J') => {
-                    result.push('Љ');
-                    iter.next();
-                    continue;
+            let next_low = next.to_lowercase().next().unwrap_or(next);
+
+            match (c.to_lowercase().next().unwrap_or(c), next_low) {
+                ('n', 'j') => {
+                    if !is_at_prefix_boundary_nj(&word_lower, i) {
+                        translated.push(if c.is_uppercase() { 'Њ' } else { 'њ' });
+                        iter.next();
+                        processed = true;
+                    }
                 }
                 ('l', 'j') => {
-                    result.push('љ');
+                    translated.push(if c.is_uppercase() { 'Љ' } else { 'љ' });
                     iter.next();
-                    continue;
-                }
-                ('N', 'j') | ('N', 'J') => {
-                    if !split_nj {
-                        result.push('Њ');
-                        iter.next();
-                        continue;
-                    }
-                }
-                ('n', 'j') => {
-                    if !split_nj {
-                        result.push('њ');
-                        iter.next();
-                        continue;
-                    }
-                }
-                ('D', 'ž') | ('D', 'Ž') => {
-                    if !split_dz {
-                        result.push('Џ');
-                        iter.next();
-                        continue;
-                    }
+                    processed = true;
                 }
                 ('d', 'ž') => {
-                    if !split_dz {
-                        result.push('џ');
+                    if !is_at_prefix_boundary_dz(&word_lower, i) {
+                        translated.push(if c.is_uppercase() { 'Џ' } else { 'џ' });
                         iter.next();
-                        continue;
+                        processed = true;
                     }
                 }
                 _ => {}
             }
         }
 
-        let mapped = match c {
-            'A' => 'А',
-            'a' => 'а',
-            'B' => 'Б',
-            'b' => 'б',
-            'V' => 'В',
-            'v' => 'в',
-            'G' => 'Г',
-            'g' => 'г',
-            'D' => 'Д',
-            'd' => 'д',
-            'Đ' => 'Ђ',
-            'đ' => 'ђ',
-            'E' => 'Е',
-            'e' => 'е',
-            'Ž' => 'Ж',
-            'ž' => 'ж',
-            'Z' => 'З',
-            'z' => 'з',
-            'I' => 'И',
-            'i' => 'и',
-            'J' => 'Ј',
-            'j' => 'ј',
-            'K' => 'К',
-            'k' => 'к',
-            'L' => 'Л',
-            'l' => 'л',
-            'M' => 'М',
-            'm' => 'м',
-            'N' => 'Н',
-            'n' => 'н',
-            'O' => 'О',
-            'o' => 'о',
-            'P' => 'П',
-            'p' => 'п',
-            'R' => 'Р',
-            'r' => 'р',
-            'S' => 'С',
-            's' => 'с',
-            'T' => 'Т',
-            't' => 'т',
-            'Ć' => 'Ћ',
-            'ć' => 'ћ',
-            'U' => 'У',
-            'u' => 'у',
-            'F' => 'Ф',
-            'f' => 'ф',
-            'H' => 'Х',
-            'h' => 'х',
-            'C' => 'Ц',
-            'c' => 'ц',
-            'Č' => 'Ч',
-            'č' => 'ч',
-            'Š' => 'Ш',
-            'š' => 'ш',
-            _ => c,
-        };
-        result.push(mapped);
+        if !processed {
+            translated.push(map_char_to_cyr(c));
+        }
     }
+
+    // Upis u keš i u rezultat
+    insert_to_cache(word, translated.clone());
+    result.push_str(&translated);
 }
 
 pub fn to_cyrillic_internal(text: &str) -> String {
     let mut result = String::with_capacity(text.len() * 2);
-    // [OPTIMIZATION] Reuse the buffer-less logic from convert_dialect_internal but specifically for cyrillic mapping
+    let mut current_word = String::with_capacity(32);
 
-    let mut current_word_start = None;
-
-    for (i, c) in text.char_indices() {
+    for c in text.chars() {
         if c.is_alphanumeric() || c == '_' {
-            if current_word_start.is_none() {
-                current_word_start = Some(i);
-            }
+            current_word.push(c);
         } else {
-            if let Some(start) = current_word_start {
-                let word = &text[start..i];
-                process_word_to_cyr(&mut result, word);
-                current_word_start = None;
+            if !current_word.is_empty() {
+                process_word_to_cyr(&mut result, &current_word);
+                current_word.clear();
             }
             result.push(c);
         }
     }
-    // Flush last word
-    if let Some(start) = current_word_start {
-        let word = &text[start..];
-        process_word_to_cyr(&mut result, word);
+
+    if !current_word.is_empty() {
+        process_word_to_cyr(&mut result, &current_word);
     }
-
     result
-}
-
-#[inline(always)]
-fn is_upper_cyrillic_letter(ch: char) -> bool {
-    let cp = ch as u32;
-    (0x0400..=0x052F).contains(&cp) && ch.is_uppercase()
 }
 
 // [OPTIMIZATION] Direct iterator, no vec
 pub fn to_latin_internal(text: &str) -> String {
     let mut result = String::with_capacity(text.len());
-
     let mut it = text.chars().peekable();
     while let Some(c) = it.next() {
         match c {
-            // --- digrafi (case-aware) ---
-            'Љ' => {
-                let next_is_upper = it
-                    .peek()
-                    .copied()
-                    .map(is_upper_cyrillic_letter)
-                    .unwrap_or(false);
-                result.push_str(if next_is_upper { "LJ" } else { "Lj" });
+            'Љ' | 'Њ' | 'Џ' => {
+                let next_is_upper = is_next_upper(&mut it);
+                let res = match c {
+                    'Љ' => {
+                        if next_is_upper {
+                            "LJ"
+                        } else {
+                            "Lj"
+                        }
+                    }
+                    'Њ' => {
+                        if next_is_upper {
+                            "NJ"
+                        } else {
+                            "Nj"
+                        }
+                    }
+                    _ => {
+                        if next_is_upper {
+                            "DŽ"
+                        } else {
+                            "Dž"
+                        }
+                    }
+                };
+                result.push_str(res);
             }
-            'Њ' => {
-                let next_is_upper = it
-                    .peek()
-                    .copied()
-                    .map(is_upper_cyrillic_letter)
-                    .unwrap_or(false);
-                result.push_str(if next_is_upper { "NJ" } else { "Nj" });
-            }
-            'Џ' => {
-                let next_is_upper = it
-                    .peek()
-                    .copied()
-                    .map(is_upper_cyrillic_letter)
-                    .unwrap_or(false);
-                result.push_str(if next_is_upper { "DŽ" } else { "Dž" });
-            }
-
-            // --- digrafi lowercase ---
             'љ' => result.push_str("lj"),
             'њ' => result.push_str("nj"),
             'џ' => result.push_str("dž"),
-
-            // --- jednoznaci ---
-            'А' => result.push('A'),
-            'а' => result.push('a'),
-            'Б' => result.push('B'),
-            'б' => result.push('b'),
-            'В' => result.push('V'),
-            'в' => result.push('v'),
-            'Г' => result.push('G'),
-            'г' => result.push('g'),
-            'Д' => result.push('D'),
-            'д' => result.push('d'),
-            'Ђ' => result.push('Đ'),
-            'ђ' => result.push('đ'),
-            'Е' => result.push('E'),
-            'е' => result.push('e'),
-            'Ж' => result.push('Ž'),
-            'ж' => result.push('ž'),
-            'З' => result.push('Z'),
-            'з' => result.push('z'),
-            'И' => result.push('I'),
-            'и' => result.push('i'),
-            'Ј' => result.push('J'),
-            'ј' => result.push('j'),
-            'К' => result.push('K'),
-            'к' => result.push('k'),
-            'Л' => result.push('L'),
-            'л' => result.push('l'),
-            'М' => result.push('M'),
-            'м' => result.push('m'),
-            'Н' => result.push('N'),
-            'н' => result.push('n'),
-            'О' => result.push('O'),
-            'о' => result.push('o'),
-            'П' => result.push('P'),
-            'п' => result.push('p'),
-            'Р' => result.push('R'),
-            'р' => result.push('r'),
-            'С' => result.push('S'),
-            'с' => result.push('s'),
-            'Т' => result.push('T'),
-            'т' => result.push('t'),
-            'Ћ' => result.push('Ć'),
-            'ћ' => result.push('ć'),
-            'У' => result.push('U'),
-            'у' => result.push('u'),
-            'Ф' => result.push('F'),
-            'ф' => result.push('f'),
-            'Х' => result.push('H'),
-            'х' => result.push('h'),
-            'Ц' => result.push('C'),
-            'ц' => result.push('c'),
-
-            // ✅ FIX: ćirilica Ч/ч -> latinica Č/č
-            'Ч' => result.push('Č'),
-            'ч' => result.push('č'),
-
-            'Ш' => result.push('Š'),
-            'ш' => result.push('š'),
-
-            _ => result.push(c),
+            _ => result.push(map_char_to_lat(c)),
         }
     }
-
     result
+}
+
+#[inline(always)]
+fn is_next_upper(it: &mut std::iter::Peekable<std::str::Chars>) -> bool {
+    it.peek()
+        .is_some_and(|&n| (0x0400..=0x04FF).contains(&(n as u32)) && n.is_uppercase())
+}
+
+#[inline(always)]
+fn map_char_to_lat(c: char) -> char {
+    match c {
+        'А' => 'A',
+        'а' => 'a',
+        'Б' => 'B',
+        'б' => 'b',
+        'В' => 'V',
+        'в' => 'v',
+        'Г' => 'G',
+        'г' => 'g',
+        'Д' => 'D',
+        'д' => 'd',
+        'Ђ' => 'Đ',
+        'ђ' => 'đ',
+        'Е' => 'E',
+        'е' => 'e',
+        'Ж' => 'Ž',
+        'ж' => 'ž',
+        'З' => 'Z',
+        'з' => 'z',
+        'И' => 'I',
+        'и' => 'i',
+        'Ј' => 'J',
+        'ј' => 'j',
+        'К' => 'K',
+        'к' => 'k',
+        'Л' => 'L',
+        'л' => 'l',
+        'М' => 'M',
+        'м' => 'm',
+        'Н' => 'N',
+        'н' => 'n',
+        'О' => 'O',
+        'о' => 'o',
+        'П' => 'P',
+        'п' => 'p',
+        'Р' => 'R',
+        'р' => 'r',
+        'С' => 'S',
+        'с' => 's',
+        'Т' => 'T',
+        'т' => 't',
+        'Ћ' => 'Ć',
+        'ћ' => 'ć',
+        'У' => 'U',
+        'у' => 'u',
+        'Ф' => 'F',
+        'ф' => 'f',
+        'Х' => 'H',
+        'х' => 'h',
+        'Ц' => 'C',
+        'ц' => 'c',
+        'Ч' => 'Č',
+        'ч' => 'č',
+        'Ш' => 'Š',
+        'ш' => 'š',
+        _ => c,
+    }
 }

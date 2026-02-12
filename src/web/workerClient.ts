@@ -1,5 +1,6 @@
 // src/web/workerClient.ts
 
+import { dataUriToBytes } from "../shared/utils/binary";
 import type { OoxmlOptions } from "../shared/ooxml/convertOoxml";
 import type { WorkerMessage, WorkerResponse } from "../taskpane/worker/types";
 
@@ -9,20 +10,6 @@ import wasmData from "../wasm-core/pkg/index_bg.wasm";
 
 type ConvertDone = Extract<WorkerResponse, { type: "CONVERT_DONE" }>;
 export type ConvertResponsePayload = ConvertDone["payload"];
-
-function dataUriToBytes(dataUri: string | null | undefined): Uint8Array {
-    const str = String(dataUri || "");
-    if (!str.startsWith("data:")) return new Uint8Array(0);
-
-    const parts = str.split(",");
-    const base64 = parts.length > 1 ? parts[1] : null;
-    if (!base64) return new Uint8Array(0);
-
-    const binaryStr = window.atob(base64);
-    const bytes = new Uint8Array(binaryStr.length);
-    for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
-    return bytes;
-}
 
 export class WebWorkerClient {
     private worker: Worker | null = null;
