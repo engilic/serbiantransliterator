@@ -76,7 +76,7 @@ export function convertOoxml(
         // ignore
     }
 
-    // [MAX3] REFACTOR: Smart Traversal (Paragraph -> Run -> Text)
+    // [MAX1] REFACTOR: Smart Traversal (Paragraph -> Run -> Text)
     // Ovo je O(N) i podržava rStyle (Character Styles).
 
     const allParas = Array.from(doc.getElementsByTagNameNS(WORD_NS, "p"));
@@ -210,13 +210,21 @@ export function convertOoxml(
     }
 
     if (direction === "lat-to-cyr") {
-        bridges.links = bridgeLinksAcrossTextNodes(textNodes);
+        // [MAX1] BRENDOVI (iPhone) imaju prioritet nad linkovima
         if (protectBrands) {
-            bridges.brandPhrases = bridgePhrasesAcrossTextNodes(textNodes, ALWAYS_LATIN_PHRASE_INFOS);
             bridges.brandTokens = bridgeAlwaysLatinTokensAcrossTextNodes(textNodes);
+            bridges.brandPhrases = bridgePhrasesAcrossTextNodes(textNodes, ALWAYS_LATIN_PHRASE_INFOS);
             bridges.ambiguousBrandSuffix = bridgeAmbiguousBrandSuffixAcrossTextNodes(textNodes);
         }
+
+        bridges.links = bridgeLinksAcrossTextNodes(textNodes);
+
+        if (userProtectedTokens.length) {
+            bridges.userTokens = bridgeExactTokensAcrossTextNodes(textNodes, userProtectedTokens);
+        }
+
         bridges.digraphs = bridgeDigraphsAcrossTextNodes(textNodes);
+
         if (doProtectRomans) {
             const strictMatches = fullText.match(ROMAN_REGEX_STRICT) || [];
             const uniqueStrict = [...new Set(strictMatches)];
@@ -306,7 +314,10 @@ export function convertOoxml(
 
         if (needsXmlSpacePreserve(finalText)) {
             node.setAttributeNS(XML_NS, "xml:space", "preserve");
+        } else {
+            node.removeAttribute("xml:space");
         }
+
         node.textContent = finalText;
     }
 

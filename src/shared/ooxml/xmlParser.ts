@@ -1,7 +1,5 @@
 // src/shared/ooxml/xmlParser.ts
 
-import { isSafeXml } from "./xmlSafety";
-
 /**
  * SECURITY GOALS
  * - Treat OOXML as untrusted input.
@@ -18,39 +16,23 @@ const MAX_OOXML_CHARS = 5_000_000; // ~5MB in characters; adjust if needed for y
 const FORBIDDEN_XML_RE = /<!\s*(DOCTYPE|ENTITY)\b/i;
 
 export function parseSafeOoxml(xml: string): Document | null {
-    // Basic type/DoS guards (defense-in-depth)
-    if (typeof xml !== "string") return null;
-    if (xml.length === 0) return null;
+    if (typeof xml !== "string" || xml.length === 0 || xml.length > MAX_OOXML_CHARS) return null;
 
-    // Hard DoS guard
-    if (xml.length > MAX_OOXML_CHARS) return null;
-
-    // Block DTD/entity expansion payloads before parsing (defense-in-depth).
-    // Even if your xmlSafety already blocks these, keep this here so the safety is local and obvious.
+    // [MAX1 Security] Blokiraj entitete i eksterne definicije pre nego što uopšte dođu do parsera
     if (FORBIDDEN_XML_RE.test(xml)) return null;
 
-    // Your existing safety checks (keep them)
-    if (!isSafeXml(xml)) return null;
+    // Dodatna provera za duboko ugnježdene elemente (DoS zaštita)
+    if (xml.split("<").length > 50000) return null;
 
     try {
         const parser = new DOMParser();
-
-        // OOXML is parsed as data-only XML (application/xml), never inserted into live DOM.
-        // Defense-in-depth: block <!DOCTYPE>/<!ENTITY> pre-parse, size limit, reject parsererror/doctype post-parse.
         const doc = parser.parseFromString(xml, "application/xml");
 
-        // Reject malformed XML
-        try {
-            const pe = doc.getElementsByTagName("parsererror");
-            if (pe && pe.length > 0) return null;
-        } catch {
-            // ignore
-        }
+        const pe = doc.getElementsByTagName("parsererror");
+        if (pe && pe.length > 0) return null;
 
-        // Defense-in-depth: reject documents that expose a doctype after parsing
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const anyDoc = doc as any;
-        if (anyDoc && anyDoc.doctype) return null;
+        // [MAX1] Osiguraj da dokument nema DOCTYPE čak i ako je parser "progutao"
+        if (doc.doctype) return null;
 
         return doc;
     } catch {

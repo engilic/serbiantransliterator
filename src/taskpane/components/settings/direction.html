@@ -20,31 +20,56 @@
     </button>
 
     <div id="directionContent" class="accordion-content open" style="padding: 15px">
-        <div role="radiogroup" aria-label="Ciljno pismo" class="segmented-control">
+        <div
+            role="radiogroup"
+            data-i18n-attr="aria-label:section_direction"
+            aria-label="Ciljno pismo"
+            class="segmented-control"
+        >
             <div class="segment-item">
                 <input type="radio" id="dirAuto" name="direction" value="auto" checked />
-                <label for="dirAuto" class="segment-label" title="Automatski / Automatic">
+                <label
+                    for="dirAuto"
+                    class="segment-label"
+                    data-i18n-attr="title:dir_auto"
+                    title="Automatski / Automatic"
+                >
                     <span data-i18n="dir_auto_short">Auto</span>
                 </label>
             </div>
 
             <div class="segment-item">
                 <input type="radio" id="dirLatToCyr" name="direction" value="lat-to-cyr" />
-                <label for="dirLatToCyr" class="segment-label" title="Latinica u Ćirilicu">
+                <label
+                    for="dirLatToCyr"
+                    class="segment-label"
+                    data-i18n-attr="title:dir_lat_to_cyr"
+                    title="Latinica u Ćirilicu"
+                >
                     <span data-i18n="dir_lat_to_cyr_short">→ Ćir</span>
                 </label>
             </div>
 
             <div class="segment-item">
                 <input type="radio" id="dirCyrToLat" name="direction" value="cyr-to-lat" />
-                <label for="dirCyrToLat" class="segment-label" title="Ćirilica u Latinicu">
+                <label
+                    for="dirCyrToLat"
+                    class="segment-label"
+                    data-i18n-attr="title:dir_cyr_to_lat"
+                    title="Ćirilica u Latinicu"
+                >
                     <span data-i18n="dir_cyr_to_lat_short">→ Lat</span>
                 </label>
             </div>
 
             <div class="segment-item">
                 <input type="radio" id="dirToAscii" name="direction" value="to-ascii" />
-                <label for="dirToAscii" class="segment-label" title="Ošišana latinica (ASCII)">
+                <label
+                    for="dirToAscii"
+                    class="segment-label"
+                    data-i18n-attr="title:dir_to_ascii"
+                    title="Ošišana latinica (ASCII)"
+                >
                     <span data-i18n="dir_to_ascii_short">→ ASCII</span>
                 </label>
             </div>

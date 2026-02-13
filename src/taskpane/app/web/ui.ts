@@ -9,7 +9,7 @@ import { getSettingsFromUi } from "../settings/getters";
 import { state } from "../state";
 import { playSuccessSound } from "../utils/audio";
 import { checkIncognito } from "../utils/incognito";
-import DOMPurify from "dompurify"; // [MAX3] Security Standard
+import DOMPurify from "dompurify"; // [MAX1] Security Standard
 
 interface FileSystemFileHandle {
     kind: "file";
@@ -167,7 +167,7 @@ export function initWebModeUi() {
 
         convertBtn.onclick = doConvert;
 
-        // [MAX3] Universal Smart Copy (sanitize HTML before exporting)
+        // [MAX1] Universal Smart Copy (sanitize HTML before exporting)
         copyBtn.onclick = async () => {
             try {
                 const sanitizedHtml = DOMPurify.sanitize(richInput.innerHTML, {
@@ -201,7 +201,7 @@ export function initWebModeUi() {
             }
         };
 
-        // [MAX3] Universal Paste Handler (DOMPurify + Range API)
+        // [MAX1] Universal Paste Handler (DOMPurify + Range API)
         richInput.addEventListener("paste", (e) => {
             e.preventDefault();
 

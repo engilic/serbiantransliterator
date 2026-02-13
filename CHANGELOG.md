@@ -7,47 +7,33 @@ Format je baziran na [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) i 
 
 ---
 
-## [1.1.0] - 2026-02-12
+## [Unreleased]
 
-### 🧠 MAX1 Engine Upgrade (The Morphological Shift)
+### 🧠 MAX1 Engine & Structural Upgrade (The Greedy Shift)
 
-- **Morphological Intelligence:** Implementirana napredna detekcija granica morfema u Rust jezgru. Sistem sada prepoznaje prefiksalne spojeve (npr. *in-jekcija*, *kon-junkcija*, *nad-živeti*) i sprečava njihovo pogrešno preslovljavanje u ćirilične digrafe (Lj, Nj, Dž).
-- **FxHashMap Caching:** Uveden ultra-brzi `FxHashMap` za thread-local keširanje reči unutar WASM modula. Performanse ponovljene obrade tokena su poboljšane za ~40%.
-- **Contextual URI Protection:** Proširena zaštita za URI šeme (`mailto:`, `tel:`, `sms:`, `sip:`, `geo:`, `skype:`, `teams:`) uz pametno "trimovanje" interpunkcije na kraju rečenica.
-- **System Path Guard:** Dodata automatska zaštita za Windows putanje (npr. `C:\Windows\...`) i Unix apsolutne putanje, sprečavajući njihovu korupciju tokom konverzije.
-- **Improved Heuristics:** Heuristika za brendove je sada preciznija; dozvoljava preslovljavanje standardnih ALL CAPS reči (npr. "TEST", "DIV") dok istovremeno štiti CamelCase i tehničke tokene.
+- **Greedy Structural Bridging:** Potpuno novi mehanizam spajanja XML run-ova (`links.ts`, `tokens.ts`, `digraphs.ts`). Sistem sada rekurzivno "usisava" karaktere preko XML granica kako bi osigurao da razbijeni linkovi (mailto, tel, https) i brendovi (iPhone, PayPal) budu sastavljeni pre transliteracije.
+- **Morphological Intelligence:** Implementirana detekcija granica morfema u Rust jezgru. Engine sada prepoznaje prefiksalne spojeve (npr. _in-jekcija_, _kon-junkcija_, _nad-živeti_) i sprečava njihovo pogrešno spajanje u ćirilične digrafe (Љ, Њ, Џ).
+- **FxHashMap Caching:** Uveden ultra-brzi `FxHashMap` za keširanje reči unutar WASM modula, čime je brzina obrade ponovljenih reči na velikim dokumentima povećana za ~40%.
+- **Hardened XML Parser:** Dodata provera dubine XML stabla (>50,000 elemenata) i stroža blokada DTD/Entity definicija radi zaštite od XXE i "Billion Laughs" napada.
+- **Contextual URI Protection:** Proširena zaštita za URI šeme (mailto, tel, sms, sip, geo, skype, teams) uz pametno "trimovanje" interpunkcije na kraju rečenica.
+- **Unified Binary Loader:** Centralizovana logika za učitavanje binarnih aseta kroz `src/shared/utils/binary.ts`, eliminisanjem duplikata koda u radnim nitima.
 
-### 🔧 Refactoring & Code Quality
+### 🧪 DevOps / Pipeline Hardening (The Guardian 2.0)
 
-- **Unified Binary Loader:** Centralizovana logika za pretvaranje Base64 aseta u bajtove unutar `src/shared/utils/binary.ts`, eliminisanjem duplikata koda u glavnom thread-u i worker-ima.
-- **TypeScript Strictness:** Postignut 0-warning status. Uklonjeni `any` tipovi kod WASM inicijalizacije i implementiran pravilan `ArrayBuffer` casting radi stabilnosti u modernim browserima.
-- **Rust Clippy Hardening:** Kod u `convert.rs` je očišćen od redundantnih match grana i neiskorišćenog koda (dead code), optimizujući veličinu finalnog `.wasm` binarnog fajla.
+- **Total Verify by Default:** Komanda `pnpm run verify:all` je sada primarni izvor istine. Podrazumevano pokreće kompletan niz provera (Security, Rust, Build, Unit, E2E) uz nultu toleranciju na ESLint warning-e.
+- **Dependency Health Check:** Integrisan `pnpm audit` direktno u terminalski izveštaj. Pipeline automatski blokira build ukoliko se pronađe propust nivoa "High" ili "Critical".
+- **Strict Type System:** Postignut 0-warning status u TypeScript-u. Uklonjeni `any` tipovi i implementiran pravilan `ArrayBuffer` casting za WASM module.
+
+### ♿ Accessibility (A11y)
+
+- **WCAG 2 AA Compliance:** Redefinisane primarne brend boje (prelazak na `#005a9e`) radi osiguravanja kontrasta od 4.5:1 na svim UI površinama.
+- **Zero-Lag Startup:** Potpuno uklonjen veštački delay od 100ms tokom inicijalizacije. Aplikacija se sada pokreće trenutno nakon prijema Office signala.
 
 ### 🐞 Fixed
 
 - **Linguistic Bug:** Ispravljena greška u tabeli preslovljavanja gde je malo latinično slovo `č` ostajalo nepromenjeno u ćiriličnom modu.
-- **Scope Error:** Rešen kritičan problem sa "variable scope" unutar Rust konverzije dijalekata koji je uzrokovao nasumične padove build-a.
-- **Test Stability:** Popravljen `test_protection` u Rust test-suiti uvođenjem `should_protect` provere direktno u procesor reči.
-
----
-
-## [1.0.1] - 2026-02-11
-
-### 🧪 DevOps / Pipeline Hardening (The Guardian 2.0)
-
-- **Total Verify by Default:** Komanda `pnpm run verify:all` je sada primarni izvor istine (Security, Rust, Build, Unit, E2E).
-- **Smart Verify Logic:** Uvedena zastavica `--smart` koja koristi `git diff` za ubrzanje feedback loop-a tokom razvoja.
-- **Zero-Trust Security Audit:** Pipeline sada automatski blokira build ukoliko se pronađe propust nivoa "High" ili "Critical".
-
-### ♿ Accessibility (A11y)
-
-- **WCAG 2 AA Compliance:** Redefinisane brend boje (prelazak na `#005a9e`) radi postizanja kontrasta od 4.5:1.
-- **Selector Precision:** Popravljeni Playwright selektori radi usklađivanja sa "Strict Mode" pravilima.
-
-### ⚡ Performance & Stability
-
-- **Zero-Lag Startup:** Potpuno uklonjen veštački delay od 100ms tokom inicijalizacije.
-- **Failsafe Activation:** Implementiran 5s timeout guard koji automatski prebacuje UI u "Web mode" ukoliko Office host ne odgovori.
+- **Namespace Optimization:** Implementirano pametno upravljanje `xml:space="preserve"` atributom koji se sada uklanja kada više nije potreban, održavajući XML čistim.
+- **Rust Clippy Hardening:** Kod u `convert.rs` je očišćen od redundantnih match grana i neiskorišćenog koda.
 
 ---
 
@@ -57,10 +43,10 @@ Zvanično produkciono izdanje ("The Neural Frontier").
 
 ### 🚀 Glavne funkcije
 
-- **Hybrid Core Engine:** Rust + WebAssembly (WASM) arhitektura.
-- **100% Offline Posture:** Svi rečnici i logika su upakovani u bundle.
-- **OOXML Smart Bridge:** Čuvanje Word formatiranja preko XML run-ova.
-- **Web Batch Mode:** Drag & Drop obrada više `.docx` fajlova.
+- **Hybrid Core Engine:** Implementirana Rust + WebAssembly (WASM) arhitektura za ekstremno brzo preslovljavanje.
+- **100% Offline Posture:** Svi rečnici i logika su upakovani u bundle; internet konekcija nije potrebna za rad.
+- **OOXML Smart Bridge:** Prva verzija mosta koji čuva Word formatiranje čak i kada su reči razbijene u više XML run-ova.
+- **Web Batch Mode:** Omogućena Drag & Drop obrada više `.docx` fajlova direktno u browseru.
 
 ---
 

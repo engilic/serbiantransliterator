@@ -24,7 +24,7 @@ fn insert_to_cache(word: &str, translated: String) {
     });
 }
 
-// [MAX4] Force Inline
+// [MAX1] Force Inline
 #[inline(always)]
 fn get_value_from_store(store: &DictionaryStore, offset: u64) -> Option<String> {
     let start = offset as usize;
@@ -85,7 +85,7 @@ fn try_smart_lookup(store: &DictionaryStore, word: &str) -> Option<String> {
     None
 }
 
-// [MAX4] Force Inline
+// [MAX1] Force Inline
 #[inline(always)]
 fn should_protect(word: &str) -> bool {
     let mut has_foreign = false;

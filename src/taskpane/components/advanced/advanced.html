@@ -26,7 +26,11 @@
             <div id="lblCurly" class="field-label">
                 <span data-i18n="opt_curly_label_before"></span><code>{...}</code>
             </div>
-            <select id="optCurlyProtection" aria-labelledby="lblCurly">
+            <select
+                id="optCurlyProtection"
+                data-i18n-attr="aria-label:opt_curly_aria"
+                aria-labelledby="lblCurly"
+            >
                 <option value="placeholders" data-i18n="opt_curly_placeholders"></option>
                 <option value="all" data-i18n="opt_curly_all"></option>
                 <option value="none" data-i18n="opt_curly_none"></option>
@@ -46,7 +50,7 @@
 
         <div class="field-row" style="margin-top: 15px">
             <label for="optDialect" class="field-label" data-i18n="opt_dialect_label"></label>
-            <select id="optDialect">
+            <select id="optDialect" data-i18n-attr="aria-label:opt_dialect_aria">
                 <option value="none" data-i18n="opt_dialect_none"></option>
                 <option value="ekavica_to_ijekavica" data-i18n="opt_dialect_ei"></option>
                 <option value="ijekavica_to_ekavica" data-i18n="opt_dialect_ie"></option>
@@ -79,7 +83,7 @@
                     id="subSrc"
                     class="sub-input"
                     aria-label="Izvor"
-                    data-i18n-attr="placeholder:subs_input_src_short,aria-label:subs_input_src_short"
+                    data-i18n-attr="placeholder:subs_input_src_short,aria-label:subs_input_src"
                 />
 
                 <span class="arrow" aria-hidden="true">→</span>
@@ -89,10 +93,16 @@
                     id="subDest"
                     class="sub-input"
                     aria-label="Cilj"
-                    data-i18n-attr="placeholder:subs_input_dest_short,aria-label:subs_input_dest_short"
+                    data-i18n-attr="placeholder:subs_input_dest_short,aria-label:subs_input_dest"
                 />
 
-                <button id="addSubBtn" class="mini-btn success" type="button" aria-label="Dodaj zamenu">
+                <button
+                    id="addSubBtn"
+                    class="mini-btn success"
+                    type="button"
+                    data-i18n-attr="aria-label:btn_add_word_title"
+                    aria-label="Dodaj zamenu"
+                >
                     +
                 </button>
             </div>

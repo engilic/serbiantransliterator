@@ -5,7 +5,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
-        <title>Serbian Transliterator — Web</title>
+        <title data-i18n="app_title">Serbian Transliterator — Web</title>
         <meta name="description" content="DOCX preslovljavanje (Lat ↔ Ćir) direktno u pregledaču." />
         <link rel="manifest" href="manifest.webmanifest" />
     </head>
@@ -17,15 +17,17 @@
             <div class="brand">
                 <div class="logo">Ž</div>
                 <div class="brand-text">
-                    <div class="title">Serbian Transliterator</div>
-                    <div class="subtitle">Web app • <span id="ver"></span></div>
+                    <div class="title" data-i18n="app_title">Serbian Transliterator</div>
+                    <div class="subtitle">
+                        <span data-i18n="ui_web_mode">Web app</span> • <span id="ver"></span>
+                    </div>
                 </div>
             </div>
 
             <nav class="nav">
-                <a class="nav-link" href="index.html">Početna</a>
-                <a class="nav-link" href="support.html">Podrška</a>
-                <a class="nav-link" href="privacy.html">Privatnost</a>
+                <a class="nav-link" href="index.html" data-i18n="dir_auto_short">Početna</a>
+                <a class="nav-link" href="support.html" data-i18n="footer_help">Podrška</a>
+                <a class="nav-link" href="privacy.html" data-i18n="footer_privacy">Privatnost</a>
             </nav>
         </header>
 

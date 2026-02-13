@@ -1,6 +1,6 @@
 // src/shared/ooxml/bridge/lexical/placeholders.ts
 
-import { findNextNodeWithText, getCpArray } from "../../common";
+import { findNextNodeWithText } from "../../common";
 
 type CurlyMode = "placeholders" | "all";
 
@@ -15,14 +15,13 @@ function buildLookahead(textNodes: Element[], startIndex: number, maxCp: number)
 
         const node = textNodes[j];
         if (!node) break;
-
         const raw = (node.textContent ?? "").normalize("NFC");
         if (!raw) {
             j = findNextNodeWithText(textNodes, j + 1);
             continue;
         }
 
-        const cps = getCpArray(raw);
+        const cps = Array.from(raw);
         const take = Math.min(remaining, cps.length);
 
         plan.push({ nodeIndex: j, takeCp: take, cps });
