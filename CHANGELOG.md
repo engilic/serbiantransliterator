@@ -1,52 +1,64 @@
 # Changelog
 
----
-
-Sve značajne promene u projektu biće dokumentovane u ovom fajlu.
+Sve značajne promene u projektu biće dokumentovane u ovom fajlu.  
 Format je baziran na <!--citation:1--> i projekat se strogo pridržava <!--citation:2--> standarda.
-
----
 
 ## [Unreleased]
 
-### 🧠 MAX1 Engine & Structural Upgrade (The Greedy Shift)
+### Docs / DX
+- Usklađena i “hardened” dokumentacija (Architecture/State/Vision) za MAX1 milestone (manje apsolutnih tvrdnji, više proverljivih navoda).
+- `verify-all.js`: vraćen i učinjen uslovnim interaktivni push prompt (samo kad je repo clean + ima šta da se pushuje), uz jasniji status u završnom report-u.
 
-- **Greedy Structural Bridging:** Potpuno novi mehanizam spajanja OOXML run-ova u bridge sloju (naročito `links.ts`, `tokens.ts`, `digraphs.ts`). Sistem sada “greedy” rekurzivno skuplja karaktere preko XML granica kako bi razbijeni linkovi (mailto/tel/https) i brendovi (npr. iPhone/PayPal) bili rekonstruisani pre transliteracije.
-- **Morphological Intelligence (WASM/Rust):** Poboljšana detekcija granica morfema/prefiksalnih spojeva (npr. _in-jekcija_, _kon-junkcija_, _nad-živeti_) kako bi se sprečilo pogrešno spajanje u ćirilične digrafe (Љ, Њ, Џ) u kontekstima gde ne pripada.
-- **WASM caching (FxHashMap):** Uveden brzi cache na nivou reči u wasm modulu radi ubrzanja obrade ponovljenih tokena (dobitak zavisi od dokumenta; benchmark/meri se kroz realne DOCX uzorke).
-- **Hardened XML Parser:** Pojačana zaštita u `xmlParser.ts` (strože blokiranje DTD/entity definicija i ograničenja za patološke XML strukture) radi smanjenja rizika od XXE i “billion laughs” klase napada.
-- **Contextual URI Protection:** Proširena zaštita za URI šeme (mailto, tel, sms, sip, geo, skype, teams) uz pametno trimovanje završne interpunkcije u rečenicama.
-- **Unified Binary Loader:** Centralizovana logika za učitavanje binarnih aseta kroz `src/shared/utils/binary.ts`, uz uklanjanje duplikata u radnim nitima i konzistentniji loader kroz aplikaciju.
+---
 
-### 🧪 DevOps / Pipeline Hardening (The Guardian 2.0)
+## [1.1.0] - 2026-02-12
 
-- **Total Verify by Default:** `pnpm run verify:all` je primarni “source of truth” i pokreće kompletan niz provera (install, format gate, lint, typecheck, audits, Rust gates, build, manifest validate, unit, e2e).
-- **Security gates:** `pnpm audit` i `cargo audit` su integrisani u strict verifikaciju (gating u strict režimu).
-- **Env/Secrets hygiene:** Runtime tajne više nisu tracked: `plausible-conf.env` je uklonjen iz repoa i zamenjen template fajlom `plausible-conf.env.example`. Dodat `.env.example` za lokalni bootstrap.
+### 🧠 MAX1 Engine & OOXML Structural Upgrade
 
-### ♿ Accessibility (A11y)
+- **Greedy structural bridging (OOXML):** Bridge rekonstruše logičke entitete preko split run-ova (URL/email/URI schemes, brendovi, tokeni/digrafi) pre transliteracije; refaktorisani ključni lexical bridge moduli (npr. `links.ts`, `tokens.ts`, `digraphs.ts`).
+- **Morphological intelligence (WASM/Rust):** Uvedena/poboljšana detekcija prefiksalnih/morfemskih granica da bi se izbeglo pogrešno spajanje digrafa (Љ, Њ, Џ) u osetljivim kontekstima (npr. *in-jekcija*, *kon-junkcija*, *nad-živeti*).
+- **FxHashMap caching:** Uveden brži cache na nivou reči/tokena u wasm modulu radi ubrzanja na dokumentima sa visokim ponavljanjem (dobitak varira; meriti na realnim DOCX uzorcima).
+- **Contextual URI protection:** Proširena zaštita za URI šeme (`mailto:`, `tel:`, `sms:`, `sip:`, `geo:`, `skype:`, `teams:`) uz pametno trimovanje završne interpunkcije.
+- **System path guard:** Dodata zaštita za Windows (`C:\...`) i Unix (`/usr/bin/...`) putanje da se ne korumpiraju tokom konverzije.
+- **Unified binary loader:** Centralizovana logika učitavanja binarnih aseta kroz `src/shared/utils/binary.ts` i uklonjena duplikacija između main thread-a i worker-a.
 
-- **Contrast improvements (AA target):** Redefinisane primarne brend boje (prelazak na `#005a9e`) sa ciljem da se obezbedi minimum 4.5:1 kontrasta za ključne UI kontrole (kontrast je lako proverljiv, ali “WCAG AA compliant” kao formalna tvrdnja zavisi i od drugih a11y aspekata).
-- **Zero-Lag Startup:** Uklonjen veštački delay od 100ms tokom inicijalizacije; start je brži (subjektivno i kroz UX).
+### 🧹 Refactoring & Code Quality
+- **TypeScript strictness:** Održan “clean” rezultat u lint/typecheck gate-ovima (0 warnings policy).
+- **Rust clippy hardening:** Uklonjene redundantne grane i mrtav kod u `convert.rs`, uz održavanje clippy discipline u gate-ovima.
 
 ### 🐞 Fixed
+- **Linguistic bug:** Ispravljena greška u tabeli preslovljavanja gde je malo latinično slovo `č` ostajalo nepromenjeno u određenim tokovima.
+- **Scope error (Rust):** Rešen kritičan problem sa scope/konverzijom koji je mogao da izazove nestabilnost build-a u specifičnim slučajevima.
+- **Test stability:** Stabilizovani Rust testovi (uključujući zaštitne/protection testove) kroz korekcije uslova provere.
 
-- **Linguistic Bug:** Ispravljene greške u tabeli preslovljavanja (npr. malo latinično slovo `č` u određenim tokovima obrade).
-- **Namespace Optimization:** Pametno upravljanje `xml:space="preserve"` atributom; atribut se uklanja kada više nije potreban, održavajući OOXML čistim.
-- **Rust Clippy Hardening:** Očišćen kod u `convert.rs` (redundantne grane i mrtav kod), uz održavanje 0-warning discipline u gate-ovima.
+---
+
+## [1.0.1] - 2026-02-11
+
+### 🧪 DevOps / Pipeline Hardening (The Guardian 2.0)
+- **Total verify by default:** `pnpm run verify:all` kao primarni izvor istine (install, format gate, lint, typecheck, audits, Rust gates, build, validate, unit, e2e).
+- **Smart verify:** Uvedena zastavica `--smart` koja koristi `git diff` za brži feedback loop.
+- **Zero-trust security signal:** Pipeline signalizira (i u strict režimu gate-uje) ozbiljne propuste kroz audit korake.
+
+### ♿ Accessibility (A11y)
+- **Kontrast:** Redefinisane brend boje (prelazak na `#005a9e`) sa ciljem AA nivoa kontrasta (4.5:1 za ključne kontrole).
+- **Selector precision:** Popravljeni Playwright selektori radi stabilnosti u strict režimu.
+
+### ⚡ Performance & Stability
+- **Zero-lag startup:** Uklonjen veštački init delay od 100ms.
+- **Failsafe activation:** Uveden timeout guard koji prebacuje UI u fallback režim ako Office host ne odgovori u razumnom vremenu.
 
 ---
 
 ## [1.0.0] - 2026-01-23
 
-Zvanično produkciono izdanje ("The Neural Frontier").
+Zvanično produkciono izdanje (“The Neural Frontier”).
 
 ### 🚀 Glavne funkcije
-
-- **Hybrid Core Engine:** Implementirana Rust + WebAssembly (WASM) arhitektura za brzo preslovljavanje.
+- **Hybrid core engine:** Rust + WebAssembly (WASM) arhitektura za brzo preslovljavanje.
 - **Offline-first:** Rečnici i logika su upakovani u bundle; internet konekcija nije potrebna za osnovni rad.
-- **OOXML Smart Bridge:** Prva verzija mosta koji čuva Word formatiranje čak i kada su reči razbijene u više XML run-ova.
-- **Web Batch Mode:** Omogućena Drag & Drop obrada više `.docx` fajlova direktno u browseru.
+- **OOXML smart bridge:** Prva verzija mosta koji čuva Word formatiranje čak i kada su reči razbijene u više XML run-ova.
+- **Web batch mode:** Drag & Drop obrada više `.docx` fajlova direktno u browseru.
 
 ---
 

@@ -1,7 +1,5 @@
 # 🚀 VISION 2026–2028: THE NEURAL FRONTIER
 
----
-
 **Project:** Serbian Transliterator (Universal Engine)  
 **Architectural Level:** MAX Mode (v8.0)  
 **Operational Status:** Phase 2 — Architectural Hardening & Accessibility (MAX1 milestone achieved)  
@@ -10,8 +8,6 @@
 ---
 
 # 🌌 01 // STRATEŠKA FILOZOFIJA
-
----
 
 Ne gradimo sistem kao “običan dodatak”, već kao pouzdan sloj za procesiranje jezika koji je precizan u kontekstu realnih dokumenata (OOXML), i bezbedan po podrazumevanju.
 
@@ -24,10 +20,10 @@ Naši MAX stubovi:
    Osnovna konverzija i rečnici rade lokalno. Ne oslanjamo se na eksterni “cloud” za samu transliteraciju. Ako se uvede telemetrija, mora biti transparentna, opciona i odvojena od sadržaja dokumenta.
 
 3. **Inkluzivnost (A11y by Default — target):**  
-   Pristupačnost nije “posle”, već deo dizajna (kontrast, tastatura, semantika). Cilj je WCAG AA nivo, uz konkretne proverljive metrike (npr. kontrast) i iterativno testiranje.
+   Pristupačnost nije “posle”, već deo dizajna (kontrast, tastatura, semantika). Cilj je WCAG AA nivo, uz proverljive metrike (npr. kontrast) i iterativno testiranje.
 
 4. **Strukturalni i morfološki integritet:**  
-   Dokument posmatramo kao OOXML strukturu, ne kao sirovi string. MAX1 morfološka logika u engine-u prepoznaje određene granice (prefiks/koren) i smanjuje rizik pogrešnog spajanja digrafa u osetljivim slučajevima (npr. _in-jekcija_, _nad-živeti_).
+   Dokument posmatramo kao OOXML strukturu, ne kao sirovi string. MAX1 morfološka logika u engine-u prepoznaje određene granice (prefiks/koren) i smanjuje rizik pogrešnog spajanja digrafa u osetljivim slučajevima (npr. *in-jekcija*, *nad-živeti*).
 
 5. **Dual-UX paradigm:**  
    Office Add-in i Web App dele isto Rust/WASM jezgro. Unificirani binarni pipeline i zajednički loader smanjuju rizik divergencije ponašanja između platformi.
@@ -36,44 +32,35 @@ Naši MAX stubovi:
 
 # 🗺️ 02 // TEHNIČKA MAPA PUTA
 
----
-
 ### FAZA 1: ZLATNI TEMELJI (Završeno) ✅
-
 - Stabilizovan Rust Core 1.0 i binarni rečnici.
 - Lansiran Dual-UX sistem (Word Taskpane + Standalone Web/PWA).
 - Izdanje v1.0.0.
 
 ### FAZA 2: ARHITEKTONSKO OJAČAVANJE (MAX1 milestone) 🏗️
-
-- **Morphological engine (POSTIGNUTO):** Detekcija određenih prefiksalnih granica radi korektnije digraf logike u konverziji.
-- **Cache integracija (POSTIGNUTO):** Cache na nivou reči radi ubrzanja na dokumentima sa visokim ponavljanjem (dobitak varira; meriti na realnim DOCX uzorcima).
-- **Unified binary assets (POSTIGNUTO):** Centralizovan loader za WASM i binarne rečnike, uz uklanjanje duplikacije koda.
+- **Morphological engine (postignuto):** Detekcija određenih prefiksalnih granica radi korektnije digraf logike u konverziji.
+- **Cache integracija (postignuto):** Cache na nivou reči radi ubrzanja na dokumentima sa visokim ponavljanjem (dobitak varira; meriti na realnim DOCX uzorcima).
+- **Unified binary assets (postignuto):** Centralizovan loader za WASM i binarne rečnike, uz uklanjanje duplikacije koda.
 - **Streaming parser (u razvoju):** Istraživanje pull/streaming pristupa za veće fajlove i stabilniju potrošnju memorije.
 - **Zero-lag startup (u toku):** Uklanjanje nepotrebnih odlaganja i stabilnija inicijalizacija u Office host-u.
 
 ### FAZA 3: EKOSISTEM OMNIPRESENCE (2026 Q3–Q4) — plan
-
 - **Browser extension:** Real-time transliteracija bez kvarenja HTML strukture (MutationObserver + zaštite).
 - **Desktop hub (Tauri ili ekv.):** Lokalna batch konverzija direktorijuma (offline).
 - **AppSource submission:** Priprema za korporativnu distribuciju (policy + packaging).
 
 ### VISION 2027: THE SOVEREIGN LINGUISTIC CORE — plan
-
 - **Lemmatization (opciono / R&D):** Napredna morfološka analiza kao baza za dodatne jezičke funkcije.
 - **Contextual disambiguation:** Lokalni, lagani modeli (heuristike / n-gram) za dvoznačnosti u kompleksnim slučajevima.
 - **SDK for developers:** `@serbian-transliterator/core` kao stabilan API za integracije.
 
 ### VISION 2028: THE NEURAL LINGUISTIC LAYER — plan
-
 - **On-device AI (R&D):** NER / prepoznavanje entiteta na uređaju (kvantizovani modeli, mali footprint).
 - **Mobile port:** Evaluacija portovanja jezgra na iOS/Android kroz Rust wrapper-e.
 
 ---
 
 # 🛡️ 03 // LINGVISTIČKI IMPERATIVI
-
----
 
 1. **Rigidna zaštita:** ALWAYS_LATIN liste brendova + korisnički zaštićeni tagovi + morfološke granice gde je primenljivo.
 2. **Sintaksna zaštita:** Detekcija i zaštita URL/email/URI šema (mailto, tel, sms, sip, geo, skype, teams) i srodnih entiteta.
@@ -83,8 +70,6 @@ Naši MAX stubovi:
 ---
 
 # ⚙️ 04 // DEVOPS: “MAX1 GUARDIAN” STANDARD
-
----
 
 Ništa ne ide dalje bez prolaska kroz automatizovane gate-ove:
 
