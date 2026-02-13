@@ -19,7 +19,7 @@ function ms0(n: number): string {
     return Number.isFinite(n) ? n.toFixed(0) : "0";
 }
 
-// [MAX3 CLEANUP] Removed dead code: buildApplyStatsTitle
+// [MAX1 CLEANUP] Removed dead code: buildApplyStatsTitle
 
 export function buildApplyStatsText(result: ResultLike, scope: ApplyScope, extras?: ExtrasSummary): string {
     const time = ms0(result.stats.timingMs);

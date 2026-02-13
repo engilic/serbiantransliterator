@@ -1,8 +1,34 @@
 // src/shared/ooxml/bridge/lexical/ambiguousSuffix.ts
 
-import { findNextNodeWithText, trailingTokenFragment, isTokenChar, normKey, getCpArray } from "../../common";
-
+import { findNextNodeWithText, latinLetterSr } from "../../common";
+import { normKey } from "../../../../core/heuristics";
 import { ALWAYS_LATIN_TOKENS_STRICT, ALWAYS_LATIN_TOKENS_AMBIGUOUS } from "../../../../core/rules";
+
+// [MAX1 Fix] Lokalni helperi za detekciju fragmenata reči
+const getCpArray = (s: string) => Array.from(s);
+
+function isTokenChar(ch: string): boolean {
+    return latinLetterSr(ch) || /\d/.test(ch);
+}
+
+function trailingTokenFragment(raw: string): { frag: string; startCpIndex: number } | null {
+    const cps = Array.from(raw);
+    let i = cps.length - 1;
+    while (i >= 0) {
+        const char = cps[i];
+        if (char && isTokenChar(char)) {
+            i--;
+        } else {
+            break;
+        }
+    }
+    const start = i + 1;
+    if (start >= cps.length) return null;
+    return {
+        frag: cps.slice(start).join(""),
+        startCpIndex: start,
+    };
+}
 
 function isPureNumberToken(s: string): boolean {
     return /^\d+$/u.test(s);

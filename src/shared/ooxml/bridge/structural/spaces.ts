@@ -6,6 +6,9 @@
  *
  * NEW: tretira i NBSP (\u00A0) kao “space” u smislu bridging-a.
  */
+
+import { areNodesAdjacent } from "../../common";
+
 export function bridgeSpacesAcrossTextNodes(textNodes: Element[]): number {
     const NBSP = "\u00A0";
 
@@ -23,7 +26,7 @@ export function bridgeSpacesAcrossTextNodes(textNodes: Element[]): number {
         const bStartsWithSpaceLike = bText.startsWith(" ") || bText.startsWith(NBSP);
 
         // Ako a završava space-like, a b počinje space-like
-        if (aEndsWithSpaceLike && bStartsWithSpaceLike) {
+        if (aEndsWithSpaceLike && bStartsWithSpaceLike && areNodesAdjacent(aNode, bNode)) {
             // Ukloni sve vodeće space/NBSP iz b
             bText = bText.replace(/^[ \u00A0]+/g, "");
             // Ako bText je sada prazan, preskoči na sledeći čvor

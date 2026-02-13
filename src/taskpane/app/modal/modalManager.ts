@@ -18,7 +18,7 @@ export class ModalManager {
     private readonly MODAL_TIMEOUT_MS = 300000; // 5 minutes
     private readonly listeners = new Set<(state: ModalState | null) => void>();
 
-    // [MAX3 A11Y] Track element that triggered the modal
+    // [MAX1 A11Y] Track element that triggered the modal
     private lastFocusedElement: HTMLElement | null = null;
 
     private setTimer(cb: () => void, ms: number): ReturnType<typeof setTimeout> {
@@ -48,7 +48,7 @@ export class ModalManager {
      * Opens a modal with automatic cleanup after timeout.
      */
     public open(type: ModalType, resolver?: (value: boolean) => void): void {
-        // [MAX3 A11Y] Capture focus before opening logic overwrites anything
+        // [MAX1 A11Y] Capture focus before opening logic overwrites anything
         if (document.activeElement instanceof HTMLElement) {
             this.lastFocusedElement = document.activeElement;
         }
@@ -108,7 +108,7 @@ export class ModalManager {
         this.state = null;
         this.notifyListeners();
 
-        // [MAX3 A11Y] Restore focus to the trigger button
+        // [MAX1 A11Y] Restore focus to the trigger button
         if (restoreFocus && this.lastFocusedElement) {
             // Small timeout to allow UI to update (modal closing animation)
             setTimeout(() => {

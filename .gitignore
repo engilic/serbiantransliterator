@@ -53,3 +53,8 @@ yarn.lock
 
 # pnpm
 .pnpm-debug.log*
+
+# ===== Local env / secrets =====
+.env
+plausible-conf.env
+plausible-hosting/plausible-conf.env

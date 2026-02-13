@@ -16,6 +16,7 @@
                 id="liveAutoIcon"
                 class="live-icon"
                 style="display: none; color: var(--colorBrandForeground1); margin-left: 4px"
+                data-i18n-attr="title:dir_auto"
                 title="Automatska detekcija"
             >
                 <svg viewBox="0 0 20 20" width="14" height="14" fill="currentColor" aria-hidden="true">
@@ -26,7 +27,7 @@
             </span>
 
             <span id="liveIconRight" class="live-icon"></span>
-            <div id="liveAscii" class="live-ascii">ASCII</div>
+            <div id="liveAscii" class="live-ascii" data-i18n="dir_to_ascii_short">ASCII</div>
         </div>
     </div>
 
@@ -42,11 +43,24 @@
     </div>
 
     <div class="app-footer-compact">
-        <a href="mailto:iddj27510@gmail.com" class="footer-icon-link" aria-label="Email" title="Kontakt">@</a>
+        <a
+            href="mailto:iddj27510@gmail.com"
+            class="footer-icon-link"
+            data-i18n-attr="aria-label:email_label;title:btn_add_word_title"
+            aria-label="Email"
+            title="Kontakt"
+            >@</a
+        >
         &bull; <a href="support.html" target="_blank" data-i18n="footer_help"></a> &bull;
         <a href="privacy.html" target="_blank" data-i18n="footer_privacy"></a> &bull;
         <a href="https://github.com/sponsors/engilic" target="_blank" data-i18n="footer_donate"></a> &bull;
-        <span id="footerVersion" class="footer-version-click" title="O aplikaciji / Changelog">v1.0.0</span>
+        <span
+            id="footerVersion"
+            class="footer-version-click"
+            data-i18n-attr="title:modal_title_about"
+            title="O aplikaciji / Changelog"
+            >v1.0.0</span
+        >
         &bull;
         <span data-i18n="footer_copyright"></span>
     </div>

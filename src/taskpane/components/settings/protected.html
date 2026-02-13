@@ -93,10 +93,17 @@
                 id="tagInput"
                 class="sub-input"
                 autocomplete="off"
-                data-i18n-attr="placeholder:tags_input_placeholder"
+                data-i18n-attr="placeholder:tags_input_placeholder,aria-label:tags_input_placeholder"
                 aria-label="New protected word"
             />
-            <button id="addTagBtn" class="mini-btn success" type="button" disabled aria-label="Add word">
+            <button
+                id="addTagBtn"
+                class="mini-btn success"
+                type="button"
+                disabled
+                data-i18n-attr="aria-label:btn_add_word_title"
+                aria-label="Add word"
+            >
                 +
             </button>
         </div>

@@ -65,6 +65,8 @@ const SKIPPED = [];
 let FINAL_REPORT_PRINTED = false;
 let FAILED_STEP = null; // set when die(step) is called
 let STEP_NO = 1;
+let PUSH_PERFORMED = false;
+let PUSH_DECLINED = false;
 
 function nextStep(title) {
     const n = STEP_NO++;
@@ -170,7 +172,27 @@ function getGitCommitShort() {
 
 function getPwshVersion() {
     if (!isWin()) return null;
-    return runCaptureText("pwsh", ["-NoProfile", "-Command", "$PSVersionTable.PSVersion.ToString()"], ROOT);
+
+    // Prefer PowerShell 7+ (pwsh), fallback to Windows PowerShell.
+    const v7 = runCaptureText(
+        "pwsh",
+        ["-NoProfile", "-Command", "$PSVersionTable.PSVersion.ToString()"],
+        ROOT
+    );
+    if (v7) return v7;
+
+    const v5 = runCaptureText(
+        "powershell",
+        ["-NoProfile", "-Command", "$PSVersionTable.PSVersion.ToString()"],
+        ROOT
+    );
+    return v5;
+}
+
+function getAheadCountSafe() {
+    const out = runCaptureText("git", ["rev-list", "--count", "@{upstream}..HEAD"], ROOT);
+    const n = out ? parseInt(out, 10) : 0;
+    return Number.isFinite(n) ? n : 0;
 }
 
 function getWindowsVerLine() {
@@ -556,6 +578,16 @@ function getRepoStatusPorcelain() {
     return String(res.stdout || "").replace(/\s+$/g, "");
 }
 
+function shouldOfferPushNow() {
+    const passed = !FAILED_STEP;
+    const dirty = !!getRepoStatusPorcelain();
+    const ahead = getAheadCountSafe();
+    const isCi = getCiLabel() !== "local";
+    const canPrompt = !!process.stdin.isTTY;
+
+    return passed && !NO_PUSH && !dirty && ahead > 0 && canPrompt && !isCi;
+}
+
 function legendForStatus(xy) {
     if (xy === "??") return "untracked (new file)";
 
@@ -662,7 +694,17 @@ function printFinalReport() {
     console.log(`   • fast:   ${IS_FAST_MODE ? "YES" : "NO"}`);
     console.log(`   • ultra:  ${IS_ULTRA_FAST ? "YES" : "NO"}`);
     console.log(`   • skip:   ${NO_SKIP ? "DISABLED (--no-skip)" : "SMART (changed-files based)"}`);
-    console.log(`   • push:   ${NO_PUSH ? "DISABLED" : "PROMPT (enabled)"}`);
+    const ahead = getAheadCountSafe();
+    const offer = shouldOfferPushNow();
+
+    let pushText = "AUTO-SKIP (not ahead)";
+    if (NO_PUSH) pushText = "DISABLED (--no-push)";
+    else if (PUSH_PERFORMED) pushText = "DONE (pushed)";
+    else if (PUSH_DECLINED) pushText = "DECLINED (not pushed)";
+    else if (offer) pushText = "PROMPT (enabled)";
+    else if (ahead > 0) pushText = `AUTO-SKIP (ahead ${ahead}; run 'git push' manually)`;
+
+    console.log(`   • push:   ${pushText}`);
 
     console.log(color(C.yellow, "\n   • skipped steps:"));
     if (SKIPPED.length === 0) {
@@ -702,10 +744,9 @@ function printFinalReport() {
         }
     }
 
-    // Final two lines: RESULT then VERIFY (VERIFY is last, NO blank line between)
-    const dirty = !!getRepoStatusPorcelain();
-    const total = cumulativeSecondsStr();
     const passed = !FAILED_STEP;
+    const total = cumulativeSecondsStr();
+    const dirty = isDirty;
 
     const outcome = passed ? color(C.green + C.bold, "✔ PASS") : color(C.red + C.bold, "✖ FAIL");
     const dirtyText = dirty ? color(C.yellow + C.bold, "DIRTY") : color(C.green + C.bold, "CLEAN");
@@ -842,9 +883,12 @@ function detectPowerShell() {
 }
 
 function checkEnv() {
-    if (!fs.existsSync(path.join(ROOT, ".env")) && fs.existsSync(path.join(ROOT, ".env.example"))) {
-        console.error(color(C.red, "❌ Nedostaje .env fajl!"));
-        process.exit(1);
+    const envPath = path.join(ROOT, ".env");
+    const exPath = path.join(ROOT, ".env.example");
+
+    if (!fs.existsSync(envPath) && fs.existsSync(exPath)) {
+        fs.copyFileSync(exPath, envPath);
+        console.log(color(C.yellow, "⚠ .env nije postojao; napravljen je iz .env.example"));
     }
 }
 
@@ -1058,37 +1102,111 @@ async function cargoAuditStrictGate() {
 async function checkProjectHealth() {
     console.log(color(C.cyan, "\n🛡️  HEALTH & UPDATE CHECK:"));
 
-    // 1. BEZBEDNOST (Audit)
-    const auditRes = runCmdCapture("pnpm", ["--silent", "audit", "--prod", "--audit-level=high"]);
+    // 1. ENGINE & SISTEM
+    const nodeVer = process.version;
+    const pnpmVer = runCaptureText("pnpm", ["-v"], ROOT) || "unknown";
+    const tsVer = tryGetNodeModuleVersion("typescript") || "unknown";
+    console.log(color(C.gray, `   • Engine: Node.js ${nodeVer} | PNPM v${pnpmVer} | TypeScript v${tsVer}`));
 
+    const majorNode = parseInt(nodeVer.replace("v", "").split(".")[0]);
+    if (majorNode < 20) {
+        console.log(
+            color(C.yellow, "     ⚠ UPOZORENJE: Node.js verzija je starija od v20. Preporučuje se LTS.")
+        );
+    }
+
+    // 2. BEZBEDNOST (JS/TS Audit)
+    const auditRes = runCmdCapture("pnpm", ["audit", "--prod", "--audit-level=high"]);
     if (auditRes.status === 0) {
-        console.log(color(C.green, "   • Security: Nema pronađenih kritičnih propusta u produkciji."));
+        console.log(color(C.green, "   • JS Security: Nema pronađenih kritičnih propusta u produkciji."));
     } else {
-        console.log(color(C.red, "   • Security: Pronađeni su bezbednosni propusti!"));
-        console.log(color(C.gray, "     --- Detalji iz 'pnpm audit' ---"));
-        // Ovo ispisuje tabelu koju pnpm generiše
-        console.log(auditRes.stdout || auditRes.stderr);
-        console.log(color(C.gray, "     -------------------------------"));
+        console.log(color(C.red, "   • JS Security: PRONAĐENI BEZBEDNOSNI PROPUSTI!"));
+        const auditLines = auditRes.stdout
+            .split("\n")
+            .filter((l) => l.trim())
+            .slice(0, 5);
+        auditLines.forEach((l) => console.log(color(C.gray, `     - ${l}`)));
     }
 
-    // 2. SIGURNI UPDATE-I (Safe Updates)
-    const updatesRes = runCmdCapture("pnpm", ["--silent", "outdated"]);
-
+    // 3. PAKETI I AŽURIRANJA (Analiza)
+    const updatesRes = runCmdCapture("pnpm", ["outdated"]);
     if (updatesRes.stdout.trim().length > 0) {
-        console.log(color(C.yellow, "   • Updates: Postoje sigurne ispravke za tvoje biblioteke."));
-        console.log(color(C.gray, "     --- Kompatibilne verzije (patch/minor) ---"));
-        // Ispisujemo tabelu da znaš tačno šta možeš da apdejtuješ
-        console.log(updatesRes.stdout);
-        console.log(color(C.gray, "     ------------------------------------------"));
-        console.log(color(C.cyan, "     👉 Savet: Pokreni 'pnpm update' da primeniš ove ispravke."));
+        console.log(color(C.yellow, "   • Updates: Postoje novije verzije tvojih biblioteka:"));
+        console.log(updatesRes.stdout); // Ispisuje tvoju originalnu tabelu
+
+        try {
+            const jsonRes = runCmdCapture("pnpm", ["outdated", "--json"]);
+            const outdated = JSON.parse(jsonRes.stdout || "{}");
+            const majorCount = Object.values(outdated).filter(
+                (info) => info.current.split(".")[0] !== info.latest.split(".")[0]
+            ).length;
+            const safeCount = Object.keys(outdated).length - majorCount;
+
+            if (safeCount > 0)
+                console.log(
+                    color(
+                        C.green,
+                        `     ✅ ${safeCount} sigurnih ispravki (patch/minor). Pokreni 'pnpm update'.`
+                    )
+                );
+            if (majorCount > 0)
+                console.log(
+                    color(
+                        C.magenta,
+                        `     ⚠ ${majorCount} MAJOR skokova (crveno u tabeli). Breaking changes mogući!`
+                    )
+                );
+        } catch (e) {
+            /* ignore parse error */
+        }
     } else {
-        console.log(color(C.green, "   • Updates: Sve biblioteke su na najnovijim kompatibilnim verzijama."));
+        console.log(color(C.green, "   • Updates: Sve biblioteke su na najnovijim verzijama."));
     }
 
-    // 3. RUST STATUS
-    const rustRes = spawnSync(resolveCmd("cargo"), ["update", "--dry-run"], { cwd: WASM_DIR });
-    if (rustRes.status === 0) {
-        console.log(color(C.gray, "   • Rust/WASM: Jezgro je stabilno."));
+    // 4. RUST / WASM CORE (MAX1 Detaljni Scan)
+    if (fs.existsSync(WASM_DIR)) {
+        const rustUpdate = spawnSync(resolveCmd("cargo"), ["update", "--dry-run"], {
+            cwd: WASM_DIR,
+            encoding: "utf8",
+        });
+
+        // Izvlačimo tačna imena biblioteka iz stderr-a
+        const updateLines = (rustUpdate.stderr || "")
+            .split("\n")
+            .filter((l) => l.includes("Updating") && !l.includes("crates.io index"))
+            .map((l) => l.trim().replace("Updating ", ""));
+
+        if (updateLines.length > 0) {
+            console.log(
+                color(C.yellow, `   • Rust/WASM: Dostupna ažuriranja za ${updateLines.length} crates:`)
+            );
+            updateLines.slice(0, 3).forEach((l) => console.log(color(C.gray, `     - ${l}`)));
+            if (updateLines.length > 3) console.log(color(C.gray, `     ...i još ${updateLines.length - 3}`));
+            console.log(color(C.cyan, "     👉 Akcija: 'cd src/wasm-core && cargo update'"));
+        } else {
+            console.log(color(C.green, "   • Rust/WASM: Sve Cargo zavisnosti su ažurne."));
+        }
+
+        const hasCargoAudit = spawnSync("cargo", ["audit", "--version"]).status === 0;
+        if (hasCargoAudit) {
+            const cargoAudit = spawnSync("cargo", ["audit"], { cwd: WASM_DIR });
+            if (cargoAudit.status !== 0)
+                console.log(color(C.red, "   • Rust Security: PRONAĐENI PROPUSTI u Cargo.lock!"));
+            else console.log(color(C.green, "   • Rust Security: Nema poznatih propusta u Rust kodu."));
+        }
+    }
+
+    // 5. CI/CD & ENV
+    const workflowDir = path.join(ROOT, ".github", "workflows");
+    if (fs.existsSync(workflowDir)) {
+        const workflows = fs.readdirSync(workflowDir).filter((f) => f.endsWith(".yml"));
+        console.log(color(C.gray, `   • CI/CD: Aktivno ${workflows.length} GitHub workflow fajlova.`));
+    }
+
+    if (!fs.existsSync(path.join(ROOT, ".env"))) {
+        console.log(color(C.yellow, "   • Env Status: Nedostaje lokalni .env fajl."));
+    } else {
+        console.log(color(C.green, "   • Env Status: Lokalna konfiguracija prisutna."));
     }
 }
 
@@ -1097,14 +1215,12 @@ async function runValidationSuite() {
     runStep("Typecheck", "pnpm", ["--silent", "run", "typecheck"]);
 
     if (IS_ULTRA_FAST) {
-        // U Ultra-Fast modu samo ispisujemo da preskačemo
         await runInlineStepCmd(
             "Dependency Health Check (ultra-fast skip)",
             "skipping in ultra-fast mode",
             async () => console.log(color(C.gray, "   • Health check skipped in ultra-fast mode."))
         );
     } else {
-        // U svim ostalim modovima pokrećemo stvarnu proveru
         await runInlineStepCmd(
             "Dependency Health Check",
             "internal security & update scan",
@@ -1149,7 +1265,7 @@ async function main() {
 
         runStep("I18n Keys Integrity", "node", ["scripts/checkI18nKeys.cjs"]);
         runStep("No Hardcoded User Strings", "node", ["scripts/checkUserFacingStrings.cjs"]);
-        runStep("taskpane.html I18n", "node", ["scripts/checkTaskpaneHtmlI18n.cjs"]);
+        runStep("Global HTML I18n Integrity", "node", ["scripts/checkTaskpaneHtmlI18n.cjs"]);
 
         // Ultra-fast: still use the same prettier gate as normal, so it behaves the same as Smart.
         await runInlineStepCmd(
@@ -1168,7 +1284,6 @@ async function main() {
         SKIPPED.push(`Push (ultra-fast)`);
 
         beep();
-        FAILED_STEP = null;
 
         // Always print full end-of-run report (incl. skipped list) in every mode
         printFinalReport();
@@ -1200,7 +1315,7 @@ async function main() {
 
     runStep("I18n Keys Integrity", "node", ["scripts/checkI18nKeys.cjs"]);
     runStep("No Hardcoded User Strings", "node", ["scripts/checkUserFacingStrings.cjs"]);
-    runStep("taskpane.html I18n", "node", ["scripts/checkTaskpaneHtmlI18n.cjs"]);
+    runStep("Global HTML I18n Integrity", "node", ["scripts/checkTaskpaneHtmlI18n.cjs"]);
 
     // Lockfile integrity around pnpm install
     const lockPath = path.join(ROOT, "pnpm-lock.yaml");
@@ -1295,7 +1410,17 @@ async function main() {
     }
 
     beep();
-    FAILED_STEP = null;
+
+    if (shouldOfferPushNow()) {
+        const doPush = await askYesNo("Push to origin now? (git push)");
+        if (doPush) {
+            runStep("Git push", "git", ["push"]);
+            PUSH_PERFORMED = true;
+        } else {
+            PUSH_DECLINED = true;
+            SKIPPED.push("Push (declined)");
+        }
+    }
 
     // Always print full end-of-run report (incl. skipped list) in every mode
     printFinalReport();

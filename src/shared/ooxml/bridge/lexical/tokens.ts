@@ -1,189 +1,138 @@
 // src/shared/ooxml/bridge/lexical/tokens.ts
 
-import { ALWAYS_LATIN_TOKENS_BRIDGE } from "../../../../core/rules";
-import { findNextNodeWithText, trailingTokenFragment, isTokenChar, normKey } from "../../common";
+import { ALWAYS_LATIN_TOKENS_STRICT } from "../../../../core/rules";
+import { findNextNodeWithText, areNodesAdjacent, isBoundaryChar, isAlphaNum } from "../../common";
+import { cyrillicToLatin } from "../../../../core/serbian";
 
-type TokenLowerCps = { s: string; cps: string[]; len: number };
+function findTokenSplits(
+    aRaw: string,
+    tokens: string[] | Set<string>
+): Array<{ token: string; prefixLen: number; tokenNorm: string }> {
+    const aNorm = cyrillicToLatin(aRaw.normalize("NFC")).toLowerCase();
+    const out: Array<{ token: string; prefixLen: number; tokenNorm: string }> = [];
 
-const TOKENS_CACHE_MAX = 120;
-const tokensCache = new Map<string, TokenLowerCps[]>();
+    for (const t of tokens) {
+        const tNorm = cyrillicToLatin(t.normalize("NFC")).toLowerCase();
 
-function tokensCacheKey(tokensSource: Set<string> | string[], caseSensitive: boolean): string {
-    const arr = Array.isArray(tokensSource) ? tokensSource : Array.from(tokensSource);
+        // (opciono, ali preporučeno) uzmi samo NAJDUŽI prefiks koji se poklapa za ovaj token
+        // da ne puniš out sa len=1,len=2,len=3...
+        let bestLenForThisToken: number | null = null;
 
-    const norm = arr
-        .map((s) => (s ?? "").normalize("NFC"))
-        .filter((s) => s.length > 0)
-        .map((s) => (caseSensitive ? s : normKey(s)));
+        for (let len = Math.min(tNorm.length - 1, aNorm.length); len >= 1; len--) {
+            const prefix = tNorm.slice(0, len);
+            if (!aNorm.endsWith(prefix)) continue;
 
-    const uniqSorted = Array.from(new Set(norm)).sort();
-    return (caseSensitive ? "CS:" : "CI:") + JSON.stringify(uniqSorted);
-}
+            // granica pre reči (da 'i' u "Kupio sam i" bude reč, a ne kraj "taxii")
+            const charBefore = aNorm.length > len ? aNorm[aNorm.length - len - 1] : undefined;
+            if (charBefore != null && !isBoundaryChar(charBefore)) continue;
 
-function getCachedTokenList(tokensSource: Set<string> | string[], caseSensitive: boolean): TokenLowerCps[] {
-    const key = tokensCacheKey(tokensSource, caseSensitive);
-    const hit = tokensCache.get(key);
-    if (hit) return hit;
+            bestLenForThisToken = len;
+            break;
+        }
 
-    const tokens: TokenLowerCps[] = (Array.isArray(tokensSource) ? tokensSource : Array.from(tokensSource))
-        .map((s) => s.normalize("NFC"))
-        .filter((s) => s.length > 0)
-        .map((token) => {
-            const normalized = caseSensitive ? token : normKey(token);
-            const cps = Array.from(normalized);
-            return { s: normalized, cps, len: cps.length };
-        })
-        .sort((a, b) => b.len - a.len);
-
-    tokensCache.set(key, tokens);
-
-    if (tokensCache.size > TOKENS_CACHE_MAX) {
-        const firstKey = tokensCache.keys().next().value as string | undefined;
-        if (firstKey) tokensCache.delete(firstKey);
+        if (bestLenForThisToken != null) {
+            out.push({ token: t, prefixLen: bestLenForThisToken, tokenNorm: tNorm });
+        }
     }
 
-    return tokens;
+    // prvo probaj “najspecifičnije”: veći prefixLen, pa duži token
+    out.sort((a, b) => b.prefixLen - a.prefixLen || b.tokenNorm.length - a.tokenNorm.length);
+    return out;
 }
 
-/**
- * Generički bridging funkcija za tokene (case-sensitive ili insensitive).
- */
-function bridgeTokensAcrossTextNodes(
-    textNodes: Element[],
-    tokensSource: Set<string> | string[],
-    caseSensitive = false
-): number {
-    const tokens = getCachedTokenList(tokensSource, caseSensitive);
-
-    if (tokens.length === 0) return 0;
-
-    let changed = 0;
+function bridgeGenericTokens(textNodes: Element[], tokenList: string[] | Set<string>): number {
+    let totalChanged = 0;
+    const tokens = Array.from(tokenList);
 
     for (let i = 0; i < textNodes.length - 1; i++) {
         const aNode = textNodes[i];
         if (!aNode) continue;
-        const aRaw = (aNode.textContent ?? "").normalize("NFC");
-        if (!aRaw || aRaw.trimEnd() !== aRaw) continue;
 
-        const fragInfo = trailingTokenFragment(aRaw);
-        if (!fragInfo) continue;
+        const aRaw = aNode.textContent ?? "";
+        if (!aRaw) continue;
 
-        const { frag, startCpIndex } = fragInfo;
+        // Umesto "najdužeg tokena", uzmi sve kandidate i probaj redom da ih kompletiraš
+        const candidates = findTokenSplits(aRaw, tokens);
+        if (!candidates.length) continue;
 
-        const aCps = Array.from(aRaw);
-        const prevChar = startCpIndex > 0 ? (aCps[startCpIndex - 1] ?? "") : "";
-        if (prevChar && isTokenChar(prevChar)) continue;
-
-        const fragKey = caseSensitive ? frag : normKey(frag);
-        if (!fragKey) continue;
-
-        const fragCps = Array.from(fragKey);
-        const candidates = tokens.filter(
-            (t) => t.len > fragCps.length && t.cps.slice(0, fragCps.length).join("") === fragKey
-        );
-
-        if (candidates.length === 0) continue;
-
-        const j0 = findNextNodeWithText(textNodes, i + 1);
-        if (j0 == null) continue;
+        let bridgedHere = false;
 
         for (const cand of candidates) {
-            const rem = cand.cps.slice(fragCps.length);
+            const neededNorm = cand.tokenNorm.slice(cand.prefixLen);
+            if (!neededNorm) continue;
 
-            let remainingIdx = 0;
-            const consumePlan: Array<{ nodeIndex: number; takeCount: number }> = [];
+            let currentJ = i;
+            let collectedFromNodes = "";
+            const nodesToUpdate: Array<{ node: Element; take: number; original: string[] }> = [];
+            let tempNeededNorm = neededNorm;
 
-            let j: number | null = j0;
+            while (tempNeededNorm.length > 0) {
+                const nextJ = findNextNodeWithText(textNodes, currentJ + 1);
+                if (nextJ == null) break;
 
-            while (remainingIdx < rem.length) {
-                if (j == null) break;
+                const currNode = textNodes[nextJ];
+                // Koristimo novu areNodesAdjacent koja vidi kroz SDT/Paragrafe
+                if (!currNode || !areNodesAdjacent(aNode, currNode)) break;
 
-                const bNode = textNodes[j];
-                if (!bNode) break;
-                const bRaw = (bNode.textContent ?? "").normalize("NFC");
-                if (!bRaw) {
-                    j = findNextNodeWithText(textNodes, j + 1);
-                    continue;
-                }
+                const raw = currNode.textContent ?? "";
+                const cps = Array.from(raw);
+                const rawNorm = cyrillicToLatin(raw.normalize("NFC")).toLowerCase();
 
-                if (bRaw.trimStart() !== bRaw) {
-                    remainingIdx = -1;
+                if (rawNorm.startsWith(tempNeededNorm)) {
+                    nodesToUpdate.push({ node: currNode, take: tempNeededNorm.length, original: cps });
+                    collectedFromNodes += cps.slice(0, tempNeededNorm.length).join("");
+                    tempNeededNorm = "";
+                } else if (tempNeededNorm.startsWith(rawNorm)) {
+                    nodesToUpdate.push({ node: currNode, take: cps.length, original: cps });
+                    collectedFromNodes += raw;
+                    tempNeededNorm = tempNeededNorm.slice(rawNorm.length);
+                    currentJ = nextJ;
+                } else {
                     break;
                 }
-
-                const bCps = Array.from(bRaw);
-
-                let take = 0;
-                while (take < bCps.length && remainingIdx < rem.length) {
-                    const ch = bCps[take];
-                    if (!ch) break;
-                    if (!isTokenChar(ch)) break;
-
-                    const chKey = caseSensitive ? ch : normKey(ch);
-                    if (chKey !== rem[remainingIdx]) break;
-
-                    take++;
-                    remainingIdx++;
-                }
-
-                if (take === 0) {
-                    remainingIdx = -1;
-                    break;
-                }
-
-                consumePlan.push({ nodeIndex: j, takeCount: take });
-
-                if (remainingIdx >= rem.length) {
-                    const nextChar = bCps[take] ?? "";
-                    if (nextChar && isTokenChar(nextChar)) {
-                        remainingIdx = -1;
-                    }
-                    break;
-                }
-
-                j = findNextNodeWithText(textNodes, j + 1);
             }
 
-            if (remainingIdx !== rem.length) continue;
-
-            let moved = "";
-            for (const step of consumePlan) {
-                const bNode = textNodes[step.nodeIndex];
-                if (!bNode) continue;
-                const bRaw = (bNode.textContent ?? "").normalize("NFC");
-                const bCps = Array.from(bRaw);
-                moved += bCps.slice(0, step.takeCount).join("");
+            if (tempNeededNorm.length !== 0) {
+                // ovaj kandidat nije mogao da se kompletira -> probaj sledeći
+                continue;
             }
 
-            aNode.textContent = aRaw + moved;
+            // [FIX ZA Node.jsX] Proveri da li se reč nastavlja slovom ili brojem
+            const lastUpdate = nodesToUpdate[nodesToUpdate.length - 1];
+            if (!lastUpdate) continue;
 
-            for (const step of consumePlan) {
-                const bNode = textNodes[step.nodeIndex];
-                if (!bNode) continue;
-                const bRaw = (bNode.textContent ?? "").normalize("NFC");
-                const bCps = Array.from(bRaw);
-                bNode.textContent = bCps.slice(step.takeCount).join("");
+            const nextChar =
+                lastUpdate.original.length > lastUpdate.take
+                    ? lastUpdate.original[lastUpdate.take]
+                    : undefined;
+
+            // Ako je sledeći karakter slovo ili broj, to NIJE naš brend (npr. Node.jsX), ne spajaj!
+            if (nextChar != null && isAlphaNum(nextChar)) {
+                continue; // probaj sledećeg kandidata
             }
 
-            changed++;
+            // SUCCESS: primeni spajanje
+            aNode.textContent = aRaw + collectedFromNodes;
+            for (const step of nodesToUpdate) {
+                step.node.textContent = step.original.slice(step.take).join("");
+            }
+            totalChanged++;
+            i--; // Ponovi za isti čvor
+
+            bridgedHere = true;
             break;
         }
+
+        if (bridgedHere) continue;
     }
 
-    return changed;
+    return totalChanged;
 }
 
-/**
- * Bridge ALWAYS_LATIN tokens (case-insensitive).
- * NOTE: uključuje i "ambiguous" tokene (Pro/Max/...) da se ne desi parcijalna transliteracija kad su splitovani.
- */
 export function bridgeAlwaysLatinTokensAcrossTextNodes(textNodes: Element[]): number {
-    return bridgeTokensAcrossTextNodes(textNodes, ALWAYS_LATIN_TOKENS_BRIDGE, false);
+    return bridgeGenericTokens(textNodes, ALWAYS_LATIN_TOKENS_STRICT);
 }
 
-/**
- * Bridge exact user-provided tokens (case-sensitive).
- */
 export function bridgeExactTokensAcrossTextNodes(textNodes: Element[], tokens: string[]): number {
-    return bridgeTokensAcrossTextNodes(textNodes, tokens, true);
+    return bridgeGenericTokens(textNodes, tokens);
 }

@@ -1,32 +1,62 @@
 ###############################################################################
-# Set default behavior to automatically normalize line endings.
+# Global rule: store ALL text files in the repo as LF (cross-platform stable)
 ###############################################################################
-* text=auto
+* text=auto eol=lf
+
+# Ensure these dotfiles are always LF
+.gitattributes text eol=lf
+.gitignore     text eol=lf
 
 ###############################################################################
-# behavior for image files
-#
-# image files are treated as binary by default.
+# Windows scripts: safest with CRLF
 ###############################################################################
-#*.jpg   binary
-#*.png   binary
-#*.gif   binary
+*.bat text eol=crlf
+*.cmd text eol=crlf
 
-# Source / config (force LF)
-*.ts   text eol=lf
-*.js   text eol=lf
-*.cjs  text eol=lf
-*.json text eol=lf
-*.css  text eol=lf
-*.html text eol=lf
-*.md   text eol=lf
-*.yml  text eol=lf
-*.xml  text eol=lf
-*.ps1  text eol=lf
-*.sh   text eol=lf
-
-# Windows batch files are safest with CRLF
-*.bat  text eol=crlf
-
+###############################################################################
 # Husky hooks must be LF (shell scripts)
+###############################################################################
 .husky/* text eol=lf
+
+###############################################################################
+# Lockfiles / manifests (explicit, though covered by global rule)
+###############################################################################
+Cargo.lock      text eol=lf
+pnpm-lock.yaml  text eol=lf
+*.lock          text eol=lf
+
+###############################################################################
+# Binaries (NEVER treat as text)
+###############################################################################
+# WASM / archives
+*.wasm  binary
+*.zip   binary
+*.gz    binary
+*.tgz   binary
+*.7z    binary
+
+# Images / icons
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.webp  binary
+*.ico   binary
+
+# Fonts
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.otf   binary
+*.eot   binary
+
+# PDFs
+*.pdf   binary
+
+# Certificates / keys
+*.pfx   binary
+*.p12   binary
+
+# Executables
+*.exe   binary
+*.dll   binary
