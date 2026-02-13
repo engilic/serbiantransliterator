@@ -65,6 +65,8 @@ const SKIPPED = [];
 let FINAL_REPORT_PRINTED = false;
 let FAILED_STEP = null; // set when die(step) is called
 let STEP_NO = 1;
+let PUSH_PERFORMED = false;
+let PUSH_DECLINED = false;
 
 function nextStep(title) {
     const n = STEP_NO++;
@@ -170,7 +172,27 @@ function getGitCommitShort() {
 
 function getPwshVersion() {
     if (!isWin()) return null;
-    return runCaptureText("pwsh", ["-NoProfile", "-Command", "$PSVersionTable.PSVersion.ToString()"], ROOT);
+
+    // Prefer PowerShell 7+ (pwsh), fallback to Windows PowerShell.
+    const v7 = runCaptureText(
+        "pwsh",
+        ["-NoProfile", "-Command", "$PSVersionTable.PSVersion.ToString()"],
+        ROOT
+    );
+    if (v7) return v7;
+
+    const v5 = runCaptureText(
+        "powershell",
+        ["-NoProfile", "-Command", "$PSVersionTable.PSVersion.ToString()"],
+        ROOT
+    );
+    return v5;
+}
+
+function getAheadCountSafe() {
+    const out = runCaptureText("git", ["rev-list", "--count", "@{upstream}..HEAD"], ROOT);
+    const n = out ? parseInt(out, 10) : 0;
+    return Number.isFinite(n) ? n : 0;
 }
 
 function getWindowsVerLine() {
@@ -556,6 +578,16 @@ function getRepoStatusPorcelain() {
     return String(res.stdout || "").replace(/\s+$/g, "");
 }
 
+function shouldOfferPushNow() {
+    const passed = !FAILED_STEP;
+    const dirty = !!getRepoStatusPorcelain();
+    const ahead = getAheadCountSafe();
+    const isCi = getCiLabel() !== "local";
+    const canPrompt = !!process.stdin.isTTY;
+
+    return passed && !NO_PUSH && !dirty && ahead > 0 && canPrompt && !isCi;
+}
+
 function legendForStatus(xy) {
     if (xy === "??") return "untracked (new file)";
 
@@ -662,7 +694,17 @@ function printFinalReport() {
     console.log(`   • fast:   ${IS_FAST_MODE ? "YES" : "NO"}`);
     console.log(`   • ultra:  ${IS_ULTRA_FAST ? "YES" : "NO"}`);
     console.log(`   • skip:   ${NO_SKIP ? "DISABLED (--no-skip)" : "SMART (changed-files based)"}`);
-    console.log(`   • push:   ${NO_PUSH ? "DISABLED" : "PROMPT (enabled)"}`);
+    const ahead = getAheadCountSafe();
+    const offer = shouldOfferPushNow();
+
+    let pushText = "AUTO-SKIP (not ahead)";
+    if (NO_PUSH) pushText = "DISABLED (--no-push)";
+    else if (PUSH_PERFORMED) pushText = "DONE (pushed)";
+    else if (PUSH_DECLINED) pushText = "DECLINED (not pushed)";
+    else if (offer) pushText = "PROMPT (enabled)";
+    else if (ahead > 0) pushText = `AUTO-SKIP (ahead ${ahead}; run 'git push' manually)`;
+
+    console.log(`   • push:   ${pushText}`);
 
     console.log(color(C.yellow, "\n   • skipped steps:"));
     if (SKIPPED.length === 0) {
@@ -702,10 +744,9 @@ function printFinalReport() {
         }
     }
 
-    // Final two lines: RESULT then VERIFY (VERIFY is last, NO blank line between)
-    const dirty = !!getRepoStatusPorcelain();
-    const total = cumulativeSecondsStr();
     const passed = !FAILED_STEP;
+    const total = cumulativeSecondsStr();
+    const dirty = isDirty;
 
     const outcome = passed ? color(C.green + C.bold, "✔ PASS") : color(C.red + C.bold, "✖ FAIL");
     const dirtyText = dirty ? color(C.yellow + C.bold, "DIRTY") : color(C.green + C.bold, "CLEAN");
@@ -842,9 +883,12 @@ function detectPowerShell() {
 }
 
 function checkEnv() {
-    if (!fs.existsSync(path.join(ROOT, ".env")) && fs.existsSync(path.join(ROOT, ".env.example"))) {
-        console.error(color(C.red, "❌ Nedostaje .env fajl!"));
-        process.exit(1);
+    const envPath = path.join(ROOT, ".env");
+    const exPath = path.join(ROOT, ".env.example");
+
+    if (!fs.existsSync(envPath) && fs.existsSync(exPath)) {
+        fs.copyFileSync(exPath, envPath);
+        console.log(color(C.yellow, "⚠ .env nije postojao; napravljen je iz .env.example"));
     }
 }
 
@@ -1129,7 +1173,7 @@ async function checkProjectHealth() {
         // Izvlačimo tačna imena biblioteka iz stderr-a
         const updateLines = (rustUpdate.stderr || "")
             .split("\n")
-            .filter((l) => l.includes("Updating"))
+            .filter((l) => l.includes("Updating") && !l.includes("crates.io index"))
             .map((l) => l.trim().replace("Updating ", ""));
 
         if (updateLines.length > 0) {
@@ -1240,7 +1284,6 @@ async function main() {
         SKIPPED.push(`Push (ultra-fast)`);
 
         beep();
-        FAILED_STEP = null;
 
         // Always print full end-of-run report (incl. skipped list) in every mode
         printFinalReport();
@@ -1367,7 +1410,17 @@ async function main() {
     }
 
     beep();
-    FAILED_STEP = null;
+
+    if (shouldOfferPushNow()) {
+        const doPush = await askYesNo("Push to origin now? (git push)");
+        if (doPush) {
+            runStep("Git push", "git", ["push"]);
+            PUSH_PERFORMED = true;
+        } else {
+            PUSH_DECLINED = true;
+            SKIPPED.push("Push (declined)");
+        }
+    }
 
     // Always print full end-of-run report (incl. skipped list) in every mode
     printFinalReport();
