@@ -42,7 +42,7 @@
         "release": "node scripts/release.js"
     },
     "dependencies": {
-        "@xmldom/xmldom": "^0.8.11",
+        "@xmldom/xmldom": "^0.8.12",
         "core-js": "^3.48.0",
         "dompurify": "^3.3.3",
         "idb": "^8.0.3",
