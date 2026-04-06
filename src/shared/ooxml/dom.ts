@@ -79,7 +79,7 @@ function getAttrValSafe(el: Element): string | null {
             const v = (getAttrNS as (ns: string, name: string) => string | null).call(el, WORD_NS, "val");
             if (typeof v === "string" && v.length > 0) return v;
         } catch {
-            // ignore
+            void 0;
         }
     }
 
@@ -92,7 +92,7 @@ function getAttrValSafe(el: Element): string | null {
                 (getAttr as (name: string) => string | null).call(el, "val");
             if (typeof v === "string" && v.length > 0) return v;
         } catch {
-            // ignore
+            void 0;
         }
     }
 

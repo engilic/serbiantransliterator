@@ -130,7 +130,7 @@ function registerServiceWorkerWithUpdatePrompt(store: Store<AppState>) {
         try {
             banner?.remove();
         } catch {
-            // ignore
+            void 0;
         }
         banner = null;
     };
@@ -201,7 +201,7 @@ function registerServiceWorkerWithUpdatePrompt(store: Store<AppState>) {
                         })
                     );
                 } catch {
-                    // ignore
+                    void 0;
                 }
 
                 maybeShowUpdate();
@@ -230,7 +230,7 @@ function registerServiceWorkerWithUpdatePrompt(store: Store<AppState>) {
                     if (store.get().simulatedOffline) return;
                     if (navigator.onLine) void reg.update();
                 } catch {
-                    // ignore
+                    void 0;
                 }
             });
         } catch (err) {

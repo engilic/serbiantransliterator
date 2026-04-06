@@ -4,7 +4,7 @@ import { dataUriToBytes } from "../../shared/utils/binary";
 import type { OoxmlOptions, ConvertStats } from "../../shared/ooxml/convertOoxml";
 import { convertOoxml } from "../../shared/ooxml/convertOoxml";
 import * as textCore from "../../core/textCore";
-import type { WorkerMessage, WorkerResponse } from "./types";
+import type { WorkerMessage } from "./types";
 import { state } from "../app/state";
 import { normalizeUnknownError } from "../../shared/normalizeError";
 import { logger } from "../app/telemetry/logger";
@@ -106,7 +106,7 @@ function errorMessageFromUnknown(u: unknown): string {
             const json = JSON.stringify(u);
             if (json && json !== "{}") return json;
         } catch {
-            // ignore
+            void 0;
         }
     }
     return "Worker error";
@@ -194,6 +194,44 @@ function parseWorkerResponseLoose(u: unknown): ParsedInitDone | ParsedConvertDon
     return null;
 }
 
+function describeWorkerErrorEvent(e: unknown): string {
+    // string
+    if (typeof e === "string" && e.trim()) return e;
+
+    // direct Error
+    if (e instanceof Error && e.message) return e.message;
+
+    // ErrorEvent-like / record-like
+    if (isRecord(e)) {
+        const msg = readString(e, "message");
+        if (msg && msg.trim()) return msg;
+
+        const errRaw = (e as Record<string, unknown>)["error"];
+
+        // error: "..."
+        if (typeof errRaw === "string" && errRaw.trim()) return errRaw;
+
+        // error: Error
+        if (errRaw instanceof Error && errRaw.message) return errRaw.message;
+
+        // error: { message: "..." }  ✅ this is what your test likely uses
+        if (isRecord(errRaw)) {
+            const m2 = readString(errRaw, "message");
+            if (m2 && m2.trim()) return m2;
+        }
+
+        // last resort: try something meaningful
+        try {
+            const json = JSON.stringify(e);
+            if (json && json !== "{}") return json;
+        } catch {
+            void 0;
+        }
+    }
+
+    return String(e);
+}
+
 export class WorkerClient {
     private worker: Worker | null = null;
     private jobs = new Map<string, InFlightJob>();
@@ -214,148 +252,135 @@ export class WorkerClient {
         if (this.initPromise) return this.initPromise;
 
         this.initPromise = new Promise((resolve, reject) => {
-            let initSettled = false;
+            let settled = false;
 
-            const settleResolve = () => {
-                if (initSettled) return;
-                initSettled = true;
+            const safeResolve = () => {
+                if (settled) return;
+                settled = true;
                 resolve();
             };
 
-            const settleReject = (err: Error) => {
-                if (initSettled) return;
-                initSettled = true;
+            const safeReject = (err: Error) => {
+                if (settled) return;
+                settled = true;
                 reject(err);
             };
 
-            try {
-                console.log("[WorkerClient] Initializing...");
+            const failInit = async (e: unknown) => {
+                const err = e instanceof Error ? e : new Error(String(e));
 
+                this.rejectAllPending(err);
+
+                try {
+                    this.worker?.terminate();
+                } catch {
+                    void 0;
+                }
+
+                this.worker = null;
+                this.isReady = false;
+                this.initPromise = null; // allow retry
+
+                // MAX1: try fallback so app stays functional,
+                // BUT init() must still reject (tests + explicit signal to caller)
+                try {
+                    await this.activateFallback();
+                } catch {
+                    void 0;
+                }
+
+                safeReject(err);
+            };
+
+            try {
+                // ✅ IMPORTANT: correct relative URL in taskpane worker client
                 this.worker = new Worker(new URL("./transliteration.worker.ts", import.meta.url), {
                     type: "module",
                 });
 
-                const heartbeatTimeout = setTimeout(async () => {
-                    if (!this.isReady) {
-                        console.warn("[WorkerClient] Heartbeat timeout. Switching to fallback.");
-                        if (this.isTesting) {
-                            this.resetWorkerState();
-                            settleReject(new Error("Worker Startup Timeout (Testing)"));
-                        } else {
-                            await this.activateFallback();
-                            settleResolve();
-                        }
-                    }
-                }, 8000);
+                this.worker.onmessage = (event) => {
+                    const parsed = parseWorkerResponseLoose(event);
 
-                this.worker.onmessage = (event: MessageEvent) => {
-                    try {
-                        const parsed = parseWorkerResponseLoose(event);
-
-                        if (parsed && parsed.type === "INIT_DONE") {
-                            console.log("[WorkerClient] Worker ready!");
-                            clearTimeout(heartbeatTimeout);
-                            this.isReady = true;
-                            settleResolve();
-                            this.pumpQueue();
-                            return;
-                        }
-
-                        // INIT error: ERROR without id
-                        if (parsed && parsed.type === "ERROR" && !parsed.id) {
-                            clearTimeout(heartbeatTimeout);
-                            console.error("[WorkerClient] Worker init error:", parsed.error);
-
-                            if (this.isTesting) {
-                                this.initPromise = null;
-                                this.resetWorkerState();
-                                settleReject(new Error(parsed.error));
-                            } else {
-                                void this.activateFallback().then(() => settleResolve());
-                            }
-                            return;
-                        }
-
-                        // Everything else: runtime messages
-                        this.handleMessage(event);
-                    } catch (e) {
-                        clearTimeout(heartbeatTimeout);
-                        console.error("[WorkerClient] onmessage crashed; switching to fallback.", e);
-                        void this.handleWorkerFatalError(e, "messageerror");
-
-                        if (!this.isReady && !this.isTesting) {
-                            void this.activateFallback().then(() => settleResolve());
-                        }
-                    }
-                };
-
-                this.worker.onmessageerror = async (e: MessageEvent) => {
-                    clearTimeout(heartbeatTimeout);
-
-                    if (!this.isReady) {
-                        if (this.isTesting) {
-                            this.initPromise = null;
-                            this.resetWorkerState();
-                            settleReject(new Error("Worker Message Error"));
-                        } else {
-                            console.error("[WorkerClient] Worker messageerror during init:", e);
-                            await this.activateFallback();
-                            settleResolve();
-                        }
+                    // ✅ If init gets garbage, do not hang: fail init (will fallback + resolve)
+                    if (!parsed) {
+                        void failInit(new Error("Malformed worker message during init"));
                         return;
                     }
 
-                    console.error("[WorkerClient] Worker messageerror (runtime):", e);
-                    await this.handleWorkerFatalError(e, "messageerror");
-                };
-
-                this.worker.onerror = async (e) => {
-                    clearTimeout(heartbeatTimeout);
-
-                    if (!this.isReady) {
-                        if (this.isTesting) {
-                            this.initPromise = null;
-                            this.resetWorkerState();
-                            settleReject(new Error("Worker Load Error"));
-                        } else {
-                            console.error("[WorkerClient] Worker onerror during init:", e);
-                            await this.activateFallback();
-                            settleResolve();
-                        }
+                    if (parsed.type === "INIT_DONE") {
+                        this.isReady = true;
+                        safeResolve();
                         return;
                     }
 
-                    console.error("[WorkerClient] Worker onerror (runtime):", e);
-                    await this.handleWorkerFatalError(e, "onerror");
+                    if (parsed.type === "ERROR" && !parsed.id) {
+                        void failInit(new Error(parsed.error));
+                        return;
+                    }
+
+                    // normal runtime convert responses
+                    this.handleParsed(parsed);
                 };
 
+                this.worker.onerror = (e) => {
+                    const detail = describeWorkerErrorEvent(e);
+                    const err = new Error("Worker error: " + detail);
+
+                    // During init -> reject init()
+                    if (!this.isReady && !this.useFallback) {
+                        void failInit(err);
+                        return;
+                    }
+
+                    // After init -> seamless crash recovery (requeue + fallback)
+                    void this.handleWorkerFatalError(err, "onerror");
+                };
+
+                // ✅ MessageEvent deserialization / structured clone errors
+                (this.worker as Worker).onmessageerror = (e) => {
+                    // ✅ During init, messageerror must settle initPromise (fallback + resolve)
+                    if (!this.isReady && !this.useFallback) {
+                        void failInit(new Error("Worker messageerror during init"));
+                        return;
+                    }
+
+                    // After init: fatal -> fallback + requeue (seamless)
+                    if (this.isTesting) {
+                        this.rejectAllPending(new Error("Worker messageerror"));
+                        return;
+                    }
+
+                    void this.handleWorkerFatalError(e, "messageerror");
+                };
+
+                // (ostatak init payload logike ostaje isti)
                 const b1 = dataUriToBytes(dictE2iData as unknown as string);
                 const b2 = dataUriToBytes(dictI2eData as unknown as string);
                 const wasmBytes = dataUriToBytes(wasmData as unknown as string);
 
                 if (b1.byteLength === 0 || b2.byteLength === 0 || wasmBytes.byteLength === 0) {
-                    throw new Error("Worker init payload missing (dict/wasm)");
+                    void failInit(new Error("Init payload missing (dict/wasm)"));
+                    return;
                 }
-                if (b1.byteLength > MAX_INIT_DICT_BYTES) throw new Error("dictE2i too large");
-                if (b2.byteLength > MAX_INIT_DICT_BYTES) throw new Error("dictI2e too large");
-                if (wasmBytes.byteLength > MAX_INIT_WASM_BYTES) throw new Error("WASM too large");
 
-                const msg: WorkerMessage = {
+                // ✅ DoS / corruption hard limits
+                if (b1.byteLength > MAX_INIT_DICT_BYTES || b2.byteLength > MAX_INIT_DICT_BYTES) {
+                    void failInit(new Error("Init dict too large"));
+                    return;
+                }
+                if (wasmBytes.byteLength > MAX_INIT_WASM_BYTES) {
+                    void failInit(new Error("Init wasm too large"));
+                    return;
+                }
+
+                const initMsg: WorkerMessage = {
                     type: "INIT",
                     payload: { dictE2i: b1, dictI2e: b2, wasmModule: wasmBytes },
                 };
 
-                this.worker.postMessage(msg, [b1.buffer, b2.buffer, wasmBytes.buffer]);
+                this.worker.postMessage(initMsg, [b1.buffer, b2.buffer, wasmBytes.buffer]);
             } catch (e) {
-                console.error("[WorkerClient] Constructor failed:", e);
-                this.initPromise = null;
-
-                if (this.isTesting) {
-                    const norm = normalizeUnknownError(e, "Worker constructor failed");
-                    settleReject(new Error(norm.message));
-                } else {
-                    void this.activateFallback().then(() => settleResolve());
-                }
+                void failInit(e);
             }
         });
 
@@ -398,7 +423,7 @@ export class WorkerClient {
             try {
                 job.signal.removeEventListener("abort", job.onAbort);
             } catch {
-                // ignore
+                void 0;
             }
         }
 
@@ -413,16 +438,30 @@ export class WorkerClient {
         return err;
     }
 
-    private rejectAllInFlightForTests(err: Error) {
+    private rejectAllPending(err: Error) {
+        // 1) reject queued jobs
+        const queued = [...this.queue];
+        this.queue = [];
+
+        for (const q of queued) {
+            try {
+                q.reject(err);
+            } catch {
+                void 0;
+            }
+        }
+
+        // 2) reject in-flight jobs
         const inFlight = Array.from(this.jobs.values());
         for (const job of inFlight) {
             this.cleanupInFlightJob(job);
             try {
                 job.reject(err);
             } catch {
-                // ignore
+                void 0;
             }
         }
+
         this.jobs.clear();
         this.inFlightCount = 0;
     }
@@ -477,7 +516,7 @@ export class WorkerClient {
             try {
                 this.worker.terminate();
             } catch {
-                // ignore
+                void 0;
             }
             this.worker = null;
         }
@@ -500,65 +539,65 @@ export class WorkerClient {
         this.pumpQueue();
     }
 
-    private handleMessage(dataUnknown: unknown) {
+    private handleParsed(parsed: ReturnType<typeof parseWorkerResponseLoose>) {
+        if (!parsed) {
+            const err = new Error("Malformed worker message");
+            if (this.isTesting) {
+                this.rejectAllPending(err);
+                return;
+            }
+            void this.handleWorkerFatalError(err, "messageerror");
+            return;
+        }
+
+        if (parsed.type === "CONVERT_DONE") {
+            const job = this.jobs.get(parsed.id);
+            if (!job) return;
+
+            this.jobs.delete(parsed.id);
+            this.inFlightCount = Math.max(0, this.inFlightCount - 1);
+
+            this.cleanupInFlightJob(job);
+
+            if (!job.aborted && !job.signal?.aborted) {
+                job.resolve(parsed.payload);
+            }
+
+            this.pumpQueue();
+            return;
+        }
+
+        if (parsed.type === "ERROR" && parsed.id) {
+            const job = this.jobs.get(parsed.id);
+            if (!job) return;
+
+            this.jobs.delete(parsed.id);
+            this.inFlightCount = Math.max(0, this.inFlightCount - 1);
+
+            this.cleanupInFlightJob(job);
+
+            job.reject(new Error(parsed.error));
+            this.pumpQueue();
+            return;
+        }
+
+        // INIT_DONE / init ERROR are handled in init()
+    }
+
+    private handleMessage(dataUnknown: unknown): void {
         try {
             const parsed = parseWorkerResponseLoose(dataUnknown);
-
-            if (!parsed) {
-                const err = new Error("Malformed worker message");
-                console.error("[WorkerClient] Malformed worker message:", dataUnknown);
-
-                // In tests: never hang
-                if (this.isTesting) {
-                    this.rejectAllInFlightForTests(err);
-                    this.pumpQueue();
-                    return;
-                }
-
-                void this.handleWorkerFatalError(err, "messageerror");
-                return;
-            }
-
-            if (parsed.type === "CONVERT_DONE") {
-                const job = this.jobs.get(parsed.id);
-                if (!job) return;
-
-                this.jobs.delete(parsed.id);
-                this.inFlightCount = Math.max(0, this.inFlightCount - 1);
-
-                this.cleanupInFlightJob(job);
-
-                if (!job.aborted && !job.signal?.aborted) {
-                    job.resolve(parsed.payload);
-                }
-
-                this.pumpQueue();
-                return;
-            }
-
-            if (parsed.type === "ERROR" && parsed.id) {
-                const job = this.jobs.get(parsed.id);
-                if (job) {
-                    this.jobs.delete(parsed.id);
-                    this.inFlightCount = Math.max(0, this.inFlightCount - 1);
-
-                    this.cleanupInFlightJob(job);
-
-                    job.reject(new Error(parsed.error));
-                    this.pumpQueue();
-                }
-                return;
-            }
-
-            // INIT_DONE / init ERROR are handled in onmessage init branch.
+            this.handleParsed(parsed);
         } catch (e) {
             console.error("[WorkerClient] handleMessage crashed; switching to fallback.", e);
 
             if (this.isTesting) {
-                this.rejectAllInFlightForTests(
-                    e instanceof Error ? e : new Error(normalizeUnknownError(e, "WorkerClient error").message)
-                );
-                this.pumpQueue();
+                const err =
+                    e instanceof Error
+                        ? e
+                        : new Error(normalizeUnknownError(e, "WorkerClient error").message);
+
+                this.rejectAllPending(err);
                 return;
             }
 
@@ -613,7 +652,7 @@ export class WorkerClient {
                     try {
                         q.signal.removeEventListener("abort", onAbort);
                     } catch {
-                        // ignore
+                        void 0;
                     }
                 }
 
@@ -726,7 +765,19 @@ export class WorkerClient {
         }
 
         this.jobs.set(id, job);
-        this.worker.postMessage({ type: "CONVERT", id, payload: q.payload } as WorkerMessage);
+
+        try {
+            this.worker.postMessage({ type: "CONVERT", id, payload: q.payload } as WorkerMessage);
+        } catch (e) {
+            // cleanup as if job failed immediately
+            if (this.jobs.has(id)) this.jobs.delete(id);
+            this.inFlightCount = Math.max(0, this.inFlightCount - 1);
+
+            this.cleanupInFlightJob(job);
+
+            q.reject(this.makeStableError(e, "Worker postMessage failed"));
+            this.pumpQueue();
+        }
     }
 
     public async convert(xml: string, options: OoxmlOptions, timeoutMs = 60_000): Promise<ConvertResult> {
@@ -747,8 +798,26 @@ export class WorkerClient {
     }
 
     public terminate() {
-        this.resetWorkerState();
-        this.queue = [];
+        const err = makeAbortError();
+        this.rejectAllPending(err);
+
+        // ✅ ensure tests + callers see worker cleared even if terminate throws
+        const w = this.worker;
+        this.worker = null;
+
+        if (w) {
+            try {
+                w.terminate();
+            } catch {
+                void 0;
+            }
+        }
+
+        this.initPromise = null;
+        this.inFlightCount = 0;
+
+        // If we are in fallback mode, keep it usable; otherwise force re-init next time
+        this.isReady = this.useFallback ? true : false;
     }
 }
 

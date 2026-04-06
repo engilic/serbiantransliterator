@@ -136,7 +136,7 @@ export async function incrementCounter(key: string, delta = 1): Promise<void> {
         await tx.store.put(next);
         await tx.done;
     } catch {
-        // Ignore telemetry failures silently.
+        void 0;
     }
 }
 

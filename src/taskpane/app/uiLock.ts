@@ -8,7 +8,7 @@ export function abortActiveOperation() {
     try {
         state.activeAbortController?.abort();
     } catch {
-        // ignore
+        void 0;
     }
 }
 
@@ -21,7 +21,7 @@ export async function runWithUiLock(fn: () => Promise<void>) {
         try {
             state.activeAbortController.abort();
         } catch {
-            // ignore
+            void 0;
         }
     }
 

@@ -137,7 +137,7 @@ export function normalizeUnknownError(error: unknown, fallbackMessage = "Unknown
                     return { name: name || "Error", message: json };
                 }
             } catch {
-                // ignore
+                void 0;
             }
 
             return { name: name || "Error", message: fallbackMessage };

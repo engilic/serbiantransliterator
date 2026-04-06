@@ -63,7 +63,7 @@ export function initTaskpane(isWebMode = false) {
             wasm.init_debug();
         }
     } catch {
-        // ignore
+        void 0;
     }
 
     // WASM se inicijalizuje u pozadini
@@ -96,14 +96,14 @@ export function initTaskpane(isWebMode = false) {
                 state.selectionChangeHandler
             );
         } catch {
-            // best-effort
+            void 0;
         }
     }
 
     try {
         void checkSelectionAndUpdateButtons();
     } catch {
-        // best-effort
+        void 0;
     }
 
     setupKeyboardShortcuts();
@@ -243,7 +243,7 @@ function cleanupEventHandlers() {
                 handler: state.selectionChangeHandler,
             });
         } catch {
-            // ignore
+            void 0;
         }
         state.selectionChangeHandler = null;
     }

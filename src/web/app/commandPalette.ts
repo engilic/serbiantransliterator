@@ -326,7 +326,7 @@ export function installCommandPalette(store: Store<AppState>, actions: Actions):
             try {
                 selectedRow.scrollIntoView({ block: "nearest" });
             } catch {
-                // ignore
+                void 0;
             }
         }
     };

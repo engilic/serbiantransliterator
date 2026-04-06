@@ -29,10 +29,10 @@ describe("WorkerClient Error Handling", () => {
 
         const instance = (client as any).worker;
         if (instance) {
-            instance.onerror(new ErrorEvent("error"));
+            instance.onerror(new Error("Worker Load Error"));
         }
 
-        await expect(p).rejects.toThrow("Worker Load Error");
+        await expect(p).rejects.toThrow("Worker error: Worker Load Error");
     });
 
     it("handles explicit ERROR message from worker", async () => {

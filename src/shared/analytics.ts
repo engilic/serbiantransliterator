@@ -14,6 +14,6 @@ export function track(event: string, data?: Record<string, unknown>): void {
             }).catch(() => {});
         }
     } catch {
-        // ignore
+        void 0;
     }
 }

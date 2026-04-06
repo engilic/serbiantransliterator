@@ -130,7 +130,7 @@ function initLanguagePicker() {
         try {
             void checkSelectionAndUpdateButtons();
         } catch {
-            // best-effort
+            void 0;
         }
     };
 }

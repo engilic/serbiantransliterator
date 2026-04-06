@@ -16,7 +16,7 @@ function trySelect(range: Word.Range) {
     try {
         range.select(); // ✅ method call (no property read / no load required)
     } catch {
-        // in tests/mocks or some hosts selection UX may not exist; ignore
+        void 0;
     }
 }
 

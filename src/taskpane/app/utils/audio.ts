@@ -29,6 +29,6 @@ export function playSuccessSound() {
         osc.start();
         osc.stop(audioCtx.currentTime + 0.1);
     } catch {
-        // ignore audio errors
+        void 0;
     }
 }

@@ -86,7 +86,9 @@ async function askYesNo(q) {
         function cleanup(result) {
             try {
                 process.stdin.setRawMode(false);
-            } catch {}
+            } catch {
+                void 0;
+            }
             process.stdin.pause();
             process.stdin.removeListener("data", listener);
             resolve(result);

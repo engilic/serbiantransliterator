@@ -14,7 +14,7 @@ function setNavigatorLanguage(lang: string) {
     try {
         Object.defineProperty(navigator, "language", { value: lang, configurable: true });
     } catch {
-        // ignore
+        void 0;
     }
 }
 

@@ -300,7 +300,9 @@
                         setTimeout(() => {
                             try {
                                 sel.removeAllRanges();
-                            } catch {}
+                            } catch {
+                                void 0;
+                            }
                         }, 500);
                     }
 
@@ -308,7 +310,7 @@
                     const top = window.scrollY + rect.top - 140; // keep header visible
                     window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
                 } catch {
-                    // ignore
+                    void 0;
                 }
             }
 
@@ -406,7 +408,7 @@
                             // showToast(S.refreshed);
                         }
                     } catch {
-                        // best-effort: ignoriši
+                        void 0;
                     }
                 }, 250);
             }

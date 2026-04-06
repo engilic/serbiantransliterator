@@ -119,7 +119,7 @@ export class ErrorRecoveryHandler {
                             await ctx.sync();
                         });
                     } catch {
-                        // ignore
+                        void 0;
                     }
                 },
                 userMessage: t("error_word_api_retrying"),

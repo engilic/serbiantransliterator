@@ -30,7 +30,7 @@ export async function processHeadersFooters(
                 const o = r.getOoxml();
                 reqs.push({ range: r, ooxml: o });
             } catch {
-                // ignore (header might not exist in this context)
+                void 0;
             }
 
             try {
@@ -38,7 +38,7 @@ export async function processHeadersFooters(
                 const o = r.getOoxml();
                 reqs.push({ range: r, ooxml: o });
             } catch {
-                // ignore (footer might not exist in this context)
+                void 0;
             }
         }
     }
