@@ -58,7 +58,7 @@
         "@commitlint/config-conventional": "^20.5.0",
         "@playwright/test": "^1.59.1",
         "@types/node": "^25.5.2",
-        "@types/office-js": "^1.0.585",
+        "@types/office-js": "^1.0.587",
         "@vitest/coverage-v8": "^4.1.2",
         "@wasm-tool/wasm-pack-plugin": "^1.7.0",
         "babel-loader": "^10.1.1",
