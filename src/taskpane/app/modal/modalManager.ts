@@ -117,7 +117,7 @@ export class ModalManager {
                         this.lastFocusedElement.focus();
                     }
                 } catch {
-                    // ignore if element is gone or not focusable
+                    void 0;
                 }
                 this.lastFocusedElement = null;
             }, 50);

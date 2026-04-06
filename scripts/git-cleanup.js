@@ -166,7 +166,9 @@ async function askYesNo(question, { defaultYes = false, forceYes = false } = {})
     } finally {
         try {
             process.stdin.setRawMode(wasRaw);
-        } catch {}
+        } catch {
+            void 0;
+        }
         process.stdin.pause();
     }
 }

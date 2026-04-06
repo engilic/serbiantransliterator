@@ -47,7 +47,7 @@ self.addEventListener("activate", (event) => {
                 try {
                     await reg.navigationPreload.enable();
                 } catch {
-                    // ignore
+                    void 0;
                 }
             }
         })()

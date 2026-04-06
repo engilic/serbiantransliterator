@@ -56,7 +56,7 @@ function detectUiLanguageFromEnv(): Language {
         if (pick.startsWith("en")) return "en";
         if (pick.startsWith("sr")) return "sr";
     } catch {
-        // ignore
+        void 0;
     }
 
     try {
@@ -64,7 +64,7 @@ function detectUiLanguageFromEnv(): Language {
         if (nav.startsWith("en")) return "en";
         if (nav.startsWith("sr")) return "sr";
     } catch {
-        // ignore
+        void 0;
     }
 
     return "sr";
@@ -110,14 +110,14 @@ export function applyI18nToDom(root: ParentNode = document): void {
     try {
         document.title = t("app_title");
     } catch {
-        // ignore
+        void 0;
     }
 
     try {
         const htmlEl = document.documentElement;
         if (htmlEl) htmlEl.lang = getLanguage() === "en" ? "en" : "sr";
     } catch {
-        // ignore
+        void 0;
     }
 }
 

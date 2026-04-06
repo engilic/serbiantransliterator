@@ -50,7 +50,6 @@ export async function processNotes(
                 r = itemWithRange.contentRange;
             }
         } catch {
-            // ignore (some note items might not expose range in this context)
             r = null;
         }
 
@@ -60,7 +59,7 @@ export async function processNotes(
             const o = r.getOoxml();
             reqs.push({ range: r, ooxml: o });
         } catch {
-            // ignore
+            void 0;
         }
     }
 

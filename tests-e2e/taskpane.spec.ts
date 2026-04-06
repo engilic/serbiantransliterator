@@ -13,7 +13,9 @@ test.describe("Taskpane E2E smoke (Office stub) + UI language picker", () => {
         await page.addInitScript(() => {
             try {
                 localStorage.removeItem(LANG_KEY);
-            } catch {}
+            } catch {
+                void 0;
+            }
         });
 
         await page.addInitScript(() => {

@@ -73,7 +73,7 @@ export function convertOoxml(
             };
         }
     } catch {
-        // ignore
+        void 0;
     }
 
     // [MAX1] REFACTOR: Smart Traversal (Paragraph -> Run -> Text)

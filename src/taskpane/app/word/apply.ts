@@ -152,7 +152,7 @@ export async function runSmart() {
                     )
                 );
             } catch {
-                // ignore
+                void 0;
             }
         }
 

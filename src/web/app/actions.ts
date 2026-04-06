@@ -8,7 +8,7 @@ import { InteractiveDiff } from "../../shared/diff/interactive";
 import { WebWorkerClient } from "../workerClient";
 import { convertDocxFileDetailed, downloadBlob } from "../docx";
 import type { Store } from "./store";
-import type { AppState, DocxJob } from "./state";
+import type { AppState, DocxJob, StatusI18n } from "./state";
 import { buildOoxmlOptionsFromSettings } from "./state";
 import { saveWebSettings, DEFAULT_WEB_SETTINGS, type WebSettings } from "./webSettings";
 import type { ConvertStats } from "../../shared/ooxml/convertOoxml";
@@ -192,9 +192,7 @@ export function createActions(store: Store<AppState>): Actions {
         const s = store.get();
         if (s.mode !== "text") return;
 
-        // ✅ Guard: Diff tab “on demand” računamo samo kad je Live Preview uključen
-        // (tada je output tipično svež, pa diff nije “stale”)
-        if (!s.settings.livePreview) return;
+        // Diff se računa on-demand kad korisnik otvori Diff tab (setOutputTab poziva ensurePlainDiff)
 
         if (s.plain.interactive) return;
 
@@ -207,7 +205,7 @@ export function createActions(store: Store<AppState>): Actions {
 
         store.update((x) => ({
             ...x,
-            plain: { ...x.plain, interactive },
+            plain: { ...x.plain, interactive, diffRev: 0 },
         }));
     };
 
@@ -224,8 +222,30 @@ export function createActions(store: Store<AppState>): Actions {
         liveRunId++; // invalidate any scheduled run
     };
 
-    const setStatus = (msg: string) => {
-        store.update((s) => ({ ...s, statusText: msg }));
+    type StatusKey = StatusI18n["key"];
+    type StatusArgs = StatusI18n["args"];
+
+    const setStatusKey = (key: StatusKey, ...args: StatusArgs) => {
+        const msg = t(key, ...args);
+
+        store.update((s) => {
+            const cur = s.statusI18n;
+
+            const same =
+                cur &&
+                cur.key === key &&
+                cur.args.length === args.length &&
+                cur.args.every((v, i) => v === args[i]) &&
+                s.statusText === msg;
+
+            if (same) return s;
+
+            return {
+                ...s,
+                statusText: msg,
+                statusI18n: { key, args },
+            };
+        });
     };
 
     const updateJob = (jobId: string, patch: Partial<DocxJob>) => {
@@ -233,6 +253,28 @@ export function createActions(store: Store<AppState>): Actions {
             ...s,
             jobs: s.jobs.map((j) => (j.id === jobId ? { ...j, ...patch } : j)),
         }));
+    };
+
+    const jobUiThrottle = new Map<string, { lastPct: number; lastMsg: string; lastTs: number }>();
+    const JOB_UI_MIN_MS = 60;
+
+    const updateJobThrottled = (jobId: string, pct: number, msg: string) => {
+        const now = performance.now();
+        const prev = jobUiThrottle.get(jobId);
+
+        const pctInt = Math.round(Math.max(0, Math.min(100, pct)));
+        const must = pctInt === 0 || pctInt === 100;
+
+        if (prev && !must) {
+            const tooSoon = now - prev.lastTs < JOB_UI_MIN_MS;
+            const sameMsg = msg === prev.lastMsg;
+            const samePct = pctInt === prev.lastPct;
+
+            if ((tooSoon && sameMsg) || (samePct && sameMsg)) return;
+        }
+
+        jobUiThrottle.set(jobId, { lastPct: pctInt, lastMsg: msg, lastTs: now });
+        updateJob(jobId, { progressPct: pctInt, message: msg });
     };
 
     const ensureAbort = () => {
@@ -269,10 +311,10 @@ export function createActions(store: Store<AppState>): Actions {
 
             store.update((x) => ({
                 ...x,
-                plain: { ...x.plain, output: "", typeLabel: "", interactive: null },
+                plain: { ...x.plain, output: "", typeLabel: "", interactive: null, diffRev: 0 },
             }));
 
-            if (!quiet) setStatus(t("msg_enter_text"));
+            if (!quiet) setStatusKey("msg_enter_text");
             return;
         }
 
@@ -285,6 +327,7 @@ export function createActions(store: Store<AppState>): Actions {
                 : "auto";
 
         await ensureWasmReady();
+        if (!tokenOk()) return;
 
         const converted = await engine.convert({
             kind: "plainText",
@@ -308,6 +351,7 @@ export function createActions(store: Store<AppState>): Actions {
         const typeLabel =
             String(dir) === "to-ascii" ? t("dir_to_ascii_short") : String(converted.typeLabel || "");
 
+        if (!tokenOk()) return;
         const needDiff = !quiet || store.get().outputTab === "diff";
 
         let interactive: InteractiveDiff | null = null;
@@ -322,10 +366,10 @@ export function createActions(store: Store<AppState>): Actions {
             ...x,
             // NOTE: for live (quiet) do NOT force-tab away from stats
             outputTab: quiet ? x.outputTab : x.outputTab === "stats" ? "result" : x.outputTab,
-            plain: { ...x.plain, output: converted.text, typeLabel, interactive },
+            plain: { ...x.plain, output: converted.text, typeLabel, interactive, diffRev: 0 },
         }));
 
-        if (!quiet) setStatus(t("web_status_text_type", typeLabel));
+        if (!quiet) setStatusKey("web_status_text_type", typeLabel);
     };
 
     const scheduleLivePlainConvert = () => {
@@ -354,23 +398,33 @@ export function createActions(store: Store<AppState>): Actions {
     return {
         setMode: (mode) => {
             store.update((s) => {
+                // MAX1: no-op if same
+                if (s.mode === mode) return s;
+
                 // reset “files-only” status messages when switching to Text
-                let statusText = s.statusText;
                 if (mode === "text") {
-                    const filesHints = new Set([
-                        t("web_status_add_docx_files"),
-                        t("web_status_no_docx_files"),
-                        t("web_status_jobs_cleared"),
-                        t("web_status_no_done_files"),
-                        t("web_status_packing_zip"),
-                        t("web_status_zip_downloaded"),
+                    const filesHintKeys = new Set([
+                        "web_status_add_docx_files",
+                        "web_status_no_docx_files",
+                        "web_status_jobs_cleared",
+                        "web_status_no_done_files",
+                        "web_status_packing_zip",
+                        "web_status_zip_downloaded",
                     ]);
-                    if (filesHints.has(String(s.statusText || ""))) {
-                        statusText = t("web_ui_status_idle");
+
+                    // reset samo ako znamo da je status došao iz "files" konteksta
+                    if (s.statusI18n && filesHintKeys.has(s.statusI18n.key)) {
+                        return {
+                            ...s,
+                            mode,
+                            statusText: t("web_ui_status_idle"),
+                            statusI18n: { key: "web_ui_status_idle", args: [] },
+                        };
                     }
                 }
 
-                return { ...s, mode, statusText };
+                // normal mode switch (keep status as-is)
+                return { ...s, mode };
             });
 
             // ✅ When leaving text mode, cancel pending live work
@@ -403,11 +457,15 @@ export function createActions(store: Store<AppState>): Actions {
                 const nextSettings = { ...s.settings, ...patch };
 
                 let statusText = s.statusText;
+                let statusI18n = s.statusI18n;
+
                 if (hasLive) {
-                    statusText = turnedOff ? t("web_status_live_off") : t("web_status_live_on");
+                    const key: StatusKey = turnedOff ? "web_status_live_off" : "web_status_live_on";
+                    statusText = t(key);
+                    statusI18n = { key, args: [] };
                 }
 
-                return { ...s, settings: nextSettings, statusText };
+                return { ...s, settings: nextSettings, statusText, statusI18n };
             });
 
             // 2) Side-effects AFTER state update
@@ -442,7 +500,7 @@ export function createActions(store: Store<AppState>): Actions {
         saveSettings: () => {
             const s = store.get();
             saveWebSettings(s.settings);
-            setStatus(t("web_status_settings_saved"));
+            setStatusKey("web_status_settings_saved");
         },
 
         exportSettings: () => {
@@ -453,7 +511,7 @@ export function createActions(store: Store<AppState>): Actions {
             const blob = new Blob([json], { type: "application/json" });
             downloadBlob(blob, "serbian-transliterator-web-settings.json");
 
-            setStatus(t("web_status_settings_exported"));
+            setStatusKey("web_status_settings_exported");
         },
 
         importSettings: async (file: File) => {
@@ -465,24 +523,27 @@ export function createActions(store: Store<AppState>): Actions {
                 store.update((s) => ({ ...s, settings: next }));
                 saveWebSettings(next);
 
-                setStatus(t("web_status_settings_imported"));
+                setStatusKey("web_status_settings_imported");
 
                 if (!next.livePreview) cancelLive();
                 scheduleLivePlainConvert();
             } catch {
-                setStatus(t("web_status_settings_import_error"));
+                setStatusKey("web_status_settings_import_error");
             }
         },
 
         setPlainInput: (text) => {
-            store.update((s) => ({ ...s, plain: { ...s.plain, input: text } }));
+            store.update((s) => ({
+                ...s,
+                plain: { ...s.plain, input: text, interactive: null, diffRev: 0 },
+            }));
             scheduleLivePlainConvert();
         },
 
         convertPlain: () => {
             void runPlainConvert({ quiet: false }).catch((e) => {
                 const err = e instanceof Error ? e : new Error(String(e));
-                setStatus(t("status_error_prefix", err.message));
+                setStatusKey("status_error_prefix", err.message);
             });
         },
 
@@ -492,8 +553,8 @@ export function createActions(store: Store<AppState>): Actions {
             if (!txt) return;
 
             const ok = await safeCopyText(txt);
-            if (ok) setStatus(t("preview_toast_copied"));
-            else setStatus(t("web_status_copy_failed"));
+            if (ok) setStatusKey("preview_toast_copied");
+            else setStatusKey("web_status_copy_failed");
         },
 
         addFiles: (files) => {
@@ -501,7 +562,7 @@ export function createActions(store: Store<AppState>): Actions {
                 f.name.toLowerCase().endsWith(".docx")
             );
             if (arr.length === 0) {
-                setStatus(t("web_status_no_docx_files"));
+                setStatusKey("web_status_no_docx_files");
                 return;
             }
 
@@ -528,16 +589,18 @@ export function createActions(store: Store<AppState>): Actions {
             // leaving text mode cancels live
             cancelLive();
 
-            setStatus(t("web_status_files_added", newJobs.length));
+            setStatusKey("web_status_files_added", newJobs.length);
         },
 
         removeJob: (jobId) => {
+            jobUiThrottle.delete(jobId);
             store.update((s) => ({ ...s, jobs: s.jobs.filter((j) => j.id !== jobId) }));
         },
 
         clearJobs: () => {
+            jobUiThrottle.clear();
             store.update((s) => ({ ...s, jobs: [] }));
-            setStatus(t("web_status_jobs_cleared"));
+            setStatusKey("web_status_jobs_cleared");
         },
 
         startJobs: async () => {
@@ -546,7 +609,7 @@ export function createActions(store: Store<AppState>): Actions {
 
             const jobs = s0.jobs;
             if (jobs.length === 0) {
-                setStatus(t("web_status_add_docx_files"));
+                setStatusKey("web_status_add_docx_files");
                 return;
             }
 
@@ -563,11 +626,11 @@ export function createActions(store: Store<AppState>): Actions {
             const ac = ensureAbort();
 
             store.update((s) => ({ ...s, busy: true }));
-            setStatus(t("web_status_worker_starting"));
+            setStatusKey("web_status_worker_starting");
 
             try {
                 await workerClient.init();
-                setStatus(t("status_processing"));
+                setStatusKey("status_processing");
 
                 const statsAll: ConvertStats[] = [];
 
@@ -586,7 +649,7 @@ export function createActions(store: Store<AppState>): Actions {
                         job.file,
                         workerClient,
                         opts,
-                        (pct, msg) => updateJob(job.id, { progressPct: pct, message: msg }),
+                        (pct, msg) => updateJobThrottled(job.id, pct, msg),
                         ac.signal
                     );
 
@@ -603,6 +666,8 @@ export function createActions(store: Store<AppState>): Actions {
                         ms: ms ?? took,
                     });
 
+                    jobUiThrottle.delete(job.id);
+
                     if (store.get().settings.autoDownload) {
                         downloadBlob(blob, `PRESLOVLJENO_${job.file.name}`);
                     }
@@ -611,7 +676,7 @@ export function createActions(store: Store<AppState>): Actions {
                 store.update((s) => ({ ...s, lastAggregateStats: aggregateStats(statsAll) }));
 
                 if (ac.signal.aborted) {
-                    setStatus(t("status_cancelled"));
+                    setStatusKey("status_cancelled");
                     store.update((s) => ({
                         ...s,
                         jobs: s.jobs.map((j) =>
@@ -620,15 +685,19 @@ export function createActions(store: Store<AppState>): Actions {
                                 : j
                         ),
                     }));
+
+                    for (const j of store.get().jobs) {
+                        if (j.status === "canceled") jobUiThrottle.delete(j.id);
+                    }
                 } else {
-                    setStatus(t("web_status_done"));
+                    setStatusKey("web_status_done");
                 }
             } catch (e) {
                 const err = e instanceof Error ? e : new Error(String(e));
                 if (err.name === "AbortError") {
-                    setStatus(t("status_cancelled"));
+                    setStatusKey("status_cancelled");
                 } else {
-                    setStatus(t("status_error_prefix", err.message));
+                    setStatusKey("status_error_prefix", err.message);
                     store.update((s) => ({
                         ...s,
                         jobs: s.jobs.map((j) =>
@@ -642,6 +711,10 @@ export function createActions(store: Store<AppState>): Actions {
                                 : j
                         ),
                     }));
+
+                    for (const j of store.get().jobs) {
+                        if (j.status === "error") jobUiThrottle.delete(j.id);
+                    }
                 }
             } finally {
                 clearAbort();
@@ -651,6 +724,8 @@ export function createActions(store: Store<AppState>): Actions {
 
         cancel: () => {
             store.get().activeAbort?.abort();
+            // MAX1: stop worker computation immediately (it will re-init on next run)
+            workerClient.terminate();
         },
 
         downloadJob: (jobId) => {
@@ -670,11 +745,11 @@ export function createActions(store: Store<AppState>): Actions {
             const s = store.get();
             const done = s.jobs.filter((j) => j.status === "done" && j.outBlob);
             if (done.length === 0) {
-                setStatus(t("web_status_no_done_files"));
+                setStatusKey("web_status_no_done_files");
                 return;
             }
 
-            setStatus(t("web_status_packing_zip"));
+            setStatusKey("web_status_packing_zip");
 
             const zip = new JSZip();
             for (const j of done) {
@@ -691,7 +766,7 @@ export function createActions(store: Store<AppState>): Actions {
                 size: out.size,
             });
 
-            setStatus(t("web_status_zip_downloaded"));
+            setStatusKey("web_status_zip_downloaded");
         },
 
         diffToggle: (index) => {
@@ -704,7 +779,7 @@ export function createActions(store: Store<AppState>): Actions {
 
             store.update((x) => ({
                 ...x,
-                plain: { ...x.plain, output: rebuilt, interactive },
+                plain: { ...x.plain, output: rebuilt, interactive, diffRev: (x.plain.diffRev ?? 0) + 1 },
             }));
         },
     };

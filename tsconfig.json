@@ -1,23 +1,37 @@
 {
     "compilerOptions": {
-        "target": "es2018",
-        "lib": ["es2018", "dom", "webworker"],
+        "target": "ES2018",
+        "lib": ["ES2018", "DOM", "WebWorker"],
+
         "allowJs": true,
         "checkJs": false,
         "esModuleInterop": true,
+
         "noEmitOnError": true,
         "outDir": "dist",
         "sourceMap": true,
 
         "module": "ESNext",
-        "moduleResolution": "bundler",
+        "moduleResolution": "Bundler",
 
         "resolveJsonModule": true,
         "skipLibCheck": true,
 
+        "baseUrl": ".",
         "paths": {
-            "*": ["./*"]
+            "@/*": ["src/*"]
         }
     },
+    "include": [
+        "src/**/*.ts",
+        "src/**/*.tsx",
+        "tests/**/*.ts",
+        "tests-e2e/**/*.ts",
+        "functions/**/*.ts",
+        "vite.config.ts",
+        "vitest.config.ts",
+        "playwright.config.ts",
+        "commitlint.config.js"
+    ],
     "exclude": ["node_modules", "dist", "scripts"]
 }

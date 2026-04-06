@@ -111,6 +111,6 @@ export function saveWebSettings(next: WebSettings): void {
     try {
         localStorage.setItem(KEY, JSON.stringify(next));
     } catch {
-        // ignore
+        void 0;
     }
 }

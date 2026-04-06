@@ -5,20 +5,28 @@ import type { AppState } from "./state";
 import { t } from "../../shared/i18n";
 
 function toastStatus(store: Store<AppState>, msg: string, ms = 1600) {
-    const prev = store.get().statusText;
-    store.update((s) => ({ ...s, statusText: msg }));
+    const prevText = store.get().statusText;
+    const prevI18n = store.get().statusI18n;
+
+    // ✅ Force UI to actually show this toast:
+    // renderStatus prefers statusI18n when not-null, so we must temporarily set it to null.
+    store.update((s) => ({ ...s, statusText: msg, statusI18n: null }));
 
     window.setTimeout(() => {
         // restore only if nobody changed it since
-        if (store.get().statusText === msg) {
-            store.update((s) => ({ ...s, statusText: prev }));
+        const cur = store.get();
+        if (cur.statusText === msg && cur.statusI18n === null) {
+            store.update((s) => ({ ...s, statusText: prevText, statusI18n: prevI18n }));
         }
     }, ms);
 }
 
 export function installNetworkStatus(store: Store<AppState>): void {
     const setStatus = (msg: string) => {
-        store.update((s: AppState) => ({ ...s, statusText: msg }));
+        store.update((s) => {
+            if (s.statusText === msg && s.statusI18n === null) return s;
+            return { ...s, statusText: msg, statusI18n: null };
+        });
     };
 
     // Initial hint (don’t override if already busy)
@@ -28,7 +36,7 @@ export function installNetworkStatus(store: Store<AppState>): void {
             if (!store.get().busy) setStatus(t("msg_offline"));
         }
     } catch {
-        // ignore
+        void 0;
     }
 
     window.addEventListener("offline", () => setStatus(t("msg_offline")));
@@ -60,6 +68,6 @@ export function installNetworkStatus(store: Store<AppState>): void {
             maybeAnnounceReady();
         });
     } catch {
-        // ignore
+        void 0;
     }
 }

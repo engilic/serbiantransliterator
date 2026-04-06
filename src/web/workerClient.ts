@@ -26,11 +26,42 @@ export class WebWorkerClient {
         }
     >();
 
+    // MAX1: never leave callers hanging if worker crashes/terminates
+    private rejectAllPending(err: Error) {
+        for (const [id, p] of this.pending) {
+            if (p.timeout) clearTimeout(p.timeout);
+            try {
+                p.reject(err);
+            } catch {
+                void 0;
+            }
+            this.pending.delete(id);
+        }
+    }
+
     async init(): Promise<void> {
         if (this.ready) return;
         if (this.initPromise) return this.initPromise;
 
         this.initPromise = new Promise((resolve, reject) => {
+            const failInit = (e: unknown) => {
+                const err = e instanceof Error ? e : new Error(String(e));
+
+                this.rejectAllPending(err);
+
+                try {
+                    this.worker?.terminate();
+                } catch {
+                    void 0;
+                }
+
+                this.worker = null;
+                this.ready = false;
+                this.initPromise = null; // allow retry
+
+                reject(err);
+            };
+
             try {
                 this.worker = new Worker(
                     new URL("../taskpane/worker/transliteration.worker.ts", import.meta.url),
@@ -49,7 +80,7 @@ export class WebWorkerClient {
                     }
 
                     if (msg.type === "ERROR" && !msg.id) {
-                        reject(new Error(msg.error));
+                        failInit(new Error(msg.error));
                         return;
                     }
 
@@ -73,7 +104,7 @@ export class WebWorkerClient {
                 };
 
                 this.worker.onerror = (e) => {
-                    reject(new Error("Worker error: " + String((e as ErrorEvent).message || e)));
+                    failInit(new Error("Worker error: " + String((e as ErrorEvent).message || e)));
                 };
 
                 const b1 = dataUriToBytes(dictE2iData as unknown as string);
@@ -81,7 +112,7 @@ export class WebWorkerClient {
                 const wasmBytes = dataUriToBytes(wasmData as unknown as string);
 
                 if (b1.byteLength === 0 || b2.byteLength === 0 || wasmBytes.byteLength === 0) {
-                    reject(new Error("Init payload missing (dict/wasm)"));
+                    failInit(new Error("Init payload missing (dict/wasm)"));
                     return;
                 }
 
@@ -92,7 +123,7 @@ export class WebWorkerClient {
 
                 this.worker.postMessage(initMsg, [b1.buffer, b2.buffer, wasmBytes.buffer]);
             } catch (e) {
-                reject(e instanceof Error ? e : new Error(String(e)));
+                failInit(e);
             }
         });
 
@@ -121,18 +152,7 @@ export class WebWorkerClient {
 
         return new Promise((resolve, reject) => {
             let done = false;
-
-            const finish = (fn: () => void) => {
-                if (done) return;
-                done = true;
-                this.pending.delete(id);
-                fn();
-            };
-
-            const timeout =
-                timeoutMs > 0
-                    ? setTimeout(() => finish(() => reject(new Error("Timeout"))), timeoutMs)
-                    : null;
+            let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
 
             const onAbort = () => {
                 const err = new Error("AbortError");
@@ -140,33 +160,72 @@ export class WebWorkerClient {
                 finish(() => reject(err));
             };
 
+            const cleanupAbort = () => {
+                if (!signal) return;
+                try {
+                    signal.removeEventListener("abort", onAbort);
+                } catch {
+                    void 0;
+                }
+            };
+
+            const finish = (fn: () => void) => {
+                if (done) return;
+                done = true;
+
+                cleanupAbort();
+
+                if (timeoutHandle) {
+                    clearTimeout(timeoutHandle);
+                    timeoutHandle = null;
+                }
+
+                this.pending.delete(id);
+                fn();
+            };
+
             if (signal) signal.addEventListener("abort", onAbort, { once: true });
 
+            // store pending so worker replies can resolve/reject it
             this.pending.set(id, {
-                resolve: (v) => {
-                    if (signal) signal.removeEventListener("abort", onAbort);
-                    finish(() => resolve(v));
-                },
-                reject: (e) => {
-                    if (signal) signal.removeEventListener("abort", onAbort);
-                    finish(() => reject(e));
-                },
-                timeout,
+                resolve: (v) => finish(() => resolve(v)),
+                reject: (e) => finish(() => reject(e)),
+                timeout: null,
             });
 
-            worker.postMessage(msg);
+            if (timeoutMs > 0) {
+                timeoutHandle = setTimeout(() => {
+                    const err = new Error(`Timeout after ${timeoutMs}ms`);
+                    err.name = "TimeoutError";
+                    finish(() => reject(err));
+                }, timeoutMs);
+
+                // keep handle in pending too (so rejectAllPending can clear it)
+                const p = this.pending.get(id);
+                if (p) p.timeout = timeoutHandle;
+            }
+
+            try {
+                worker.postMessage(msg);
+            } catch (e) {
+                const err = e instanceof Error ? e : new Error(String(e));
+                finish(() => reject(err));
+            }
         });
     }
 
     terminate() {
+        const err = new Error("AbortError");
+        err.name = "AbortError";
+        this.rejectAllPending(err);
+
         try {
             this.worker?.terminate();
         } catch {
-            // ignore
+            void 0;
         }
         this.worker = null;
         this.ready = false;
         this.initPromise = null;
-        this.pending.clear();
     }
 }

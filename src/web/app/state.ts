@@ -1,5 +1,6 @@
 // src/web/app/state.ts
 
+import type { t as tFn } from "../../shared/i18n";
 import type { ConvertStats, OoxmlOptions } from "../../shared/ooxml/convertOoxml";
 import type { InteractiveDiff } from "../../shared/diff/interactive";
 import { loadWebSettings, type WebSettings } from "./webSettings";
@@ -8,6 +9,12 @@ export type WebMode = "files" | "text";
 export type OutputTab = "result" | "diff" | "stats";
 
 export type JobStatus = "queued" | "running" | "done" | "error" | "canceled";
+
+export type I18nKey = Parameters<typeof tFn>[0];
+export type StatusI18n = {
+    key: I18nKey;
+    args: Array<string | number>;
+};
 
 export interface DocxJob {
     id: string;
@@ -27,6 +34,8 @@ export interface PlainResult {
     output: string;
     typeLabel: string;
     interactive: InteractiveDiff | null;
+
+    diffRev: number;
 }
 
 export interface AppState {
@@ -42,6 +51,7 @@ export interface AppState {
 
     busy: boolean;
     statusText: string;
+    statusI18n: StatusI18n | null;
 
     jobs: DocxJob[];
     activeAbort: AbortController | null;
@@ -53,6 +63,7 @@ export interface AppState {
 
 export function createInitialState(meta: { version: string }): AppState {
     const settings = loadWebSettings();
+
     return {
         meta,
         mode: "files",
@@ -64,7 +75,8 @@ export function createInitialState(meta: { version: string }): AppState {
         simulatedOffline: false,
 
         busy: false,
-        statusText: "Spremno.",
+        statusText: "",
+        statusI18n: { key: "web_ui_status_idle", args: [] },
 
         jobs: [],
         activeAbort: null,
@@ -74,6 +86,7 @@ export function createInitialState(meta: { version: string }): AppState {
             output: "",
             typeLabel: "",
             interactive: null,
+            diffRev: 0,
         },
 
         lastAggregateStats: null,
