@@ -69,7 +69,7 @@
         "css-loader": "^7.1.4",
         "eslint": "^8.57.1",
         "eslint-plugin-deprecation": "^3.0.0",
-        "eslint-plugin-office-addins": "^3.0.3",
+        "eslint-plugin-office-addins": "^4.0.2",
         "fast-check": "^4.6.0",
         "html-loader": "^5.1.0",
         "html-webpack-plugin": "^5.6.6",
