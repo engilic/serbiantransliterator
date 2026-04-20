@@ -50,7 +50,7 @@
         "regenerator-runtime": "^0.14.1"
     },
     "devDependencies": {
-        "@axe-core/playwright": "^4.11.1",
+        "@axe-core/playwright": "^4.11.2",
         "@babel/core": "^7.29.0",
         "@babel/preset-env": "^7.29.2",
         "@babel/preset-typescript": "^7.28.5",
