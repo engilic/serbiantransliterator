@@ -92,7 +92,7 @@
         "wait-on": "^9.0.5",
         "webpack": "^5.106.1",
         "webpack-cli": "^7.0.2",
-        "webpack-dev-server": "^5.2.3",
+        "webpack-dev-server": "^5.2.5",
         "webpack-merge": "^6.0.1",
         "workbox-precaching": "^7.4.0",
         "workbox-routing": "^7.4.0",
