@@ -32,7 +32,7 @@ jobs:
 
         steps:
             - name: Checkout
-              uses: actions/checkout@v6
+              uses: actions/checkout@v7
               with:
                   fetch-depth: 0
 
@@ -45,7 +45,7 @@ jobs:
             # Repo already pins pnpm via package.json "packageManager": "pnpm@X.Y.Z".
             # With pnpm/action-setup@v4, do NOT also specify "with: version:" (it fails).
             - name: Install pnpm
-              uses: pnpm/action-setup@v5
+              uses: pnpm/action-setup@v6
 
             - name: Setup Node.js
               uses: actions/setup-node@v6
